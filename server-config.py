@@ -55,6 +55,6 @@ if __name__ == "__main__":
 
     if not options.arkouda:
         print("--ak, --arkouda option is REQUIRED but was empty")
-    
-    run(options.arkouda, os.path.dirname(os.path.realpath(__file__)))
+    else:
+        run(options.arkouda, os.path.dirname(os.path.realpath(__file__)))
 
