@@ -43,7 +43,7 @@ def run(ak_loc, my_loc):
     # If this gets to long for the shell we'll need to switch to exporting our env vars
     # If it's still too long, the Arkouda team will need to make a change to the build process.
     ak_srv_user_mods = '"' + " ".join(c_files) + '"' # setup our ARKOUDA_SERVER_USER_MODULES var
-    print(f"ARKOUDA_SERVER_USER_MODULES={ak_srv_user_mods} ARKOUDA_CONFIG_FILE={tmp_cfg} make -C {ak_loc}")
+    print(f"ARKOUDA_SERVER_USER_MODULES={ak_srv_user_mods} ARKOUDA_CONFIG_FILE={tmp_cfg} ARKOUDA_SKIP_CHECK_DEPS=true   make -C {ak_loc}")
 
 
 if __name__ == "__main__":
