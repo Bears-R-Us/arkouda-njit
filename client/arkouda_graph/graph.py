@@ -4,17 +4,11 @@ from typeguard import typechecked
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
-#import numpy as np 
-from arkouda.dtypes import npstr as akstr
 from arkouda.dtypes import int64 as akint
-from arkouda.dtypes import NUMBER_FORMAT_STRINGS, resolve_scalar_dtype, \
-     translate_np_dtype
-import json
 
 __all__ = ["Graph",
-           "rmat_gen","graph_file_read",
+           "rmat_gen", "graph_file_read",
            "graph_bfs"]
-
 
 
 class Graph:
@@ -70,18 +64,18 @@ class Graph:
             from either the offset_attrib or bytes_attrib parameter 
         """
         try:
-            if len(args) < 5: 
+            if len(args) < 5:
                 raise ValueError
-            self.n_vertices=cast(int,args[0])
-            self.n_edges=cast(int,args[1])
-            self.directed=cast(int,args[2])
-            self.weighted=cast(int,args[3])
-            self.name=cast(str,args[4])
+            self.n_vertices = cast(int, args[0])
+            self.n_edges = cast(int, args[1])
+            self.directed = cast(int, args[2])
+            self.weighted = cast(int, args[3])
+            self.name = cast(str, args[4])
         except Exception as e:
             raise RuntimeError(e)
-        
+
         self.dtype = akint
-        self.logger = getArkoudaLogger(name=__class__.__name__) # type: ignore
+        self.logger = getArkoudaLogger(name=__class__.__name__)  # type: ignore
 
     def __iter__(self):
         raise NotImplementedError('Graph does not support iteration')
@@ -89,9 +83,10 @@ class Graph:
     def __size__(self) -> int:
         return self.n_vertices
 
+
 @typechecked
-def graph_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str)  -> Graph:
-        """
+def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str) -> Graph:
+    """
         This function is used for creating a graph from a file.
         The file should like this
           1   5
@@ -120,22 +115,22 @@ def graph_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str)  -> Gra
         ------  
         RuntimeError
         """
-        cmd = "segmentedGraphFile"
-        RCMFlag=0
-        DegreeSortFlag=0
-        args="{} {} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,RCMFlag,DegreeSortFlag);
-        repMsg = generic_msg(cmd=cmd,args=args)
-        if (int(Ncol) >2) :
-             weighted=1
-        else:
-             weighted=0
+    cmd = "segmentedGraphFile"
+    RCMFlag = 0
+    DegreeSortFlag = 0
+    args = "{} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, RCMFlag, DegreeSortFlag)
+    repMsg = generic_msg(cmd=cmd, args=args)
+    if (int(Ncol) > 2):
+        weighted = 1
+    else:
+        weighted = 0
 
-        return Graph(*(cast(str,repMsg).split('+')))
+    return Graph(*(cast(str, repMsg).split('+')))
 
 
 @typechecked
-def rmat_gen (lgNv:int, Ne_per_v:int, p:float, directed: int,weighted:int) ->Graph:
-        """
+def rmat_gen(lgNv: int, Ne_per_v: int, p: float, directed: int, weighted: int) -> Graph:
+    """
         This function is for creating a graph using rmat graph generator
         Returns
         -------
@@ -152,17 +147,18 @@ def rmat_gen (lgNv:int, Ne_per_v:int, p:float, directed: int,weighted:int) ->Gra
         ------  
         RuntimeError
         """
-        cmd = "segmentedRMAT"
-        RCMFlag=1
-        args= "{} {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted,RCMFlag)
-        msg = "segmentedRMAT {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted)
-        repMsg = generic_msg(cmd=cmd,args=args)
+    cmd = "segmentedRMAT"
+    RCMFlag = 1
+    args = "{} {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted, RCMFlag)
+    msg = "segmentedRMAT {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted)
+    repMsg = generic_msg(cmd=cmd, args=args)
 
-        return Graph(*(cast(str,repMsg).split('+')))
+    return Graph(*(cast(str, repMsg).split('+')))
+
 
 @typechecked
-def graph_bfs (graph: Graph, root: int ) -> pdarray:
-        """
+def graph_bfs(graph: Graph, root: int) -> pdarray:
+    """
         This function is generating the breadth-first search vertices sequences in given graph
         starting from the given root vertex
         Returns
@@ -180,15 +176,14 @@ def graph_bfs (graph: Graph, root: int ) -> pdarray:
         ------  
         RuntimeError
         """
-        cmd="segmentedGraphBFS"
-        DefaultRatio=0.9
-        RCMFlag=1
-        args = "{} {} {} {} {} {} {} {}".format(
-                 RCMFlag,\
-                 graph.n_vertices,graph.n_edges,\
-                 graph.directed,graph.weighted,\
-                 graph.name,
-                 root,DefaultRatio)
-        repMsg = generic_msg(cmd=cmd,args=args)
-        return create_pdarray(repMsg)
-
+    cmd = "segmentedGraphBFS"
+    DefaultRatio = 0.9
+    RCMFlag = 1
+    args = "{} {} {} {} {} {} {} {}".format(
+        RCMFlag,
+        graph.n_vertices, graph.n_edges,
+        graph.directed, graph.weighted,
+        graph.name,
+        root, DefaultRatio)
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(repMsg)
