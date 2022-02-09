@@ -1,6 +1,5 @@
 from setuptools import setup
 from os import path
-#import versioneer
 
 
 here = path.abspath(path.dirname(__file__))
@@ -24,7 +23,7 @@ setup(
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name='arkouda-graph',  # Required
+    name='arkouda-njit',  # Required
 
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/
@@ -64,7 +63,7 @@ setup(
     #
     # This field corresponds to the "Home-Page" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#home-page-optional
-    url='https://github.com/Bears-R-Us/arkouda-contrib',  # Optional
+    url='https://github.com/Bears-R-Us/arkouda-njit',  # Optional
 
     # This should be your name or the name of the organization which owns the
     # project.
@@ -135,6 +134,7 @@ setup(
         'pyzmq>=20.0.0,<=22.2.1',
         'typeguard==2.10.0',
         'pyfiglet',
+        'arkouda'
     ],
 
     # List additional groups of dependencies here (e.g. development
@@ -146,8 +146,8 @@ setup(
     # Similar to `install_requires` above, these must be valid existing
     # projects.
     extras_require={  # Optional
-        'dev': ['h5py','pexpect', 'pytest', 
-                'pytest-env','Sphinx', 'sphinx-argparse', 
+        'dev': ['h5py', 'pexpect', 'pytest',
+                'pytest-env', 'Sphinx', 'sphinx-argparse',
                 'sphinx-autoapi', 'mypy>=0.931', 'typed-ast'],
     },
     # replace original install command with version that also builds
@@ -155,7 +155,6 @@ setup(
     # cmdclass={
     #     "build_py": installers.ArkoudaInstall,
     # },
-    #cmdclass=versioneer.get_cmdclass(),
 
     # If there are data files included in your packages that need to be
     # installed, specify them here.
@@ -196,11 +195,8 @@ setup(
     # maintainers, and where to support the project financially. The key is
     # what's used to render the link text on PyPI.
     project_urls={  # Optional
-        'Bug Reports': 'https://github.com/Bears-R-Us/arkouda/issues',
-        'Source': 'https://github.com/Bears-R-Us/arkouda',
+        'Bug Reports': 'https://github.com/Bears-R-Us/arkouda-njit/issues',
+        'Source': 'https://github.com/Bears-R-Us/arkouda-njit',
         'Chapel': 'https://chapel-lang.org'
     },
 )
-
-
-
