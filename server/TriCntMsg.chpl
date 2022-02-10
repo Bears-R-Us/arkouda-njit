@@ -33,6 +33,7 @@ module TriCntMsg {
   use Atomics;
   use IO.FormattedIO; 
   use BFSMsg;
+  use FileIO;
 
 
   private config const logLevel = ServerConfig.logLevel;
@@ -118,6 +119,10 @@ module TriCntMsg {
                   var randv = new RandomStream(real, here.id, false);
                   var f = open(FileName, iomode.r);
                   var r = f.reader(kind=ionative);
+                  defer {
+                        ensureClose(r);
+                        ensureClose(f);
+                  }
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -160,8 +165,6 @@ module TriCntMsg {
                   forall i in neighbourR.localSubdomain()  {
                        neighbourR[i]=0;
                   }
-                  r.close();
-                  f.close();
                }// end on loc
            }//end coforall
       }//end readLinebyLine
@@ -211,17 +214,13 @@ module TriCntMsg {
              try {
                  if totalDigits <=  4 { 
                       iv = mergedArgsort( 4); 
-                 }
-                 if (totalDigits >  4) && ( totalDigits <=  8) { 
+                 } else if (totalDigits >  4) && ( totalDigits <=  8) { 
                       iv =  mergedArgsort( 8); 
-                 }
-                 if (totalDigits >  8) && ( totalDigits <=  16) { 
+                 } else if (totalDigits >  8) && ( totalDigits <=  16) { 
                       iv = mergedArgsort(16); 
-                 }
-                 if (totalDigits >  16) && ( totalDigits <=  32) { 
+                 } else if (totalDigits >  16) && ( totalDigits <=  32) { 
                       iv = mergedArgsort(32); 
-                 }
-                 if (totalDigits >32) {    
+                 } else if (totalDigits >32) {    
                       return "Error, TotalDigits >32";
                  }
 
@@ -939,6 +938,11 @@ module TriCntMsg {
                   var randv = new RandomStream(real, here.id, false);
                   var f = open(FileName, iomode.r);
                   var r = f.reader(kind=ionative);
+                  defer {
+                        ensureClose(r);
+                        ensureClose(f);
+                  }
+
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -995,8 +999,6 @@ module TriCntMsg {
                        src[i]=src[i]%StreamNv;
                        dst[i]=dst[i]%StreamNv;
                   }
-                  r.close();
-                  f.close();
                }// end on loc
            }//end coforall
       }//end readLinebyLine
@@ -1686,6 +1688,11 @@ module TriCntMsg {
               on loc {
                   var f = open(FileName, iomode.r);
                   var r = f.reader(kind=ionative);
+                  defer {
+                        ensureClose(r);
+                        ensureClose(f);
+                  }
+
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -1811,8 +1818,6 @@ module TriCntMsg {
                        src3[i]=src3[i]%StreamNv;
                        dst3[i]=dst3[i]%StreamNv;
                   }
-                  r.close();
-                  f.close();
                }// end on loc
            }//end coforall
       }//end readLinebyLine

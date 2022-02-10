@@ -37,6 +37,7 @@ module TrussMsg {
 
   private config const logLevel = ServerConfig.logLevel;
   const smLogger = new Logger(logLevel);
+  var outMsg:string;
   
 
 
@@ -286,7 +287,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -294,7 +294,6 @@ module TrussMsg {
                          var vadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
-                         //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                          var beginTmp=start_i[u];
                          var endTmp=beginTmp+nei[u]-1;
                          if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -363,11 +362,9 @@ module TrussMsg {
                                    //var e=findEdge(s,v);
                                    if ( vadj.contains(s) ) {
                                       Count +=1;
-                                      //writeln("3 My locale=",here.id, " The ", Count, " Triangle <",u,",",v,",",s,"> is added");
                                    }
                                }
                                TriCount[i] = Count;
-                               //writeln("4 My Locale=", here.id, " The number of triangles of edge ",i,"=<",u,",",v," > is ", Count);
                                // here we get the number of triangles of edge ID i
                             }// end of if 
                         }//end of if
@@ -380,21 +377,16 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
-                                     //writeln("10 My Locale=",here.id," removed edge ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i], " in iteration=",N1);
-                                     //KeepCheck[here.id]=true;
                                }
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
 
-              //writeln("11 My Locale=",here.id," Current Frontier=", SetCurF," Iteration=",N2);
-              //if (!SetCurF.isEmpty()) {
               if ( SetCurF.getSize()<=0){
                       ConFlag=false;
               }
@@ -416,10 +408,14 @@ module TrussMsg {
               }
           }
 
-          writeln("After KTruss Naive List Intersection,Given k=",k);
-          writeln("After KTruss Naive List Intersection,Total execution time=",timer.elapsed());
-          writeln("After KTruss Naive List Intersection,Total number of iterations =",N2);
-          writeln("After KTruss Naive List Intersection,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Naive List Intersection,Given k="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive List Intersection,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive List Intersection,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive List Intersection,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -592,7 +588,6 @@ module TrussMsg {
                          }
                          // here we search from the vertex who has small degree
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[sV];
                              var endTmp=beginTmp+nei[sV]-1;
                              if ((EdgeDeleted[i]==-1) && (sV!=lV) ){
@@ -623,7 +618,6 @@ module TrussMsg {
                                    }
                                 }
                             
-                                //writeln("2 ", "My Locale=", here.id, " The adjacent vertices of ",u,"->",v," =",uadj);
                                 if  (! sVadj.isEmpty() ){
                                    var Count=0:int;
                                    forall s in sVadj with ( + reduce Count) {
@@ -637,12 +631,10 @@ module TrussMsg {
                                        if ( (e!=-1)  && (e!=i) ) {
                                            if ( EdgeDeleted[e]==-1) {
                                               Count +=1;
-                                              //writeln("3 My locale=",here.id, " The ", Count, " Triangle <",u,",",v,",",s,"> is added");
                                            }
                                        }
                                    }
                                    TriCount[i] = Count;
-                                   //writeln("4 My Locale=", here.id, " The number of triangles of edge ",i,"=<",u,",",v," > is ", Count);
                                    // here we get the number of triangles of edge ID i
                                 }// end of if 
                             }//end of if EdgeDeleted[i]==-1
@@ -660,7 +652,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
@@ -692,10 +683,14 @@ module TrussMsg {
               }
           }
 
-          writeln("After KTruss Naive,Given k=",k);
-          writeln("After KTruss Naive,Total execution time=",timer.elapsed());
-          writeln("After KTruss Naive,Total number of iterations =",N2);
-          writeln("After KTruss Naive,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Naive,Given k="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -828,7 +823,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -836,7 +830,6 @@ module TrussMsg {
                          var vadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
-                         //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                          var beginTmp=start_i[u];
                          var endTmp=beginTmp+nei[u]-1;
                          if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -907,11 +900,9 @@ module TrussMsg {
                                    // This is the reason why list intersection has bad performance
 
                                       Count +=1;
-                                      //writeln("3 My locale=",here.id, " The ", Count, " Triangle <",u,",",v,",",s,"> is added");
                                    }
                                }
                                TriCount[i] = Count;
-                               //writeln("4 My Locale=", here.id, " The number of triangles of edge ",i,"=<",u,",",v," > is ", Count);
                                // here we get the number of triangles of edge ID i
                             }// end of if 
                         }//end of if
@@ -925,13 +916,11 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
-                                     //writeln("O2 My Locale=",here.id," removed edge ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i], " in iteration=",N2);
                                }
                      }
                   }// end of  on loc 
@@ -1052,7 +1041,6 @@ module TrussMsg {
                            var startEdge = ld.low;
                            var endEdge = ld.high;
                            var rset = new set((int,int), parSafe = true);
-                           //writeln("O2-2 My locale=", here.id, " before update ",N2,"--",tmpN2,"  rset=",rset.size," SetNexF=",SetNextF.getSize());
 
                            forall (i,j) in SetNextF with(ref rset)  {
                               if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
@@ -1065,7 +1053,6 @@ module TrussMsg {
                                     if (TriCount[j]<k-2) {
                                        EdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
-                                       //writeln("O3 My locale=", here.id, " After Iteration ",N2,"--",tmpN2,"  we removed edge ",j,"=<",src[j],",",dst[j]," > Triangles=",TriCount[j]);
                                     }
                                 }
                            }
@@ -1092,10 +1079,14 @@ module TrussMsg {
           }
 
 
-          writeln("After KTruss List Intersection,Given K=",k);
-          writeln("After KTruss List Intersection,Total execution time=",timer.elapsed());
-          writeln("After KTruss List Intersection,Total number of iterations =",N2);
-          writeln("After KTruss List Intersection,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss List Intersection,Given K="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss List Intersection,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss List Intersection,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss List Intersection,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -1214,8 +1205,6 @@ module TrussMsg {
                             //we will delete all the edges connected with a vertex only has very small degree 
                             //(less than k-1)
                               EdgeDeleted[i]=k-1;
-                              //writeln("For k=",k," We have removed the edge ",i, "=<",v1,",",v2,">");
-                              //writeln("Degree of ",v1,"=",nei[v1]+neiR[v1]," Degree of ",v2, "=",nei[v2]+neiR[v2]);
                               // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
                               // we also remove the self-loop like <v,v>
                               if (v1==v2) {
@@ -1268,7 +1257,6 @@ module TrussMsg {
                          }
                          // here we search from the vertex who has small degree
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[sV];
                              var endTmp=beginTmp+nei[sV]-1;
                              if ((EdgeDeleted[i]==-1) && (sV!=lV) ){
@@ -1299,7 +1287,6 @@ module TrussMsg {
                                    }
                                 }
                             
-                                //writeln("2 ", "My Locale=", here.id, " The adjacent vertices of ",u,"->",v," =",uadj);
                                 if  (! sVadj.isEmpty() ){
                                    var Count=0:int;
                                    forall s in sVadj with ( + reduce Count) {
@@ -1354,7 +1341,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -1497,7 +1483,6 @@ module TrussMsg {
                            var startEdge = ld.low;
                            var endEdge = ld.high;
                            //var rset = new set((int,int), parSafe = true);
-                           //writeln("O2-2 My locale=", here.id, " before update ",N2,"--",tmpN2,"  rset=",rset.size," SetNexF=",SetNextF.getSize());
 
                            forall (i,j) in SetNextF  {
                              if (xlocal(j,startEdge,endEdge)) {//each locale only check its owned edges
@@ -1525,7 +1510,6 @@ module TrussMsg {
           var tmpi=0;
           for i in 0..Ne-1  {
               if (EdgeDeleted[i]==-1) {
-                  //writeln("remove the ",tmpi, " edge ",i);
                   AllRemoved=false;
               } else {
                   tmpi+=1;
@@ -1533,10 +1517,14 @@ module TrussMsg {
           }
 
 
-          writeln("After KTruss,Given K=",k);
-          writeln("After KTruss,Total execution time=",timer.elapsed());
-          writeln("After KTruss,Total number of iterations =",N2);
-          writeln("After KTruss,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss,Given K="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -1658,7 +1646,6 @@ module TrussMsg {
                             //(less than k-1)
                               EdgeDeleted[i]=k-1;
                               //writeln("For k=",k," We have removed the edge ",i, "=<",v1,",",v2,">");
-                              //writeln("Degree of ",v1,"=",nei[v1]+neiR[v1]," Degree of ",v2, "=",nei[v2]+neiR[v2]);
                               // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
                               // we also remove the self-loop like <v,v>
                               if (v1==v2) {
@@ -1765,13 +1752,11 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
-                                     //writeln("O3 My Locale=",here.id," removed edge ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i].read(), " in iteration=",N2);
                                }
                      }
                   }// end of  on loc 
@@ -1784,7 +1769,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -1949,8 +1933,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -1996,7 +1978,6 @@ module TrussMsg {
           var tmpi=0;
           for i in 0..Ne-1  {
               if (EdgeDeleted[i]==-1) {
-                  //writeln("remove the ",tmpi, " edge ",i);
                   AllRemoved=false;
               } else {
                   tmpi+=1;
@@ -2004,10 +1985,14 @@ module TrussMsg {
           }
 
 
-          writeln("After KTrussMix,Given K=",k);
-          writeln("After KTrussMix,Total execution time=",timer.elapsed());
-          writeln("After KTrussMix,Total number of iterations =",N2);
-          writeln("After KTrussMix,Totally remove ",tmpi, " Edges");
+          outMsg="After KTrussMix,Given K="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTrussMix,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTrussMix,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTrussMix,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -2165,7 +2150,6 @@ module TrussMsg {
                          var du=nei[u];
                          var dv=nei[v];
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -2231,7 +2215,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -2252,7 +2235,6 @@ module TrussMsg {
               SetCurF.clear();
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               N2+=1;
           }// end while 
 
@@ -2262,7 +2244,6 @@ module TrussMsg {
           var tmpi=0;
           for i in 0..Ne-1  {
               if (EdgeDeleted[i]==-1) {
-                  //writeln("remove the ",tmpi, " edge ",i);
                   AllRemoved=false;
               } else {
                   tmpi+=1;
@@ -2270,10 +2251,14 @@ module TrussMsg {
           }
 
 
-          writeln("After KTruss Naive Directed,Given K=",k);
-          writeln("After KTruss Naive Directed,Total execution time=",timer.elapsed());
-          writeln("After KTruss Naive Directed,Total number of iterations =",N2);
-          writeln("After KTruss Naive Directed,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Naive Directed,Given K="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive Directed,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive Directed,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive Directed,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -2430,7 +2415,6 @@ module TrussMsg {
                          var du=nei[u];
                          var dv=nei[v];
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -2507,7 +2491,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -2525,7 +2508,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -2646,8 +2628,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -2693,7 +2673,6 @@ module TrussMsg {
           var tmpi=0;
           for i in 0..Ne-1  {
               if (EdgeDeleted[i]==-1) {
-                  //writeln("remove the ",tmpi, " edge ",i);
                   AllRemoved=false;
               } else {
                   tmpi+=1;
@@ -2701,10 +2680,14 @@ module TrussMsg {
           }
 
 
-          writeln("After KTruss Directed,Given K=",k);
-          writeln("After KTruss Directed,Total execution time=",timer.elapsed());
-          writeln("After KTruss Directed,Total number of iterations =",N2);
-          writeln("After KTruss Directed,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Directed,Given K="+k:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Directed,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Directed,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Directed,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -2771,7 +2754,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
 
 
@@ -2785,7 +2767,6 @@ module TrussMsg {
                          var du=nei[u]+neiR[u];
                          var dv=nei[v]+neiR[v];
                          if ( du<=dv ) {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((lEdgeDeleted[i]==-1) && (u!=v) ){
@@ -2816,7 +2797,6 @@ module TrussMsg {
                                    }
                                 }
                             
-                                //writeln("2 ", "My Locale=", here.id, " The adjacent vertices of ",u,"->",v," =",uadj);
                                 if  (! uadj.isEmpty() ){
                                    var Count=0:int;
                                    forall s in uadj with ( + reduce Count) {
@@ -2824,18 +2804,15 @@ module TrussMsg {
                                        if ( (e!=-1)  && (e!=i) ) {
                                            if ( EdgeDeleted[e]==-1) {
                                               Count +=1;
-                                              //writeln("3 My locale=",here.id, " The ", Count, " Triangle <",u,",",v,",",s,"> is added");
                                            }
                                        }
                                    }
                                    TriCount[i] = Count;
-                                   //writeln("4 My Locale=", here.id, " The number of triangles of edge ",i,"=<",u,",",v," > is ", Count);
                                    // here we get the number of triangles of edge ID i
                                 }// end of if 
                             }//end of if
                         } else {
 
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[v];
                              var endTmp=beginTmp+nei[v]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -2866,7 +2843,6 @@ module TrussMsg {
                                    }
                                 }
                             
-                                //writeln("2 ", "My Locale=", here.id, " The adjacent vertices of ",u,"->",v," =",uadj);
                                 if  (! vadj.isEmpty() ){
                                    var Count=0:int;
                                    forall s in vadj with ( + reduce Count) {
@@ -2874,12 +2850,10 @@ module TrussMsg {
                                        if ( (e!=-1) && (e!=i) ) {
                                            if ( lEdgeDeleted[e]==-1 ) {
                                               Count +=1;
-                                              //writeln("3 My locale=",here.id, " The ", Count, " Triangle <",u,",",v,",",s,"> is added");
                                            }
                                        }
                                    }
                                    TriCount[i] = Count;
-                                   //writeln("4 My Locale=", here.id, " The number of triangles of edge ",i,"=<",u,",",v," > is ", Count);
                                    // here we get the number of triangles of edge ID i
                                 }// end of if 
 
@@ -3047,7 +3021,6 @@ module TrussMsg {
 
               // we try to remove as many edges as possible in the following code
               //while (!SetCurF.isEmpty()) {
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -3177,7 +3150,6 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  //writeln("next    frontier =",SetNextF);
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
@@ -3213,7 +3185,6 @@ module TrussMsg {
                                     if (TriCount[j]<k-2) {
                                          lEdgeDeleted[j]=1-k;
                                          SetCurF.add(j);
-                                         //writeln("13 My Locale=",here.id," remove affected edge ",j,"=<",src[j],",",dst[j],"> in Iteration=",N2," --",tmpN2);
                                     }
                                 }
                            }
@@ -3223,9 +3194,6 @@ module TrussMsg {
                   //RemovedEdge+=SetCurF.getSize();
                   //SetCurF<=>SetNextF;
                   SetNextF.clear();
-                  //writeln("After Exchange");
-                  //writeln("Current frontier =",SetCurF);
-                  //writeln("next    frontier =",SetNextF);
               }// end of while (!SetCurF.isEmpty()) 
               N2+=1;
           }// end while 
@@ -3333,7 +3301,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -3345,12 +3312,10 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-              //writeln("11 My Locale=",here.id," Current Frontier=", SetCurF," Iteration=",N2);
               ConFlag=false;
 
               // we try to remove as many edges as possible in the following code
               //while (!SetCurF.isEmpty()) {
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -3529,12 +3494,9 @@ module TrussMsg {
 
 
 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  //writeln("next    frontier =",SetNextF);
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
@@ -3570,7 +3532,6 @@ module TrussMsg {
                                     if (TriCount[j].read()<k-2) {
                                          lEdgeDeleted[j]=1-k;
                                          SetCurF.add(j);
-                                         //writeln("13 My Locale=",here.id," remove affected edge ",j,"=<",src[j],",",dst[j],"> in Iteration=",N2," --",tmpN2);
                                     }
                                 }
                            }
@@ -3578,9 +3539,6 @@ module TrussMsg {
                   } //end coforall loc in Locales 
                   tmpN2+=1;
                   SetNextF.clear();
-                  //writeln("After Exchange");
-                  //writeln("Current frontier =",SetCurF);
-                  //writeln("next    frontier =",SetNextF);
               }// end of while (!SetCurF.isEmpty()) 
               N2+=1;
           }// end while 
@@ -3645,7 +3603,6 @@ module TrussMsg {
                }
                if (DupE!=-1) {
                     EdgeDeleted[cur]=k-1;
-                    //writeln("In function 1 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                } else {
                    if (u>v) {
                       if (nv<=0) {
@@ -3655,7 +3612,6 @@ module TrussMsg {
                       }
                       if (DupE!=-1) {
                            EdgeDeleted[cur]=k-1;
-                           //writeln("In function 2 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                       }
                    }
                }
@@ -3736,7 +3692,6 @@ module TrussMsg {
                          var du=nei[u];
                          var dv=nei[v];
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((lEdgeDeleted[i]==-1) && (u!=v) ){
@@ -3745,7 +3700,6 @@ module TrussMsg {
                                    forall x in dst[beginTmp..endTmp]  {
                                        var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e==-1){
-                                          //writeln("vertex ",x," and ",u," findEdge Error self-loop or no such edge");
                                        } else {
                                           if ((lEdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
                                                  var e3=findEdge(x,v);
@@ -3802,13 +3756,11 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      lEdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
-                                     //writeln("O3 My Locale=",here.id," removed edge ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i].read(), " in iteration=",N2);
                                }
                      }
                   }// end of  on loc 
@@ -3878,7 +3830,6 @@ module TrussMsg {
                }
                if (DupE!=-1) {
                     EdgeDeleted[cur]=k-1;
-                    //writeln("In function 1 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                } else {
                    if (u>v) {
                       if (nv<=0) {
@@ -3888,7 +3839,6 @@ module TrussMsg {
                       }
                       if (DupE!=-1) {
                            EdgeDeleted[cur]=k-1;
-                           //writeln("In function 2 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                       }
                    }
                }
@@ -3969,7 +3919,6 @@ module TrussMsg {
                          var du=nei[u];
                          var dv=nei[v];
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((lEdgeDeleted[i]==-1) && (u!=v) ){
@@ -4035,7 +3984,6 @@ module TrussMsg {
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      forall i in startEdge..endEdge with(ref SetCurF){
-                         //writeln("O2 My Locale=",here.id," edge ID= ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i].read(), " in iteration=",N2);
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -4046,13 +3994,11 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      lEdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
-                                     //writeln("O3 My Locale=",here.id," removed edge ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i].read(), " in iteration=",N2);
                                }
                      }
                   }// end of  on loc 
@@ -4065,7 +4011,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -4185,8 +4130,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -4291,7 +4234,6 @@ module TrussMsg {
                }
                if (DupE!=-1) {
                     EdgeDeleted[cur]=k-1;
-                    //writeln("In function 1 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                } else {
                    if (u>v) {
                       if (nv<=0) {
@@ -4301,7 +4243,6 @@ module TrussMsg {
                       }
                       if (DupE!=-1) {
                            EdgeDeleted[cur]=k-1;
-                           //writeln("In function 2 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                       }
                    }
                }
@@ -4349,8 +4290,6 @@ module TrussMsg {
                             //we will delete all the edges connected with a vertex only has very small degree 
                             //(less than k-1)
                               EdgeDeleted[i]=k-1;
-                              //writeln("For k=",k," We have removed the edge ",i, "=<",v1,",",v2,">");
-                              //writeln("Degree of ",v1,"=",nei[v1]+neiR[v1]," Degree of ",v2, "=",nei[v2]+neiR[v2]);
                               // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
                               // we also remove the self-loop like <v,v>
                               if (v1==v2) {
@@ -4360,7 +4299,6 @@ module TrussMsg {
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
                              if (DupE!=-1) {
-                                  //writeln("My locale=",here.id, " Find duplicated edges ",i,"=<",src[i],",",dst[i],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                                   if (EdgeDeleted[i]==-1) {
                                           //writeln("My locale=",here.id, " before assignment edge ",i," has not been set as true");
                                   }
@@ -4382,7 +4320,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
 
                      forall i in startEdge..endEdge with(ref SetCurF){
@@ -4394,7 +4331,6 @@ module TrussMsg {
                          var du=nei[u]+neiR[u];
                          var dv=nei[v]+neiR[v];
                          if ( du<=dv ) {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -4498,7 +4434,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
@@ -4534,9 +4469,13 @@ module TrussMsg {
 
 
           timer.stop();
-          writeln("After Truss Naive Decomposition , Max K =",k-1);
-          writeln("After Truss Naive Decomposition ,Total execution time=",timer.elapsed());
-          writeln("After Truss Naive Decomposition ,Total number of iterations =",N2);
+          outMsg="After Truss Naive Decomposition , Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Naive Decomposition ,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Naive Decomposition ,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
           AllRemoved=true;
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -4669,7 +4608,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -4677,7 +4615,6 @@ module TrussMsg {
                          var vadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
-                         //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                          var beginTmp=start_i[u];
                          var endTmp=beginTmp+nei[u]-1;
                          if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -4768,7 +4705,6 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
@@ -4786,7 +4722,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -4878,8 +4813,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -4941,9 +4874,12 @@ module TrussMsg {
 
 
 
-          writeln("After Truss Decomposition List Intersection, Max K =",k-1);
-          writeln("After Truss Decomposition List Intersection,Total execution time=",timer.elapsed());
-          writeln("After Truss Decomposition List Intersection, Total number of iterations =",N2);
+          outMsg="After Truss Decomposition List Intersection, Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Decomposition List Intersection,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Decomposition List Intersection, Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -4987,7 +4923,6 @@ module TrussMsg {
                }
                if (DupE!=-1) {
                     EdgeDeleted[cur]=k-1;
-                    //writeln("In function 1 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                } else {
                    if (u>v) {
                       if (nv<=0) {
@@ -4997,7 +4932,6 @@ module TrussMsg {
                       }
                       if (DupE!=-1) {
                            EdgeDeleted[cur]=k-1;
-                           //writeln("In function 2 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                       }
                    }
                }
@@ -5127,7 +5061,6 @@ module TrussMsg {
                          }
                          // here we search from the vertex who has small degree
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[sV];
                              var endTmp=beginTmp+nei[sV]-1;
                              if ((EdgeDeleted[i]==-1) && (sV!=lV) ){
@@ -5158,7 +5091,6 @@ module TrussMsg {
                                    }
                                 }
                             
-                                //writeln("2 ", "My Locale=", here.id, " The adjacent vertices of ",u,"->",v," =",uadj);
                                 if  (! sVadj.isEmpty() ){
                                    var Count=0:int;
                                    forall s in sVadj with ( + reduce Count) {
@@ -5172,12 +5104,10 @@ module TrussMsg {
                                        if ( (e!=-1)  && (e!=i) ) {
                                            if ( EdgeDeleted[e]==-1) {
                                               Count +=1;
-                                              //writeln("3 My locale=",here.id, " The ", Count, " Triangle <",u,",",v,",",s,"> is added");
                                            }
                                        }
                                    }
                                    TriCount[i] = Count;
-                                   //writeln("4 My Locale=", here.id, " The number of triangles of edge ",i,"=<",u,",",v," > is ", Count);
                                    // here we get the number of triangles of edge ID i
                                 }// end of if 
                             }//end of if EdgeDeleted[i]==-1
@@ -5223,7 +5153,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -5347,8 +5276,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -5410,9 +5337,12 @@ module TrussMsg {
 
 
 
-          writeln("After Truss Decomposition, Max K =",k-1);
-          writeln("After Truss Decomposition ,Total execution time=",timer.elapsed());
-          writeln("After Truss Decomposition, Total number of iterations =",N2);
+          outMsg="After Truss Decomposition, Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Decomposition ,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Decomposition, Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -5459,7 +5389,6 @@ module TrussMsg {
                }
                if (DupE!=-1) {
                     EdgeDeleted[cur]=k-1;
-                    //writeln("In function 1 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                } else {
                    if (u>v) {
                       if (nv<=0) {
@@ -5469,7 +5398,6 @@ module TrussMsg {
                       }
                       if (DupE!=-1) {
                            EdgeDeleted[cur]=k-1;
-                           //writeln("In function 2 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                       }
                    }
                }
@@ -5580,7 +5508,6 @@ module TrussMsg {
                          var du=nei[u];
                          var dv=nei[v];
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -5661,20 +5588,17 @@ module TrussMsg {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     //writeln("9 My locale=",here.id, " Begin Edge=",startEdge, " End Edge=",endEdge);
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
-                                     //writeln("O3 My Locale=",here.id," removed edge ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i].read(), " in iteration=",N2);
                                }
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -5838,8 +5762,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -5893,10 +5815,12 @@ module TrussMsg {
           timer.stop();
 
 
-          writeln("After KTruss Decomposition Mix , Max K =",k-1);
-          writeln("After KTruss Decomposition Mix ,Total execution time=",timer.elapsed());
-          writeln("After KTruss Decomposition Mix ,Total number of iterations =",N2);
-          //writeln("After KTruss Decomposition Mix ,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Decomposition Mix , Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Decomposition Mix ,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Decomposition Mix ,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -5940,7 +5864,6 @@ module TrussMsg {
                }
                if (DupE!=-1) {
                     EdgeDeleted[cur]=k-1;
-                    //writeln("In function 1 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                } else {
                    if (u>v) {
                       if (nv<=0) {
@@ -5950,7 +5873,6 @@ module TrussMsg {
                       }
                       if (DupE!=-1) {
                            EdgeDeleted[cur]=k-1;
-                           //writeln("In function 2 Find duplicated edges ",cur,"=<",src[cur],",",dst[cur],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
                       }
                    }
                }
@@ -6053,7 +5975,6 @@ module TrussMsg {
                          var du=nei[u];
                          var dv=nei[v];
                          {
-                             //writeln("1 My Locale=",here.id," Current Edge=",i, "=<",u,",",v,">");
                              var beginTmp=start_i[u];
                              var endTmp=beginTmp+nei[u]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
@@ -6122,7 +6043,6 @@ module TrussMsg {
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      forall i in startEdge..endEdge with(ref SetCurF){
-                         //writeln("O2 My Locale=",here.id," edge ID= ",i,"=<",src[i],",",dst[i]," > Triangles=",TriCount[i].read(), " in iteration=",N2);
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -6177,10 +6097,14 @@ module TrussMsg {
               }
           }
 
-          writeln("After KTruss Naive Decomposition Directed , Max K =",k-1);
-          writeln("After KTruss Naive Decomposition Directed,Total execution time=",timer.elapsed());
-          writeln("After KTruss Naive Decomposition Directed,Total number of iterations =",N2);
-          writeln("After KTruss Naive Decomposition Directed,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Naive Decomposition Directed , Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive Decomposition Directed,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive Decomposition Directed,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Naive Decomposition Directed,Totally remove "+tmpi:string+ " Edges";
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -6300,7 +6224,6 @@ module TrussMsg {
                         var v2=dst[i];
                         if ( v1==v2) {
                               EdgeDeleted[i]=k-1;
-                              //writeln("My locale=",here.id," Find self-loop ",i,"=<",src[i],",",dst[i],">");
                         }
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
@@ -6420,7 +6343,6 @@ module TrussMsg {
 
 
               // we try to remove as many edges as possible in the following code
-              //writeln("SetCurF size=",SetCurF.getSize());
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -6541,8 +6463,6 @@ module TrussMsg {
 
                               } // end if (xlocal(i,startEdge,endEdge) 
                            } // end forall i in SetCurF with (ref SetNextF) 
-                           //writeln("Current frontier =",SetCurF);
-                           //writeln("next    frontier =",SetNextF);
                       } //end on loc 
                   } //end coforall loc in Locales 
 
@@ -6598,10 +6518,12 @@ module TrussMsg {
           timer.stop();
 
 
-          writeln("After KTruss Decomposition Directed , Max K =",k-1);
-          writeln("After KTruss Decomposition Directed ,Total execution time=",timer.elapsed());
-          writeln("After KTruss Decomposition Directed ,Total number of iterations =",N2);
-          //writeln("After KTruss Decomposition Directed ,Totally remove ",tmpi, " Edges");
+          outMsg="After KTruss Decomposition Directed , Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Decomposition Directed ,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After KTruss Decomposition Directed ,Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = new shared SymEntry(EdgeDeleted);
@@ -6627,7 +6549,6 @@ module TrussMsg {
           if (kValue>0) {// k branch
                 var PTriCount=makeDistArray(Ne,int);
                 PTriCount=0;
-                writeln("Enter kTrussNaiveListIntersection k=",kValue);
                 repMsg=kTrussNaiveListIntersection(kValue,
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -6640,7 +6561,6 @@ module TrussMsg {
                       toSymEntry(ag.getDST_R(), int).a,
                       PTriCount);
 
-                writeln("Enter kTrussNaive k=",kValue);
                 PTriCount=0;
                 repMsg=kTrussNaive(kValue,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -6651,13 +6571,11 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PTriCount);
-                writeln("Enter kTrussListIntersection k=",kValue);
                 PTriCount=0;
                 /*
                 repMsg=kTrussListIntersection(kValue,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                                ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,PTriCount);
 
-                writeln("Enter kTruss k=",kValue);
                 */
                 PTriCount=0;
                 repMsg=kTruss(kValue,
@@ -6674,7 +6592,6 @@ module TrussMsg {
                 forall i in AtoTriCount {
                        i.write(0);
                 }
-                writeln("Enter kTrussMix k=",kValue);
                 repMsg=kTrussMix(kValue,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6685,20 +6602,16 @@ module TrussMsg {
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, AtoTriCount);
                 /*
-                writeln("Enter kTrussNaive Directed k=",kValue);
                 repMsg=kTrussNaiveDirected(kValue,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a );
-                writeln("Enter kTruss Directed k=",kValue);
                 repMsg=kTrussDirected(kValue,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a );
                 */
           } else if (kValue==-2) {
                 var PTriCount=makeDistArray(Ne,int);
                 PTriCount=0;
                 /*
-                writeln("Enter Truss Naive Decomposition");
                 repMsg=TrussDecompositionNaive(3,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,PTriCount);
                 */
-                writeln("Enter Truss Decomposition ");
                 PTriCount=0;
                 repMsg=TrussDecompositionListIntersection(3,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -6710,7 +6623,6 @@ module TrussMsg {
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PTriCount);
 
-                writeln("Enter Truss Decomposition ");
                 PTriCount=0;
                 repMsg=TrussDecomposition(3,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -6723,7 +6635,6 @@ module TrussMsg {
                       toSymEntry(ag.getDST_R(), int).a, PTriCount);
 
                 /*
-                writeln("Enter Truss Naive Decomposition Directed ");
                 PTriCount=0;
                 repMsg=TrussNaiveDecompositionDirected(3,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a);
                 */
@@ -6732,7 +6643,6 @@ module TrussMsg {
                 forall i in AtoTriCount {
                       i.write(0);
                 }
-                writeln("Enter Truss Decomposition Directed ");
                 repMsg=TrussDecompositionMix(3,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6765,7 +6675,6 @@ module TrussMsg {
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PTriCount);
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
-                //writeln("Max K Up=",kUp);
                 if ((AllRemoved==false) && (kUp>3)) {// k max >3
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
@@ -6784,7 +6693,7 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PlTriCount);
-                         //writeln("Try up=",kUp);
+                         //"Try up=";
                          if (AllRemoved==false) { //the up value is the max k
                                 ConLoop=false;
                          } else {// we will check the mid value to reduce k max
@@ -6793,7 +6702,7 @@ module TrussMsg {
                                 lEdgeDeleted[i]=EdgeDeleted[i];
                                 PlTriCount[i]=PTriCount[i];
                             }
-                            //writeln("Try mid=",kMid);
+                            //"Try mid=",kMid);
                             AllRemoved=SkMaxTruss(kMid,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6817,7 +6726,7 @@ module TrussMsg {
                                             EdgeDeleted[i]=lEdgeDeleted[i];
                                             PTriCount[i]=PlTriCount[i];
                                         }
-                                        //writeln("Try mid again=",kMid);
+                                        //("Try mid again=",kMid);
                                         AllRemoved=SkMaxTruss(kMid,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6840,15 +6749,20 @@ module TrussMsg {
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
-                    writeln("After Max KTruss ListIntersection, Total execution time 1=",maxtimer.elapsed());
-                    writeln("After Max KTruss ListIntersection, Max k=",kUp);
+                    outMsg="After Max KTruss ListIntersection, Total execution time 1="+(maxtimer.elapsed()):string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    outMsg="After Max KTruss ListIntersection, Max k="+kUp:string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
-                    writeln("After Max KTruss ListIntersection ,Total execution time 2=",maxtimer.elapsed());
+                    outMsg="After Max KTruss ListIntersection ,Total execution time 2="+(maxtimer.elapsed()):string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
-                        writeln("After Max KTruss ListIntersection, Max k=",3);
+                        outMsg="After Max KTruss ListIntersection, Max k=3";
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
-                        writeln("After Max KTruss ListIntersection,Max k=",2);
+                        outMsg="After Max KTruss ListIntersection,Max k=2";
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
                 }
 
@@ -6874,7 +6788,7 @@ module TrussMsg {
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PTriCount);
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
-                //writeln("Max K Up=",kUp);
+                //"Max K Up=",kUp);
                 if ((AllRemoved==false) && (kUp>3)) {// k max >3
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
@@ -6949,15 +6863,21 @@ module TrussMsg {
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
-                    writeln("After Optimized Max KTruss,Total execution time 1=",maxtimer.elapsed());
-                    writeln("After Optimized Max KTruss,Max k=",kUp);
+                    outMsg="After Optimized Max KTruss,Total execution time 1="+(maxtimer.elapsed()):string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                    outMsg="After Optimized Max KTruss,Max k="+kUp:string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
-                    writeln("After Optimized Max KTruss,Total execution time 2=",maxtimer.elapsed());
+                    outMsg="After Optimized Max KTruss,Total execution time 2="+(maxtimer.elapsed()):string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
-                        writeln("After Optimized Max KTruss,Max k=",3);
+                        outMsg="After Optimized Max KTruss,Max k=3";
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
-                        writeln("After Optimized Max KTruss,Max k=",2);
+                        outMsg="After Optimized Max KTruss,Max k=2";
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
                 }
 
@@ -7065,15 +6985,20 @@ module TrussMsg {
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
-                    writeln("After Max KTruss Mix ,Total execution time 1=",maxtimer.elapsed());
-                    writeln("After Max KTruss Mix ,Max k=",kUp);
+                    outMsg="After Max KTruss Mix ,Total execution time 1="+(maxtimer.elapsed()):string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    outMsg="After Max KTruss Mix ,Max k="+kUp:string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
-                    writeln("After Max KTruss Mix ,Total execution time 2=",maxtimer.elapsed());
+                    outMsg="After Max KTruss Mix ,Total execution time 2="+(maxtimer.elapsed()):string;
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
-                        writeln("After Max KTruss Mix ,Max k=",3);
+                        outMsg="After Max KTruss Mix ,Max k=3";
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
-                        writeln("After Max KTruss Mix ,Max k=",2);
+                        outMsg="After Max KTruss Mix ,Max k=2";
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
                 }
           }//
