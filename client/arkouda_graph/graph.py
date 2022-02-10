@@ -127,10 +127,6 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str) -
     DegreeSortFlag = 0
     args = "{} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, RCMFlag, DegreeSortFlag)
     repMsg = generic_msg(cmd=cmd, args=args)
-    if (int(Ncol) > 2):
-        weighted = 1
-    else:
-        weighted = 0
 
     return Graph(*(cast(str, repMsg).split('+')))
 
@@ -233,10 +229,6 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         cmd = "segmentedStreamFile"
         args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
         repMsg = generic_msg(cmd=cmd,args=args)
-        if (int(Ncol) >2) :
-             weighted=1
-        else:
-             weighted=0
 
         return Graph(*(cast(str,repMsg).split('+')))
 
