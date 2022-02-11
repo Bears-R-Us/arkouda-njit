@@ -8,7 +8,14 @@ from arkouda.dtypes import int64 as akint
 
 __all__ = ["Graph",
            "rmat_gen", "graph_file_read",
-           "graph_bfs"]
+           "graph_bfs",
+           "rmat_gen","graph_file_read", 
+           "graph_bfs",
+           "graph_triangle",
+           "stream_file_read",
+           "stream_tri_cnt",
+           "streamPL_tri_cnt",
+           "KTruss" ]
 
 
 class Graph:
@@ -120,10 +127,6 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str) -
     DegreeSortFlag = 0
     args = "{} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, RCMFlag, DegreeSortFlag)
     repMsg = generic_msg(cmd=cmd, args=args)
-    if (int(Ncol) > 2):
-        weighted = 1
-    else:
-        weighted = 0
 
     return Graph(*(cast(str, repMsg).split('+')))
 
@@ -187,3 +190,152 @@ def graph_bfs(graph: Graph, root: int) -> pdarray:
         root, DefaultRatio)
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
+
+
+
+
+@typechecked
+def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
+                     factor:int)  -> Graph:
+        """
+        This function is used for creating a graph from a file.
+        The file should like this
+          1   5
+          13  9
+          4   8
+          7   6
+        This file means the edges are <1,5>,<13,9>,<4,8>,<7,6>. If additional column is added, it is the weight
+        of each edge.
+        Ne : the total number of edges of the graph
+        Nv : the total number of vertices of the graph
+        Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
+              and Ncol=3 means there is weight for each edge (so weighted=1). 
+        directed: 0 means undirected graph and 1 means directed graph
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd = "segmentedStreamFile"
+        args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
+        repMsg = generic_msg(cmd=cmd,args=args)
+
+        return Graph(*(cast(str,repMsg).split('+')))
+
+
+@typechecked
+def graph_triangle (graph: Graph) -> pdarray:
+        """
+        This function will return the number of triangles in a static graph.
+        Returns
+        -------
+        pdarray
+            The total number of triangles.
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphTri"
+        args = "{} {} {} {} {}".format(
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+        
+@typechecked
+def KTruss(graph: Graph,kTrussValue:int) -> pdarray:
+        """
+        This function will return the number of triangles in a static graph for each edge
+        Returns
+        -------
+        pdarray
+            The total number of triangles incident to each edge.
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedTruss"
+        args = "{} {} {} {} {} {} {} {} {}".format(
+                 kTrussValue,\
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
+
+
+
+@typechecked
+def stream_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
+                     factor:int)  -> pdarray:
+        cmd = "segmentedStreamTri"
+        args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
+
+@typechecked
+def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
+                     factor:int, case:int)  -> pdarray:
+        """
+        This function is used for creating a graph from a file.
+        The file should like this
+          1   5
+          13  9
+          4   8
+          7   6
+        This file means the edges are <1,5>,<13,9>,<4,8>,<7,6>. If additional column is added, it is the weight
+        of each edge.
+        Ne : the total number of edges of the graph
+        Nv : the total number of vertices of the graph
+        Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
+              and Ncol=3 means there is weight for each edge (so weighted=1). 
+        factor: the sampling graph will be 1/factor of the original one
+        case: 0 calculate the average, 1: using power law regression paramter 2: using normal regression parameter 
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd = "segmentedPLStreamTri"
+        args="{} {} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor,case);
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
