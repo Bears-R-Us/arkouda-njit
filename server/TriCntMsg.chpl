@@ -33,14 +33,23 @@ module TriCntMsg {
   use Atomics;
   use IO.FormattedIO; 
   use BFSMsg;
-  use FileIO;
 
 
   private config const logLevel = ServerConfig.logLevel;
   const smLogger = new Logger(logLevel);
   
-
-
+  /**
+   * Utility function to handle try/catch when trying to close objects.
+   */
+  proc closeFinally(c): bool {
+    var success = true;
+    try {
+        c.close();
+    } catch {
+        success = false;
+    }
+    return success;
+  }
 
 
   // directly read a stream from given file and build a  Graph  sketch in memory
@@ -120,8 +129,8 @@ module TriCntMsg {
                   var f = open(FileName, iomode.r);
                   var r = f.reader(kind=ionative);
                   defer {
-                        ensureClose(r);
-                        ensureClose(f);
+                        closeFinally(r);
+                        closeFinally(f);
                   }
                   var line:string;
                   var a,b,c:string;
@@ -939,8 +948,8 @@ module TriCntMsg {
                   var f = open(FileName, iomode.r);
                   var r = f.reader(kind=ionative);
                   defer {
-                        ensureClose(r);
-                        ensureClose(f);
+                        closeFinally(r);
+                        closeFinally(f);
                   }
 
                   var line:string;
@@ -1689,8 +1698,8 @@ module TriCntMsg {
                   var f = open(FileName, iomode.r);
                   var r = f.reader(kind=ionative);
                   defer {
-                        ensureClose(r);
-                        ensureClose(f);
+                        closeFinally(r);
+                        closeFinally(f);
                   }
 
                   var line:string;
