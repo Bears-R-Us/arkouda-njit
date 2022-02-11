@@ -1,4 +1,4 @@
-module GraphMsg {
+module BFSMsg {
 
 
   use Reflection;
