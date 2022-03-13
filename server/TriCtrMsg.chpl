@@ -1,0 +1,318 @@
+module TriCtrMsg {
+
+
+  use Reflection;
+  use ServerErrors;
+  use Logging;
+  use Message;
+  use SegmentedArray;
+  use ServerErrorStrings;
+  use ServerConfig;
+  use MultiTypeSymbolTable;
+  use MultiTypeSymEntry;
+  use RandArray;
+  use IO;
+
+
+  use SymArrayDmap;
+  use Random;
+  use RadixSortLSD;
+  use Set;
+  use DistributedBag;
+  use ArgSortMsg;
+  use Time;
+  use CommAggregation;
+  use Sort;
+  use Map;
+  use DistributedDeque;
+  use GraphArray;
+
+
+  use List; 
+  use LockFreeStack;
+  use Atomics;
+  use IO.FormattedIO; 
+  %use BFSMsg;
+
+
+  private config const logLevel = ServerConfig.logLevel;
+  const smLogger = new Logger(logLevel);
+  
+
+  //Given a graph, calculate its number of triangles
+  proc segTriCtrMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+      var repMsg: string;
+      var (n_verticesN,n_edgesN,directedN,weightedN,graphEntryName,restpart )
+          = payload.splitMsgToTuple(6);
+      var Nv=n_verticesN:int;
+      var Ne=n_edgesN:int;
+      var Directed=false:bool;
+      var Weighted=false:bool;
+      if (directedN:int)==1 {
+          Directed=true;
+      }
+      if (weightedN:int)==1 {
+          Weighted=true;
+      }
+      var countName:string;
+      var timer:Timer;
+      timer.start();
+
+      var TotalCnt:[0..0] int;
+      var subTriSum: [0..numLocales-1] int;
+
+      var TriCtr:[0..Nv-1] real;
+      var TriNum=makeDistArray(Nv,atomic int)
+      var NeiTriNum=makeDistArray(Nv,atomic int)
+      TriCtr=0.0;
+      forall i in TriNum {
+          i.write(0);
+      }
+      forall i in NeiTriNum {
+          i.write(0);
+      }
+
+
+      TotalCnt=0;
+      subTriSum=0;
+
+
+      var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
+      var ag = gEntry.graph;
+
+      // triangle counting as a direct graph
+      proc triCtr_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
+
+          proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                           return -1;
+                       }
+                       if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
+                            return -1;
+                       }
+                       if (ary[l]==key){
+                            return l;
+                       }
+                       if (ary[h]==key){
+                            return h;
+                       }
+                       var m= (l+h)/2:int;
+                       if ((m==l) ) {
+                            return -1;
+                       }
+                       if (ary[m]==key ){
+                            return m;
+                       } else {
+                            if (ary[m]<key) {
+                              return binSearchE(ary,m+1,h,key);
+                            }
+                            else {
+                                    return binSearchE(ary,l,m-1,key);
+                            }
+                       }
+          }// end of proc
+
+
+          // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
+          proc findEdge(u:int,v:int):int {
+              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+                    return -1;
+                    // we do not accept self-loop
+              }
+              var beginE=start_i[u];
+              var eid=-1:int;
+              if (nei[u]>0) {
+                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                       // search <u,v> in undirect edges
+                  }
+              }
+              if (eid==-1) {// if b
+                 beginE=start_i[v];
+                 if (nei[v]>0) {
+                    if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
+                          eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
+                          // search <v,u> in undirect edges
+                    }
+                 }
+              }// end of if b
+              return eid;
+          }// end of  proc findEdge(u:int,v:int)
+
+
+
+          // given vertces u and v, return the edge ID e=<u,v>
+          proc exactEdge(u:int,v:int):int {
+              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+                    return -1;
+                    // we do not accept self-loop
+              }
+              var beginE=start_i[u];
+              var eid=-1:int;
+              if (nei[u]>0) {
+                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                       // search <u,v> in undirect edges
+                  }
+              }
+              return eid;
+          }// end of  proc exatEdge(u:int,v:int)
+
+
+
+
+
+          coforall loc in Locales {
+                on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     var triCount=0:int;
+
+
+                     forall i in startEdge..endEdge with (+ reduce triCount) {
+                         var u = src[i];
+                         var v = dst[i];
+                         var du=nei[u];
+                         var dv=nei[v];
+                         {
+                             var beginTmp=start_i[u];
+                             var endTmp=beginTmp+nei[u]-1;
+                             if ( (u!=v) ){
+                                if ( (nei[u]>1)  ){
+                                   forall x in dst[beginTmp..endTmp] with (+ reduce triCount)  {
+                                       var  e=exactEdge(u,x);//here we find the edge ID to check if it has been removed
+                                       if (e==-1){
+                                          //writeln("vertex ",x," and ",u," findEdge Error self-loop or no such edge");
+                                       } else {
+                                          if ((x !=v) && (i<e)) {
+                                                 var e3=findEdge(x,v);
+                                                 // wedge case i<e, u->v, u->x
+                                                 if (e3!=-1) {
+                                                         triCount+=1;
+                                                         TriNum[u].add(1);
+                                                         TriNum[v].add(1);
+                                                         TriNum[x].add(1);
+                                                         NeiTriNum[u].add(2);
+                                                         NeiTriNum[v].add(2);
+                                                         NeiTriNum[x].add(2);
+                                                 }
+                                          }
+                                       }
+                                   }
+                                }
+                             }
+                            
+                             beginTmp=start_i[v];
+                             endTmp=beginTmp+nei[v]-1;
+                             if ( (u!=v) ){
+                                if ( (nei[v]>0)  ){
+                                   //forall x in dst[beginTmp..endTmp] with (ref vadj) {
+                                   forall x in dst[beginTmp..endTmp] with (+ reduce triCount) {
+                                       var  e=exactEdge(v,x);//here we find the edge ID to check if it has been removed
+                                       if (e==-1){
+                                          //writeln("vertex ",x," and ",v," findEdge Error self-loop or no such edge");
+                                       } else {
+                                          if ( (x !=u) && (i<e)) {
+                                                 var e3=exactEdge(x,u);
+                                                 if (e3!=-1) {
+                                                     if ( (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                         // cycle case i<e<e3, u->v->x->u
+                                                         triCount+=1;
+                                                         TriNum[u].add(1);
+                                                         TriNum[v].add(1);
+                                                         TriNum[x].add(1);
+                                                         NeiTriNum[u].add(2);
+                                                         NeiTriNum[v].add(2);
+                                                         NeiTriNum[x].add(2);
+                                                     }
+                                                 }
+                                          }
+                                       }
+                                   }
+                                }
+                             }
+
+                        }// end of if du<=dv
+                  }// end of forall. We get the number of triangles for each edge
+                  subTriSum[here.id]=triCount;
+
+
+                }// end of  on loc 
+          } // end of coforall loc in Locales 
+          return "success";
+      }
+
+
+
+      proc return_tri_centrality(): string throws{
+          for i in subTriSum {
+             TotalCnt[0]+=i;
+          }
+
+          coforall loc in Locales {
+                on loc {
+
+                     var ld = nei.localSubdomain();
+                     var startVer = ld.low;
+                     var endVer = ld.high;
+                     var curnum=0:int;
+                     forall i in startVer..endVer with (+ reduce curnum){
+                             var beginTmp=start_i[i];
+                             var endTmp=beginTmp+nei[i]-1;
+                             forall j in beginTmp..endTmp with (+ reduce curnum) {
+                                   curnum+=TriNum[dst[j]].read();
+                             }
+                             beginTmp=start_iR[i];
+                             endTmp=beginTmp+neiR[i]-1;
+                             forall j in beginTmp..endTmp with (+ reduce curnum) {
+                                   curnum+=TriNum[dstR[j]].read();
+                             }
+                             TriCtr[i]=(curnum-(NeiTriNum[i]+TriNum[i])*2/3+TriNum[i]):real/TotalCnt[0]:real;
+                     }
+
+                }// end of  on loc 
+          } // end of coforall loc in Locales 
+          var countName = st.nextName();
+          var countEntry = new shared SymEntry(TriCtr);
+          st.addEntry(countName, countEntry);
+
+          var cntMsg =  'created ' + st.attrib(countName);
+          return cntMsg;
+
+      }
+
+
+
+
+
+      if (!Directed) {
+              triCtr_kernel(
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a);
+      }
+      repMsg=return_tri_centrality();
+      timer.stop();
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      return new MsgTuple(repMsg, MsgType.NORMAL);
+  }// end of seg
+
+
+
+
+
+
+
+    proc registerMe() {
+        use CommandMap;
+        registerFunction("segmentedTriCtr", segTriCtrMsg);
+    }
+
+
+}
+
+
