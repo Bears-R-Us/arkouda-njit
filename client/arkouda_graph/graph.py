@@ -11,11 +11,12 @@ __all__ = ["Graph",
            "graph_bfs",
            "rmat_gen","graph_file_read", 
            "graph_bfs",
-           "graph_triangle",
+           "graph_tri_cnt",
            "stream_file_read",
            "stream_tri_cnt",
            "streamPL_tri_cnt",
-           "KTruss" ]
+           "graph_tri_ctr",
+           "graph_ktruss" ]
 
 
 class Graph:
@@ -234,7 +235,7 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
 
 
 @typechecked
-def graph_triangle (graph: Graph) -> pdarray:
+def graph_tri_cnt (graph: Graph) -> pdarray:
         """
         This function will return the number of triangles in a static graph.
         Returns
@@ -262,7 +263,7 @@ def graph_triangle (graph: Graph) -> pdarray:
         return create_pdarray(repMsg)
         
 @typechecked
-def KTruss(graph: Graph,kTrussValue:int) -> pdarray:
+def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         """
         This function will return the number of triangles in a static graph for each edge
         Returns
@@ -339,3 +340,38 @@ def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
 
+
+
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+
+        return Graph(*(cast(str,repMsg).split('+')))
+
+
+@typechecked
+def graph_tri_ctr (graph: Graph) -> pdarray:
+        """
+        This function will return the triangle centrality of each vertex in a static graph.
+        Returns
+        -------
+        pdarray
+            The triangle centrality value of each vertex.
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphTriCtr"
+        args = "{} {} {} {} {}".format(
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
