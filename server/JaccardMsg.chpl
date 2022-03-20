@@ -54,11 +54,11 @@ module JaccardMsg {
 
 
       timer.start();
-      var jaccard=makeDistArray(Nv*Nv,int);//we only need to save half results and we will optimize it later.
+      var jaccard=makeDistArray(Nv*Nv,real);//we only need to save half results and we will optimize it later.
       coforall loc in Locales  {
                   on loc {
                            forall i in jaccard.localSubdomain() {
-                                 jaccard[i]=0;
+                                 jaccard[i]=0.0;
                            }       
                   }
       }
@@ -70,7 +70,7 @@ module JaccardMsg {
       var ag = gEntry.graph;
  
 
-      proc jaccard_coefficient__u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc jaccard_coefficient_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
 
           var edgeBeginG=makeDistArray(numLocales,int);//each locale's starting edge ID
@@ -147,12 +147,29 @@ module JaccardMsg {
           }//end coforall loc
 
           return "success";
-      }//end of fo_bag_bfs_kernel_u
+      }//end of 
 
+
+      proc return_jaccard(): string throws{
+          forall u in 0..Nv-2 {
+             forall v in u+1..Nv-1 {
+                  if jaccard[u*Nv+v]>0.0 {
+                      jaccard[u*Nv+v]=jaccard[u*Nv+v]/(nei[u]+nei[v]-jaccard[u*Nv+v]);
+                  }
+             }
+          }
+          var jaccardName = st.nextName();
+          var jaccardEntry = new shared SymEntry(jaccard);
+          st.addEntry(depthName, jaccardEntry);
+
+          var jacMsg =  'created ' + st.attrib(depthName);
+          return jacMsg;
+
+      }
 
 
       if (!Directed) {
-                  jaccard_coefficient__u(
+                  jaccard_coefficient_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
@@ -165,8 +182,6 @@ module JaccardMsg {
                   
                   repMsg=return_jaccard();
  
-              }
-          }
       }
       timer.stop();
       var outMsg= "graph Jaccard takes "+timer.elapsed():string;

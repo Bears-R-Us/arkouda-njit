@@ -32,7 +32,7 @@ module TriCtrMsg {
   use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
-  %use BFSMsg;
+  //use BFSMsg;
 
 
   private config const logLevel = ServerConfig.logLevel;
@@ -62,8 +62,8 @@ module TriCtrMsg {
       var subTriSum: [0..numLocales-1] int;
 
       var TriCtr:[0..Nv-1] real;
-      var TriNum=makeDistArray(Nv,atomic int)
-      var NeiTriNum=makeDistArray(Nv,atomic int)
+      var TriNum=makeDistArray(Nv,atomic int);
+      var NeiTriNum=makeDistArray(Nv,atomic int);
       TriCtr=0.0;
       forall i in TriNum {
           i.write(0);
@@ -81,7 +81,9 @@ module TriCtrMsg {
       var ag = gEntry.graph;
 
       // triangle counting as a direct graph
-      proc triCtr_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
+      proc triCtr_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
+
 
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
                        if ( (l<D.low) || (h>D.high) || (l<0)) {
@@ -242,12 +244,9 @@ module TriCtrMsg {
 
                 }// end of  on loc 
           } // end of coforall loc in Locales 
-          return "success";
-      }
 
 
 
-      proc return_tri_centrality(): string throws{
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
@@ -270,7 +269,7 @@ module TriCtrMsg {
                              forall j in beginTmp..endTmp with (+ reduce curnum) {
                                    curnum+=TriNum[dstR[j]].read();
                              }
-                             TriCtr[i]=(curnum-(NeiTriNum[i]+TriNum[i])*2/3+TriNum[i]):real/TotalCnt[0]:real;
+                             TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2/3+TriNum[i].read()):real/TotalCnt[0]:real;
                      }
 
                 }// end of  on loc 
@@ -289,13 +288,16 @@ module TriCtrMsg {
 
 
       if (!Directed) {
-              triCtr_kernel(
+              repMsg=triCtr_kernel(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a);
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a);
       }
-      repMsg=return_tri_centrality();
       timer.stop();
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
