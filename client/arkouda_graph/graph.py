@@ -6,16 +6,19 @@ from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
 
+
+
 __all__ = ["Graph",
            "rmat_gen", "graph_file_read",
            "graph_bfs",
            "rmat_gen","graph_file_read", 
            "graph_bfs",
-           "graph_triangle",
+           "graph_tri_cnt",
            "stream_file_read",
            "stream_tri_cnt",
            "streamPL_tri_cnt",
-           "KTruss" ]
+           "graph_tri_ctr",
+           "graph_ktruss" ]
 
 
 class Graph:
@@ -23,7 +26,6 @@ class Graph:
     This is a double index graph data structure based graph representation. The graph data resides on the
     arkouda server. The user should not call this class directly;
     rather its instances are created by other arkouda functions.
-
     Attributes
     ----------
     n_vertices : int
@@ -111,10 +113,8 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str) -
         -------
         Graph
             The Graph class to represent the data
-
         See Also
         --------
-
         Notes
         -----
         
@@ -139,10 +139,8 @@ def rmat_gen(lgNv: int, Ne_per_v: int, p: float, directed: int, weighted: int) -
         -------
         Graph
             The Graph class to represent the data
-
         See Also
         --------
-
         Notes
         -----
         
@@ -168,10 +166,8 @@ def graph_bfs(graph: Graph, root: int) -> pdarray:
         -------
         pdarray
             The bfs vertices results
-
         See Also
         --------
-
         Notes
         -----
         
@@ -215,10 +211,8 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         -------
         Graph
             The Graph class to represent the data
-
         See Also
         --------
-
         Notes
         -----
         
@@ -234,17 +228,15 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
 
 
 @typechecked
-def graph_triangle (graph: Graph) -> pdarray:
+def graph_tri_cnt (graph: Graph) -> pdarray:
         """
         This function will return the number of triangles in a static graph.
         Returns
         -------
         pdarray
             The total number of triangles.
-
         See Also
         --------
-
         Notes
         -----
         
@@ -262,17 +254,15 @@ def graph_triangle (graph: Graph) -> pdarray:
         return create_pdarray(repMsg)
         
 @typechecked
-def KTruss(graph: Graph,kTrussValue:int) -> pdarray:
+def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         """
         This function will return the number of triangles in a static graph for each edge
         Returns
         -------
         pdarray
             The total number of triangles incident to each edge.
-
         See Also
         --------
-
         Notes
         -----
         
@@ -323,10 +313,8 @@ def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         -------
         Graph
             The Graph class to represent the data
-
         See Also
         --------
-
         Notes
         -----
         
@@ -338,4 +326,66 @@ def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         args="{} {} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor,case);
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
+
+
+
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+
+        return Graph(*(cast(str,repMsg).split('+')))
+
+
+@typechecked
+def graph_tri_ctr (graph: Graph) -> pdarray:
+        """
+        This function will return the triangle centrality of each vertex in a static graph.
+        Returns
+        -------
+        pdarray
+            The triangle centrality value of each vertex.
+        See Also
+        --------
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphTriCtr"
+        args = "{} {} {} {} {}".format(
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
+
+@typechecked
+def graph_jaccard_coefficient(graph: Graph) -> pdarray:
+        """
+        This function will return the jaccard coefficient of each vertex in a static graph.
+        Returns
+        -------
+        pdarray
+            The jaccard coefficient value of each vertex.
+        See Also
+        --------
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphJaccard"
+        args = "{} {} {} {} {}".format(
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
 

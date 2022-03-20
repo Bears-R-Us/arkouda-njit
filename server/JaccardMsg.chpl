@@ -146,11 +146,6 @@ module JaccardMsg {
               }
           }//end coforall loc
 
-          return "success";
-      }//end of 
-
-
-      proc return_jaccard(): string throws{
           forall u in 0..Nv-2 {
              forall v in u+1..Nv-1 {
                   if jaccard[u*Nv+v]>0.0 {
@@ -165,11 +160,11 @@ module JaccardMsg {
           var jacMsg =  'created ' + st.attrib(depthName);
           return jacMsg;
 
-      }
+      }//end of 
 
 
       if (!Directed) {
-                  jaccard_coefficient_u(
+                  repMsg=jaccard_coefficient_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
@@ -180,7 +175,6 @@ module JaccardMsg {
                       toSymEntry(ag.getDST_R(), int).a
                   );
                   
-                  repMsg=return_jaccard();
  
       }
       timer.stop();
