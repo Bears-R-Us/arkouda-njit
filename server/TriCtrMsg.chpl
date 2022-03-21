@@ -311,7 +311,7 @@ module TriCtrMsg {
 
     proc registerMe() {
         use CommandMap;
-        registerFunction("segmentedTriCtr", segTriCtrMsg);
+        registerFunction("segmentedGraphTriCtr", segTriCtrMsg);
     }
 
 
