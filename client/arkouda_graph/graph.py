@@ -6,17 +6,16 @@ from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
 
-__all__ = ["Graph",
+__all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
            "graph_bfs",
            "rmat_gen","graph_file_read", 
            "graph_bfs",
-           "graph_triangle",
+           "graph_tri_cnt",
            "stream_file_read",
            "stream_tri_cnt",
            "streamPL_tri_cnt",
-           "KTruss" ]
-
+           "graph_ktruss" ]
 
 class Graph:
     """
@@ -92,13 +91,59 @@ class Graph:
 
 
 @typechecked
+def graph_query(graph: Graph, component: str) -> pdarray:
+    """
+        This function returns the component array of given graph
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphQue"
+    if component == "src":
+        attr=1
+    elif component =="dst":
+        attr=2
+    elif component =="start_i":
+        attr=3
+    elif component =="neighbour":
+        attr=4
+    elif component =="srcR":
+        attr=5
+    elif component =="dstR":
+        attr=6
+    elif component =="istart_iR":
+        attr=7
+    elif component =="neighbourR":
+        attr=8
+    elif component =="v_weight":
+        attr=-1
+    elif component =="e_weight":
+        attr=-2
+    if graph.directed  :
+        assert (attr<=4) 
+    if attr<0:
+        assert graph.weighted
+
+    args = "{} {}".format(graph.name,attr)
+    repMsg = generic_msg(cmd=cmd, args=args)
+
+    return create_pdarray(repMsg)
+
+
+@typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str) -> Graph:
     """
         This function is used for creating a graph from a file.
         The file should like this
           1   5
           13  9
-          4   8
+          
+    if graph.weight:4   8
           7   6
         This file means the edges are <1,5>,<13,9>,<4,8>,<7,6>. If additional column is added, it is the weight
         of each edge.
@@ -262,7 +307,7 @@ def graph_triangle (graph: Graph) -> pdarray:
         return create_pdarray(repMsg)
         
 @typechecked
-def KTruss(graph: Graph,kTrussValue:int) -> pdarray:
+def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         """
         This function will return the number of triangles in a static graph for each edge
         Returns
