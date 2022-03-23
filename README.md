@@ -19,4 +19,25 @@ python server-config.py --arkouda=$HOME/projects/arkouda | bash
 ```
 
 ## Client code
-TODO
+Now we have three directories
+arkouda_graph/
+All graph algorithm related functions
+
+suffix_array/
+All suffix array related python functions
+
+benchmark/
+All python testing code for different python functions
+
+## Server code
+Now we have the following chapel modules.
+BFSMsg--for bread first search
+TriCntMsg--for triangle counting
+TrussMsg--for truss analysis
+SuffixArrayMsg--for suffix array
+
+##Run Python Code
+Just copy the arkouda-njit directory under the master arkouda and rename it as arkouda_njit, 
+next, import arkouda_njit as njit,
+then all the extended functions can be used in python as njit.function
+
