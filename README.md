@@ -40,8 +40,9 @@ TrussMsg--for truss analysis
 SuffixArrayMsg--for suffix array
 ```
 
-##Run Python Code
+## Run Python Code
+```bash
 (1) copy the arkouda-njit directory under the master arkouda and rename it as arkouda_njit
 (2) import arkouda_njit as njit
 (3) call all the extended functions  as njit.function
-
+```
