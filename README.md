@@ -34,7 +34,7 @@ All python testing code for different python functions
 ## Server code
 Now we have the following chapel modules.
 ```bash
-BFSMsg--for bread first search
+BFSMsg--for breadth first search
 TriCntMsg--for triangle counting
 TrussMsg--for truss analysis
 SuffixArrayMsg--for suffix array
@@ -42,7 +42,8 @@ SuffixArrayMsg--for suffix array
 
 ## Run Python Code
 ```bash
-(1) copy the arkouda-njit directory under the master arkouda and rename it as arkouda_njit or create a arkouda_njit link to the arkouda-njit directory
+(1) copy the arkouda-njit directory under the master arkouda and rename it as arkouda_njit or 
+create a arkouda_njit link to the arkouda-njit directory
 (2) import arkouda_njit as njit
 (3) call all the extended function  as njit.function
 ```
