@@ -25,14 +25,14 @@ module TrussMsg {
   use Sort;
   use Map;
   use DistributedDeque;
-  use GraphArray;
 
 
   use List; 
   use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
-  use BFSMsg;
+  use GraphArray;
+  use GraphMsg;
 
 
   private config const logLevel = ServerConfig.logLevel;

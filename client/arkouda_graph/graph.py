@@ -9,8 +9,6 @@ from arkouda.dtypes import int64 as akint
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
            "graph_bfs",
-           "rmat_gen","graph_file_read", 
-           "graph_bfs",
            "graph_tri_cnt",
            "stream_file_read",
            "stream_tri_cnt",
@@ -70,13 +68,15 @@ class Graph:
             from either the offset_attrib or bytes_attrib parameter 
         """
         try:
+            print(args)
             if len(args) < 5:
                 raise ValueError
             self.n_vertices = cast(int, args[0])
             self.n_edges = cast(int, args[1])
             self.directed = cast(int, args[2])
             self.weighted = cast(int, args[3])
-            self.name = cast(str, args[4])
+            oriname=cast(str, args[4])
+            self.name = oriname.strip()
         except Exception as e:
             raise RuntimeError(e)
 
@@ -116,7 +116,7 @@ def graph_query(graph: Graph, component: str) -> pdarray:
         attr=5
     elif component =="dstR":
         attr=6
-    elif component =="istart_iR":
+    elif component =="start_iR":
         attr=7
     elif component =="neighbourR":
         attr=8
@@ -128,8 +128,8 @@ def graph_query(graph: Graph, component: str) -> pdarray:
         assert (attr<=4) 
     if attr<0:
         assert graph.weighted
-
-    args = "{} {}".format(graph.name,attr)
+    args = "{} {}".format(graph.name,component)
+    print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return create_pdarray(repMsg)
@@ -336,6 +336,12 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
 
 
 
+@typechecked
+def graph_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str)  -> pdarray:
+        cmd = "segmentedGraphTri"
+        args="{} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename);
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
 
 @typechecked
 def stream_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
@@ -344,7 +350,6 @@ def stream_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
-
 
 @typechecked
 def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\

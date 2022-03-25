@@ -25,14 +25,14 @@ module TriCntMsg {
   use Sort;
   use Map;
   use DistributedDeque;
-  use GraphArray;
 
 
   use List; 
   use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
-  use BFSMsg;
+  use GraphArray;
+  use GraphMsg;
 
 
   private config const logLevel = ServerConfig.logLevel;
@@ -410,7 +410,7 @@ module TriCntMsg {
 
 
   //Given a graph, calculate its number of triangles
-  proc segTriMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segTriCntMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       var (n_verticesN,n_edgesN,directedN,weightedN,graphEntryName,restpart )
           = payload.splitMsgToTuple(6);
@@ -2423,7 +2423,7 @@ module TriCntMsg {
     proc registerMe() {
         use CommandMap;
         registerFunction("segmentedStreamFile", segStreamFileMsg);
-        registerFunction("segmentedTri", segTriMsg);
+        registerFunction("segmentedGraphTri", segTriCntMsg);
         registerFunction("segmentedStreamTri", segStreamTriCntMsg);
         registerFunction("segmentedPLStreamTri", segStreamPLTriCntMsg);
     }

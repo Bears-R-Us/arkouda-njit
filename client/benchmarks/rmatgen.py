@@ -5,6 +5,8 @@ import numpy as np
 import arkouda as ak
 import random
 import string
+import arkouda_njit as njit
+
 
 TYPES = ('int64', 'float64', 'bool', 'str')
 
@@ -17,12 +19,6 @@ def time_ak_rmat_graph(lgNv, Ne_per_v, p, directed, weighted):
     print("number of vertices ={}".format(Graph.n_vertices))
     print("number of edges ={}".format(Graph.n_edges))
     print("directed graph  ={}".format(Graph.directed))
-    print("source of edges   ={}".format(Graph.src))
-    print("dest of edges   ={}".format(Graph.dst))
-    print("start   ={}".format(Graph.start_i))
-    print("neighbour   ={}".format(Graph.neighbour))
-    #print("vertices weight    ={}".format(Graph.v_weight))
-    #print("edges weight    ={}".format(Graph.e_weight))
     timings = []
     for _ in range(trials):
         start = time.time()
