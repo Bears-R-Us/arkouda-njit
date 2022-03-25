@@ -20,14 +20,7 @@ def time_ak_sa( vsize,strlen, trials, dtype):
     else:
         print("Wrong data type")
     c=njit.suffix_array(v)
-#    print("size of suffix array={}".format(c.bytes.size))    
-#    print("offset/number of suffix array={}".format(c.offsets.size))    
-#    print("itemsize of suffix array={}".format(c.offsets.itemsize))    
-    print("All the random strings are as follows")
-    for k in range(vsize):
-       print("the {} th random tring ={}".format(k,v[k]))    
-       print("the {} th suffix array ={}".format(k,c[k]))    
-       print("")
+    
     timings = []
     for _ in range(trials):
         start = time.time()
@@ -81,12 +74,6 @@ def check_correctness( vsize,strlen, trials, dtype):
         s=v[k]
         sa=suffixArray(s)
         aksa=c[k]
-#        _,tmp=c[k].split(maxsplit=1)
-#        aksa=tmp.split()
-#        intaksa  = [int(numeric_string) for numeric_string in aksa]
-#        intaksa  = aksa[1:-1]
-#        print(sa)
-#        print(intaksa)
         assert (sa==aksa)
 
 
