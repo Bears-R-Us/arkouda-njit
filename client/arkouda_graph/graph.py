@@ -68,13 +68,12 @@ class Graph:
             from either the offset_attrib or bytes_attrib parameter 
         """
         try:
-            print(args)
             if len(args) < 5:
                 raise ValueError
-            self.n_vertices = cast(int, args[0])
-            self.n_edges = cast(int, args[1])
-            self.directed = cast(int, args[2])
-            self.weighted = cast(int, args[3])
+            self.n_vertices = int (cast(int, args[0]))
+            self.n_edges = int(cast(int, args[1]))
+            self.directed = int(cast(int, args[2]))
+            self.weighted = int(cast(int, args[3]))
             oriname=cast(str, args[4])
             self.name = oriname.strip()
         except Exception as e:
@@ -124,12 +123,11 @@ def graph_query(graph: Graph, component: str) -> pdarray:
         attr=-1
     elif component =="e_weight":
         attr=-2
-    if graph.directed  :
+    if int(graph.directed) > 0  :
         assert (attr<=4) 
-    if attr<0:
-        assert graph.weighted
+    if attr < 0:
+        assert graph.weighted > 0
     args = "{} {}".format(graph.name,component)
-    print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return create_pdarray(repMsg)
