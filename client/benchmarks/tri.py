@@ -19,12 +19,13 @@ def time_ak_tri_graph(lgNv:int, Ne_per_v:int, p:float,directed:int,weighted:int)
     print("Memory =",cfg["physicalMemory"])
     
     start = time.time()
-    triary=njit.stream_tri_cnt(3056,1025,2,directed,"data/delaunay_n10.gr",5)
+    triary=njit.stream_tri_cnt(3056,1025,2,directed,"/home/z/zd4/ArkoudaExtension/arkouda/delaunay_n10.gr",5)
     end = time.time()
     print("----------------------")
     print("triary = njit.stream_tri_count(Graph)")
     print(triary)
     print("Triangle Counting  takes {:.4f} seconds".format(end-start))
+
     return
 
 
