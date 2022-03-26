@@ -10,6 +10,7 @@ __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
            "graph_bfs",
            "graph_tri_cnt",
+           "graph_tri_ctr",
            "stream_file_read",
            "stream_tri_cnt",
            "streamPL_tri_cnt",
@@ -387,3 +388,29 @@ def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
 
+
+@typechecked
+def graph_tri_ctr (graph: Graph) -> pdarray:
+        """
+        This function will return the triangle centrality of each vertex in a static graph.
+        Returns
+        -------
+        pdarray
+            The triangle centrality value of each vertex.
+        See Also
+        --------
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphTriCtr"
+        args = "{} {} {} {} {}".format(
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
