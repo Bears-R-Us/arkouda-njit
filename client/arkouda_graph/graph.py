@@ -14,7 +14,8 @@ __all__ = ["Graph","graph_query",
            "stream_file_read",
            "stream_tri_cnt",
            "streamPL_tri_cnt",
-           "graph_ktruss" ]
+           "graph_ktruss",
+           "graph_jaccard_coefficient" ]
 
 class Graph:
     """
@@ -407,6 +408,33 @@ def graph_tri_ctr (graph: Graph) -> pdarray:
         RuntimeError
         """
         cmd="segmentedGraphTriCtr"
+        args = "{} {} {} {} {}".format(
+                 graph.n_vertices,graph.n_edges,\
+                 graph.directed,graph.weighted,\
+                 graph.name)
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
+
+@typechecked
+def graph_jaccard_coefficient(graph: Graph) -> pdarray:
+        """
+        This function will return the jaccard coefficient of each vertex in a static graph.
+        Returns
+        -------
+        pdarray
+            The jaccard coefficient value of each vertex.
+        See Also
+        --------
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphJaccard"
         args = "{} {} {} {} {}".format(
                  graph.n_vertices,graph.n_edges,\
                  graph.directed,graph.weighted,\
