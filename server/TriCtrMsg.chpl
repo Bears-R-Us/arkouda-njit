@@ -1,4 +1,4 @@
-CtrMsg {
+TriCtrMsg {
 
 
   use Reflection;

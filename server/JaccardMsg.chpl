@@ -1,4 +1,4 @@
-ccardMsg {
+JaccardMsg {
 
 
   use Reflection;
