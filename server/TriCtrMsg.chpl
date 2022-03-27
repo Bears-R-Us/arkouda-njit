@@ -1,4 +1,4 @@
-Module TriCtrMsg {
+module TriCtrMsg {
 
 
   use Reflection;
