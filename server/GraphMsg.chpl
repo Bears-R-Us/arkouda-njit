@@ -617,7 +617,6 @@ module GraphMsg {
                       if srclocal.contains(curline) {
                           src[curline]=(a:int)%Nv;
                           dst[curline]=(b:int)%Nv;
-                          if 
                       }
                       curline+=1;
                       if curline>srclocal.high {
