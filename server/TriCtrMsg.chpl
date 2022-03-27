@@ -1,4 +1,4 @@
-CtrMsg {
+Module TriCtrMsg {
 
 
   use Reflection;
@@ -32,7 +32,7 @@ CtrMsg {
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
-  use GraphGraph;
+  use GraphMsg;
 
 
   private config const logLevel = ServerConfig.logLevel;
