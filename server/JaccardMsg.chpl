@@ -1,4 +1,4 @@
-JaccardMsg {
+module JaccardMsg {
 
 
   use Reflection;
