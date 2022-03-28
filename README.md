@@ -40,6 +40,11 @@ TrussMsg--for truss analysis
 SuffixArrayMsg--for suffix array
 ```
 
+## Chapel unit test  code
+```bash
+UnitTestCh -- this directory will include all the chaple unit testing code of the extended functions
+```
+
 ## Run Python Code
 ```bash
 (1) Under the master arkouda directory, copy the arkouda-njit directory to here and rename it as arkouda_njit or 
