@@ -12,10 +12,10 @@ will build the Arkouda server including the Graph server functions.
 python server-config.py --help
 
 # Sample invocation
-python server-config.py --arkouda=$HOME/projects/arkouda
+python server-config.py --arkouda=$ArkoudaHomeDirectory
 
 # Sample execution
-python server-config.py --arkouda=$HOME/projects/arkouda | bash
+python server-config.py --arkouda=$ArkoudaHomeDirectory | bash
 ```
 
 ## Client code
