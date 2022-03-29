@@ -38,6 +38,10 @@ BFSMsg--for breadth first search
 TriCntMsg--for triangle counting
 TrussMsg--for truss analysis
 SuffixArrayMsg--for suffix array
+SuffixArrayMsg
+GraphMsg-- for the basic graph operation
+TriCtrMsg-- for triangle centrality
+JaccardMsg-- for Jaccard coefficients
 ```
 
 
