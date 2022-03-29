@@ -41,9 +41,12 @@ SuffixArrayMsg--for suffix array
 ```
 
 
-## Chapel unit test  code
+## Test  code
 ```bash
-UnitTestCh -- this directory will include all the chaple unit testing code of the extended functions
+client: Python test code
+   benchmarks: different benchmark code
+server:
+   UnitTestCh: chaple unit testing code of the extended functions
 ```
 
 
