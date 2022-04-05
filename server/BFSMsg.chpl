@@ -15,7 +15,7 @@ module BFSMsg {
 
 
   use SymArrayDmap;
-  use Random;
+  //use Random;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -27,7 +27,7 @@ module BFSMsg {
   use DistributedDeque;
 
 
-  use List; 
+  //use List; 
   use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 

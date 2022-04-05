@@ -326,7 +326,7 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         RuntimeError
         """
         cmd="segmentedTruss"
-        args = "{} {} {} {} {} {} {} {} {}".format(
+        args = "{} {} {} {} {} {}".format(
                  kTrussValue,\
                  graph.n_vertices,graph.n_edges,\
                  graph.directed,graph.weighted,\
