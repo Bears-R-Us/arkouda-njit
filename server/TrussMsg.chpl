@@ -36,7 +36,7 @@ module TrussMsg {
 
 
   //private config const logLevel = ServerConfig.logLevel;
-  private config const logLevel = LogLevel.INFO;
+  private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
   var outMsg:string;
   
