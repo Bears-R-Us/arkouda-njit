@@ -1224,14 +1224,9 @@ module TrussMsg {
                               EdgeDeleted[i]=k-1;
                               // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
                               // we also remove the self-loop like <v,v>
-                              if (v1==v2) {
-                                   //writeln("My locale=",here.id," Find self-loop ",i,"=<",src[i],",",dst[i],">");
-                              }
                         }
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
-                             if (DupE!=-1) {
-                             }
                         }
                     }
               }        
@@ -1301,7 +1296,7 @@ module TrussMsg {
                                    forall s in sVadj with ( + reduce Count) {
                                        var ds1=nei[s]+neiR[s];
                                        var e:int;
-                                       if (ds1<ldV) {
+                                       if (ds1<=ldV) {
                                           e=findEdge(s,lV);
                                        } else {
                                           e=findEdge(lV,s);
@@ -1394,23 +1389,13 @@ module TrussMsg {
                                              var tmpe:int;
                                              if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
                                                        var dv4=nei[v4]+neiR[v4];
-                                                       if (ldv2<dv4) {
+                                                       if (ldv2<=dv4) {
                                                             tmpe=findEdge(lv2,v4);
                                                        } else {
                                                             tmpe=findEdge(v4,lv2);
                                                        }
                                                        if (tmpe!=-1) {// there is such third edge
                                                          if ( EdgeDeleted[tmpe]<=-1 ) {
-
-
-                                                                      TriCount[tmpe].sub(1);
-                                                                      if TriCount[tmpe].read() <k-2 {
-                                                                         SetNextF.add((i,tmpe));
-                                                                      }
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
 
 
                                                                if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
@@ -1588,7 +1573,6 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,atomic int);
           var timer:Timer;
 
 
@@ -1695,8 +1679,6 @@ module TrussMsg {
                         }
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
-                             if (DupE!=-1) {
-                             }
                         }
                     }
               }        
@@ -6713,16 +6695,21 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PlTriCount);
+                forall i in 0..Ne-1 {// first keep last time's results
+                             EdgeDeleted[i]=lEdgeDeleted[i];
+                             PTriCount[i].write(PlTriCount[i].read());
+                }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
                 if ((AllRemoved==false) && (kUp>3)) {// k max >3
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove the all edges
+                         // we will continuely check if the up value can remove all edges
                          forall i in 0..Ne-1 {// first keep last time's results
-                             EdgeDeleted[i]=lEdgeDeleted[i];
-                             PTriCount[i].write(PlTriCount[i].read());
+                             lEdgeDeleted[i]=EdgeDeleted[i];
+                             PlTriCount[i].write(PTriCount[i].read());
                          }
                          // we check the larget k vaule kUp which is the upper bound of max k
+                         // we will use kMid to reduce kUp
                          AllRemoved=SkMaxTruss(kUp,
                               toSymEntry(ag.getNEIGHBOR(), int).a,
                               toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6734,7 +6721,7 @@ module TrussMsg {
                               toSymEntry(ag.getDST_R(), int).a, PlTriCount);
                          if (AllRemoved==false) { //the up value is the max k
                                 ConLoop=false;
-                         } else {// we will check the mid value to reduce k max
+                         } else {// we will check the mid value to reduce kUp
                             kMid= (kLow+kUp)/2;
                             forall i in 0..Ne-1 {
                                 lEdgeDeleted[i]=EdgeDeleted[i];
@@ -6751,10 +6738,6 @@ module TrussMsg {
                                  toSymEntry(ag.getSRC_R(), int).a,
                                  toSymEntry(ag.getDST_R(), int).a, PlTriCount);
                             if (AllRemoved==true) { // if mid value can remove all edges, we will reduce the up value for checking
-                                  forall i in 0..Ne-1 {// first keep last time's results
-                                      lEdgeDeleted[i]=EdgeDeleted[i];
-                                      PlTriCount[i].write(PTriCount[i].read());
-                                  }
                                   kUp=kMid-1;
                             } else { // we will improve both low and mid value
                                 if kMid==kUp-1 {
@@ -6840,6 +6823,10 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, lAtoTriCount);
+                forall i in 0..Ne-1 {
+                             EdgeDeleted[i]=lEdgeDeleted[i];
+                             AtoTriCount[i].write(lAtoTriCount[i].read());
+                }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
                 //writeln("Max K Up=",kUp);
                 if ((AllRemoved==false) && (kUp>3)) {// k max >3
@@ -6847,8 +6834,8 @@ module TrussMsg {
                     while ( (ConLoop) && (kLow<kUp)) {
                          // we will continuely check if the up value can remove the all edges
                          forall i in 0..Ne-1 {
-                             EdgeDeleted[i]=lEdgeDeleted[i];
-                             AtoTriCount[i].write(lAtoTriCount[i].read());
+                             lEdgeDeleted[i]=EdgeDeleted[i];
+                             lAtoTriCount[i].write(AtoTriCount[i].read());
                          }
                          AllRemoved=SkMaxTrussMix(kUp,
                               toSymEntry(ag.getNEIGHBOR(), int).a,
