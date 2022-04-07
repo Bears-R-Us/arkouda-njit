@@ -136,7 +136,8 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 
 @typechecked
-def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str) -> Graph:
+def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
+                    RCMFlag:int=0,DegreeSortFlag:int=0 ) -> Graph:
     """
         This function is used for creating a graph from a file.
         The file should like this
