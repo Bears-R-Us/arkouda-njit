@@ -64,6 +64,8 @@ module TriCtrMsg {
       var TriCtr:[0..Nv-1] real;
       var TriNum=makeDistArray(Nv,atomic int);
       var NeiTriNum=makeDistArray(Nv,atomic int);
+      var NeiAry=makeDistArray(Ne,bool);
+      NeiAry=false;
       TriCtr=0.0;
       forall i in TriNum {
           i.write(0);
@@ -197,9 +199,9 @@ module TriCtrMsg {
                                                          TriNum[u].add(1);
                                                          TriNum[v].add(1);
                                                          TriNum[x].add(1);
-                                                         NeiTriNum[u].add(2);
-                                                         NeiTriNum[v].add(2);
-                                                         NeiTriNum[x].add(2);
+                                                         NeiAry[i]=true;
+                                                         NeiAry[e]=true;
+                                                         NeiAry[e3]=true;
                                                  }
                                           }
                                        }
@@ -226,9 +228,9 @@ module TriCtrMsg {
                                                          TriNum[u].add(1);
                                                          TriNum[v].add(1);
                                                          TriNum[x].add(1);
-                                                         NeiTriNum[u].add(2);
-                                                         NeiTriNum[v].add(2);
-                                                         NeiTriNum[x].add(2);
+                                                         NeiAry[i]=true;
+                                                         NeiAry[e]=true;
+                                                         NeiAry[e3]=true;
                                                      }
                                                  }
                                           }
@@ -250,6 +252,24 @@ module TriCtrMsg {
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
+
+
+          coforall loc in Locales {
+                on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+
+                     forall i in startEdge..endEdge with (+ reduce triCount) {
+                         var u = src[i];
+                         var v = dst[i];
+                         if NeiAry[i] {
+                              NeiTriNum[u].add(TriNum[v].read());                   
+                              NeiTriNum[v].add(TriNum[u].read());                   
+                         }
+
+                }// end of  on loc 
+          } // end of coforall loc in Locales 
 
           coforall loc in Locales {
                 on loc {
