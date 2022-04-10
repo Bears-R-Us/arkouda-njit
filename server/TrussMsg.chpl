@@ -148,7 +148,7 @@ module TrussMsg {
           var tmpi=Nv-1:int;
           while tmpi>0 {
                dNumber[tmpi-1]+=dNumber[tmpi];
-               if dNumber[tmpi]+1>=tmpi {
+               if dNumber[tmpi-1]+1>=tmpi {
                    maxk=tmpi;
                    break;
                }
@@ -2949,15 +2949,14 @@ module TrussMsg {
 
       //For undirected graph.
       proc SkMaxTruss(kInput:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):bool{
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] atomic int,lEdgeDeleted:[?D6] int ):bool{
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var k=kInput:int;
           var ConFlag=true:bool;
           var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,int);
-          //TriCount=0;
           var timer:Timer;
 
 
@@ -3011,11 +3010,9 @@ module TrussMsg {
 
 
 
-          //here we begin the first naive version
+          //here we begin the truss version
           timer.start();
 
-          //we will try to remove all the unnecessary edges in the graph
-          //while (ConFlag) {
           {
 
 
@@ -3035,15 +3032,12 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-              //if (!SetCurF.isEmpty()) {
               if ( SetCurF.getSize()<=0){
                       ConFlag=false;
-                      //k+=1;
               }
               ConFlag=false;
 
               // we try to remove as many edges as possible in the following code
-              //while (!SetCurF.isEmpty()) {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
@@ -3143,9 +3137,7 @@ module TrussMsg {
                                              var v4=dstR[j]; 
                                              var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
                                              var tmpe:int;
-                                             if (e1==-1) {
-                                                   //writeln("Error! Cannot find the edge ",j,"=(",v4,",",v3,")");
-                                             } else {
+                                             if (e1!=-1) {
                                                 if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
                                                        // we first check if  the two different vertices can be the third edge
                                                        var dv4=nei[v4]+neiR[v4];
@@ -3269,15 +3261,14 @@ module TrussMsg {
 
       //For undirected graph.
       proc SkMaxTrussMix(kInput:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):bool{
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] atomic int,lEdgeDeleted:[?D6] int):bool{
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
-          //var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
           var N2=0:int;
           var k=kInput:int;
           var ConFlag=true:bool;
           var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,atomic int);
           var timer:Timer;
 
 
@@ -4539,8 +4530,6 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,int);
-          //TriCount=0;
           var k=kvalue;
           var timer:Timer;
 
@@ -4630,9 +4619,6 @@ module TrussMsg {
                         }
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
-                             if (DupE!=-1) {
-                                  //writeln("My locale=",here.id, " Find duplicated edges ",i,"=<",src[i],",",dst[i],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
-                             }
                         }
                     }
               }        
@@ -6700,6 +6686,8 @@ module TrussMsg {
                              PTriCount[i].write(PlTriCount[i].read());
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                outMsg="Estimated kUp="+kUp:string;
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((AllRemoved==false) && (kUp>3)) {// k max >3
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
@@ -6718,7 +6706,7 @@ module TrussMsg {
                               toSymEntry(ag.getNEIGHBOR_R(), int).a,
                               toSymEntry(ag.getSTART_IDX_R(), int).a,
                               toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, PlTriCount);
+                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                          if (AllRemoved==false) { //the up value is the max k
                                 ConLoop=false;
                          } else {// we will check the mid value to reduce kUp
@@ -6736,7 +6724,7 @@ module TrussMsg {
                                  toSymEntry(ag.getNEIGHBOR_R(), int).a,
                                  toSymEntry(ag.getSTART_IDX_R(), int).a,
                                  toSymEntry(ag.getSRC_R(), int).a,
-                                 toSymEntry(ag.getDST_R(), int).a, PlTriCount);
+                                 toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                             if (AllRemoved==true) { // if mid value can remove all edges, we will reduce the up value for checking
                                   kUp=kMid-1;
                             } else { // we will improve both low and mid value
@@ -6761,7 +6749,7 @@ module TrussMsg {
                                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
                                              toSymEntry(ag.getSTART_IDX_R(), int).a,
                                              toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, PlTriCount);
+                                             toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                                      }
                                      if (AllRemoved==false) {
                                          kUp=kMid;
@@ -6845,7 +6833,7 @@ module TrussMsg {
                               toSymEntry(ag.getNEIGHBOR_R(), int).a,
                               toSymEntry(ag.getSTART_IDX_R(), int).a,
                               toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, lAtoTriCount);
+                              toSymEntry(ag.getDST_R(), int).a, lAtoTriCount,lEdgeDeleted);
                          //writeln("Try up=",kUp);
                          if (AllRemoved==false) { //the up value is the max k
                                 ConLoop=false;
@@ -6864,7 +6852,7 @@ module TrussMsg {
                                   toSymEntry(ag.getNEIGHBOR_R(), int).a,
                                   toSymEntry(ag.getSTART_IDX_R(), int).a,
                                   toSymEntry(ag.getSRC_R(), int).a,
-                                  toSymEntry(ag.getDST_R(), int).a, lAtoTriCount);
+                                  toSymEntry(ag.getDST_R(), int).a, lAtoTriCount,lEdgeDeleted);
                             if (AllRemoved==true) { // if mid value can remove all edges, we will reduce the up value for checking
                                   kUp=kMid-1;
                             } else { // we will improve both low and mid value
@@ -6888,7 +6876,7 @@ module TrussMsg {
                                                 toSymEntry(ag.getNEIGHBOR_R(), int).a,
                                                 toSymEntry(ag.getSTART_IDX_R(), int).a,
                                                 toSymEntry(ag.getSRC_R(), int).a,
-                                                toSymEntry(ag.getDST_R(), int).a, lAtoTriCount);
+                                                toSymEntry(ag.getDST_R(), int).a, lAtoTriCount,lEdgeDeleted);
                                      }
 
                                      if (AllRemoved==false) {
@@ -6924,13 +6912,11 @@ module TrussMsg {
                     }
                 }
           }//
-      } else {
+      } else {// we have not tested directed graph extensively.
 
 
           if (kValue>0) {// k branch
 
-                //writeln("Enter kTrussNaive Directed k=",kValue);
-                //repMsg=kTrussNaiveDirected(kValue,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a );
     
                 writeln("Enter kTruss k=",kValue);
                 repMsg=kTrussDirected(kValue,

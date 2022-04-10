@@ -8,6 +8,7 @@ from arkouda.dtypes import int64 as akint
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
+           "graph_file_read_mtx",
            "graph_bfs",
            "graph_tri_cnt",
            "graph_tri_ctr",
@@ -137,7 +138,7 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 @typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                    RCMFlag:int=0,DegreeSortFlag:int=0 ) -> Graph:
+                    RCMFlag:int=0,DegreeSortFlag:int=0,RemapFlag:int=0 ) -> Graph:
     """
         This function is used for creating a graph from a file.
         The file should like this
@@ -169,9 +170,53 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
         RuntimeError
         """
     cmd = "segmentedGraphFile"
-    RCMFlag = 0
-    DegreeSortFlag = 0
-    args = "{} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, RCMFlag, DegreeSortFlag)
+    args = "{} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+            RCMFlag, DegreeSortFlag,RemapFlag)
+    repMsg = generic_msg(cmd=cmd, args=args)
+
+    return Graph(*(cast(str, repMsg).split('+')))
+
+
+
+
+
+@typechecked
+def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
+                    RCMFlag:int=0,DegreeSortFlag:int=0,RemapFlag:int=0 ) -> Graph:
+    """
+        This function is used for creating a graph from a mtx graph file.
+        The file should like this
+          1   5
+          13  9
+          
+    if graph.weight:4   8
+          7   6
+        This file means the edges are <1,5>,<13,9>,<4,8>,<7,6>. If additional column is added, it is the weight
+        of each edge.
+        Ne : the total number of edges of the graph
+        Nv : the total number of vertices of the graph
+        Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
+              and Ncol=3 means there is weight for each edge (so weighted=1). 
+        directed: 0 means undirected graph and 1 means directed graph
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphMtxFile"
+    args = "{} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+            RCMFlag, DegreeSortFlag,RemapFlag)
+    print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return Graph(*(cast(str, repMsg).split('+')))

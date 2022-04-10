@@ -71,6 +71,56 @@ module GraphMsg {
           }
   }
 
+  private proc binSearchV(ary:[?D] int,l:int,h:int,key:int):int {
+                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                           return -1;
+                       }
+                       if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
+                            return -1;
+                       }
+                       if (ary[l]==key){
+                            return l;
+                       }
+                       if (ary[h]==key){
+                            return h;
+                       }
+                       var m= (l+h)/2:int;
+                       if ((m==l) ) {
+                            return -1;
+                       }
+                       if (ary[m]==key ){
+                            return m;
+                       } else {
+                            if (ary[m]<key) {
+                              return binSearchV(ary,m+1,h,key);
+                            }
+                            else {
+                                    return binSearchV(ary,l,m-1,key);
+                            }
+                       }
+  }// end of proc
+
+  private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, orimin: int, orimax:int, numV:int) {
+          var numE=lsrc.size;
+          var tmpe:[D1] int;
+
+          var VertexSet= new set(int,parSafe = true);
+          tmpe=0;
+          var startV=0;
+          var endV=numV-1;
+          forall i in lsrc with (ref VertexSet) {
+                VertexSet.add(i);
+          }
+          forall i in ldst with (ref VertexSet) {
+                VertexSet.add(i);
+          }
+          var vertexAry=VertexSet.toArray();
+          sort(vertexAry);
+          forall i in 0..numE-1 {
+               lsrc[i]=binSearchV(vertexAry,0,numV-1,lsrc[i]);
+               ldst[i]=binSearchV(vertexAry,0,numV-1,ldst[i]);
+          }
+  }
       /* 
        * we sort the combined array [src dst] here
        */
@@ -534,7 +584,7 @@ module GraphMsg {
 
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphFileMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
-      var (NeS,NvS,ColS,DirectedS, FileName,RCMs,DegreeSortS) = payload.splitMsgToTuple(7);
+      var (NeS,NvS,ColS,DirectedS, FileName,RCMs,DegreeSortS,RemapVertex) = payload.splitMsgToTuple(8);
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
@@ -544,8 +594,11 @@ module GraphMsg {
       var timer: Timer;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
+      var RemapVertexFlag:bool=false;
 
       timer.start();
+
+
 
       if (DirectedS:int)==1 {
           DirectedFlag=true;
@@ -558,6 +611,9 @@ module GraphMsg {
       }
       if (RCMs:int)==1 {
           RCMFlag=true;
+      }
+      if (RemapVertex:int)==1 {
+          RemapVertexFlag=true;
       }
       var src=makeDistArray(Ne,int);
       var edgeD=src.domain;
@@ -582,6 +638,10 @@ module GraphMsg {
 
       var linenum:int=0;
       var repMsg: string;
+      var VminID=makeDistArray(numLocales,int);
+      var VmaxID=makeDistArray(numLocales,int);
+      VminID=100000;
+      VmaxID=0;
 
       var tmpmindegree:int =start_min_degree;
 
@@ -614,10 +674,31 @@ module GraphMsg {
                             //    e_weight[curline]=c:int;
                             //}
                       }
-                      if srclocal.contains(curline) {
-                          src[curline]=(a:int)%Nv;
-                          dst[curline]=(b:int)%Nv;
+                      if (RemapVertexFlag) {
+                          if srclocal.contains(curline) {
+                               src[curline]=(a:int);
+                               dst[curline]=(b:int);
+                               if a:int > VmaxID[here.id] {
+                                   VmaxID[here.id]=a:int;
+                               }
+                               if b:int > VmaxID[here.id] {
+                                   VmaxID[here.id]=b:int;
+                               }
+                               if a:int < VminID[here.id] {
+                                   VminID[here.id]=a:int;
+                               }
+                               if b:int < VminID[here.id] {
+                                   VminID[here.id]=b:int;
+                               }
+                          
+                          }
+                      } else {
+                          if srclocal.contains(curline) {
+                              src[curline]=(a:int)%Nv;
+                              dst[curline]=(b:int)%Nv;
+                          }
                       }
+                      curline+=1;
                       curline+=1;
                       if curline>srclocal.high {
                           break;
@@ -643,6 +724,21 @@ module GraphMsg {
       // currently we ignore the weight.
 
       readLinebyLine(); 
+      if (RemapVertexFlag) {
+          var tmpmax:int =-1;
+          var tmpmin:int=9999999;
+          for i in VmaxID {
+               if i>tmpmax {
+                   tmpmax=i;
+               }
+          }
+          for i in VminID {
+               if i<tmpmin {
+                   tmpmin=i;
+               }
+          }
+          vertex_remap(src,dst,tmpmin,tmpmax,Nv);
+      }
       timer.stop();
       
 
@@ -727,6 +823,268 @@ module GraphMsg {
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
   }
+
+
+
+
+
+  // directly read a graph from given file and build the SegGraph class in memory
+  proc segReadMtxMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+      var (NeS,NvS,ColS,DirectedS, FileName,RCMs,DegreeSortS,RemapVertex) = payload.splitMsgToTuple(8);
+
+      var Ne:int =(NeS:int);
+      var Nv:int =(NvS:int);
+      var NumCol=ColS:int;
+      var DirectedFlag:bool=false;
+      var WeightedFlag:bool=false;
+      var timer: Timer;
+      var RCMFlag:bool=false;
+      var DegreeSortFlag:bool=false;
+      var RemapVertexFlag:bool=false;
+
+      timer.start();
+
+      if (DirectedS:int)==1 {
+          DirectedFlag=true;
+      }
+      if NumCol>2 {
+           WeightedFlag=true;
+      }
+      if (DegreeSortS:int)==1 {
+          DegreeSortFlag=true;
+      }
+      if (RCMs:int)==1 {
+          RCMFlag=true;
+      }
+      if (RemapVertex:int)==1 {
+          RemapVertexFlag=true;
+      }
+      var src=makeDistArray(Ne,int);
+      var edgeD=src.domain;
+      /*
+      var dst=makeDistArray(Ne,int);
+      var e_weight=makeDistArray(Ne,int);
+      var srcR=makeDistArray(Ne,int);
+      var dstR=makeDistArray(Ne,int);
+      var iv=makeDistArray(Ne,int);
+      */
+      var neighbour=makeDistArray(Nv,int);
+      var vertexD=neighbour.domain;
+      /*
+      var start_i=makeDistArray(Nv,int);
+      var neighbourR=makeDistArray(Nv,int);
+      var start_iR=makeDistArray(Nv,int);
+      var depth=makeDistArray(Nv,int);
+      var v_weight=makeDistArray(Nv,int);
+      */
+      var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
+      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+
+      var linenum:int=0;
+      var repMsg: string;
+
+      var VminID=makeDistArray(numLocales,int);
+      var VmaxID=makeDistArray(numLocales,int);
+      VminID=100000;
+      VmaxID=0;
+
+      var tmpmindegree:int =start_min_degree;
+
+      try {
+           var f = open(FileName, iomode.r);
+           // we check if the file can be opened correctly
+           f.close();
+      } catch {
+                  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "Open file error");
+      }
+
+      proc readLinebyLine() throws {
+           coforall loc in Locales  {
+              on loc {
+                  var f = open(FileName, iomode.r);
+                  var r = f.reader(kind=ionative);
+                  var line:string;
+                  var a,b,c:string;
+                  var curline=0:int;
+                  var srclocal=src.localSubdomain();
+                  var ewlocal=e_weight.localSubdomain();
+                  var StartF:bool=false;
+                  var Nvsrc,Nvdst,Nedge:string;
+
+
+                  while r.readline(line) {
+                      if line[0]=="%" {
+                          continue;
+                      }
+                      if (curline==0) && (StartF==false) {
+                           (Nvsrc,Nvdst,Nedge)=  line.splitMsgToTuple(3);
+                          if ( (Nvsrc:int) != (Nvdst:int) || (Nvsrc:int!=Nv) || (Nedge:int!=Ne) ) {
+                             smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                    "vertex and edge numbers are not matched");
+
+                          }
+                          StartF=true;
+                          continue;
+                      }
+                      if NumCol==2 {
+                           (a,b)=  line.splitMsgToTuple(2);
+                      } else {
+                           (a,b,c)=  line.splitMsgToTuple(3);
+                            //if ewlocal.contains(curline){
+                            //    e_weight[curline]=c:int;
+                            //}
+                      }
+                      if (RemapVertexFlag) {
+                          if srclocal.contains(curline) {
+                               src[curline]=(a:int);
+                               dst[curline]=(b:int);
+                               if a:int > VmaxID[here.id] {
+                                   VmaxID[here.id]=a:int;
+                               }
+                               if b:int > VmaxID[here.id] {
+                                   VmaxID[here.id]=b:int;
+                               }
+                               if a:int < VminID[here.id] {
+                                   VminID[here.id]=a:int;
+                               }
+                               if b:int < VminID[here.id] {
+                                   VminID[here.id]=b:int;
+                               }
+                          
+                          }
+                      } else {
+                          if srclocal.contains(curline) {
+                              src[curline]=(a:int)%Nv;
+                              dst[curline]=(b:int)%Nv;
+                          }
+                      }
+                      curline+=1;
+                      if curline>srclocal.high {
+                          break;
+                      }
+                  } 
+                  if (curline<=srclocal.high) {
+                     var outMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string;
+                     smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                  }
+                  //forall i in start_i.localSubdomain()  {
+                  //     start_i[i]=-1;
+                  //}
+                  //forall i in start_iR.localSubdomain()  {
+                  //     start_iR[i]=-1;
+                  //}
+                  r.close();
+                  f.close();
+               }// end on loc
+           }//end coforall
+      }//end readLinebyLine
+      
+      // readLinebyLine sets ups src, dst, start_i, neightbor.  e_weights will also be set if it is an edge weighted graph
+      // currently we ignore the weight.
+
+      readLinebyLine(); 
+      if (RemapVertexFlag) {
+          var tmpmax:int =-1;
+          var tmpmin:int=9999999;
+          for i in VmaxID {
+               if i>tmpmax {
+                   tmpmax=i;
+               }
+          }
+          for i in VminID {
+               if i<tmpmin {
+                   tmpmin=i;
+               }
+          }
+          vertex_remap(src,dst,tmpmin,tmpmax,Nv);
+      }
+      timer.stop();
+      
+
+      var outMsg="Reading File takes " + timer.elapsed():string;
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+      timer.clear();
+      timer.start();
+      combine_sort(src, dst,e_weight,WeightedFlag, false);
+      set_neighbour(src,start_i,neighbour);
+
+      // Make a composable SegGraph object that we can store in a GraphSymEntry later
+      var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      graph.withSRC(new shared SymEntry(src):GenSymEntry)
+           .withDST(new shared SymEntry(dst):GenSymEntry)
+           .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
+           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+
+      if (!DirectedFlag) { //undirected graph
+          coforall loc in Locales  {
+              on loc {
+                  forall i in srcR.localSubdomain(){
+                        srcR[i]=dst[i];
+                        dstR[i]=src[i];
+                   }
+              }
+          }
+          combine_sort( srcR, dstR,e_weight,WeightedFlag, false);
+          set_neighbour(srcR,start_iR,neighbourR);
+
+          if (DegreeSortFlag) {
+             degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+          }
+          if (RCMFlag) {
+             RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,e_weight,WeightedFlag);
+          }   
+
+
+          graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
+               .withDST_R(new shared SymEntry(dstR):GenSymEntry)
+               .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
+               .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+
+      }//end of undirected
+      else {
+        //if (DegreeSortFlag) {
+             //degree_sort(src, dst, start_i, neighbour,e_weight);
+        //}
+        if (RCMFlag) {
+             RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
+        }
+
+      }
+      //if (WeightedFlag) {
+      //     graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
+      //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
+      //}
+      var sNv=Nv:string;
+      var sNe=Ne:string;
+      var sDirected:string;
+      var sWeighted:string;
+      if (DirectedFlag) {
+           sDirected="1";
+      } else {
+           sDirected="0";
+      }
+
+      if (WeightedFlag) {
+           sWeighted="1";
+      } else {
+           sWeighted="0";
+           
+      }
+      var graphEntryName = st.nextName();
+      var graphSymEntry = new shared GraphSymEntry(graph);
+      st.addEntry(graphEntryName, graphSymEntry);
+      repMsg =  sNv + '+ ' + sNe + '+ ' + sDirected + '+ ' + sWeighted + '+' +  graphEntryName; 
+      timer.stop();
+      outMsg="Sorting Edges takes "+ timer.elapsed():string;
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      return new MsgTuple(repMsg, MsgType.NORMAL);
+  }
+
+
 
 
   //generate a graph using RMAT method.
@@ -1060,6 +1418,7 @@ module GraphMsg {
     proc registerMe() {
         use CommandMap;
         registerFunction("segmentedGraphFile", segGraphFileMsg);
+        registerFunction("segmentedGraphMtxFile", segReadMtxMsg);
         registerFunction("segmentedRMAT", segrmatgenMsg);
         registerFunction("segmentedGraphQue", segGraphQueMsg);
     }

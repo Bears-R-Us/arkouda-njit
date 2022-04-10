@@ -260,13 +260,14 @@ module TriCtrMsg {
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
-                     forall i in startEdge..endEdge with (+ reduce triCount) {
+                     forall i in startEdge..endEdge {
                          var u = src[i];
                          var v = dst[i];
                          if NeiAry[i] {
                               NeiTriNum[u].add(TriNum[v].read());                   
                               NeiTriNum[v].add(TriNum[u].read());                   
                          }
+                     }
 
                 }// end of  on loc 
           } // end of coforall loc in Locales 
