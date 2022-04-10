@@ -21,9 +21,10 @@ def time_ak_truss_graph():
     #Graph=njit.graph_file_read(3000,1003,2,0,"/home/z/zd4/Adata/3.gr")
     #Graph=njit.graph_file_read(237010,12008,2,0,"/home/z/zd4/Adata/SNAP/ca-HepPh.txt.gr")
     #Graph=njit.graph_file_read(3387388,4033394,2,0,"/home/z/zd4/Adata/SNAP/amazon0601.txt.gr")
-    Graph=njit.graph_file_read(28980,5242,2,0,"/home/z/zd4/Adata/SNAP/ca-GrQc.txt.gr",0,1)
+    #Graph=njit.graph_file_read(28980,5242,2,0,"/home/z/zd4/Adata/SNAP/ca-GrQc.txt.gr",0,0)
     #Graph=njit.graph_file_read(3056,1024,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.gr",0,1)
-    #Graph=njit.graph_file_read(6127,2048,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n11.mtx.gr",0,0)
+    Graph=njit.graph_file_read(6127,2048,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n11.mtx.gr",0,0)
+    #Graph=njit.graph_file_read(12264,4096,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n12/delaunay_n12.mtx.gr",0,1)
     start = time.time()
     k=4
     truss=njit.graph_ktruss(Graph,k)
