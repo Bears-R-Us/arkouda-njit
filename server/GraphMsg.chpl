@@ -511,9 +511,9 @@ module GraphMsg {
 
   //sorting the vertices based on their degrees.
   private proc degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,le_weight:[?D5] int,lneighbourR:[?D6] int,lWeightedFlag:bool) {
-             var DegreeArray, VertexArray: [D3] int;
+             var DegreeArray, VertexArray: [D4] int;
              var tmpedge:[D1] int;
-             var Nv=D3.size;
+             var Nv=D4.size;
              var iv:[D1] int;
              coforall loc in Locales  {
                 on loc {
@@ -522,7 +522,7 @@ module GraphMsg {
                    }
                 }
              }
-             var tmpiv:[D1] int;
+             var tmpiv:[D4] int;
              try {
                  tmpiv =  argsortDefault(DegreeArray);
              } catch {
@@ -705,7 +705,7 @@ module GraphMsg {
                       }
                   } 
                   if (curline<=srclocal.high) {
-                     var outMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string;
+                     var outMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
                      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   }
                   //forall i in start_i.localSubdomain()  {
@@ -917,11 +917,13 @@ module GraphMsg {
                       if line[0]=="%" {
                           continue;
                       }
-                      if (curline==0) && (StartF==false) {
-                           (Nvsrc,Nvdst,Nedge)=  line.splitMsgToTuple(3);
+                      if ((curline==0) && (!StartF)) {
+                          (Nvsrc,Nvdst,Nedge)=  line.splitMsgToTuple(3);
+                          var errmsg:string;
                           if ( (Nvsrc:int) != (Nvdst:int) || (Nvsrc:int!=Nv) || (Nedge:int!=Ne) ) {
+                             errmsg="v and e not matched"+" read vertex="+Nvsrc+" read edges="+Nedge;
                              smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
-                                    "vertex and edge numbers are not matched");
+                                    errmsg);
 
                           }
                           StartF=true;
