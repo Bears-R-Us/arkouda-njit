@@ -29,11 +29,11 @@ def time_ak_truss_graph():
              ]
     TestMtx=[ [3056,1024,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
             [6127,2048,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n11.mtx"] ,\
-            [12264, 4096,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n12.mtx"] ,\
-            [24547,8192,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n13.mtx"] ,\
-            [49122,16384,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n14.mtx"] ,\
-            [98274,32768,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n15.mtx"] ,\
-            [196575,65536,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n11/delaunay_n16.mtx"] ]
+            [12264, 4096,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n12/delaunay_n12.mtx"] ,\
+            [24547,8192,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n13/delaunay_n13.mtx"] ,\
+            [49122,16384,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n14/delaunay_n14.mtx"] ,\
+            [98274,32768,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n15/delaunay_n15.mtx"] ,\
+            [196575,65536,2,0,"/home/z/zd4/Adata/Delaunay/delaunay_n16/delaunay_n16.mtx"] ]
 
     start = time.time()
     for i in TestMtx:

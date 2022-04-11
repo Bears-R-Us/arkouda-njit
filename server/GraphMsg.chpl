@@ -595,6 +595,8 @@ module GraphMsg {
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
+      smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+                      "read file ="+FileName);
 
       timer.start();
 
@@ -842,6 +844,8 @@ module GraphMsg {
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
 
+      smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+                      "read file ="+FileName);
       timer.start();
 
       if (DirectedS:int)==1 {
