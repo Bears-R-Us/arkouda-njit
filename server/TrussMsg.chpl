@@ -10,16 +10,13 @@ module TrussMsg {
   use ServerConfig;
   use MultiTypeSymbolTable;
   use MultiTypeSymEntry;
-  //use RandArray;
   use IO;
 
 
   use SymArrayDmap;
-  //use Random;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
-  //use ArgSortMsg;
   use Time;
   use CommAggregation;
   use Sort;
@@ -27,15 +24,12 @@ module TrussMsg {
   use DistributedDeque;
 
 
-  //use List; 
-  //use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
   use GraphMsg;
 
 
-  //private config const logLevel = ServerConfig.logLevel;
   private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
   var outMsg:string;
@@ -104,9 +98,9 @@ module TrussMsg {
 
       // binary search if key is in ary from index l to h
       proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
-                           return -1;
-                       }
+                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       //    return -1;
+                       //}
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
                             return -1;
                        }
@@ -148,7 +142,7 @@ module TrussMsg {
           var tmpi=Nv-1:int;
           while tmpi>0 {
                dNumber[tmpi-1]+=dNumber[tmpi];
-               if dNumber[tmpi-1]+1>=tmpi {
+               if dNumber[tmpi-1]>=tmpi {
                    maxk=tmpi;
                    break;
                }
@@ -178,13 +172,12 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,int);
-          //TriCount=0;
           var timer:Timer;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -244,12 +237,15 @@ module TrussMsg {
               return eid;
           }// end of  proc findEdge(u:int,v:int)
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -274,6 +270,7 @@ module TrussMsg {
 
           //After Preprocessing
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               //ConFlag=false;
@@ -438,7 +435,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -520,12 +518,15 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -547,6 +548,7 @@ module TrussMsg {
 
           //After Preprocessing
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               // first we calculate the number of triangles
@@ -701,7 +703,8 @@ module TrussMsg {
 
           //To have unique results, we remove the duplicated edges.
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if (  (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -762,13 +765,16 @@ module TrussMsg {
           }// end of  proc findEdge(u:int,v:int)
 
           //here we begin the timer
-          timer.start();
           // we first removed the duplicated and cycle edges.
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -795,6 +801,7 @@ module TrussMsg {
           //After Preprocessing
 
 
+          timer.start();
           {
               // first we calculate the number of triangles using list intersection method.
               coforall loc in Locales with (ref SetCurF ) {
@@ -1128,7 +1135,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if (  (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -1207,13 +1215,16 @@ module TrussMsg {
           }// end of  proc findEdge(u:int,v:int)
 
 
-          timer.start();
           //First off, we remove the duplicated and cycle edges. This is common for all methods.
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -1234,6 +1245,7 @@ module TrussMsg {
           //After Preprocessing
 
 
+          timer.start();
 
           {
               // first we calculate the number of triangles
@@ -1577,7 +1589,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if (  (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -1656,12 +1669,15 @@ module TrussMsg {
           }// end of  proc exatEdge(u:int,v:int)
 
           //here we first remove the duplicated and cycle edges
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -1685,6 +1701,7 @@ module TrussMsg {
           }// end of coforall loc        
           //writeln("After Preprocessing");
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           //while (ConFlag) {
           //we should not need the loop for non-naive version
@@ -1748,8 +1765,8 @@ module TrussMsg {
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
                                                  var e3=exactEdge(x,u);
                                                  if (e3!=-1) {
-                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
-                                                         // cycle case i<e<e3, u->v->x->u
+                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
+                                                         // cycle case i<e,i<e3, u->v->x->u
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -2047,7 +2064,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -2128,12 +2146,15 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -2151,6 +2172,7 @@ module TrussMsg {
 
           //writeln("After Preprocessing");
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               //ConFlag=false;
@@ -2310,7 +2332,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -2391,12 +2414,15 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -2416,6 +2442,7 @@ module TrussMsg {
 
           //writeln("After Preprocessing");
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               //ConFlag=false;
@@ -4239,14 +4266,13 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,int);
-          //TriCount=0;
           var k=kvalue:int;
           var timer:Timer;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -4306,12 +4332,15 @@ module TrussMsg {
               return eid;
           }// end of  proc findEdge(u:int,v:int)
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -4341,6 +4370,7 @@ module TrussMsg {
 
           //writeln("After Preprocessing");
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               //ConFlag=false;
@@ -4534,7 +4564,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -4594,12 +4625,15 @@ module TrussMsg {
               return eid;
           }// end of  proc findEdge(u:int,v:int)
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -4625,6 +4659,7 @@ module TrussMsg {
 
           //writeln("After Preprocessing");
 
+          timer.start();
 
 
           {// use list intersection to count the number of triangles
@@ -4917,7 +4952,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if (  (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -5000,12 +5036,15 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -5032,6 +5071,7 @@ module TrussMsg {
               }        
           }// end of coforall loc        
 
+          timer.start();
           //After Preprocessing
 
           // first we calculate the number of triangles
@@ -5374,7 +5414,8 @@ module TrussMsg {
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if ( (cur==0) ) {
                     return -1;
                }
                var u=src[cur]:int;
@@ -5453,12 +5494,15 @@ module TrussMsg {
           }// end of  proc exatEdge(u:int,v:int)
 
           //here we begin the first naive version
-          timer.start();
-          coforall loc in Locales {
-              on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.low;
-                    var endEdge = ld.high;
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
                         var v1=src[i];
                         var v2=dst[i];
@@ -5487,6 +5531,7 @@ module TrussMsg {
 
           //After Preprocessing
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           {
               // first we calculate the number of triangles
@@ -5545,8 +5590,8 @@ module TrussMsg {
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
                                                  var e3=exactEdge(x,u);
                                                  if (e3!=-1) {
-                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
-                                                         // cycle case i<e<e3, u->v->x->u
+                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
+                                                         // cycle case i<e,i<e3, u->v->x->u
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -5923,7 +5968,6 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          timer.start();
           coforall loc in Locales {
               on loc {
                     var ld = src.localSubdomain();
@@ -5946,6 +5990,7 @@ module TrussMsg {
               }        
           }// end of coforall loc        
 
+          timer.start();
           //writeln("After Preprocessing");
 
           //we will try to remove all the unnecessary edges in the graph
@@ -6208,7 +6253,6 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          timer.start();
           coforall loc in Locales {
               on loc {
                     var ld = src.localSubdomain();
@@ -6232,6 +6276,7 @@ module TrussMsg {
 
           //writeln("After Preprocessing");
 
+          timer.start();
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               //ConFlag=false;
