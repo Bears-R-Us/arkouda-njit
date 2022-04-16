@@ -19,7 +19,7 @@ def time_ak_truss_graph():
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
     Test1=[ \
-            [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
+            [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
             [106762,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.gr"],\
             [396160,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.gr"],\
             [186936,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.gr"],\
@@ -44,7 +44,7 @@ def time_ak_truss_graph():
         Directed=i[3]
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),1,1,0,1)
+        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),1,0,0,1)
         k=4
         truss=njit.graph_ktruss(Graph,k)
         print("After k=",k)
@@ -59,7 +59,7 @@ def time_ak_truss_graph():
         Directed=i[3]
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),1,1,0,1)
+        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),1,0,0,1)
         k=4
         truss=njit.graph_ktruss(Graph,k)
         print("After k=",k)

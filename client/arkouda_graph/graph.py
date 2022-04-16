@@ -138,7 +138,7 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 @typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                    RemapFlag:int=0, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
     """
         This function is used for creating a graph from a file.
         The file should like this
@@ -186,7 +186,7 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
 
 @typechecked
 def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                        RemapFlag:int=0, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
+                        RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
     """
         This function is used for creating a graph from a mtx graph file.
         compared with the graph_file_read function, it will skip the mtx head part
