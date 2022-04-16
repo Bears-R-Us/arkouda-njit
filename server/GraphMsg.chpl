@@ -101,36 +101,33 @@ module GraphMsg {
                        }
   }// end of proc
 
+  // map vertex ID from a large range to 0..Nv-1
   private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, numV:int) throws {
+
           var numE=lsrc.size;
           var tmpe:[D1] int;
           var VertexMapping:[0..numV-1] int;
 
           var VertexSet= new set(int,parSafe = true);
-          tmpe=0;
-          var startV=0;
-          var endV=numV-1;
           forall (i,j) in zip (lsrc,ldst) with (ref VertexSet) {
                 VertexSet.add(i);
                 VertexSet.add(j);
           }
           var vertexAry=VertexSet.toArray();
-          if vertexAry.size>=numV {
+          if vertexAry.size!=numV {
                smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
-                         "number of vertices is larger than given number`");
+                         "number of vertices is not equal to the given number`");
           }
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                          "Total Vertices="+vertexAry.size:string+" ? Nv="+numV:string);
 
 
-          //sort(vertexAry);
+          sort(vertexAry);
           forall i in 0..numE-1 {
                lsrc[i]=binSearchV(vertexAry,0,vertexAry.size-1,lsrc[i]);
                ldst[i]=binSearchV(vertexAry,0,vertexAry.size-1,ldst[i]);
           }
  
-
-
 
   }
       /* 
@@ -154,6 +151,7 @@ module GraphMsg {
                     var merged = makeDistArray(size, halfDig*2*uint(bitsPerDigit));
                     forall (m,s,d ) in zip(merged, lsrc,ldst) {
                           for i in 0..halfDig-1 {
+                              // here we assume the vertex ID>=0
                               m[i]=(s>>(halfDig-i-1)):uint(bitsPerDigit);
                               m[i+halfDig]=(d>>(halfDig-i-1)):uint(bitsPerDigit);
                           }
@@ -195,9 +193,10 @@ module GraphMsg {
           ldepth=-1;
           proc smallVertex() :int {
                 var minindex:int;
-                var tmpmindegree:int;
+                var tmpmindegree:int=9999999;
                 for i in 0..Nv-1 {
                    if (lneighbour[i]<tmpmindegree) && (lneighbour[i]>0) {
+                      //here we did not consider the reverse neighbours
                       tmpmindegree=lneighbour[i];
                       minindex=i;
                    }
@@ -307,6 +306,7 @@ module GraphMsg {
 
           if (currentindex+1<Nv) {
                  forall i in 0..Nv-1 with (+reduce currentindex) {
+                 //unvisited vertices are put to the end of cmary
                      if ldepth[i]==-1 {
                        cmary[currentindex+1]=i;
                        currentindex+=1;  
@@ -348,10 +348,10 @@ module GraphMsg {
               ldepth=-1;
               proc smallVertex() :int {
                     var minindex:int;
-                    var tmpmindegree:int;
+                    var tmpmindegree:int=999999;
                     for i in 0..Nv-1 {
-                       if (lneighbour[i]<tmpmindegree) && (lneighbour[i]>0) {
-                          tmpmindegree=lneighbour[i];
+                       if (lneighbour[i]+lneighbourR[i]<tmpmindegree) {
+                          tmpmindegree=lneighbour[i]+lneighbourR[i];
                           minindex=i;
                        }
                     }
@@ -469,7 +469,7 @@ module GraphMsg {
                         var tmpa=0:int;
                         var tmpary=SetNextF.toArray();
                         forall i in 0..numCurF-1 {
-                             numary[i]=lneighbour[tmpary[i]];
+                             numary[i]=lneighbour[tmpary[i]]+lneighbourR[tmpary[i]];
                         }
                         var tmpiv:[0..numCurF-1] int;
                         try {
@@ -488,6 +488,7 @@ module GraphMsg {
               }//end while  
               if (currentindex+1<Nv) {
                  forall i in 0..Nv-1 with(+reduce currentindex) {
+                 //unvisited vertices are put to the end of cmary
                      if ldepth[i]==-1 {
                        cmary[currentindex+1]=i;
                        currentindex+=1;  
@@ -524,7 +525,7 @@ module GraphMsg {
                        }
                   }
                }
-               try  { combine_sort(lsrc, ldst,le_weight,lWeightedFlag, false);
+               try  { combine_sort(lsrcR, ldstR,le_weight,lWeightedFlag, false);
                   } catch {
                   try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -536,7 +537,7 @@ module GraphMsg {
 
 
   //sorting the vertices based on their degrees.
-  private proc degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,le_weight:[?D5] int,lneighbourR:[?D6] int,lWeightedFlag:bool) {
+  private proc part_degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,le_weight:[?D5] int,lneighbourR:[?D6] int,lWeightedFlag:bool) {
              var DegreeArray, VertexMapping: [D4] int;
              var tmpedge:[D1] int;
              var Nv=D4.size;
@@ -558,6 +559,7 @@ module GraphMsg {
              }
              forall i in 0..Nv-1 {
                  VertexMapping[tmpiv[i]]=i;
+                 // we assume the vertex ID is in 0..Nv-1
                  //given old vertex ID, map it to the new vertex ID
              }
 
@@ -600,7 +602,7 @@ module GraphMsg {
   private  proc degree_sort_u(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,
                       lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int,le_weight:[?D9] int,lWeightedFlag:bool) {
 
-             degree_sort(lsrc, ldst, lstart_i, lneighbour,le_weight,lneighbourR,lWeightedFlag);
+             part_degree_sort(lsrc, ldst, lstart_i, lneighbour,le_weight,lneighbourR,lWeightedFlag);
              coforall loc in Locales  {
                on loc {
                   forall i in lsrcR.localSubdomain(){
@@ -707,6 +709,11 @@ module GraphMsg {
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readline(line) {
+                      if line[0]=="%" {
+                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                "edge  error");
+                          continue;
+                      }
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -803,9 +810,9 @@ module GraphMsg {
 
       }//end of undirected
       else {
-        //if (DegreeSortFlag) {
-             //degree_sort(src, dst, start_i, neighbour,e_weight);
-        //}
+        if (DegreeSortFlag) {
+             part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
+        }
         if (RCMFlag) {
              RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
         }
@@ -975,21 +982,6 @@ module GraphMsg {
                           if srclocal.contains(curline) {
                                src[curline]=(a:int);
                                dst[curline]=(b:int);
-                               /*
-                               if a:int > VmaxID[here.id] {
-                                   VmaxID[here.id]=a:int;
-                               }
-                               if b:int > VmaxID[here.id] {
-                                   VmaxID[here.id]=b:int;
-                               }
-                               if a:int < VminID[here.id] {
-                                   VminID[here.id]=a:int;
-                               }
-                               if b:int < VminID[here.id] {
-                                   VminID[here.id]=b:int;
-                               }
-                               */
-                          
                           }
                       } else {
                           if srclocal.contains(curline) {
@@ -1023,20 +1015,6 @@ module GraphMsg {
 
       readLinebyLine(); 
       if (RemapVertexFlag) {
-          /*
-          var tmpmax:int =-1;
-          var tmpmin:int=9999999;
-          for i in VmaxID {
-               if i>tmpmax {
-                   tmpmax=i;
-               }
-          }
-          for i in VminID {
-               if i<tmpmin {
-                   tmpmin=i;
-               }
-          }
-          */
           vertex_remap(src,dst,Nv);
       }
       timer.stop();
@@ -1093,9 +1071,9 @@ module GraphMsg {
 
       }//end of undirected
       else {
-        //if (DegreeSortFlag) {
-             //degree_sort(src, dst, start_i, neighbour,e_weight);
-        //}
+        if (DegreeSortFlag) {
+             part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
+        }
         if (RCMFlag) {
              RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
         }
