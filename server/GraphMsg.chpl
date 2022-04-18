@@ -102,7 +102,7 @@ module GraphMsg {
   }// end of proc
 
   // map vertex ID from a large range to 0..Nv-1
-  private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, numV:int) throws {
+  private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, numV:int) :int throws {
 
           var numE=lsrc.size;
           var tmpe:[D1] int;
@@ -127,7 +127,7 @@ module GraphMsg {
                lsrc[i]=binSearchV(vertexAry,0,vertexAry.size-1,lsrc[i]);
                ldst[i]=binSearchV(vertexAry,0,vertexAry.size-1,ldst[i]);
           }
- 
+          return vertexAry.size; 
 
   }
       /* 
@@ -148,20 +148,27 @@ module GraphMsg {
                        totalDigits += (bitWidth + (bitsPerDigit-1)) / bitsPerDigit;
              }
              proc mergedArgsort(param halfDig):[D1] int throws {
+                    param numBuckets = 1 << bitsPerDigit; // these need to be const for comms/performance reasons
+                    param maskDigit = numBuckets-1;
                     var merged = makeDistArray(size, halfDig*2*uint(bitsPerDigit));
-                    forall (m,s,d ) in zip(merged, lsrc,ldst) {
+                    for jj in 0..size-1 {
+                    //for (m,s,d ) in zip(merged, lsrc,ldst) {
                           for i in 0..halfDig-1 {
                               // here we assume the vertex ID>=0
-                              m[i]=(s>>(halfDig-i-1)):uint(bitsPerDigit);
-                              m[i+halfDig]=(d>>(halfDig-i-1)):uint(bitsPerDigit);
+                              //m[i]=(  ((s:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              //m[i+halfDig]=( ((d:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              merged[jj][i]=(  ((lsrc[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              merged[jj][i+halfDig]=( ((ldst[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
                           }
+                              writeln("[src[",jj,"[,dst[",jj,"]=",lsrc[jj],",",ldst[jj]);
+                              writeln("merged[",jj,"]=",merged[jj]);
                     }
                     var tmpiv = argsortDefault(merged);
                     return tmpiv;
              }
 
              try {
-                      iv = mergedArgsort(4);
+                      iv = mergedArgsort(2);
 
              } catch  {
                   try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
@@ -542,6 +549,7 @@ module GraphMsg {
              var tmpedge:[D1] int;
              var Nv=D4.size;
              var iv:[D1] int;
+
              coforall loc in Locales  {
                 on loc {
                   forall i in lneighbour.localSubdomain(){
@@ -590,12 +598,11 @@ module GraphMsg {
              }
 
              try  { combine_sort(lsrc, ldst,le_weight,lWeightedFlag, true);
-                  } catch {
+             } catch {
                   try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
              }
              set_neighbour(lsrc,lstart_i,lneighbour);
-
   }
 
   //degree sort for an undirected graph.
@@ -618,6 +625,277 @@ module GraphMsg {
              }
              set_neighbour(lsrcR,lstart_iR,lneighbourR);
 
+  }
+
+  // directly read a graph from given file and build the SegGraph class in memory
+  proc segGraphPreProcessingMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+      var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(10);
+
+      var Ne:int =(NeS:int);
+      var Nv:int =(NvS:int);
+     
+      var NumCol=ColS:int;
+      var DirectedFlag:bool=false;
+      var WeightedFlag:bool=false;
+
+      var SkipLineNum:int=(SkipLineS:int);
+      var timer: Timer;
+      var RCMFlag:bool=false;
+      var DegreeSortFlag:bool=false;
+      var RemapVertexFlag:bool=false;
+      var WriteFlag:bool=false;
+      outMsg="read file ="+FileName;
+      smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.start();
+    
+      var NewNe,NewNv:int;
+
+
+      if (DirectedS:int)==1 {
+          DirectedFlag=true;
+      }
+      if NumCol>2 {
+           WeightedFlag=true;
+      }
+      if (RemapVertexS:int)==1 {
+          RemapVertexFlag=true;
+      }
+      if (DegreeSortS:int)==1 {
+          DegreeSortFlag=true;
+      }
+      if (RCMS:int)==1 {
+          RCMFlag=true;
+      }
+      if (RwriteS:int)==1 {
+          WriteFlag=true;
+      }
+      var src=makeDistArray(Ne,int);
+      var edgeD=src.domain;
+
+
+      var neighbour=makeDistArray(Nv,int);
+      var vertexD=neighbour.domain;
+
+
+      var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
+      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+
+      var linenum:int=0;
+      var repMsg: string;
+
+      var tmpmindegree:int =start_min_degree;
+
+      try {
+           var f = open(FileName, iomode.r);
+           // we check if the file can be opened correctly
+           f.close();
+      } catch {
+                  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "Open file error");
+      }
+
+      proc readLinebyLine() throws {
+           coforall loc in Locales  {
+              on loc {
+                  var f = open(FileName, iomode.r);
+                  var r = f.reader(kind=ionative);
+                  var line:string;
+                  var a,b,c:string;
+                  var curline=0:int;
+                  var srclocal=src.localSubdomain();
+                  var ewlocal=e_weight.localSubdomain();
+                  var mylinenum=SkipLineNum;
+
+                  while r.readline(line) {
+                      if line[0]=="%" || line[0]=="#" {
+                          continue;
+                      }
+                      if NumCol==2 {
+                           (a,b)=  line.splitMsgToTuple(2);
+                      } else {
+                           (a,b,c)=  line.splitMsgToTuple(3);
+                            //if ewlocal.contains(curline){
+                            //    e_weight[curline]=c:int;
+                            //}
+                      }
+                      if a==b {
+                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                "self cycle "+ a +"->"+b);
+                      }
+                      if mylinenum>0 {
+                          mylinenum-=1;
+                          continue;
+                      }
+                      if srclocal.contains(curline) {
+                               src[curline]=(a:int);
+                               dst[curline]=(b:int);
+                      }
+                      curline+=1;
+                      if curline>srclocal.high {
+                          break;
+                      }
+                  } 
+                  if (curline<=srclocal.high) {
+                     var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
+                     smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
+                  }
+                  r.close();
+                  f.close();
+               }// end on loc
+           }//end coforall
+      }//end readLinebyLine
+      
+      // readLinebyLine sets ups src, dst, start_i, neightbor.  e_weights will also be set if it is an edge weighted graph
+      // currently we ignore the weight.
+
+      readLinebyLine(); 
+      NewNv=vertex_remap(src,dst,Nv);
+      
+      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
+      } catch {
+             try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+      }
+
+      set_neighbour(src,start_i,neighbour);
+
+
+      if (!DirectedFlag) { //undirected graph
+          coforall loc in Locales  {
+              on loc {
+                  forall i in srcR.localSubdomain(){
+                        srcR[i]=dst[i];
+                        dstR[i]=src[i];
+                   }
+              }
+          }
+          try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
+          } catch {
+                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+          }
+          set_neighbour(srcR,start_iR,neighbourR);
+
+          if (DegreeSortFlag) {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+          }
+
+
+
+      }//end of undirected
+      else {
+          //part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
+      }
+
+      var cur=0;
+      for i in 0..Ne-1 {
+          if src[i]==dst[i] {
+              continue;
+              //self loop
+          }
+          if (cur==0) {
+             src[cur]=src[i];
+             dst[cur]=dst[i]; 
+             cur+=1;
+             continue;
+          }
+          if (src[cur-1]==src[i]) && (dst[cur-1]==dst[i]) {
+              //duplicated edges
+              continue;
+          } else {
+             src[cur]=src[i];
+             dst[cur]=dst[i]; 
+             cur+=1;
+          }
+      }
+      NewNe=cur;    
+ 
+      if (NewNe<Ne ) {
+      
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "removed "+(Ne-NewNe):string +" edges");
+
+
+          var mysrc=makeDistArray(NewNe,int);
+          var myedgeD=mysrc.domain;
+
+          var myneighbour=makeDistArray(NewNv,int);
+          var myvertexD=myneighbour.domain;
+
+          var mydst,mye_weight,mysrcR,mydstR, myiv: [myedgeD] int ;
+          var mystart_i,myneighbourR, mystart_iR,mydepth, myv_weight: [myvertexD] int;
+
+
+
+          forall i in 0..NewNe-1 {
+             mysrc[i]=src[i];
+             mydst[i]=dst[i];
+          }
+          try  { combine_sort(mysrc, mydst,mye_weight,WeightedFlag, false);
+          } catch {
+                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+          }
+
+          set_neighbour(mysrc,mystart_i,myneighbour);
+
+
+          if (!DirectedFlag) { //undirected graph
+              coforall loc in Locales  {
+                  on loc {
+                       forall i in mysrcR.localSubdomain(){
+                            mysrcR[i]=mydst[i];
+                            mydstR[i]=mysrc[i];
+                       }
+                  }
+              }
+              try  { combine_sort(mysrcR, mydstR,mye_weight,WeightedFlag, false);
+              } catch {
+                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          "combine sort error");
+              }
+              set_neighbour(mysrcR,mystart_iR,myneighbourR);
+              if (DegreeSortFlag) {
+                    degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,mye_weight,WeightedFlag);
+              }
+
+          }//end of undirected
+          else {
+              if (DegreeSortFlag) {
+                 part_degree_sort(mysrc, mydst, mystart_i, myneighbour,mye_weight,myneighbour,WeightedFlag);
+
+              }  
+          }  
+          if (WriteFlag) {
+                  var wf = open(FileName+".pr", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+                  for i in 0..NewNe-1 {
+                      mw.writeln("%-15n    %-15n".format(mysrc[i],mydst[i]));
+                  }
+                  //mw.writeln("Num Edge=%d  Num Vertex=%d".format(NewNe, NewNv));
+                  mw.close();
+                  wf.close();
+          }
+      } else {
+    
+
+
+          if (WriteFlag) {
+                  var wf = open(FileName+".pr", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+                  for i in 0..NewNe-1 {
+                      mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
+                  }
+                  //mw.writeln("Num Edge=%d  Num Vertex=%d".format(NewNe, NewNv));
+                  mw.close();
+                  wf.close();
+          }
+      }
+      repMsg =  "PreProcessing success"; 
+      timer.stop();
+      outMsg="PreProcessing  File takes " + timer.elapsed():string;
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
   // directly read a graph from given file and build the SegGraph class in memory
@@ -721,6 +999,10 @@ module GraphMsg {
                             //if ewlocal.contains(curline){
                             //    e_weight[curline]=c:int;
                             //}
+                      }
+                      if a==b {
+                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                "self cycle "+ a +"->"+b);
                       }
                       if (RemapVertexFlag) {
                           if srclocal.contains(curline) {
@@ -845,7 +1127,6 @@ module GraphMsg {
            sWeighted="1";
       } else {
            sWeighted="0";
-           
       }
       var graphEntryName = st.nextName();
       var graphSymEntry = new shared GraphSymEntry(graph);
@@ -977,6 +1258,10 @@ module GraphMsg {
                             //if ewlocal.contains(curline){
                             //    e_weight[curline]=c:int;
                             //}
+                      }
+                      if (a==b) {
+                             smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                    "self cycle "+ a +"->" +b);
                       }
                       if (RemapVertexFlag) {
                           if srclocal.contains(curline) {
@@ -1461,9 +1746,11 @@ module GraphMsg {
     proc registerMe() {
         use CommandMap;
         registerFunction("segmentedGraphFile", segGraphFileMsg);
+        registerFunction("segmentedGraphPreProcessing", segGraphPreProcessingMsg);
         registerFunction("segmentedGraphFileMtx", segGraphFileMtxMsg);
         registerFunction("segmentedRMAT", segrmatgenMsg);
         registerFunction("segmentedGraphQue", segGraphQueMsg);
+
     }
  }
 

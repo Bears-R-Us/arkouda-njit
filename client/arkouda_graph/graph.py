@@ -8,6 +8,7 @@ from arkouda.dtypes import int64 as akint
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
+           "graph_file_preprocessing",
            "graph_file_read_mtx",
            "graph_bfs",
            "graph_tri_cnt",
@@ -135,6 +136,49 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
     return create_pdarray(repMsg)
 
+
+@typechecked
+def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
+                    RemapFlag:int=1, DegreeSortFlag:int=1, RCMFlag:int=0, WriteFlag:int=1) -> None:
+    """
+        This function is used for creating a graph from a file.
+        The file should like this
+          1   5
+          13  9
+          7   6 
+        This file means the edges are <1,5>,<13,9>,<7,6>. If additional column is added, it is the weight
+        of each edge.
+        Ne : the total number of edges of the graph
+        Nv : the total number of vertices of the graph
+        Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
+              and Ncol=3 means there is weight for each edge (so weighted=1). 
+        directed: 0 means undirected graph and 1 means directed graph
+        skipline: 0 means how many lines should be skiped
+        filename: the file that has the edge list
+        RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
+        DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
+        RCMFlag: we will remap the vertex ID based on the RCM algorithm
+        WriteFlag: we will output the final edge list src->dst array as a new input file.
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphPreProcessing"
+    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    print(args)
+    repMsg = generic_msg(cmd=cmd, args=args)
 
 @typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
