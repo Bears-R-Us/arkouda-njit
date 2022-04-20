@@ -153,15 +153,15 @@ module GraphMsg {
                     var merged = makeDistArray(size, halfDig*2*uint(bitsPerDigit));
                     for jj in 0..size-1 {
                     //for (m,s,d ) in zip(merged, lsrc,ldst) {
-                          for i in 0..halfDig-1 {
+                          forall i in 0..halfDig-1 {
                               // here we assume the vertex ID>=0
                               //m[i]=(  ((s:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
                               //m[i+halfDig]=( ((d:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
                               merged[jj][i]=(  ((lsrc[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
                               merged[jj][i+halfDig]=( ((ldst[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
                           }
-                              writeln("[src[",jj,"[,dst[",jj,"]=",lsrc[jj],",",ldst[jj]);
-                              writeln("merged[",jj,"]=",merged[jj]);
+                          //    writeln("[src[",jj,"],dst[",jj,"]=",lsrc[jj],",",ldst[jj]);
+                          //    writeln("merged[",jj,"]=",merged[jj]);
                     }
                     var tmpiv = argsortDefault(merged);
                     return tmpiv;
@@ -627,6 +627,10 @@ module GraphMsg {
 
   }
 
+
+
+
+
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphPreProcessingMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
       var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(10);
@@ -646,6 +650,37 @@ module GraphMsg {
       var WriteFlag:bool=false;
       outMsg="read file ="+FileName;
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+      proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       //    return -1;
+                       //}
+                       if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
+                            return -1;
+                       }
+                       if (ary[l]==key){
+                            return l;
+                       }
+                       if (ary[h]==key){
+                            return h;
+                       }
+                       var m= (l+h)/2:int;
+                       if ((m==l) ) {
+                            return -1;
+                       }
+                       if (ary[m]==key ){
+                            return m;
+                       } else {
+                            if (ary[m]<key) {
+                              return binSearchE(ary,m+1,h,key);
+                            }
+                            else {
+                                    return binSearchE(ary,l,m-1,key);
+                            }
+                       }
+      }// end of proc
+
+
       timer.start();
     
       var NewNe,NewNv:int;
@@ -710,6 +745,10 @@ module GraphMsg {
                       if line[0]=="%" || line[0]=="#" {
                           continue;
                       }
+                      if mylinenum>0 {
+                          mylinenum-=1;
+                          continue;
+                      }
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -721,10 +760,6 @@ module GraphMsg {
                       if a==b {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "self cycle "+ a +"->"+b);
-                      }
-                      if mylinenum>0 {
-                          mylinenum-=1;
-                          continue;
                       }
                       if srclocal.contains(curline) {
                                src[curline]=(a:int);
@@ -759,8 +794,9 @@ module GraphMsg {
 
       set_neighbour(src,start_i,neighbour);
 
-
       if (!DirectedFlag) { //undirected graph
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "Handle undirected graph");
           coforall loc in Locales  {
               on loc {
                   forall i in srcR.localSubdomain(){
@@ -787,25 +823,45 @@ module GraphMsg {
           //part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
       }
 
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "Handle self loop and duplicated edges");
       var cur=0;
+      var tmpsrc=src;
+      var tmpdst=dst;
       for i in 0..Ne-1 {
           if src[i]==dst[i] {
               continue;
               //self loop
           }
           if (cur==0) {
-             src[cur]=src[i];
-             dst[cur]=dst[i]; 
+             tmpsrc[cur]=src[i];
+             tmpdst[cur]=dst[i]; 
              cur+=1;
              continue;
           }
-          if (src[cur-1]==src[i]) && (dst[cur-1]==dst[i]) {
+          if (tmpsrc[cur-1]==src[i]) && (tmpdst[cur-1]==dst[i]) {
               //duplicated edges
               continue;
           } else {
-             src[cur]=src[i];
-             dst[cur]=dst[i]; 
-             cur+=1;
+               if (src[i]>dst[i]) {
+
+                    var u=src[i]:int;
+                    var v=dst[i]:int;
+                    var lu=start_i[u]:int;
+                    var nu=neighbour[u]:int;
+                    var lv=start_i[v]:int;
+                    var nv=neighbour[v]:int;
+                    var DupE:int;
+                    DupE=binSearchE(dst,lv,lv+nv-1,u);
+                    if DupE!=-1 {
+                         //find v->u 
+                         continue;
+                    }
+               }
+
+               tmpsrc[cur]=src[i];
+               tmpdst[cur]=dst[i]; 
+               cur+=1;
           }
       }
       NewNe=cur;    
@@ -814,7 +870,6 @@ module GraphMsg {
       
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "removed "+(Ne-NewNe):string +" edges");
-
 
           var mysrc=makeDistArray(NewNe,int);
           var myedgeD=mysrc.domain;
@@ -828,8 +883,8 @@ module GraphMsg {
 
 
           forall i in 0..NewNe-1 {
-             mysrc[i]=src[i];
-             mydst[i]=dst[i];
+             mysrc[i]=tmpsrc[i];
+             mydst[i]=tmpdst[i];
           }
           try  { combine_sort(mysrc, mydst,mye_weight,WeightedFlag, false);
           } catch {
@@ -870,31 +925,29 @@ module GraphMsg {
                   var wf = open(FileName+".pr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15n    %-15n".format(mysrc[i],mydst[i]));
+                      mw.writeln("%-15i    %-15i".format(mysrc[i],mydst[i]));
                   }
-                  //mw.writeln("Num Edge=%d  Num Vertex=%d".format(NewNe, NewNv));
+                  mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
                   wf.close();
           }
       } else {
     
-
-
           if (WriteFlag) {
                   var wf = open(FileName+".pr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
+                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
-                  //mw.writeln("Num Edge=%d  Num Vertex=%d".format(NewNe, NewNv));
+                  mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
                   wf.close();
           }
       }
-      repMsg =  "PreProcessing success"; 
       timer.stop();
       outMsg="PreProcessing  File takes " + timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      repMsg =  "PreProcessing success"; 
       return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 

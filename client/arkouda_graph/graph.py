@@ -139,15 +139,10 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 @typechecked
 def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
-                    RemapFlag:int=1, DegreeSortFlag:int=1, RCMFlag:int=0, WriteFlag:int=1) -> None:
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1) -> None:
     """
-        This function is used for creating a graph from a file.
-        The file should like this
-          1   5
-          13  9
-          7   6 
-        This file means the edges are <1,5>,<13,9>,<7,6>. If additional column is added, it is the weight
-        of each edge.
+        This function is used for creating a preprocessed graph file (mapping vertices, 
+                remove duplicated edges and self loop ) from a given file.
         Ne : the total number of edges of the graph
         Nv : the total number of vertices of the graph
         Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
@@ -179,6 +174,7 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
             RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
     print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
+    return 
 
 @typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
