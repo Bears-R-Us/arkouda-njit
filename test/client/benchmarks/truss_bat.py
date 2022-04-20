@@ -7,7 +7,6 @@ import random
 import string
 import arkouda_njit as njit
 
-TYPES = ('int64', 'float64', 'bool', 'str')
 
 def time_ak_truss_graph():
     print("Graph Truss Analysis")
@@ -19,22 +18,22 @@ def time_ak_truss_graph():
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
     Test1=[ \
-            [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
-            [106762,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.gr"],\
-            [396160,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.gr"],\
-            [186936,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.gr"],\
-            [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr"],\
-            [237010,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.gr"],\
-            [51971,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.gr"],\
-            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"]\
+            [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
+            [53381,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
+            [198050,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.pr"],\
+            [93439,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.pr"],\
+            [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
+            [118489,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.pr"],\
+            [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
+            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.pr"]\
              ]
-    TestMtx=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
-            [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx"] ,\
-            [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx"] ,\
-            [24547,8192,2,0,HomeDir+"Adata/Delaunay/delaunay_n13/delaunay_n13.mtx"] ,\
-            [49122,16384,2,0,HomeDir+"Adata/Delaunay/delaunay_n14/delaunay_n14.mtx"] ,\
-            [98274,32768,2,0,HomeDir+"Adata/Delaunay/delaunay_n15/delaunay_n15.mtx"] ,\
-            [196575,65536,2,0,HomeDir+"Adata/Delaunay/delaunay_n16/delaunay_n16.mtx"] ]
+    TestMtx=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
+            [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx.pr"] ,\
+            [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx.pr"] ,\
+            [24547,8192,2,0,HomeDir+"Adata/Delaunay/delaunay_n13/delaunay_n13.mtx.pr"] ,\
+            [49122,16384,2,0,HomeDir+"Adata/Delaunay/delaunay_n14/delaunay_n14.mtx.pr"] ,\
+            [98274,32768,2,0,HomeDir+"Adata/Delaunay/delaunay_n15/delaunay_n15.mtx.pr"] ,\
+            [196575,65536,2,0,HomeDir+"Adata/Delaunay/delaunay_n16/delaunay_n16.mtx.pr"] ]
 
     start = time.time()
     for i in Test1:
@@ -44,7 +43,7 @@ def time_ak_truss_graph():
         Directed=i[3]
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),1,0,0,1)
+        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
         k=4
         truss=njit.graph_ktruss(Graph,k)
         print("After k=",k)
@@ -59,7 +58,7 @@ def time_ak_truss_graph():
         Directed=i[3]
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),1,0,0,1)
+        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
         k=4
         truss=njit.graph_ktruss(Graph,k)
         print("After k=",k)

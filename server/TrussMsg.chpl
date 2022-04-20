@@ -670,7 +670,7 @@ module TrussMsg {
               }
           }
 
-          outMsg="After KTruss Naive,Given k="+k:string+"All removed="+AllRemoved:string;
+          outMsg="After KTruss Naive,Given k="+k:string+" All removed="+AllRemoved:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After KTruss Naive,Total execution time="+(timer.elapsed()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -2234,7 +2234,7 @@ module TrussMsg {
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
                                                  var e3=findEdge(x,v);
                                                  if (e3!=-1) {
-                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -2505,7 +2505,7 @@ module TrussMsg {
                                                  //var e3=findEdge(x,v);
                                                  var e3=findEdge(x,u);
                                                  if (e3!=-1) {
-                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -3787,7 +3787,7 @@ module TrussMsg {
                                           if ((lEdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
                                                  var e3=findEdge(x,v);
                                                  if (e3!=-1) {
-                                                     if ((lEdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                     if ((lEdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -4015,7 +4015,7 @@ module TrussMsg {
                                           if ((lEdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
                                                  var e3=findEdge(x,v);
                                                  if (e3!=-1) {
-                                                     if ((lEdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                     if ((lEdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -6055,7 +6055,7 @@ module TrussMsg {
                                                  //var e3=findEdge(x,v);
                                                  var e3=findEdge(x,u);
                                                  if (e3!=-1) {
-                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
@@ -6339,7 +6339,7 @@ module TrussMsg {
                                                  //var e3=findEdge(x,v);
                                                  var e3=findEdge(x,u);
                                                  if (e3!=-1) {
-                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (e<e3)) {
+                                                     if ((EdgeDeleted[e3]==-1) && (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
                                                          TriCount[i].add(1);
                                                          TriCount[e].add(1);
                                                          TriCount[e3].add(1);
