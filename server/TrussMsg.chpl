@@ -86,6 +86,7 @@ module TrussMsg {
       EdgeDeleted=-1;
       lEdgeDeleted=-1;
 
+      //writeln("enter truss analysis");
 
       // this can be a general procedure to check if x is in given range so we put it outside
       proc xlocal(x :int, low:int, high:int):bool{
@@ -4553,14 +4554,18 @@ module TrussMsg {
                         dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
 
+
+
+
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var k=kvalue;
           var timer:Timer;
+          var k=kvalue;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4642,27 +4647,27 @@ module TrussMsg {
                             //we will delete all the edges connected with a vertex only has very small degree 
                             //(less than k-1)
                               EdgeDeleted[i]=k-1;
-                              //writeln("For k=",k," We have removed the edge ",i, "=<",v1,",",v2,">");
-                              //writeln("Degree of ",v1,"=",nei[v1]+neiR[v1]," Degree of ",v2, "=",nei[v2]+neiR[v2]);
-                              // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
-                              // we also remove the self-loop like <v,v>
                               if (v1==v2) {
                                    //writeln("My locale=",here.id," Find self-loop ",i,"=<",src[i],",",dst[i],">");
                               }
                         }
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
+                             if (DupE!=-1) {
+                                  EdgeDeleted[i]=k-1;
+                             }
                         }
                     }
               }        
           }// end of coforall loc        
 
-          //writeln("After Preprocessing");
+          //After Preprocessing
 
           timer.start();
-
-
-          {// use list intersection to count the number of triangles
+          ConFlag=true; 
+          while (ConFlag) {
+              ConFlag=false;
+              // first we calculate the number of triangles
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
@@ -4678,7 +4683,7 @@ module TrussMsg {
                          var beginTmp=start_i[u];
                          var endTmp=beginTmp+nei[u]-1;
                          if ((EdgeDeleted[i]==-1) && (u!=v) ){
-                            if ( (nei[u]>1)  ){
+                            if ( (nei[u]>0)  ){
                                forall x in dst[beginTmp..endTmp] with (ref uadj) {
                                    var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                    if (e!=-1){
@@ -4693,7 +4698,9 @@ module TrussMsg {
                             if ((neiR[u]>0) ){
                                forall x in dstR[beginTmp..endTmp] with (ref uadj) {
                                    var e=findEdge(x,u);
-                                   if (e!=-1){
+                                   if (e==-1){
+                                      //writeln("vertex ",x," and ",u," findEdge Error self-loop or no such edge");
+                                   } else {
                                       if ((EdgeDeleted[e] ==-1) && (x !=v)) {
                                              uadj.add(x);
                                       }
@@ -4703,12 +4710,15 @@ module TrussMsg {
                             
 
 
+
                             beginTmp=start_i[v];
                             endTmp=beginTmp+nei[v]-1;
                             if ( (nei[v]>0)  ){
                                forall x in dst[beginTmp..endTmp] with (ref vadj) {
                                    var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
-                                   if (e!=-1){
+                                   if (e==-1){
+                                      //writeln("vertex ",x," and ",u," findEdge Error self-loop or no such edge");
+                                   } else {
                                       if ((EdgeDeleted[e] ==-1) && (x !=u)) {
                                              vadj.add(x);
                                       }
@@ -4720,7 +4730,9 @@ module TrussMsg {
                             if ((neiR[v]>0) ){
                                forall x in dstR[beginTmp..endTmp] with (ref vadj) {
                                    var e=findEdge(x,v);
-                                   if (e!=-1){
+                                   if (e==-1){
+                                      //writeln("vertex ",x," and ",u," findEdge Error self-loop or no such edge");
+                                   } else {
                                       if ((EdgeDeleted[e] ==-1) && (x !=u)) {
                                              vadj.add(x);
                                       }
@@ -4731,6 +4743,7 @@ module TrussMsg {
                             if  (! uadj.isEmpty() ){
                                var Count=0:int;
                                forall s in uadj with ( + reduce Count) {
+                                   //var e=findEdge(s,v);
                                    if ( vadj.contains(s) ) {
                                       Count +=1;
                                    }
@@ -4741,16 +4754,8 @@ module TrussMsg {
                         }//end of if
                      }// end of forall. We get the number of triangles for each edge
                   }// end of  on loc 
+
               } // end of coforall loc in Locales 
-
-          }// end of triangle counting
-
-
-
-
-
-
-          while (ConFlag) {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
@@ -4759,6 +4764,291 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                                     EdgeDeleted[i] = k-1;
+                                     SetCurF.add(i);
+                               }
+                     }
+                  }// end of  on loc 
+              } // end of coforall loc in Locales 
+
+              if ( SetCurF.getSize()<=0){
+                      ConFlag=false;
+              } else {
+                      ConFlag=true;
+              }
+              SetCurF.clear();
+
+              if (ConFlag==false) {
+                  var tmpi=0;
+                  while tmpi<Ne  {
+                      if (EdgeDeleted[tmpi]==-1) {
+                          ConFlag=true;
+                          k=k+1;
+                          break;
+                      } else {
+                          tmpi+=1;
+                      }
+                  }
+              }
+              N2+=1;
+          }// end while 
+
+
+
+
+
+          timer.stop();
+
+
+
+          outMsg="After Truss Decomposition List Intersection, Max K ="+(k-1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Decomposition List Intersection,Total execution time="+(timer.elapsed()):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="After Truss Decomposition List Intersection, Total number of iterations ="+N2:string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+          var countName = st.nextName();
+          var countEntry = new shared SymEntry(EdgeDeleted);
+          st.addEntry(countName, countEntry);
+
+          var cntMsg =  'created ' + st.attrib(countName);
+          return cntMsg;
+      } // end of proc TrussDecompositionListIntersection
+
+
+      //For undirected graph, use triangle search method.
+      proc TrussDecomposition(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{
+
+
+
+
+
+          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var N2=0:int;
+          var ConFlag=true:bool;
+          EdgeDeleted=-1;
+          var RemovedEdge=0: int;
+          var timer:Timer;
+          var k=kvalue;
+
+
+          proc RemoveDuplicatedEdges( cur: int):int {
+               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
+               if (  (cur==0) ) {
+                    return -1;
+               }
+               var u=src[cur]:int;
+               var v=dst[cur]:int;
+               var lu=start_i[u]:int;
+               var nu=nei[u]:int;
+               var lv=start_i[v]:int;
+               var nv=nei[v]:int;
+               var DupE:int;
+               if ((nu<=1) || (cur<=lu)) {
+                   DupE=-1;
+               } else {
+                   
+                   DupE =binSearchE(dst,lu,cur-1,v);
+               }
+               if (DupE!=-1) {
+                    EdgeDeleted[cur]=k-1;
+               } else {
+                   if (u>v) {
+                      if (nv<=0) {
+                         DupE=-1;
+                      } else {
+                         DupE=binSearchE(dst,lv,lv+nv-1,u);
+                      }
+                      if (DupE!=-1) {
+                           EdgeDeleted[cur]=k-1;
+                      }
+                   }
+               }
+               return DupE;
+          }
+
+          // given vertces u and v, return the edge ID e=<u,v> 
+          proc exactEdge(u:int,v:int):int {
+              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+                    return -1;
+                    // we do not accept self-loop
+              }
+              var beginE=start_i[u];
+              var eid=-1:int;
+              if (nei[u]>0) {
+                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                       // search <u,v> in undirect edges 
+                  } 
+              } 
+              return eid;
+          }
+
+          // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
+          proc findEdge(u:int,v:int):int {
+              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+                    return -1;
+                    // we do not accept self-loop
+              }
+              var beginE=start_i[u];
+              var eid=-1:int;
+              if (nei[u]>0) {
+                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                       // search <u,v> in undirect edges 
+                  } 
+              } 
+              if (eid==-1) {// if b
+                 beginE=start_i[v];
+                 if (nei[v]>0) {
+                    if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
+                          eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
+                          // search <v,u> in undirect edges 
+                    } 
+                 }
+              }// end of if b
+              return eid;
+          }// end of  proc findEdge(u:int,v:int)
+
+
+          //First off, we remove the duplicated and cycle edges. This is common for all methods.
+          //coforall loc in Locales {
+          //    on loc {
+          {
+              {
+                    //var ld = src.localSubdomain();
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
+                    var startEdge = 0;
+                    var endEdge = Ne-1;
+                    forall i in startEdge..endEdge {
+                        var v1=src[i];
+                        var v2=dst[i];
+                        if (  (nei[v1]+neiR[v1])<k-1  || 
+                             ((nei[v2]+neiR[v2])<k-1) || (v1==v2)) {
+                            //we will delete all the edges connected with a vertex only has very small degree 
+                            //(less than k-1)
+                              EdgeDeleted[i]=k-1;
+                              // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
+                              // we also remove the self-loop like <v,v>
+                        }
+                        if (EdgeDeleted[i]==-1) {
+                             var DupE= RemoveDuplicatedEdges(i);
+                        }
+                    }
+              }        
+          }// end of coforall loc        
+          //After Preprocessing
+
+
+          timer.start();
+
+          {
+              // first we calculate the number of triangles
+              coforall loc in Locales with ( ref SetNextF) {
+                on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+
+
+                     forall i in startEdge..endEdge with(ref SetCurF){
+                         var sVadj = new set(int, parSafe = true);
+                         var u = src[i];
+                         var v = dst[i];
+                         var du=nei[u]+neiR[u];
+                         var dv=nei[v]+neiR[v];
+                         var sV:int;
+                         var lV:int;
+                         var ldV:int;
+
+                         if ( du<=dv ) {
+                             sV=u;
+                             lV=v;
+                             ldV=dv;
+                         } else {
+                             sV=v;
+                             lV=u;
+                             ldV=du;
+                         }
+                         // here we search from the vertex who has small degree
+                         {
+                             var beginTmp=start_i[sV];
+                             var endTmp=beginTmp+nei[sV]-1;
+                             if ((EdgeDeleted[i]==-1) && (sV!=lV) ){
+                                if ( (nei[sV]>0)  ){
+                                   forall x in dst[beginTmp..endTmp] with (ref sVadj) {
+                                       var  e=exactEdge(sV,x);//here we find the edge ID to check if it has been removed
+                                       if (e!=-1){
+                                          if ((EdgeDeleted[e] ==-1) && (x !=lV)) {
+                                                 sVadj.add(x);
+                                          }
+                                       }
+                                   }
+                                }
+                                beginTmp=start_iR[sV];
+                                endTmp=beginTmp+neiR[sV]-1;
+                                if ((neiR[sV]>0) ){
+                                   forall x in dstR[beginTmp..endTmp] with (ref sVadj) {
+                                       var e=exactEdge(x,sV);
+                                       if (e!=-1){
+                                          if ((EdgeDeleted[e] ==-1) && (x !=lV)) {
+                                                 sVadj.add(x);
+                                          }
+                                       }  
+                                   }
+                                }
+                            
+                                if  (! sVadj.isEmpty() ){
+                                   var Count=0:int;
+                                   forall s in sVadj with ( + reduce Count) {
+                                       var ds1=nei[s]+neiR[s];
+                                       var e:int;
+                                       if (ds1<=ldV) {
+                                          e=findEdge(s,lV);
+                                       } else {
+                                          e=findEdge(lV,s);
+                                       }
+                                       if ( (e!=-1)  && (e!=i) ) {
+                                           if ( EdgeDeleted[e]==-1) {
+                                              Count +=1;
+                                           }
+                                       }
+                                   }
+                                   TriCount[i].write(Count);
+                                   // here we get the number of triangles of edge ID i
+                                }// end of if 
+                            }//end of if EdgeDeleted[i]==-1
+                         }// end of triangle counting 
+
+
+                  }// end of forall. We get the number of triangles for each edge
+
+
+                }// end of  on loc 
+              } // end of coforall loc in Locales 
+
+          }
+
+
+          ConFlag=true;
+          while (ConFlag) {
+
+
+              // here we mark the edges whose number of triangles is less than k-2 as 1-k
+              coforall loc in Locales with (ref SetCurF ) {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     // each locale only handles the edges owned by itself
+                     forall i in startEdge..endEdge with(ref SetCurF){
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
                                }
@@ -4787,29 +5077,67 @@ module TrussMsg {
                                   var    v2=dst[i];
                                   var    dv1=nei[v1]+neiR[v1];
                                   var    dv2=nei[v2]+neiR[v2];
+                                  var    sv1:int;
+                                  var    lv2:int;
+                                  var    sdv1:int;
+                                  var    ldv2:int;
 
 
+
+
+
+                                  if (dv1<=dv2) {
+                                        sv1=v1;
+                                        lv2=v2;
+                                        sdv1=dv1;
+                                        ldv2=dv2;
+                                  } else {
+                                        sv1=v2;
+                                        lv2=v1;
+                                        sdv1=dv2;
+                                        ldv2=dv1;
+                                  }
                                   {
-                                      var nextStart=start_i[v1];
-                                      var nextEnd=start_i[v1]+nei[v1]-1;
-                                      if (nei[v1]>1) {
+                                      var nextStart=start_i[sv1];
+                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
+                                      if (nei[sv1]>0) {
                                          forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=src[j];//v3==v1
+                                             var v3=src[j];//v3==sv1
                                              var v4=dst[j]; 
                                              var tmpe:int;
-                                             if ( (EdgeDeleted[j]<=-1) && ( v2!=v4 ) ) {
-                                                       tmpe=findEdge(v2,v4);
+                                             if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       if (ldv2<=dv4) {
+                                                            tmpe=findEdge(lv2,v4);
+                                                       } else {
+                                                            tmpe=findEdge(v4,lv2);
+                                                       }
                                                        if (tmpe!=-1) {// there is such third edge
                                                          if ( EdgeDeleted[tmpe]<=-1 ) {
+
+
                                                                if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-                                                                      SetNextF.add((i,tmpe));
-                                                                      SetNextF.add((i,j));
+
+                                                                      TriCount[tmpe].sub(1);
+                                                                      if TriCount[tmpe].read() <k-2 {
+                                                                         SetNextF.add((i,tmpe));
+                                                                      }
+                                                                      TriCount[j].sub(1);
+                                                                      if TriCount[j].read() <k-2 {
+                                                                         SetNextF.add((i,j));
+                                                                      }
                                                                } else {
                                                                    if ((EdgeDeleted[j]==-1) && (i<tmpe)) {
-                                                                       SetNextF.add((i,j));
+                                                                      TriCount[j].sub(1);
+                                                                      if TriCount[j].read() <k-2 {
+                                                                         SetNextF.add((i,j));
+                                                                      }
                                                                    } else { 
                                                                        if ((EdgeDeleted[tmpe]==-1) &&(i<j)) {
-                                                                           SetNextF.add((i,tmpe));
+                                                                          TriCount[tmpe].sub(1);
+                                                                          if TriCount[tmpe].read() <k-2 {
+                                                                             SetNextF.add((i,tmpe));
+                                                                          }
                                                                        }   
                                                                    }   
                                                                }
@@ -4821,29 +5149,47 @@ module TrussMsg {
     
 
 
-                                      nextStart=start_iR[v1];
-                                      nextEnd=start_iR[v1]+neiR[v1]-1;
-                                      if (neiR[v1]>0) {
+                                      nextStart=start_iR[sv1];
+                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
+                                      if (neiR[sv1]>0) {
                                          forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=srcR[j];//v1==v3
+                                             var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
-                                             var e1=findEdge(v4,v3);// we need the edge ID in src instead of srcR
+                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
                                              var tmpe:int;
                                              if (e1!=-1) {
-                                                if ( (EdgeDeleted[e1]<=-1) && ( v2!=v4 ) ) {
+                                                if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
                                                        // we first check if  the two different vertices can be the third edge
-                                                       tmpe=findEdge(v2,v4);
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       if ldv2<dv4 {
+                                                          tmpe=findEdge(lv2,v4);
+                                                       } else {
+                                                          tmpe=findEdge(v4,lv2);
+                                                       }
                                                        if (tmpe!=-1) {// there is such third edge
                                                          if ( EdgeDeleted[tmpe]<=-1 ) {
                                                                if ( (EdgeDeleted[e1]==-1) && (EdgeDeleted[tmpe]==-1) ) {
-                                                                      SetNextF.add((i,tmpe));
-                                                                      SetNextF.add((i,e1));
+                                                                      TriCount[tmpe].sub(1);
+                                                                      if TriCount[tmpe].read() <k-2 {
+                                                                         SetNextF.add((i,tmpe));
+                                                                      }
+                                                                      TriCount[e1].sub(1);
+                                                                      if TriCount[e1].read() <k-2 {
+                                                                         SetNextF.add((i,e1));
+                                                                      }
+
                                                                } else {
                                                                    if ((EdgeDeleted[e1]==-1) && (i<tmpe)) {
-                                                                       SetNextF.add((i,e1));
+                                                                      TriCount[e1].sub(1);
+                                                                      if TriCount[e1].read() <k-2 {
+                                                                         SetNextF.add((i,e1));
+                                                                      }
                                                                    } else { 
                                                                        if ((EdgeDeleted[tmpe]==-1) &&(i<e1)) {
-                                                                           SetNextF.add((i,tmpe));
+                                                                          TriCount[tmpe].sub(1);
+                                                                          if TriCount[tmpe].read() <k-2 {
+                                                                             SetNextF.add((i,tmpe));
+                                                                          }
                                                                        } 
                                                                    } 
                                                                }
@@ -4853,12 +5199,12 @@ module TrussMsg {
                                              }
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
-                                  }
-
+                                  }// end of affected edge search 
 
 
 
                               } // end if (xlocal(i,startEdge,endEdge) 
+
                            } // end forall i in SetCurF with (ref SetNextF) 
                       } //end on loc 
                   } //end coforall loc in Locales 
@@ -4884,16 +5230,12 @@ module TrussMsg {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           var rset = new set((int,int), parSafe = true);
 
                            forall (i,j) in SetNextF  {
-                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
+                             if (xlocal(j,startEdge,endEdge)) {//each locale only check its owned edges
                                 if (EdgeDeleted[j]==-1) {
-                                    TriCount[j]-=1;
-                                    if (TriCount[j]<k-2) {
                                        EdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
-                                    }
                                 }
                              }
                            }
@@ -4903,6 +5245,12 @@ module TrussMsg {
                   tmpN2+=1;
                   SetNextF.clear();
               }// end of while 
+
+
+
+
+
+              //check if all edges have been removed
               var tmpi=0;
               while tmpi<Ne  {
                   if (EdgeDeleted[tmpi]==-1) {
@@ -4920,12 +5268,17 @@ module TrussMsg {
           timer.stop();
 
 
+          AllRemoved=true;
 
-          outMsg="After Truss Decomposition List Intersection, Max K ="+(k-1):string;
+
+
+
+
+          outMsg="After Truss Decomposition, Max K ="+(k-1):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After Truss Decomposition List Intersection,Total execution time="+(timer.elapsed()):string;
+          outMsg="After Truss Decomposition ,Total execution time="+(timer.elapsed()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After Truss Decomposition List Intersection, Total number of iterations ="+N2:string;
+          outMsg="After Truss Decomposition, Total number of iterations ="+N2:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
@@ -4934,12 +5287,14 @@ module TrussMsg {
 
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
-      } // end of proc TrussDecompositionListIntersection
+      } // end of proc TrussDecomposition
 
 
-      //For undirected graph, use triangle search method.
-      proc TrussDecomposition(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
+
+      //For undirected graph, using mix method.
+      proc TrussDecompositionMix(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{
+
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
           var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
@@ -4947,8 +5302,8 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var k=kvalue;
           var timer:Timer;
+          var k=kvalue;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -5013,9 +5368,6 @@ module TrussMsg {
               return eid;
           }// end of  proc findEdge(u:int,v:int)
 
-
-
-
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
@@ -5034,8 +5386,7 @@ module TrussMsg {
               return eid;
           }// end of  proc exatEdge(u:int,v:int)
 
-
-          //here we begin the first naive version
+          //here we first remove the duplicated and cycle edges
           //coforall loc in Locales {
           //    on loc {
           {
@@ -5054,7 +5405,6 @@ module TrussMsg {
                             //(less than k-1)
                               EdgeDeleted[i]=k-1;
                               //writeln("For k=",k," We have removed the edge ",i, "=<",v1,",",v2,">");
-                              //writeln("Degree of ",v1,"=",nei[v1]+neiR[v1]," Degree of ",v2, "=",nei[v2]+neiR[v2]);
                               // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
                               // we also remove the self-loop like <v,v>
                               if (v1==v2) {
@@ -5063,480 +5413,18 @@ module TrussMsg {
                         }
                         if (EdgeDeleted[i]==-1) {
                              var DupE= RemoveDuplicatedEdges(i);
-                             if (DupE!=-1) {
-                                  //writeln("My locale=",here.id, " Find duplicated edges ",i,"=<",src[i],",",dst[i],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
-                             }
                         }
                     }
               }        
           }// end of coforall loc        
-
-          timer.start();
-          //After Preprocessing
-
-          // first we calculate the number of triangles
-          {
-              //ConFlag=false;
-
-              coforall loc in Locales with ( ref SetNextF) {
-                on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-
-
-                     forall i in startEdge..endEdge with(ref SetCurF){
-
-
-
-                         TriCount[i]=0;
-                         var sVadj = new set(int, parSafe = true);
-                         var u = src[i];
-                         var v = dst[i];
-                         var du=nei[u]+neiR[u];
-                         var dv=nei[v]+neiR[v];
-                         var sV:int;
-                         var lV:int;
-                         var ldV:int;
-
-                         if ( du<=dv ) {
-                             sV=u;
-                             lV=v;
-                             ldV=dv;
-                         } else {
-                             sV=v;
-                             lV=u;
-                             ldV=du;
-                         }
-                         // here we search from the vertex who has a small degree
-                         {
-                             var beginTmp=start_i[sV];
-                             var endTmp=beginTmp+nei[sV]-1;
-                             if ((EdgeDeleted[i]==-1) && (sV!=lV) ){
-                                if ( (nei[sV]>0)  ){
-                                   forall x in dst[beginTmp..endTmp] with (ref sVadj) {
-                                       var  e=exactEdge(sV,x);//here we find the edge ID to check if it has been removed
-                                       if (e!=-1){
-                                          if ((EdgeDeleted[e] ==-1) && (x !=lV)) {
-                                                 sVadj.add(x);
-                                          }
-                                       }
-                                   }
-                                }
-                                beginTmp=start_iR[sV];
-                                endTmp=beginTmp+neiR[sV]-1;
-                                if ((neiR[sV]>0) ){
-                                   forall x in dstR[beginTmp..endTmp] with (ref sVadj) {
-                                       var e=exactEdge(x,sV);
-                                       if (e!=-1){
-                                          if ((EdgeDeleted[e] ==-1) && (x !=lV)) {
-                                                 sVadj.add(x);
-                                          }
-                                       }  
-                                   }
-                                }
-                            
-                                if  (! sVadj.isEmpty() ){
-                                   var Count=0:int;
-                                   forall s in sVadj with ( + reduce Count) {
-                                       var ds1=nei[s]+neiR[s];
-                                       var e:int;
-                                       if (ds1<ldV) {
-                                          e=findEdge(s,lV);
-                                       } else {
-                                          e=findEdge(lV,s);
-                                       }
-                                       if ( (e!=-1)  && (e!=i) ) {
-                                           if ( EdgeDeleted[e]==-1) {
-                                              Count +=1;
-                                           }
-                                       }
-                                   }
-                                   TriCount[i] = Count;
-                                   // here we get the number of triangles of edge ID i
-                                }// end of if 
-                            }//end of if EdgeDeleted[i]==-1
-                         }// end of triangle counting 
-
-
-
-
-
-
-
-
-                  }// end of forall. We get the number of triangles for each edge
-
-
-                }// end of  on loc 
-              } // end of coforall loc in Locales 
-
-          }
-
-
-
-          while (ConFlag) {
-              coforall loc in Locales with (ref SetCurF ) {
-                  on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-                     // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
-                                     EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
-                               }
-                     }
-                  }// end of  on loc 
-              } // end of coforall loc in Locales 
-
-
-
-
-              ConFlag=false;
-
-
-              // we try to remove as many edges as possible in the following code
-              var tmpN2=0:int;
-              while (SetCurF.getSize()>0) {
-                  //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
-                      on loc {
-                           var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
-                              if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
-
-
-
-                                  var    v1=src[i];
-                                  var    v2=dst[i];
-                                  var    dv1=nei[v1]+neiR[v1];
-                                  var    dv2=nei[v2]+neiR[v2];
-                                  var    sv1:int;
-                                  var    lv2:int;
-                                  var    sdv1:int;
-                                  var    ldv2:int;
-
-
-
-
-
-                                  if (dv1<=dv2) {
-                                        sv1=v1;
-                                        lv2=v2;
-                                        sdv1=dv1;
-                                        ldv2=dv2;
-                                  } else {
-                                        sv1=v2;
-                                        lv2=v1;
-                                        sdv1=dv2;
-                                        ldv2=dv1;
-                                  }
-                                  {
-                                      var nextStart=start_i[sv1];
-                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
-                                      if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=src[j];//v3==sv1
-                                             var v4=dst[j]; 
-                                             var tmpe:int;
-                                             if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
-                                                       var dv4=nei[v4]+neiR[v4];
-                                                       if (ldv2<dv4) {
-                                                            tmpe=findEdge(lv2,v4);
-                                                       } else {
-                                                            tmpe=findEdge(v4,lv2);
-                                                       }
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-                                                                      SetNextF.add((i,tmpe));
-                                                                      SetNextF.add((i,j));
-                                                               } else {
-                                                                   if ((EdgeDeleted[j]==-1) && (i<tmpe)) {
-                                                                       SetNextF.add((i,j));
-                                                                   } else { 
-                                                                       if ((EdgeDeleted[tmpe]==-1) &&(i<j)) {
-                                                                           SetNextF.add((i,tmpe));
-                                                                       }   
-                                                                   }   
-                                                               }
-                                                         }
-                                                       }
-                                             }// end of if EdgeDeleted[j]<=-1
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if nei[v1]>1
-    
-
-
-                                      nextStart=start_iR[sv1];
-                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
-                                      if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=srcR[j];//sv1==v3
-                                             var v4=dstR[j]; 
-                                             var e1=findEdge(v4,v3);// we need the edge ID in src instead of srcR
-                                             var tmpe:int;
-                                             if (e1!=-1) {
-                                                if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
-                                                       // we first check if  the two different vertices can be the third edge
-                                                       var dv4=nei[v4]+neiR[v4];
-                                                       if ldv2<dv4 {
-                                                          tmpe=findEdge(lv2,v4);
-                                                       } else {
-                                                          tmpe=findEdge(v4,lv2);
-                                                       }
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-                                                               if ( (EdgeDeleted[e1]==-1) && (EdgeDeleted[tmpe]==-1) ) {
-                                                                      SetNextF.add((i,tmpe));
-                                                                      SetNextF.add((i,e1));
-                                                               } else {
-                                                                   if ((EdgeDeleted[e1]==-1) && (i<tmpe)) {
-                                                                       SetNextF.add((i,e1));
-                                                                   } else { 
-                                                                       if ((EdgeDeleted[tmpe]==-1) &&(i<e1)) {
-                                                                           SetNextF.add((i,tmpe));
-                                                                       } 
-                                                                   } 
-                                                               }
-                                                         }
-                                                       }
-                                                }
-                                             }
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if
-                                  }// end of affected edge search 
-
-
-
-
-
-
-
-                              } // end if (xlocal(i,startEdge,endEdge) 
-                           } // end forall i in SetCurF with (ref SetNextF) 
-                      } //end on loc 
-                  } //end coforall loc in Locales 
-
-                  coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
-                         forall i in SetCurF {
-                              if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
-                                  EdgeDeleted[i]=k-1;
-                              }
-                           }
-                           
-                      }
-                  }
-
-                  SetCurF.clear();
-                  // then we try to remove the affected edges
-                  coforall loc in Locales  {
-                      on loc {
-                           var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
-                           var rset = new set((int,int), parSafe = true);
-
-                           forall (i,j) in SetNextF  {
-                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
-                                if (EdgeDeleted[j]==-1) {
-                                    TriCount[j]-=1;
-                                    if (TriCount[j]<k-2) {
-                                       EdgeDeleted[j]=1-k;
-                                       SetCurF.add(j);
-                                    }
-                                }
-                             }
-                           }
-                      } //end on loc 
-                  } //end coforall loc in Locales 
-                  RemovedEdge+=SetCurF.getSize();
-                  tmpN2+=1;
-                  SetNextF.clear();
-              }// end of while 
-              var tmpi=0;
-              while tmpi<Ne  {
-                  if (EdgeDeleted[tmpi]==-1) {
-                      ConFlag=true;
-                      k=k+1;
-                      break;
-                  } else {
-                      tmpi+=1;
-                  }
-              }
-              N2+=1;
-          }// end while 
-
-
-          timer.stop();
-
-
-
-          outMsg="After Truss Decomposition, Max K ="+(k-1):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After Truss Decomposition ,Total execution time="+(timer.elapsed()):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After Truss Decomposition, Total number of iterations ="+N2:string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-          var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
-          st.addEntry(countName, countEntry);
-
-          var cntMsg =  'created ' + st.attrib(countName);
-          return cntMsg;
-      } // end of proc TrussDecomposition
-
-
-
-      //For undirected graph, using mix method.
-      proc TrussDecompositionMix(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{
-
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
-          var N2=0:int;
-          var k=kvalue;
-          var ConFlag=true:bool;
-          EdgeDeleted=-1;
-          var RemovedEdge=0: int;
-          //var TriCount=makeDistArray(Ne,atomic int);
-          //TriCount=0;
-          var timer:Timer;
-
-
-          proc RemoveDuplicatedEdges( cur: int):int {
-               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
-               if ( (cur==0) ) {
-                    return -1;
-               }
-               var u=src[cur]:int;
-               var v=dst[cur]:int;
-               var lu=start_i[u]:int;
-               var nu=nei[u]:int;
-               var lv=start_i[v]:int;
-               var nv=nei[v]:int;
-               var DupE:int;
-               if ((nu<=1) || (cur<=lu)) {
-                   DupE=-1;
-               } else {
-                   
-                   DupE =binSearchE(dst,lu,cur-1,v);
-               }
-               if (DupE!=-1) {
-                    EdgeDeleted[cur]=k-1;
-               } else {
-                   if (u>v) {
-                      if (nv<=0) {
-                         DupE=-1;
-                      } else {
-                         DupE=binSearchE(dst,lv,lv+nv-1,u);
-                      }
-                      if (DupE!=-1) {
-                           EdgeDeleted[cur]=k-1;
-                      }
-                   }
-               }
-               return DupE;
-          }
-
-          // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
-          proc findEdge(u:int,v:int):int {
-              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
-                    return -1;
-                    // we do not accept self-loop
-              }
-              var beginE=start_i[u];
-              var eid=-1:int;
-              if (nei[u]>0) {
-                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                       // search <u,v> in undirect edges 
-                  } 
-              } 
-              if (eid==-1) {// if b
-                 beginE=start_i[v];
-                 if (nei[v]>0) {
-                    if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
-                          eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
-                          // search <v,u> in undirect edges 
-                    } 
-                 }
-              }// end of if b
-              return eid;
-          }// end of  proc findEdge(u:int,v:int)
-
-          // given vertces u and v, return the edge ID e=<u,v> 
-          proc exactEdge(u:int,v:int):int {
-              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
-                    return -1;
-                    // we do not accept self-loop
-              }
-              var beginE=start_i[u];
-              var eid=-1:int;
-              if (nei[u]>0) {
-                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                       // search <u,v> in undirect edges 
-                  } 
-              } 
-              return eid;
-          }// end of  proc exatEdge(u:int,v:int)
-
-          //here we begin the first naive version
-          //coforall loc in Locales {
-          //    on loc {
-          {
-              {
-                    //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
-                    var startEdge = 0;
-                    var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
-                        var v1=src[i];
-                        var v2=dst[i];
-                        if (  (nei[v1]+neiR[v1])<k-1  || 
-                             ((nei[v2]+neiR[v2])<k-1) || (v1==v2)) {
-                            //we will delete all the edges connected with a vertex only has very small degree 
-                            //(less than k-1)
-                              EdgeDeleted[i]=k-1;
-                              //writeln("For k=",k," We have removed the edge ",i, "=<",v1,",",v2,">");
-                              //writeln("Degree of ",v1,"=",nei[v1]+neiR[v1]," Degree of ",v2, "=",nei[v2]+neiR[v2]);
-                              // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
-                              // we also remove the self-loop like <v,v>
-                              if (v1==v2) {
-                                   //writeln("My locale=",here.id," Find self-loop ",i,"=<",src[i],",",dst[i],">");
-                              }
-                        }
-                        if (EdgeDeleted[i]==-1) {
-                             var DupE= RemoveDuplicatedEdges(i);
-                             if (DupE!=-1) {
-                                  //writeln("My locale=",here.id, " Find duplicated edges ",i,"=<",src[i],",",dst[i],"> and ", DupE,"=<", src[DupE],",",dst[DupE],">");
-                             }
-                        }
-                    }
-              }        
-          }// end of coforall loc        
-
-          //After Preprocessing
+          //writeln("After Preprocessing");
 
           timer.start();
           //we will try to remove all the unnecessary edges in the graph
+          //while (ConFlag) {
+          //we should not need the loop for non-naive version
           {
               // first we calculate the number of triangles
-
-
 
 
               coforall loc in Locales with ( ref SetNextF) {
@@ -5562,8 +5450,10 @@ module TrussMsg {
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
                                    forall x in dst[beginTmp..endTmp]  {
-                                       var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
-                                       if (e!=-1){
+                                       var  e=exactEdge(u,x);//here we find the edge ID to check if it has been removed
+                                       if (e==-1){
+                                          //writeln("vertex ",x," and ",u," findEdge Error self-loop or no such edge");
+                                       } else {
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
                                                  var e3=findEdge(x,v);
                                                  // wedge case i<e, u->v, u->x
@@ -5584,9 +5474,12 @@ module TrussMsg {
                              endTmp=beginTmp+nei[v]-1;
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
+                                   //forall x in dst[beginTmp..endTmp] with (ref vadj) {
                                    forall x in dst[beginTmp..endTmp] {
-                                       var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
-                                       if (e!=-1){
+                                       var  e=exactEdge(v,x);//here we find the edge ID to check if it has been removed
+                                       if (e==-1){
+                                          //writeln("vertex ",x," and ",v," findEdge Error self-loop or no such edge");
+                                       } else {
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
                                                  var e3=exactEdge(x,u);
                                                  if (e3!=-1) {
@@ -5611,19 +5504,11 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-
-
-
-
-
-
           }
+          //writeln("after Triangle coutning");
 
-
-
+          ConFlag=true;
           while (ConFlag) {
-              // first we calculate the number of triangles
-              ConFlag=false;
 
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
@@ -5640,6 +5525,12 @@ module TrussMsg {
                   }// end of  on loc 
               } // end of coforall loc in Locales 
 
+
+
+
+              ConFlag=false;
+
+
               // we try to remove as many edges as possible in the following code
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
@@ -5655,6 +5546,7 @@ module TrussMsg {
                                   var    v2=dst[i];
                                   var    dv1=nei[v1];
                                   var    dv2=nei[v2];
+
                                   {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
@@ -5678,6 +5570,7 @@ module TrussMsg {
                                                                          SetNextF.add((i,j));
                                                                       }
                                                                } else {
+                                                                   //if ((EdgeDeleted[j]==-1) && (i<tmpe)) {
                                                                    if ((EdgeDeleted[j]==-1) ) {
                                                                       TriCount[j].sub(1);
                                                                       if TriCount[j].read() <k-2 {
@@ -5688,6 +5581,7 @@ module TrussMsg {
                                                                           TriCount[tmpe].sub(1);
                                                                           if TriCount[tmpe].read()<k-2 {
                                                                              SetNextF.add((i,tmpe));
+                                                                             //EdgeDeleted[tmpe]=1-k;
                                                                           }
                                                                       }   
                                                                    }   
@@ -5743,7 +5637,7 @@ module TrussMsg {
                                       }// end of if
 
 
-                                      //now we consider the reverse edge  v4->v1, v4->v2
+                                      //check the case of x->v1 and x->v2
                                       nextStart=start_iR[v1];
                                       nextEnd=start_iR[v1]+neiR[v1]-1;
                                       var dv1=neiR[v1];
@@ -5840,6 +5734,7 @@ module TrussMsg {
 
               var tmpi=0;
               ConFlag=false;
+              //writeln("k=",k);
               while tmpi<Ne {
                  if (EdgeDeleted[tmpi]==-1) {
                      ConFlag=true;
@@ -5849,10 +5744,15 @@ module TrussMsg {
                   tmpi+=1;
               }
               N2+=1;
+
+
+
           }// end while 
 
 
           timer.stop();
+
+
 
 
           outMsg="After KTruss Decomposition Mix , Max K ="+(k-1):string;
@@ -6655,12 +6555,12 @@ module TrussMsg {
                 */
 
           } else if (kValue==-2) {
-                var PTriCount=makeDistArray(Ne,int);
+                //writeln("truss decomposition");
                 /*
+                var PTriCount=makeDistArray(Ne,int);
                 PTriCount=0;
                 repMsg=TrussDecompositionNaive(3,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,PTriCount);
-                */
                 PTriCount=0;
                 repMsg=TrussDecompositionListIntersection(3,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -6671,8 +6571,11 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PTriCount);
-
-                PTriCount=0;
+                */
+                var AtoTriCount=makeDistArray(Ne,atomic int);
+                forall i in AtoTriCount {
+                      i.write(0);
+                }
                 repMsg=TrussDecomposition(3,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6681,14 +6584,14 @@ module TrussMsg {
                       toSymEntry(ag.getNEIGHBOR_R(), int).a,
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a, PTriCount);
+                      toSymEntry(ag.getDST_R(), int).a, AtoTriCount);
 
                 /*
                 PTriCount=0;
                 repMsg=TrussNaiveDecompositionDirected(3,ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a);
-                */
 
-                var AtoTriCount=makeDistArray(Ne,atomic int);
+                */
+                //var AtoTriCount=makeDistArray(Ne,atomic int);
                 forall i in AtoTriCount {
                       i.write(0);
                 }
