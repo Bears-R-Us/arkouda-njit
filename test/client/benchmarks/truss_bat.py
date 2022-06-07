@@ -17,14 +17,13 @@ def time_ak_truss_graph():
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
-    Test1=[ \
-            [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
-            [53381,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
+    Test1=[ [53381,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
             [198050,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.pr"],\
             [93439,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.pr"],\
             [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
             [118489,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.pr"],\
             [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
+            [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.pr"]\
              ]
     TestMtx=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
@@ -36,7 +35,7 @@ def time_ak_truss_graph():
             [196575,65536,2,0,HomeDir+"Adata/Delaunay/delaunay_n16/delaunay_n16.mtx.pr"] ]
 
     start = time.time()
-    for i in Test1:
+    for i in TestMtx:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]
@@ -51,7 +50,7 @@ def time_ak_truss_graph():
         print("After max k")
         truss=njit.graph_ktruss(Graph,-2)
         print("After decomposition")
-    for i in TestMtx:
+    for i in Test1:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]
@@ -60,6 +59,9 @@ def time_ak_truss_graph():
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
         Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
         k=4
+        truss=njit.graph_ktruss(Graph,k)
+        print("After k=",k)
+        k=6
         truss=njit.graph_ktruss(Graph,k)
         print("After k=",k)
         truss=njit.graph_ktruss(Graph,-1)
@@ -98,3 +100,4 @@ if __name__ == "__main__":
     print("Truss batch test")
     ak.connect(args.hostname, args.port)
     time_ak_truss_graph()
+    ak.hutdown()
