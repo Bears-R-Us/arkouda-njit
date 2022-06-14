@@ -1,19 +1,67 @@
+# We define all k-truss functions as follows
+kTrussFuns=[ "kTrussNaiveListIntersection", "kTrussNaiveSetSearchSmall",\
+"kTrussNaiveSetSearchSmallSeq", "kTrussNaivePathMerge",\
+"kTrussNaiveMinSearch", "kTrussPathMerge",\
+"kTrussMinSearch", "kTrussMix"]
 
+# We define all max k-truss functions as follows
+MaxTrussFuns=[ "MaxTrussNaiveListIntersection", "MaxTrussNaiveSetSearchSmall",\
+"MaxTrussNaiveSetSearchSmallSeq", "MaxTrussNaivePathMerge",\
+"MaxTrussNaiveMinSearch", "MaxTrussPathMerge",\
+"MaxTrussMinSearch", "MaxTrussMix"]
+
+# We define all truss decomposition functions as follows
+TrussDecoFuns=[ "TrussDecoNaiveListIntersection", "TrussDecoNaiveSetSearchSmall",\
+"DecoTrussNaiveSetSearchSmallSeq", "TrussDecoNaivePathMerge",\
+"TrussDecoNaiveMinSearch", "TrussDecoPathMerge",\
+"TrussDecoMinSearch", "TrussDecoMix"]
+
+#We define three kinds of Parameters for our truss functions
 
 Parameters='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{'''
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):string throws{'''
 
 ParametersAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{'''
-
-
-MaxParametersAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{'''
 
+
+ParametersBool='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool{ '''
+
+ParametersBoolAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ '''
+
+ConditionEdgeRemove='''
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+'''
+
+ConditionEdgeRemoveAtomic='''
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
 '''
 
 
+#We define different triangle counting methods
+TriCntInit            ="                         TriCount[i]=0;"
+TriCntInitAtomic      ="                         TriCount[i].write(0);"
+
+TriCntAssignment      ="                               TriCount[i]=Count;"
+TriCntAssignmentAtomic="                               TriCount[i].write(Count);"
+emptyline='''
+
+'''
+InitialCount='''
+                PTriCount=0;
+'''
+InitialCountAtomic='''
+                forall i in AtoTriCount {
+                       i.write(0);
+                }
+'''
+#We defind the global variables for all truss functions. 10 spaces
 FunStartVariables='''
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -31,10 +79,9 @@ FunStartVariables='''
 
 '''
 
-
+#We define the common local functions for every truss function
 FunStartFuncs='''
           proc RemoveDuplicatedEdges( cur: int):int {
-               //if ( (cur<D3.low) || (cur >D3.high) || (cur==0) ) {
                if ( (cur==0) ) {
                     return -1;
                }
@@ -115,6 +162,8 @@ FunStartFuncs='''
           }// end of  proc findEdge(u:int,v:int)
 '''
 
+#We defind the preprocessing part that aids to remove duplicated/cycle edges 
+#   and edges that cannot support k-2 triangles 
 FunStartPreProcessing='''
           //coforall loc in Locales {
           //    on loc {
@@ -130,10 +179,12 @@ FunStartPreProcessing='''
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
                              ((nei[v2]+neiR[v2])<k-1) || (v1==v2)) {
-                            //we will delete all the edges connected with a vertex only has very small degree 
-                            //(less than k-1)
-                              EdgeDeleted[i]=k-1;
-                              RemovedEdge.add(1);
+                              //we will delete all the edges connected with a vertex only has very small degree 
+                              //(less than k-1)
+                              if (EdgeDeleted[i]==-1) {
+                                  EdgeDeleted[i]=k-1;
+                                  RemovedEdge.add(1);
+                              }
                               // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
                               // we also remove the self-loop like <v,v>
                               if (v1==v2) {
@@ -154,24 +205,26 @@ FunStartPreProcessing='''
           //writeln("After Preprocessing");
 '''
 
-FunStart=FunStartVariables+FunStartFuncs+FunStartPreProcessing
+
+#We defind the starting code of any truss function
+kTrussFunStart=FunStartVariables+FunStartFuncs+FunStartPreProcessing
+MaxTrussFunStart=FunStartVariables+FunStartFuncs
+TrussDecoFunStart=kTrussFunStart
+######Function start definetion finished
 
 
-MaxFunStartAtomic=FunStartVariables+FunStartFuncs
 
-
-
-
-
+#We defind the timer before the truss analysis
 TimerAndWhileStart='''
           timer.start();
           ConFlag=true;
           while (ConFlag) {
 '''
 
-
-ListIntersectionTriCount='''
-
+def GenListIntersectionTriCnt(InitAssign,AssignCnt):
+#AssignCnt is TriCount[i] = Count; or
+#TriCount[i].write(Count);
+	text1a='''
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
@@ -179,7 +232,8 @@ ListIntersectionTriCount='''
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                         TriCount[i]=0;
+'''
+	text1b='''
                          var uadj = new set(int, parSafe = true);
                          var vadj = new set(int, parSafe = true);
                          var u = src[i];
@@ -246,7 +300,9 @@ ListIntersectionTriCount='''
                                       Count +=1;
                                    }
                                }
-                               TriCount[i] = Count;
+'''
+#                               TriCount[i] = Count;
+	text2='''
                                // here we get the number of triangles of edge ID i
                             }// end of if 
                         }//end of if
@@ -255,6 +311,11 @@ ListIntersectionTriCount='''
 
               } // end of coforall loc in Locales 
 '''
+	ret=text1a+InitAssign+text1b+AssignCnt+emptyline+text2
+	return ret
+#We remove the edges based on their supports
+
+
 
 MarkDelEdges='''
               coforall loc in Locales with (ref SetCurF ) {
@@ -275,10 +336,34 @@ MarkDelEdges='''
 
 '''
 
-NaiveListIntersection=TimerAndWhileStart+ListIntersectionTriCount+MarkDelEdges
+MarkDelEdgesAtomic='''
+              coforall loc in Locales with (ref SetCurF ) {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     // each locale only handles the edges owned by itself
+                     forall i in startEdge..endEdge with(ref SetCurF){
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                                     EdgeDeleted[i] = k-1;
+                                     SetCurF.add(i);
+                               }
+                     }
+                  }// end of  on loc 
+              } // end of coforall loc in Locales 
+              RemovedEdge.add(SetCurF.getSize());
+
+'''
+ListIntersectionTriCount=GenListIntersectionTriCnt(TriCntInit,TriCntAssignment)
+ListIntersectionTriCountAtomic=GenListIntersectionTriCnt(TriCntInitAtomic,TriCntAssignmentAtomic)
+
+NaiveListIntersectionBodyCode=TimerAndWhileStart+ListIntersectionTriCount+MarkDelEdges
+NaiveListIntersectionBodyCodeAtomic=TimerAndWhileStart+ListIntersectionTriCountAtomic+MarkDelEdgesAtomic
 
 
-SetSearchSmallTriCount='''
+
+def GenSetSearchSmallTriCnt(InitAssign,AssignCnt):
+	text1a='''
               // first we calculate the number of triangles
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
@@ -287,7 +372,8 @@ SetSearchSmallTriCount='''
                      var endEdge = ld.high;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
-                         TriCount[i]=0;
+'''
+	text1b='''
                          var sVadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
@@ -349,25 +435,32 @@ SetSearchSmallTriCount='''
                                            }
                                        }
                                    }
-                                   TriCount[i] = Count;
+'''
+
+	text2='''
                                    // here we get the number of triangles of edge ID i
                                 }// end of if 
                             }//end of if EdgeDeleted[i]==-1
                          }// end of triangle counting 
 
 
-
-
-
                      }// end of forall. We get the number of triangles for each edge
                   }// end of  on loc 
               } // end of coforall loc in Locales 
 '''
+	ret=text1a+InitAssign+text1b+AssignCnt+emptyline+text2
+	return ret
 
-NaiveSetSearchSmall= TimerAndWhileStart+SetSearchSmallTriCount+MarkDelEdges
+SetSearchSmallTriCount=GenSetSearchSmallTriCnt(TriCntInit,TriCntAssignment)
+SetSearchSmallTriCountAtomic=GenSetSearchSmallTriCnt(TriCntInitAtomic,TriCntAssignmentAtomic)
 
 
-SetSearchSmallSeqTriCount='''
+NaiveSetSearchSmallBodyCode= TimerAndWhileStart+SetSearchSmallTriCount+MarkDelEdges
+NaiveSetSearchSmallBodyCodeAtomic= TimerAndWhileStart+SetSearchSmallTriCountAtomic+MarkDelEdgesAtomic
+
+
+def GenSetSearchSmallSeqTriCnt(InitAssign,AssignCnt):
+	text1a='''
               // first we calculate the number of triangles
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
@@ -376,7 +469,8 @@ SetSearchSmallSeqTriCount='''
                      var endEdge = ld.high;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
-                         TriCount[i]=0;
+'''
+	text1b='''
                          var sVadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
@@ -438,7 +532,9 @@ SetSearchSmallSeqTriCount='''
                                            }
                                        }
                                    }
-                                   TriCount[i] = Count;
+'''
+	text2='''
+
                                    // here we get the number of triangles of edge ID i
                                 }// end of if 
                             }//end of if EdgeDeleted[i]==-1
@@ -452,10 +548,17 @@ SetSearchSmallSeqTriCount='''
                   }// end of  on loc 
               } // end of coforall loc in Locales 
 '''
+	ret=text1a+InitAssign+text1b+AssignCnt+emptyline+text2
+	return ret
 
-NaiveSetSearchSmallSeq=TimerAndWhileStart+SetSearchSmallSeqTriCount+MarkDelEdges
+SetSearchSmallSeqTriCount=GenSetSearchSmallSeqTriCnt(TriCntInit,TriCntAssignment)
+SetSearchSmallSeqTriCountAtomic=GenSetSearchSmallSeqTriCnt(TriCntInitAtomic,TriCntAssignmentAtomic)
 
-PathMergeTriCount='''
+NaiveSetSearchSmallSeqBodyCode=TimerAndWhileStart+SetSearchSmallSeqTriCount+MarkDelEdges
+NaiveSetSearchSmallSeqBodyCodeAtomic=TimerAndWhileStart+SetSearchSmallSeqTriCountAtomic+MarkDelEdgesAtomic
+
+def GenPathMergeTriCount(InitAssign,AssignCnt):
+	text1a='''
               // first we calculate the number of triangles
               coforall loc in Locales {
                   on loc {
@@ -464,7 +567,9 @@ PathMergeTriCount='''
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
-                         TriCount[i]=0;
+'''
+	text1b='''
+                         var Count=0:int;
                          var u = src[i];
                          var v = dst[i];
                          var beginUf=start_i[u];
@@ -499,7 +604,8 @@ PathMergeTriCount='''
                              //if ( (dst[jv]!=u) && (dst[iu]!=v) && ( EdgeDeleted[iu] ==-1) && (EdgeDeleted[jv]==-1) ) {
                              {
                                  if dst[iu]==dst[jv] {
-                                     TriCount[i]+=1;
+                                     //TriCount[i]+=1;
+                                     Count+=1;
                                      iu+=1;
                                      jv+=1;
                                  } else {
@@ -528,7 +634,8 @@ PathMergeTriCount='''
                              //if ( (dstR[jv]!=u) && (dst[iu]!=v) && ( EdgeDeleted[iu] ==-1) && (EdgeDeleted[ev]==-1) ) {
                              {
                                  if dst[iu]==dstR[jv] {
-                                     TriCount[i]+=1;
+                                     //TriCount[i]+=1;
+                                     Count+=1;
                                      iu+=1;
                                      jv+=1;
                                  } else {
@@ -559,7 +666,8 @@ PathMergeTriCount='''
                              //if ( (dst[jv]!=u) && (dstR[iu]!=v) && ( EdgeDeleted[eu] ==-1) && (EdgeDeleted[jv]==-1) ) {
                              {
                                  if dstR[iu]==dst[jv] {
-                                     TriCount[i]+=1;
+                                     //TriCount[i]+=1;
+                                     Count+=1;
                                      iu+=1;
                                      jv+=1;
                                  } else {
@@ -590,7 +698,8 @@ PathMergeTriCount='''
                              //if ( (dstR[jv]!=u) && (dstR[iu]!=v) && ( EdgeDeleted[eu] ==-1) && (EdgeDeleted[ev]==-1) ) {
                              {
                                  if dstR[iu]==dstR[jv] {
-                                     TriCount[i]+=1;
+                                     //TriCount[i]+=1;
+                                     Count+=1;
                                      iu+=1;
                                      jv+=1;
                                  } else {
@@ -602,18 +711,29 @@ PathMergeTriCount='''
                                  }
                              } 
                            }
-
                         }//end of if
+'''
+
+	text2='''
                      }// end of forall. We get the number of triangles for each edge
                   }// end of  on loc 
 
               } // end of coforall loc in Locales 
 '''
 
+	ret=text1a+InitAssign+text1b+AssignCnt+emptyline+text2
+	return ret
 
-NaivePathMerge=TimerAndWhileStart+PathMergeTriCount+MarkDelEdges
 
-MinSearchTriCount='''
+
+PathMergeTriCount=GenPathMergeTriCount(TriCntInit,TriCntAssignment)
+PathMergeTriCountAtomic=GenPathMergeTriCount(TriCntInitAtomic,TriCntAssignmentAtomic)
+
+NaivePathMergeBodyCode=TimerAndWhileStart+PathMergeTriCount+MarkDelEdges
+NaivePathMergeBodyCodeAtomic=TimerAndWhileStart+PathMergeTriCountAtomic+MarkDelEdgesAtomic
+
+def GenMinSearchTriCnt(InitAssign,AssignCnt):
+	text1a='''
               // first we calculate the number of triangles using mininum search  method.
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
@@ -622,117 +742,8 @@ MinSearchTriCount='''
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                           var Count:int;
-                           Count=0;
-                           if (EdgeDeleted[i]==-1) {
-                                  TriCount[i]=0;
-                                  var    v1=src[i];
-                                  var    v2=dst[i];
-                                  var    dv1=nei[v1]+neiR[v1];
-                                  var    dv2=nei[v2]+neiR[v2];
-                                  var    sv1:int;
-                                  var    lv2:int;
-                                  var    sdv1:int;
-                                  var    ldv2:int;
-
-
-
-
-
-                                  if (dv1<=dv2) {
-                                        sv1=v1;
-                                        lv2=v2;
-                                        sdv1=dv1;
-                                        ldv2=dv2;
-                                  } else {
-                                        sv1=v2;
-                                        lv2=v1;
-                                        sdv1=dv2;
-                                        ldv2=dv1;
-                                  }
-                                  {
-                                      var nextStart=start_i[sv1];
-                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
-                                      if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (+ reduce Count){
-                                         //forall j in nextStart..nextEnd with (ref SetNextF){
-                                         //for j in nextStart..nextEnd {
-                                             var v3=src[j];//v3==sv1
-                                             var v4=dst[j]; 
-                                             var tmpe:int;
-                                             if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
-                                                       var dv4=nei[v4]+neiR[v4];
-                                                       if (ldv2<dv4) {
-                                                            tmpe=findEdge(lv2,v4);
-                                                       } else {
-                                                            tmpe=findEdge(v4,lv2);
-                                                       }
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]==-1 ) {
-                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-                                                                      //TriCount[i]+=1;
-                                                                      Count+=1;
-                                                               } 
-                                                         }
-                                                       }
-                                             }// end of if EdgeDeleted[j]<=-1
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if nei[v1]>1
-    
-
-
-                                      nextStart=start_iR[sv1];
-                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
-                                      if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (+ reduce Count ){
-                                         //forall j in nextStart..nextEnd with (ref SetNextF){
-                                         //forall j in nextStart..nextEnd {
-                                             var v3=srcR[j];//sv1==v3
-                                             var v4=dstR[j]; 
-                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
-                                             var tmpe:int;
-                                             if (e1!=-1) {
-                                                if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
-                                                       // we first check if  the two different vertices can be the third edge
-                                                       var dv4=nei[v4]+neiR[v4];
-                                                       if ldv2<dv4 {
-                                                          tmpe=findEdge(lv2,v4);
-                                                       } else {
-                                                          tmpe=findEdge(v4,lv2);
-                                                       }
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-                                                               if ( (EdgeDeleted[e1]==-1) && (EdgeDeleted[tmpe]==-1) ) {
-                                                                      //TriCount[i]+=1;
-                                                                      Count+=1;
-                                                               } 
-                                                         }
-                                                       }
-                                                }
-                                             }
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if
-                                  }// end of triangle counting
-
-                           }// i is an undeleted edge
-                           TriCount[i]=Count;
-
-                     }// end of forall. We get the number of triangles for each edge
-                  }// end of  on loc 
-              } // end of coforall loc in Locales 
 '''
-
-
-
-'''
-              // first we calculate the number of triangles using mininum search  method.
-              coforall loc in Locales with (ref SetCurF ) {
-                  on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-                     // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+	text1b='''
                            var Count:int;
                            Count=0;
                            if (EdgeDeleted[i]==-1) {
@@ -780,7 +791,6 @@ MinSearchTriCount='''
                                                        if (tmpe!=-1) {// there is such third edge
                                                          if ( EdgeDeleted[tmpe]==-1 ) {
                                                                if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-                                                                      //TriCount[i]+=1;
                                                                       Count+=1;
                                                                } 
                                                          }
@@ -825,27 +835,39 @@ MinSearchTriCount='''
                                   }// end of triangle counting
 
                            }// i is an undeleted edge
-                           TriCount[i].write(Count);
+'''
+	emptyline='''
 
+'''   
+	assign="                        "+AssignCnt
+#                        TriCount[i]=Count;
+
+	text2='''
                      }// end of forall. We get the number of triangles for each edge
                   }// end of  on loc 
               } // end of coforall loc in Locales 
 '''
+	ret=text1a+InitAssign+text1b+AssignCnt+emptyline+text2
+	return ret
 
 
+MinSearchTriCount=GenMinSearchTriCnt(TriCntInit,TriCntAssignment)
+MinSearchTriCountAtomic=GenMinSearchTriCnt(TriCntInitAtomic,TriCntAssignmentAtomic)
+
+NaiveMinSearchBodyCode=TimerAndWhileStart+MinSearchTriCount+MarkDelEdges
+NaiveMinSearchBodyCodeAtomic=TimerAndWhileStart+MinSearchTriCountAtomic+MarkDelEdgesAtomic
 
 
-
-NaiveMinSearch=TimerAndWhileStart+MinSearchTriCount+MarkDelEdges
-
-
+#We define new start that need to calculate the total number of triangles first
 TimerAndNoWhileStart='''
           timer.start();
           //while (ConFlag) {
           {
 '''
           
-MinSearchTriCountAtomic='''
+
+#MinSearchTriCountAtom=
+'''
               // first we calculate the number of triangles using mininum search  method.
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
@@ -953,7 +975,48 @@ MinSearchTriCountAtomic='''
 
 '''
 
-WhileAndAffectEdgeRemoveStart='''
+def GenWhileAndAffectEdgeRemoveStart(Condition):
+	text1='''
+          }
+          //writeln("after Triangle coutning");
+
+          ConFlag=true;
+          while (ConFlag) {
+
+
+              // here we mark the edges whose number of triangles is less than k-2 as 1-k
+              coforall loc in Locales with (ref SetCurF ) {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     // each locale only handles the edges owned by itself
+                     forall i in startEdge..endEdge with(ref SetCurF){
+'''
+	comm='''
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+'''
+	text2='''
+                                     EdgeDeleted[i] = 1-k;
+                                     SetCurF.add(i);
+                               }
+                     }
+                  }// end of  on loc 
+              } // end of coforall loc in Locales 
+
+
+
+
+              ConFlag=false;
+
+
+              // we try to remove as many edges as possible in the following code
+              var tmpN2=0:int;
+'''
+	ret=text1+Condition+text2
+	return ret
+
+'''
           }
           //writeln("after Triangle coutning");
 
@@ -986,6 +1049,9 @@ WhileAndAffectEdgeRemoveStart='''
               // we try to remove as many edges as possible in the following code
               var tmpN2=0:int;
 '''
+
+WhileAndAffectEdgeRemoveStart=GenWhileAndAffectEdgeRemoveStart(ConditionEdgeRemove)
+WhileAndAffectEdgeRemoveStartAtomic=GenWhileAndAffectEdgeRemoveStart(ConditionEdgeRemoveAtomic)
 
 MinSearchAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
@@ -1152,7 +1218,252 @@ MinSearchAffectedEdgeRemoval='''
 
 '''
 
-TrussAtomic=TimerAndNoWhileStart+MinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStart+MinSearchAffectedEdgeRemoval
+
+PathMergeAffectedEdgeRemoval='''
+              while (SetCurF.getSize()>0) {
+                  //first we build the edge set that will be affected by the removed edges in SetCurF
+                  coforall loc in Locales with ( ref SetNextF) {
+                      on loc {
+                           var ld = src.localSubdomain();
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
+                           forall i in SetCurF with (ref SetNextF) {
+
+
+
+                              var u = src[i];
+                              var v = dst[i];
+                              var beginUf=start_i[u];
+                              var endUf=beginUf+nei[u]-1;
+ 
+                              var beginUb=start_iR[u];
+                              var endUb=beginUb+neiR[u]-1;
+
+                              var beginVf=start_i[v];
+                              var endVf=beginVf+nei[v]-1;
+
+                              var beginVb=start_iR[v];
+                              var endVb=beginVb+neiR[v]-1;
+
+                              var iu:int;
+                              var jv:int;
+                              var eu:int;
+                              var ev:int;
+                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
+                                iu=beginUf;
+                                jv=beginVf;
+                                //writeln("Enter while 1 in iteration ",N2 , " and edge=", i);
+                                while ( (iu <=endUf) &&   (jv<=endVf))  {
+                                  if  ( (EdgeDeleted[iu] >0 ) || (dst[iu]==v) ) {
+                                        iu+=1;
+                                        continue;
+                                  }
+                                  if ( (EdgeDeleted[jv] >0 ) || (dst[jv]==u) ) {
+                                       jv+=1;
+                                       continue;
+                                  }
+                                  //if ( (dst[jv]!=u) && (dst[iu]!=v) && ( EdgeDeleted[iu] ==-1) && (EdgeDeleted[jv]==-1) ) {
+                                  {
+                                      if dst[iu]==dst[jv] {
+                                          if (EdgeDeleted[iu]==-1) && (EdgeDeleted[jv]==-1) {
+                                              TriCount[iu].sub(1);
+                                              TriCount[jv].sub(1);
+                                          } else {
+                                              if (EdgeDeleted[jv]==-1) && (i<iu) {
+                                                  TriCount[jv].sub(1);
+                                              }else {
+                                                  if (EdgeDeleted[iu]==-1) && (i<jv) {
+                                                      TriCount[iu].sub(1);
+                                                  }
+                                              }
+
+                                          }
+                                          iu+=1;
+                                          jv+=1;
+                                      } else {
+                                         if dst[iu]<dst[jv] {
+                                            iu+=1;
+                                         } else {
+                                            jv+=1;
+                                         }
+                                      }
+                                  } 
+                                }  
+
+                                iu=beginUf;
+                                jv=beginVb;
+                                //writeln("Enter while 2 in iteration ",N2 , " and edge=", i);
+                                while ( (iu <=endUf) &&   (jv<=endVb))  {
+                                  if  ( (EdgeDeleted[iu] !=-1) || (dst[iu]==v) ) {
+                                       iu+=1;
+                                       continue;
+                                  }
+                                  ev=findEdge(dstR[jv],v);
+                                  if ( (EdgeDeleted[ev]!=-1) || (dstR[jv]==u) ) {
+                                       jv+=1;
+                                       continue;
+                                  }
+                                  //if ( (dstR[jv]!=u) && (dst[iu]!=v) && ( EdgeDeleted[iu] ==-1) && (EdgeDeleted[ev]==-1) ) {
+                                  {
+                                      if dst[iu]==dstR[jv] {
+                                          if (EdgeDeleted[iu]==-1) && (EdgeDeleted[ev]==-1) {
+                                              TriCount[iu].sub(1);
+                                              TriCount[ev].sub(1);
+                                          } else {
+                                              if (EdgeDeleted[ev]==-1) && (i<iu) {
+                                                  TriCount[ev].sub(1);
+                                              }else {
+                                                  if (EdgeDeleted[iu]==-1) && (i<ev) {
+                                                      TriCount[iu].sub(1);
+                                                  }
+                                              }
+
+                                          }
+                                          iu+=1;
+                                          jv+=1;
+                                      } else {
+                                         if dst[iu]<dstR[jv] {
+                                            iu+=1;
+                                         } else {
+                                            jv+=1;
+                                         }
+                                      }
+                                  } 
+                                }
+
+
+
+                                iu=beginUb;
+                                jv=beginVf;
+                                //writeln("Enter while 3 in iteration ",N2 , " and edge=", i);
+                                while ( (iu <=endUb) &&   (jv<=endVf))  {
+                                  eu=findEdge(dstR[iu],u);
+                                  if  ( (EdgeDeleted[eu] !=-1) || (dstR[iu]==v) ) {
+                                       iu+=1;
+                                       continue;
+                                  }
+                                  if ( (EdgeDeleted[jv]!=-1) || (dst[jv]==u) ) {
+                                       jv+=1;
+                                       continue;
+                                  }
+                                  {
+                                      if dstR[iu]==dst[jv] {
+                                          if (EdgeDeleted[eu]==-1) && (EdgeDeleted[jv]==-1) {
+                                              TriCount[eu].sub(1);
+                                              TriCount[jv].sub(1);
+                                          } else {
+                                              if (EdgeDeleted[jv]==-1) && (i<eu) {
+                                                  TriCount[jv].sub(1);
+                                              }else {
+                                                  if (EdgeDeleted[eu]==-1) && (i<jv) {
+                                                      TriCount[eu].sub(1);
+                                                  }
+                                              }
+                                          }
+                                      } else {
+                                         if dstR[iu]<dst[jv] {
+                                            iu+=1;
+                                         } else {
+                                            jv+=1;
+                                         }
+                                      }
+                                  } 
+                                }
+
+
+                                iu=beginUb;
+                                jv=beginVb;
+                                //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
+                                while ( (iu <=endUb) &&   (jv<=endVb))  {
+                                  eu=findEdge(dstR[iu],u);
+                                  ev=findEdge(dstR[jv],v);
+                                  if  ( (EdgeDeleted[eu] !=-1) || (dstR[iu]==v) ) {
+                                       iu+=1;
+                                       continue;
+                                  }
+                                  if ( (EdgeDeleted[ev]!=-1) || (dstR[jv]==u) ) {
+                                       jv+=1;
+                                       continue;
+                                  }
+                                  //if ( (dstR[jv]!=u) && (dstR[iu]!=v) && ( EdgeDeleted[eu] ==-1) && (EdgeDeleted[ev]==-1) ) {
+                                  {
+                                      if dstR[iu]==dstR[jv] {
+                                          if (EdgeDeleted[eu]==-1) && (EdgeDeleted[ev]==-1) {
+                                              TriCount[eu].sub(1);
+                                              TriCount[ev].sub(1);
+                                          } else {
+                                              if (EdgeDeleted[ev]==-1) && (i<eu) {
+                                                  TriCount[ev].sub(1);
+                                              }else {
+                                                  if (EdgeDeleted[eu]==-1) && (i<ev) {
+                                                      TriCount[eu].sub(1);
+                                                  }
+                                              }
+                                          }
+                                          iu+=1;
+                                          jv+=1;
+                                      } else {
+                                         if dstR[iu]<dstR[jv] {
+                                            iu+=1;
+                                         } else {
+                                            jv+=1;
+                                         }
+                                      }
+                                  } 
+                                }
+
+                             }//end of if
+
+
+                           } // end forall i in SetCurF with (ref SetNextF) 
+
+
+                      } //end on loc 
+                  } //end coforall loc in Locales 
+
+
+                  coforall loc in Locales with (ref SetCurF ) {
+                      on loc {
+                         var ld = src.localSubdomain();
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
+                         forall i in SetCurF {
+                              if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
+                                  EdgeDeleted[i]=k-1;
+                              }
+                           }
+                           
+                      }
+                  }
+
+                  RemovedEdge.add(SetCurF.getSize());
+                  //writeln("In ", tmpN2, " iteraton,", SetCurF.getSize(), " edges have been removed");
+                  SetCurF.clear();
+
+                  // then we try to remove the affected edges
+                  coforall loc in Locales with (ref SetCurF ) {
+                      on loc {
+                         var ld = src.localSubdomain();
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
+                         // each locale only handles the edges owned by itself
+                         forall i in startEdge..endEdge with(ref SetCurF){
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                                     EdgeDeleted[i] = 1-k;
+                                     SetCurF.add(i);
+                               }
+                         }
+                      }// end of  on loc
+                  } // end of coforall loc in Locales
+
+                  tmpN2+=1;
+                  SetNextF.clear();
+              }// end of while 
+
+'''
+
+PathMergeBodyCode=TimerAndNoWhileStart+PathMergeTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+PathMergeAffectedEdgeRemoval
+
 
 
 
@@ -1232,34 +1543,6 @@ MixMinSearchTriCountAtomic='''
 
 '''
 
-'''
-          ConFlag=true;
-          while (ConFlag) {
-
-              coforall loc in Locales with (ref SetCurF ) {
-                  on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-                     // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-                                     EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
-                               }
-                     }
-                  }// end of  on loc 
-              } // end of coforall loc in Locales 
-
-
-
-
-              ConFlag=false;
-
-
-              // we try to remove as many edges as possible in the following code
-              var tmpN2=0:int;
-'''
 MixMinSearchAffectedEdgeRemoval='''
 
               while (SetCurF.getSize()>0) {
@@ -1427,10 +1710,16 @@ MixMinSearchAffectedEdgeRemoval='''
 
 '''
 
+TrussAtomicBodyCode=TimerAndNoWhileStart+MinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+MinSearchAffectedEdgeRemoval
 
-TrussMixAtomic=TimerAndNoWhileStart+MixMinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStart+MixMinSearchAffectedEdgeRemoval
+TrussMixAtomicBodyCode=TimerAndNoWhileStart+MixMinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+MixMinSearchAffectedEdgeRemoval
 
-#TrussAtomic=TimerAndNoWhileStart+MinSearchTriCount+WhileAndAffectEdgeRemoveStart+MinSearchAffectedEdgeRemoval
+
+
+
+
+
+
 MaxTrussStart='''
           timer.start();
 
@@ -1465,436 +1754,17 @@ MaxTrussStart='''
               var tmpN2=0:int;
 '''
 
-'''
-              while (SetCurF.getSize()>0) {
-                  //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
-                      on loc {
-                           var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
-                              if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
-                                  var    v1=src[i];
-                                  var    v2=dst[i];
-                                  var    dv1=nei[v1]+neiR[v1];
-                                  var    dv2=nei[v2]+neiR[v2];
-                                  var    sv1:int;
-                                  var    lv2:int;
-                                  var    sdv1:int;
-                                  var    ldv2:int;
+#MaxTrussAtomicBodyCode=MaxTrussStart+MinSearchAffectedEdgeRemoval
+#MaxTrussMixAtomicBodyCode=MaxTrussStart+MixMinSearchAffectedEdgeRemoval
+
+
+MaxPathMergeBodyCode=MaxTrussStart+PathMergeAffectedEdgeRemoval
+MaxMinSearchBodyCode=MaxTrussStart+MinSearchAffectedEdgeRemoval
+MaxTrussMixBodyCode= MaxTrussStart+MixMinSearchAffectedEdgeRemoval
 
 
 
-
-
-                                  if (dv1<=dv2) {
-                                        sv1=v1;
-                                        lv2=v2;
-                                        sdv1=dv1;
-                                        ldv2=dv2;
-                                  } else {
-                                        sv1=v2;
-                                        lv2=v1;
-                                        sdv1=dv2;
-                                        ldv2=dv1;
-                                  }
-                                  {
-                                      var nextStart=start_i[sv1];
-                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
-                                      if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=src[j];//v3==sv1
-                                             var v4=dst[j]; 
-                                             var tmpe:int;
-                                             if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
-                                                       var dv4=nei[v4]+neiR[v4];
-                                                       if (ldv2<=dv4) {
-                                                            tmpe=findEdge(lv2,v4);
-                                                       } else {
-                                                            tmpe=findEdge(v4,lv2);
-                                                       }
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-
-
-                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-
-                                                                      TriCount[tmpe].sub(1);
-                                                                      if TriCount[tmpe].read() <k-2 {
-                                                                         SetNextF.add((i,tmpe));
-                                                                      }
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
-                                                               } else {
-                                                                   if ((EdgeDeleted[j]==-1) && (i<tmpe)) {
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
-                                                                   } else { 
-                                                                       if ((EdgeDeleted[tmpe]==-1) &&(i<j)) {
-                                                                          TriCount[tmpe].sub(1);
-                                                                          if TriCount[tmpe].read() <k-2 {
-                                                                             SetNextF.add((i,tmpe));
-                                                                          }
-                                                                       }   
-                                                                   }   
-                                                               }
-                                                         }
-                                                       }
-                                             }// end of if EdgeDeleted[j]<=-1
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if nei[v1]>1
-    
-
-
-                                      nextStart=start_iR[sv1];
-                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
-                                      if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=srcR[j];//sv1==v3
-                                             var v4=dstR[j]; 
-                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
-                                             var tmpe:int;
-                                             if (e1!=-1) {
-                                                if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
-                                                       // we first check if  the two different vertices can be the third edge
-                                                       var dv4=nei[v4]+neiR[v4];
-                                                       if ldv2<dv4 {
-                                                          tmpe=findEdge(lv2,v4);
-                                                       } else {
-                                                          tmpe=findEdge(v4,lv2);
-                                                       }
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-                                                               if ( (EdgeDeleted[e1]==-1) && (EdgeDeleted[tmpe]==-1) ) {
-                                                                      TriCount[tmpe].sub(1);
-                                                                      if TriCount[tmpe].read() <k-2 {
-                                                                         SetNextF.add((i,tmpe));
-                                                                      }
-                                                                      TriCount[e1].sub(1);
-                                                                      if TriCount[e1].read() <k-2 {
-                                                                         SetNextF.add((i,e1));
-                                                                      }
-
-                                                               } else {
-                                                                   if ((EdgeDeleted[e1]==-1) && (i<tmpe)) {
-                                                                      TriCount[e1].sub(1);
-                                                                      if TriCount[e1].read() <k-2 {
-                                                                         SetNextF.add((i,e1));
-                                                                      }
-                                                                   } else { 
-                                                                       if ((EdgeDeleted[tmpe]==-1) &&(i<e1)) {
-                                                                          TriCount[tmpe].sub(1);
-                                                                          if TriCount[tmpe].read() <k-2 {
-                                                                             SetNextF.add((i,tmpe));
-                                                                          }
-                                                                       } 
-                                                                   } 
-                                                               }
-                                                         }
-                                                       }
-                                                }
-                                             }
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if
-                                  }// end of affected edge search 
-
-
-
-                              } // end if (xlocal(i,startEdge,endEdge) 
-
-                           } // end forall i in SetCurF with (ref SetNextF) 
-                      } //end on loc 
-                  } //end coforall loc in Locales 
-
-                  coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
-                         forall i in SetCurF {
-                              if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
-                                  EdgeDeleted[i]=k-1;
-                              }
-                           }
-                           
-                      }
-                  }
-                  RemovedEdge.add(SetCurF.getSize());
-                  SetCurF.clear();
-
-                  // then we try to remove the affected edges
-                  coforall loc in Locales  {
-                      on loc {
-                           var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
-
-                           forall (i,j) in SetNextF  {
-                             if (xlocal(j,startEdge,endEdge)) {//each locale only check its owned edges
-                                if (EdgeDeleted[j]==-1) {
-                                       EdgeDeleted[j]=1-k;
-                                       SetCurF.add(j);
-                                }
-                             }
-                           }
-                      } //end on loc 
-                  } //end coforall loc in Locales 
-                  tmpN2+=1;
-                  SetNextF.clear();
-              }// end of while 
-
-'''
-
-MaxTrussAtomic=MaxTrussStart+MinSearchAffectedEdgeRemoval
-
-
-'''
-
-          timer.start();
-
-          ConFlag=true;
-          //while (ConFlag) {
-          {
-
-              coforall loc in Locales with (ref SetCurF ) {
-                  on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-                     // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-                                     EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
-                               }
-                     }
-                  }// end of  on loc 
-              } // end of coforall loc in Locales 
-
-
-
-
-              ConFlag=false;
-
-
-              // we try to remove as many edges as possible in the following code
-              var tmpN2=0:int;
-'''
-'''
-              while (SetCurF.getSize()>0) {
-                  //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
-                      on loc {
-                           var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
-                              if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
-                                  var    v1=src[i];
-                                  var    v2=dst[i];
-                                  var    dv1=nei[v1];
-                                  var    dv2=nei[v2];
-
-                                  {
-                                      var nextStart=start_i[v1];
-                                      var nextEnd=start_i[v1]+nei[v1]-1;
-                                      if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=src[j];//v3==v1
-                                             var v4=dst[j]; 
-                                             var tmpe:int;
-                                             if ( (EdgeDeleted[j]<=-1) && ( v2!=v4 ) ) {
-                                                       //v1->v2, v1->v4
-                                                       tmpe=findEdge(v2,v4);
-                                                       if (tmpe!=-1) {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-                                                                      TriCount[tmpe].sub(1);
-                                                                      if TriCount[tmpe].read() <k-2 {
-                                                                         SetNextF.add((i,tmpe));
-                                                                      }
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
-                                                               } else {
-                                                                   //if ((EdgeDeleted[j]==-1) && (i<tmpe)) {
-                                                                   if ((EdgeDeleted[j]==-1) ) {
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
-                                                                   } else { 
-                                                                      if ((EdgeDeleted[tmpe]==-1) &&(i<j)) {
-                                                                          TriCount[tmpe].sub(1);
-                                                                          if TriCount[tmpe].read()<k-2 {
-                                                                             SetNextF.add((i,tmpe));
-                                                                             //EdgeDeleted[tmpe]=1-k;
-                                                                          }
-                                                                      }   
-                                                                   }   
-                                                               }
-                                                         }
-                                                       }
-                                             }// end of if EdgeDeleted[j]<=-1
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if nei[v1]>1
-    
-
-
-                                      nextStart=start_i[v2];
-                                      nextEnd=start_i[v2]+nei[v2]-1;
-                                      if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=src[j];//v3==v2
-                                             var v4=dst[j]; 
-                                             var tmpe:int;
-                                             if ( (EdgeDeleted[j]<=-1) && ( v1!=v4 )  ) {
-                                                       tmpe=exactEdge(v4,v1);
-                                                       // cycle case v1->v2->v4->v1
-                                                       if (tmpe!=-1)  {// there is such third edge
-                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
-                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
-                                                                      TriCount[tmpe].sub(1);
-                                                                      if TriCount[tmpe].read() <k-2 {
-                                                                         SetNextF.add((i,tmpe));
-                                                                      }
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
-                                                               } else {
-                                                                   if ((EdgeDeleted[j]==-1) && (i<tmpe) ) {
-                                                                      TriCount[j].sub(1);
-                                                                      if TriCount[j].read() <k-2 {
-                                                                         SetNextF.add((i,j));
-                                                                      }
-                                                                   } else { 
-                                                                       if ((EdgeDeleted[tmpe]==-1) && (i<j) ) {
-                                                                          TriCount[tmpe].sub(1);
-                                                                          if TriCount[tmpe].read() <k-2 {
-                                                                             SetNextF.add((i,tmpe));
-                                                                          }
-                                                                       }   
-                                                                   }   
-                                                               }
-                                                         }
-                                                       }
-                                             }
-                                         }// end of  forall j in nextStart..nextEnd 
-                                      }// end of if
-
-
-                                      //check the case of x->v1 and x->v2
-                                      nextStart=start_iR[v1];
-                                      nextEnd=start_iR[v1]+neiR[v1]-1;
-                                      var dv1=neiR[v1];
-                                      var dv2=neiR[v2];
-                                      if ((dv1<=dv2) && (dv1>0)) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
-                                             var v3=srcR[j];//v3==v1
-                                             var v4=dstR[j];
-                                             var e2=exactEdge(v4,v3);
-                                             if (EdgeDeleted[e2]==-1) {
-                                                var tmpe=exactEdge(v4,v2);
-                                                if (tmpe!=-1) {
-                                                    if (EdgeDeleted[tmpe]==-1) {
-                                                         TriCount[e2].sub(1);
-                                                         if TriCount[e2].read() <k-2 {
-                                                                 SetNextF.add((i,e2));
-                                                         }
-                                                         TriCount[tmpe].sub(1);
-                                                         if TriCount[tmpe].read() <k-2 {
-                                                                 SetNextF.add((i,tmpe));
-                                                         }
-                                                    }
-                                                }
-                                             }
-                                          }
-                                      } else {
-                                         if (dv2>0) {
-
-                                             nextStart=start_iR[v2];
-                                             nextEnd=start_iR[v2]+neiR[v2]-1;
-                                             forall j in nextStart..nextEnd with (ref SetNextF){
-                                                 var v3=srcR[j];//v3==v2
-                                                 var v4=dstR[j];
-                                                 var e2=exactEdge(v4,v3);
-                                                 if (EdgeDeleted[e2]==-1) {
-                                                    var tmpe=exactEdge(v4,v1);
-                                                    if (tmpe!=-1) {
-                                                        if (EdgeDeleted[tmpe]==-1) {
-                                                             TriCount[e2].sub(1);
-                                                             if TriCount[e2].read() <k-2 {
-                                                                     SetNextF.add((i,e2));
-                                                             }
-                                                             TriCount[tmpe].sub(1);
-                                                             if TriCount[tmpe].read() <k-2 {
-                                                                     SetNextF.add((i,tmpe));
-                                                             } 
-                                                        }
-                                                    }
-                                                 }
-                                              }
-                                         }
-
-                                      }
-
-                                  }
-
-                              } // end if (xlocal(i,startEdge,endEdge) 
-                           } // end forall i in SetCurF with (ref SetNextF) 
-                      } //end on loc 
-                  } //end coforall loc in Locales 
-
-                  coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
-                         forall i in SetCurF {
-                              if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
-                                  EdgeDeleted[i]=k-1;
-                              }
-                           }
-                           
-                      }
-                  }
-                  RemovedEdge.add(SetCurF.getSize());
-                  //writeln("In ", tmpN2, " iteraton,", SetCurF.getSize(), " edges have been removed");
-                  SetCurF.clear();
-
-                  coforall loc in Locales with (ref SetNextF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
-
-                         forall (i,j) in SetNextF  {
-                            if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
-                                       EdgeDeleted[j]=1-k;
-                                       SetCurF.add(j);
-                            }
-                         }// end of forall
-
-                      }
-                  }
-                  SetNextF.clear();
-                  tmpN2+=1;
-              }// end of while 
-
-
-'''
-
-
-MaxTrussMixAtomic=MaxTrussStart+MixMinSearchAffectedEdgeRemoval
-
-
+#We define three different kinds of function loop ending methods
 TrussEndCheck='''
 
 
@@ -1979,7 +1849,7 @@ def GenTrussOutput(name):
 
 def GenDecompositionOutput(name):
        
-          print('          outMsg="After '+name+', Max K ="+(k-1):string;')
+          print('          outMsg="After '+name+', Max K="+(k-1):string;')
           print("          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);")
           print('          outMsg="After '+name+', Total execution time="+(timer.elapsed()):string;')
           print("          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);")
@@ -2019,42 +1889,449 @@ def GenMaxReturn(FunName):
 	print("")
 	print("")
 
+def GenMaxTestReturn(FunName):
+	text='''
+          return repMsg;
+'''
+	lastone="      }// end of proc "+FunName
+
+
+	print(text)
+	print(lastone)
+	print("")
+	print("")
+	print("")
+
+#We define how to generate different truss functions
 def GenTrussFun(FunName,Parameters,BodyCode):
 	head="      proc "+FunName+Parameters
 	print(head)
-	print(FunStart)
+	print(kTrussFunStart)
 	print(BodyCode)
 	print(TrussEndCheck)
 	GenTrussOutput(FunName)
 	GenReturn(FunName)
 
 
+
+def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
+#We first generate fun1, for once max call
+	OnceFunName="Once"+CallFunName
+	head="      proc "+OnceFunName+ParametersBool
+	print(head)
+	print(MaxTrussFunStart)
+	print(BodyCode)
+	print(MaxTrussEndCheck)
+	GenMaxReturn(OnceFunName)
+
+#We then generate fun2, for achieving the max k truss value
+	Fun2Head="      proc "+CallFunName+Parameters
+	print(Fun2Head)
+
+
+	variabledel='''
+                var PlTriCount =makeDistArray(Ne,int);
+                var ref gEdgeDeleted=EdgeDeleted;
+                var lEdgeDeleted =makeDistArray(Ne,auto int);
+'''
+	print(variabledel)
+
+	text1='''
+                PTriCount=0;
+                PlTriCount=0;
+                gEdgeDeleted=-1;
+                lEdgeDeleted=-1;//for local use
+                maxtimer.clear();
+                maxtimer.start();
+                kLow=3;
+                // we first check  kLow=3
+'''
+	text2="                repMsg="+FunName1+"(kLow,"
+	text3='''
+
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                writeln("check kLow=3, AllRemoved=", AllRemoved);
+                gEdgeDeleted[i]=lEdgeDeleted[i];
+                PTriCount=PlTriCount;
+
+
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                outMsg="Estimated kUp="+kUp:string;
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
+                    var ConLoop=true:bool;
+                    while ( (ConLoop) && (kLow<kUp)) {
+                         // we will continuely check if the up value can remove all edges
+                         lEdgeDeleted[i]=gEdgeDeleted[i];
+                         PlTriCount=PTriCount;
+                             //restore the value for kUp check
+                         // we check the larget k vaule kUp which is the upper bound of max k
+                         // we will use kMid to reduce kUp
+'''
+	text4="                         AllRemoved="+OnceFunName+"(kUp,"
+	text5='''
+                              toSymEntry(ag.getNEIGHBOR(), int).a,
+                              toSymEntry(ag.getSTART_IDX(), int).a,
+                              toSymEntry(ag.getSRC(), int).a,
+                              toSymEntry(ag.getDST(), int).a,
+                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                              toSymEntry(ag.getSTART_IDX_R(), int).a,
+                              toSymEntry(ag.getSRC_R(), int).a,
+                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                         writeln("check kUp=",kUp," AllRemoved=",AllRemoved);
+                         if (!AllRemoved) { //the up value is the max k
+                                ConLoop=false;
+                         } else {// we will check the mid value to reduce kUp
+                            kMid= (kLow+kUp)/2;
+                            lEdgeDeleted=gEdgeDeleted;
+                            PlTriCount=PTriCount;
+                            //"Try mid=",kMid;
+'''
+	text6="                            AllRemoved="+OnceFunName+"(kMid,"
+	text7='''
+                                 toSymEntry(ag.getNEIGHBOR(), int).a,
+                                 toSymEntry(ag.getSTART_IDX(), int).a,
+                                 toSymEntry(ag.getSRC(), int).a,
+                                 toSymEntry(ag.getDST(), int).a,
+                                 toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                 toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                 toSymEntry(ag.getSRC_R(), int).a,
+                                 toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                            writeln("check kMid=",kMid," AllRemoved=",AllRemoved);
+                            if (AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
+                                  kUp=kMid-1;
+                            } else { // we will improve both low and mid value
+                                if kMid>=kUp-1 {
+                                    ConLoop=false;
+                                    kUp=kMid;
+                                } else {// we will update the low value and then check the mid value 
+                                        // until all edges are removed
+                                     while ((!AllRemoved) && (kMid<kUp-1)) {
+                                        kLow=kMid;
+                                        kMid= (kLow+kUp)/2;
+                                        gEdgeDeleted=lEdgeDeleted;
+                                        PTriCount=PlTriCount;
+                                        //store the latest no empty subgraph setup 
+                                        //("Try mid again=",kMid);
+'''
+	text8="                                        AllRemoved="+OnceFunName+"(kMid,"
+	text9='''
+                                             toSymEntry(ag.getNEIGHBOR(), int).a,
+                                             toSymEntry(ag.getSTART_IDX(), int).a,
+                                             toSymEntry(ag.getSRC(), int).a,
+                                             toSymEntry(ag.getDST(), int).a,
+                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                             toSymEntry(ag.getSRC_R(), int).a,
+                                             toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                                        writeln("check kMid=",kMid," AllRemoved=",AllRemoved);
+                                     }
+                                     if (!AllRemoved) {
+                                         kUp=kMid;
+                                         ConLoop=false;
+                                     } else {
+                                         kUp=kMid-1;
+                                     }
+                                  }
+                            }
+                         }
+                    }// end of while
+                    var countName = st.nextName();
+                    var countEntry = new shared SymEntry(lEdgeDeleted);
+                    st.addEntry(countName, countEntry);
+                    repMsg =  'created ' + st.attrib(countName);
+                    maxtimer.stop();
+'''
+	text10='                    outMsg="After '+OnceFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
+	text11='''
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+'''
+	text12='                    outMsg="After '+OnceFunName+', Max K="+kUp:string;'
+	text13='''
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                } else {//kUp<=3 or AllRemoved==true
+                    maxtimer.stop();
+'''
+	text14='                    outMsg="After '+OnceFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
+	text15='''
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    if (AllRemoved==false) {
+'''
+	text16='                        outMsg="After '+OnceFunName+', Max K=3";'
+	text17='''
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    } else {
+'''
+	text18='                        outMsg="After '+OnceFunName+',Max K=2";'
+	text19='''
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    }
+                }
+'''
+	print(text1)
+	print(text2)
+	print(text3)
+	print(text4)
+	print(text5)
+	print(text6)
+	print(text7)
+	print(text8)
+	print(text9)
+	print(text10)
+	print(text11)
+	print(text12)
+	print(text13)
+	print(text14)
+	print(text15)
+	print(text16)
+	print(text17)
+	print(text18)
+	print(text19)
+	GenMaxTestReturn(CallFunName)
+
+def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
+#We first generate fun1, for once max call
+	OnceFunName="Once"+CallFunName
+	head="      proc "+OnceFunName+ParametersBoolAtomic
+	print(head)
+	print(MaxTrussFunStart)
+	print(BodyCode)
+	print(MaxTrussEndCheck)
+	GenMaxReturn(OnceFunName)
+
+#We then generate fun2, for achieving the max k truss value
+	Fun2Head="      proc "+CallFunName+ParametersAtomic
+	print(Fun2Head)
+
+
+	variabledel='''
+                ref aPTriCount=TriCount;
+                var aPlTriCount =makeDistArray(Ne,atomic int);
+                ref gEdgeDeleted=EdgeDeleted;
+                var lEdgeDeleted =makeDistArray(Ne,int);
+'''
+	print(variabledel)
+
+	text1='''
+                forall i in 0..Ne-1 {
+                    aPTriCount[i].write(0);
+                    aPlTriCount[i].write(0);
+                }
+                gEdgeDeleted=-1;
+                lEdgeDeleted=-1;//for local use
+                maxtimer.clear();
+                maxtimer.start();
+                kLow=3;
+                // we first check  kLow=3
+'''
+	text2="                repMsg="+FunName1+"(kLow,"
+	text3='''
+
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                writeln("check kLow=3, AllRemoved=", AllRemoved);
+                forall i in 0..Ne-1 {// first keep last time's results
+                             gEdgeDeleted[i]=lEdgeDeleted[i];
+                             aPTriCount[i].write(aPlTriCount[i].read());
+                             //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
+                }
+
+
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                outMsg="Estimated kUp="+kUp:string;
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
+                    var ConLoop=true:bool;
+                    while ( (ConLoop) && (kLow<kUp)) {
+                         // we will continuely check if the up value can remove all edges
+                         forall i in 0..Ne-1 {// first keep last time's results
+                             lEdgeDeleted[i]=gEdgeDeleted[i];
+                             aPlTriCount[i].write(aPTriCount[i].read());
+                             //restore the value for kUp check
+                         }
+                         // we check the larget k vaule kUp which is the upper bound of max k
+                         // we will use kMid to reduce kUp
+'''
+	text4="                         AllRemoved="+OnceFunName+"(kUp,"
+	text5='''
+                              toSymEntry(ag.getNEIGHBOR(), int).a,
+                              toSymEntry(ag.getSTART_IDX(), int).a,
+                              toSymEntry(ag.getSRC(), int).a,
+                              toSymEntry(ag.getDST(), int).a,
+                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                              toSymEntry(ag.getSTART_IDX_R(), int).a,
+                              toSymEntry(ag.getSRC_R(), int).a,
+                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                         writeln("check kUp=",kUp," AllRemoved=",AllRemoved);
+                         if (!AllRemoved) { //the up value is the max k
+                                ConLoop=false;
+                         } else {// we will check the mid value to reduce kUp
+
+
+                            kUp= kUp-1;
+                            kMid= (kLow+kUp)/2;
+                            while ((AllRemoved) && (kMid<kUp-1)) {
+
+                                forall i in 0..Ne-1 {
+                                    lEdgeDeleted[i]=gEdgeDeleted[i];
+                                    aPlTriCount[i].write(aPTriCount[i].read());
+                                //restore the value for kMid check
+                                }
+                                //"Try mid=",kMid;
+'''
+	text6="                                AllRemoved="+OnceFunName+"(kMid,"
+	text7='''
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                writeln("check kMid=",kMid," AllRemoved=",AllRemoved);
+                                if (AllRemoved) {
+                                    kUp=kMid-1;
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
+                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
+                                if kMid>=kUp-1 {
+                                    ConLoop=false;
+                                    kUp=kMid;
+                                } else {// we will update the low value and then check the mid value 
+                                        // until all edges are removed
+                                     while ((!AllRemoved) && (kMid<kUp-1)) {
+                                        kLow=kMid;
+                                        kMid= (kLow+kUp)/2;
+                                        //forall i in 0..Ne-1 { 
+                                        //    gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        //    aPTriCount[i].write(aPlTriCount[i].read());
+                                            //store the latest no empty subgraph setup 
+                                        //}
+'''
+	text8="                                        AllRemoved="+OnceFunName+"(kMid,"
+	text9='''
+                                             toSymEntry(ag.getNEIGHBOR(), int).a,
+                                             toSymEntry(ag.getSTART_IDX(), int).a,
+                                             toSymEntry(ag.getSRC(), int).a,
+                                             toSymEntry(ag.getDST(), int).a,
+                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                             toSymEntry(ag.getSRC_R(), int).a,
+                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                        writeln("check kMid=",kMid," AllRemoved=",AllRemoved);
+                                     }
+                                     if (!AllRemoved) {
+                                         kUp=kMid;
+                                         ConLoop=false;
+                                     } else {
+                                         kUp=kMid-1;
+                                     }
+                                  }
+                            }
+                         }
+                    }// end of while
+                    var countName = st.nextName();
+                    var maxKAry:[0..1] int;
+                    maxKAry[0]=kUp;
+                    var countEntry = new shared SymEntry(maxKAry);
+                    st.addEntry(countName, countEntry);
+                    repMsg =  'created ' + st.attrib(countName);
+                    maxtimer.stop();
+'''
+	text10='                    outMsg="After '+OnceFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
+	text11='''
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+'''
+	text12='                    outMsg="After '+OnceFunName+', Max K="+kUp:string;'
+	text13='''
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                } else {//kUp<=3 or AllRemoved==true
+                    maxtimer.stop();
+'''
+	text14='                    outMsg="After '+OnceFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
+	text15='''
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    if (AllRemoved==false) {
+'''
+	text16='                        outMsg="After '+OnceFunName+', Max K=3";'
+	text17='''
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    } else {
+'''
+	text18='                        outMsg="After '+OnceFunName+',Max K=2";'
+	text19='''
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    }
+                }
+'''
+	print(text1)
+	print(text2)
+	print(text3)
+	print(text4)
+	print(text5)
+	print(text6)
+	print(text7)
+	print(text8)
+	print(text9)
+	print(text10)
+	print(text11)
+	print(text12)
+	print(text13)
+	print(text14)
+	print(text15)
+	print(text16)
+	print(text17)
+	print(text18)
+	print(text19)
+	GenMaxTestReturn(CallFunName)
+
+
 def GenMaxTrussFunAtomic(FunName,MaxParameters,BodyCode):
+#to be updated we need two functions here
 	head="      proc "+FunName+MaxParameters
 	print(head)
-	print(MaxFunStartAtomic)
+	print(MaxTrussFunStart)
 	print(BodyCode)
 	print(MaxTrussEndCheck)
 	GenMaxReturn(FunName)
 
-
-
+'''
+def GenMaxTrussFunAtomic(FunName,MaxParameters,BodyCode):
+	head="      proc "+FunName+MaxParameters
+	print(head)
+	print(MaxTrussFunStart)
+	print(BodyCode)
+	print(MaxTrussEndCheck)
+	GenMaxReturn(FunName)
+'''
 
 def GenDecompositionFun(FunName,Parameters,BodyCode):
 	head="      proc "+FunName+Parameters
 	print(head)
-	print(FunStart)
+	print(TrussDecoFunStart)
 	print(BodyCode)
 	print(DecompositionEndCheck)
 	GenDecompositionOutput(FunName)
 	GenReturn(FunName)
 
 
-def GenNaiveTrussTest(FunName):
+def GenNaiveTrussTest(InitCount,FunName):
 
-	text1='''
-                PTriCount=0;
-'''
 	text2='''
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -2065,19 +2342,16 @@ def GenNaiveTrussTest(FunName):
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a,
-                      PTriCount);
+                      PTriCount,gEdgeDeleted);
 
 '''
-	print(text1)
+	print(InitCount)
 	print("                repMsg="+FunName+"(kValue,")
 	print(text2)
 
 
-def GenNaiveDecompositionTest(FunName):
+def GenNaiveDecompositionTest(InitCnt,FunName):
 
-	text1='''
-                PTriCount=0;
-'''
 	text2='''
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2086,20 +2360,14 @@ def GenNaiveDecompositionTest(FunName):
                       toSymEntry(ag.getNEIGHBOR_R(), int).a,
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a, PTriCount);
+                      toSymEntry(ag.getDST_R(), int).a, PTriCount,gEdgeDeleted);
 '''
-	print(text1)
+	print(InitCnt)
 	print("                repMsg="+FunName+"(3,")
 	print(text2)
 
 
-def GenTrussAtomicTest(FunName):
-	text1='''
-
-                forall i in AtoTriCount {
-                       i.write(0);
-                }
-'''
+def GenTrussAtomicTest(InitCnt,FunName):
 	text2='''
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2108,15 +2376,18 @@ def GenTrussAtomicTest(FunName):
                       toSymEntry(ag.getNEIGHBOR_R(), int).a,
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a, AtoTriCount);
+                      toSymEntry(ag.getDST_R(), int).a, AtoTriCount,gEdgeDeleted);
 '''
 
-	print(text1)
+	print(InitCnt)
 	print("                repMsg="+FunName+"(kValue,")
 	print(text2)
 
 
 def GenMaxTrussAtomicTest(FunName1,FunName2):
+	print("To be implemented")
+
+def GenMaxTrussAtomicFunOld(FunName1,FunName2):
 
 	text1='''
                 maxtimer.clear();
@@ -2124,7 +2395,7 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                     aPTriCount[i].write(0);
                     aPlTriCount[i].write(0);
                 }
-                EdgeDeleted=-1;
+                gEdgeDeleted=-1;
                 lEdgeDeleted=-1;//for local use
                 maxtimer.start();
                 kLow=3;
@@ -2140,10 +2411,12 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                       toSymEntry(ag.getNEIGHBOR_R(), int).a,
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount);
+                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                writeln("check kLow=3, AllRemoved=", AllRemoved);
                 forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=EdgeDeleted[i];
+                             gEdgeDeleted[i]=lEdgeDeleted[i];
                              aPTriCount[i].write(aPlTriCount[i].read());
+                             //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
 
 
@@ -2155,8 +2428,9 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                     while ( (ConLoop) && (kLow<kUp)) {
                          // we will continuely check if the up value can remove all edges
                          forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=EdgeDeleted[i];
+                             lEdgeDeleted[i]=gEdgeDeleted[i];
                              aPlTriCount[i].write(aPTriCount[i].read());
+                             //restore the value for kUp check
                          }
                          // we check the larget k vaule kUp which is the upper bound of max k
                          // we will use kMid to reduce kUp
@@ -2171,15 +2445,17 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                               toSymEntry(ag.getSTART_IDX_R(), int).a,
                               toSymEntry(ag.getSRC_R(), int).a,
                               toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                         writeln("check kUp=",kUp," AllRemoved=",AllRemoved);
                          if (!AllRemoved) { //the up value is the max k
                                 ConLoop=false;
                          } else {// we will check the mid value to reduce kUp
                             kMid= (kLow+kUp)/2;
                             forall i in 0..Ne-1 {
-                                lEdgeDeleted[i]=EdgeDeleted[i];
+                                lEdgeDeleted[i]=gEdgeDeleted[i];
                                 aPlTriCount[i].write(aPTriCount[i].read());
+                                //restore the value for kMid check
                             }
-                            //"Try mid=",kMid);
+                            //"Try mid=",kMid;
 '''
 	text6="                            AllRemoved="+FunName2+"(kMid,"
 	text7='''
@@ -2191,6 +2467,7 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                                  toSymEntry(ag.getSTART_IDX_R(), int).a,
                                  toSymEntry(ag.getSRC_R(), int).a,
                                  toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                            writeln("check kMid=",kMid," AllRemoved=",AllRemoved);
                             if (AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
                                   kUp=kMid-1;
                             } else { // we will improve both low and mid value
@@ -2199,12 +2476,13 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                                     kUp=kMid;
                                 } else {// we will update the low value and then check the mid value 
                                         // until all edges are removed
-                                     while ((AllRemoved==false) && (kMid<kUp-1)) {
+                                     while ((!AllRemoved) && (kMid<kUp-1)) {
                                         kLow=kMid;
                                         kMid= (kLow+kUp)/2;
                                         forall i in 0..Ne-1 { 
-                                            EdgeDeleted[i]=lEdgeDeleted[i];
+                                            gEdgeDeleted[i]=lEdgeDeleted[i];
                                             aPTriCount[i].write(aPlTriCount[i].read());
+                                            //store the latest no empty subgraph setup 
                                         }
                                         //("Try mid again=",kMid);
 '''
@@ -2218,6 +2496,7 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                                              toSymEntry(ag.getSTART_IDX_R(), int).a,
                                              toSymEntry(ag.getSRC_R(), int).a,
                                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                        writeln("check kMid=",kMid," AllRemoved=",AllRemoved);
                                      }
                                      if (!AllRemoved) {
                                          kUp=kMid;
@@ -2239,7 +2518,7 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
 	text11='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 '''
-	text12='                    outMsg="After '+FunName2+', Max k="+kUp:string;'
+	text12='                    outMsg="After '+FunName2+', Max K="+kUp:string;'
 	text13='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
@@ -2250,12 +2529,12 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 '''
-	text16='                        outMsg="After '+FunName2+', Max k=3";'
+	text16='                        outMsg="After '+FunName2+', Max K=3";'
 	text17='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 '''
-	text18='                        outMsg="After '+FunName2+',Max k=2";'
+	text18='                        outMsg="After '+FunName2+',Max K=2";'
 	text19='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -2287,7 +2566,7 @@ def GenMaxTrussAtomicTest(FunName1,FunName2):
 
 
 
-def GenDecompositionAtomicTest(FunName):
+def GenDecompositionAtomicTest(InitCnt,FunName):
 
 
 
@@ -2306,14 +2585,52 @@ def GenDecompositionAtomicTest(FunName):
                       toSymEntry(ag.getNEIGHBOR_R(), int).a,
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a, AtoTriCount);
+                      toSymEntry(ag.getDST_R(), int).a, AtoTriCount,gEdgeDeleted);
 '''
 
-	print(text1)
+#	print(text1)
+	print(InitCnt)
 	print("                repMsg="+FunName+"(3,")
 	print(text2)
 
-def GenTrussTest():
+def	GenNaiveCall(FunName):
+
+        text='''
+
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a,
+                      PTriCount,gEdgeDeleted);
+
+'''
+        print("                repMsg="+FunName+"(kValue,")
+        print(text)
+
+def	GenAtomicCall(FunName):
+
+        text='''
+
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a,
+                      AtoTriCount,gEdgeDeleted);
+
+'''
+        print("                repMsg="+FunName+"(kValue,")
+        print(text)
+
+def GenCompleteTest():
+#First for Truss Tests
 	text1='''
           if (kValue>0) {// k-truss analysis
 '''
@@ -2322,20 +2639,26 @@ def GenTrussTest():
 '''
 	print(text1)
 	print(text2)
-	GenNaiveTrussTest("kTrussNaiveListIntersection")
-	GenNaiveTrussTest("kTrussNaiveSetSearchSmall")
-	GenNaiveTrussTest("kTrussNaiveSetSearchSmallSeq")
-	GenNaiveTrussTest("kTrussNaivePathMerge")
-	GenNaiveTrussTest("kTrussNaiveMinSearch")
-
-
-
+	print(InitialCount)
+	GenNaiveCall("kTrussNaiveListIntersection")
+	print(InitialCount)
+	GenNaiveCall("kTrussNaiveSetSearchSmall")
+	print(InitialCount)
+	GenNaiveCall("kTrussNaiveSetSearchSmallSeq")
+	print(InitialCount)
+	GenNaiveCall("kTrussNaivePathMerge")
+	print(InitialCount)
+	GenNaiveCall("kTrussNaiveMinSearch")
 	text3='''
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 '''
 	print(text3)
-	GenTrussAtomicTest("kTruss")
-	GenTrussAtomicTest("kTrussMix")
+	print(InitialCountAtomic)
+	GenAtomicCall("kTrussPathMerge")
+	print(InitialCountAtomic)
+	GenAtomicCall("kTrussMinSearch")
+	print(InitialCountAtomic)
+	GenAtomicCall("kTrussMix")
 
 	text4='''
 
@@ -2343,21 +2666,76 @@ def GenTrussTest():
 '''
 	print(text4)
 
+#Second, for Max Truss Tests
+ 
+	text21='''
+          if (kValue==-1) {// max k-truss analysis
+                var PTriCount=makeDistArray(Ne,int);
+'''
+	print(text21)
+	text23='''
+                var AtoTriCount=makeDistArray(Ne,atomic int);
+'''
+
+	print(text23)
+
+
+	print(InitialCountAtomic)
+	GenAtomicCall("MaxTrussMinSearch")
+	print(InitialCountAtomic)
+	GenAtomicCall("MaxTrussMix")
+
+
+	text24='''
+
+          }// end of max k-truss analysis
+'''
+	print(text24)
+
+
+#Third, for Truss Decomposition Tests
+	text31='''
+          if (kValue==-2) {
+                var PTriCount=makeDistArray(Ne,int);
+'''
+	print(text31)
+	print(InitialCount)
+	GenNaiveCall("TrussDecoNaivePathMerge")
+	print(InitialCount)
+	GenNaiveCall("TrussDecoNaiveMinSearch")
+
+
+
+	text32='''
+                var AtoTriCount=makeDistArray(Ne,atomic int);
+'''
+	print(text32)
+	print(InitialCountAtomic)
+	GenAtomicCall("TrussDecoPathMerge")
+	print(InitialCountAtomic)
+	GenAtomicCall("TrussDecoMinSearch")
+	print(InitialCountAtomic)
+	GenAtomicCall("TrussDecoMix")
+
+	text34='''
+
+          }// end of truss decomposition analysis
+'''
+	print(text34)
+
 
 def GenMaxTrussTest():
 	text1='''
           if (kValue==-1) {// max k-truss analysis
-'''
-	text2='''
                 var PTriCount=makeDistArray(Ne,int);
 '''
 	print(text1)
-	print(text2)
 #	GenNaiveMaxTrussTest("kTrussNaiveListIntersection","OnceTrussNaiveListIntersection")
 #	GenNaiveMaxTrussTest("kTrussNaiveSetSearchSmall","OnceTrussNaiveSetSearchSmall")
 #	GenNaiveMaxTrussTest("kTrussNaiveSetSearchSmallSeq","OnceTrussNaiveSetSearchSmallSeq")
 #	GenNaiveMaxTrussTest("kTrussNaivePathMerge","OnceTrussNaivePathMerge")
 #	GenNaiveMaxTrussTest("kTrussNaiveMinSearch","OnceTrussNaiveMinSearch")
+#	GenNaiveTrussTest(InitialCount,"kTrussPathMerge")
 
 
 
@@ -2366,8 +2744,10 @@ def GenMaxTrussTest():
                 var aPlTriCount=makeDistArray(Ne,atomic int);//for local use
 '''
 	print(text3)
-	GenMaxTrussAtomicTest("kTruss","OnceMaxTruss")
-	GenMaxTrussAtomicTest("kTrussMix","OnceMaxTrussMix")
+#	GenMaxTrussAtomicTest("kTrussMinSearch","OnceMaxTruss")
+#	GenMaxTrussAtomicTest("kTrussMix","OnceMaxTrussMix")
+	GenTrussAtomicTest(InitialCountAtomic,"MaxTrussMinSearch")
+	GenTrussAtomicTest(InitialCountAtomic,"MaxTrussMix")
 
 	text4='''
 
@@ -2384,8 +2764,8 @@ def GenDecompositionTest():
 #	GenNaiveDecompositionTest("TrussDecompositionNaiveListIntersection")
 #	GenNaiveDecompositionTest("TrussDecompositionNaiveSetSearchSmall")
 #	GenNaiveDecompositionTest("TrussDecompositionNaiveSetSearchSmallSeq")
-	GenNaiveDecompositionTest("TrussDecompositionNaivePathMerge")
-	GenNaiveDecompositionTest("TrussDecompositionNaiveMinSearch")
+	GenNaiveDecompositionTest(InitialCount,"TrussDecompositionNaivePathMerge")
+	GenNaiveDecompositionTest(InitialCount,"TrussDecompositionNaiveMinSearch")
 
 
 
@@ -2393,8 +2773,8 @@ def GenDecompositionTest():
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 '''
 	print(text3)
-	GenDecompositionAtomicTest("TrussDecomposition")
-	GenDecompositionAtomicTest("TrussMixDecomposition")
+	GenDecompositionAtomicTest(InitialCountAtomic,"TrussDecomposition")
+	GenDecompositionAtomicTest(InitialCountAtomic,"TrussMixDecomposition")
 
 	text4='''
 
@@ -2491,10 +2871,10 @@ module TrussMsg {
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
       var ag = gEntry.graph;
 
-      var EdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
+      var gEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var AllRemoved:bool;
-      EdgeDeleted=-1;
+      gEdgeDeleted=-1;
       lEdgeDeleted=-1;
       var kLow=3:int;
       var kUp:int;
@@ -10339,13 +10719,14 @@ EndCode='''
 print(BeginCode)
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of K-Truss Functions")
-GenTrussFun("kTrussNaiveListIntersection",Parameters,NaiveListIntersection)
-GenTrussFun("kTrussNaiveSetSearchSmall",Parameters,NaiveSetSearchSmall)
-GenTrussFun("kTrussNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchSmallSeq)
-GenTrussFun("kTrussNaivePathMerge",Parameters,NaivePathMerge)
-GenTrussFun("kTrussNaiveMinSearch",Parameters,NaiveMinSearch)
-GenTrussFun("kTruss",ParametersAtomic,TrussAtomic)
-GenTrussFun("kTrussMix",ParametersAtomic,TrussMixAtomic)
+GenTrussFun("kTrussNaiveListIntersection",Parameters,NaiveListIntersectionBodyCode)
+GenTrussFun("kTrussNaiveSetSearchSmall",Parameters,NaiveSetSearchSmallBodyCode)
+GenTrussFun("kTrussNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchSmallSeqBodyCode)
+GenTrussFun("kTrussNaivePathMerge",Parameters,NaivePathMergeBodyCode)
+GenTrussFun("kTrussNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
+GenTrussFun("kTrussPathMerge",ParametersAtomic,PathMergeBodyCode)
+GenTrussFun("kTrussMinSearch",ParametersAtomic,TrussAtomicBodyCode)
+GenTrussFun("kTrussMix",ParametersAtomic,TrussMixAtomicBodyCode)
 print("//End of K-Truss Functions")
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("")
@@ -10354,22 +10735,23 @@ print("")
 
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Max K-Truss Functions")
-GenMaxTrussFunAtomic("OnceMaxTruss",MaxParametersAtomic,MaxTrussAtomic)
-GenMaxTrussFunAtomic("OnceMaxTrussMix",MaxParametersAtomic,MaxTrussMixAtomic)
+GenMaxTrussAtomicFun("kTrussPathMerge","MaxTrussPathMerge",MaxPathMergeBodyCode)
+GenMaxTrussAtomicFun("kTrussMinSearch","MaxTrussMinSearch",MaxMinSearchBodyCode)
+GenMaxTrussAtomicFun("kTrussMix","MaxTrussMix",MaxTrussMixBodyCode)
 print("//End of Max K-Truss Functions")
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("")
 print("")
-#print(middle)
 
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Truss Decomposition Functions")
-GenDecompositionFun("TrussDecompositionNaiveListIntersection",Parameters,NaiveListIntersection)
-GenDecompositionFun("TrussDecompositionNaiveSetSearchSmall",Parameters,NaiveSetSearchSmall)
-GenDecompositionFun("TrussDecompositionNaivePathMerge",Parameters,NaivePathMerge)
-GenDecompositionFun("TrussDecompositionNaiveMinSearch",Parameters,NaiveMinSearch)
-GenDecompositionFun("TrussDecomposition",ParametersAtomic,TrussAtomic)
-GenDecompositionFun("TrussMixDecomposition",ParametersAtomic,TrussMixAtomic)
+GenDecompositionFun("TrussDecoNaiveListIntersection",Parameters,NaiveListIntersectionBodyCode)
+GenDecompositionFun("TrussDecoNaiveSetSearchSmall",Parameters,NaiveSetSearchSmallBodyCode)
+GenDecompositionFun("TrussDecoNaivePathMerge",Parameters,NaivePathMergeBodyCode)
+GenDecompositionFun("TrussDecoNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
+GenDecompositionFun("TrussDecoPathMerge",ParametersAtomic,PathMergeBodyCode)
+GenDecompositionFun("TrussDecoMinSearch",ParametersAtomic,TrussAtomicBodyCode)
+GenDecompositionFun("TrussDecoMix",ParametersAtomic,TrussMixAtomicBodyCode)
 print("//End of Truss Decomposition Functions")
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("")
@@ -10377,9 +10759,12 @@ print("")
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Undirected Graph ")
 print(UnDirectedGraphTestBegin)
+GenCompleteTest()
+'''
 GenTrussTest()
 GenMaxTrussTest()
 GenDecompositionTest()
+'''
 print(UnDirectedGraphTestEnd)
 print("//End of Undirected Graph Test")
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")

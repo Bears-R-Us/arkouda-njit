@@ -31,6 +31,8 @@ module GraphMsg {
   use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
+  use AryUtil;
+
 
 
   //private config const logLevel = ServerConfig.logLevel;
