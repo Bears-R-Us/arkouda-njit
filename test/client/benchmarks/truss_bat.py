@@ -100,4 +100,4 @@ if __name__ == "__main__":
     print("Truss batch test")
     ak.connect(args.hostname, args.port)
     time_ak_truss_graph()
-    ak.hutdown()
+    ak.shutdown()
