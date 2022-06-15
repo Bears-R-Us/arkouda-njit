@@ -168,106 +168,159 @@ module TriCtrMsg {
 
 
 
-          coforall loc in Locales {
-                on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-                     var triCount=0:int;
-
-
-                     forall i in startEdge..endEdge with (+ reduce triCount) {
-                         var u = src[i];
-                         var v = dst[i];
-                         var du=nei[u];
-                         var dv=nei[v];
-                         {
-                             var beginTmp=start_i[u];
-                             var endTmp=beginTmp+nei[u]-1;
-                             if ( (u!=v) ){
-                                if ( (nei[u]>1)  ){
-                                   forall x in dst[beginTmp..endTmp] with (+ reduce triCount)  {
-                                       var  e=exactEdge(u,x);//here we find the edge ID to check if it has been removed
-                                       if (e!=-1){
-                                          if ((x !=v) && (i<e)) {
-                                                 var e3=findEdge(x,v);
-                                                 // wedge case i<e, u->v, u->x
-                                                 if (e3!=-1) {
-                                                         triCount+=1;
-                                                         TriNum[u].add(1);
-                                                         TriNum[v].add(1);
-                                                         TriNum[x].add(1);
-                                                         NeiAry[i]=true;
-                                                         NeiAry[e]=true;
-                                                         NeiAry[e3]=true;
-                                                 }
-                                          }
+      coforall loc in Locales {
+          on loc {
+             var ld = src.localSubdomain();
+             var startEdge = ld.low;
+             var endEdge = ld.high;
+             var triCount=0:int;
+             // each locale only handles the edges owned by itself
+             forall i in startEdge..endEdge with (+ reduce triCount){
+                  var Count:int;
+                  Count=0;
+                  var    v1=src[i];
+                  var    v2=dst[i];
+                  var    dv1=nei[v1]+neiR[v1];
+                  var    dv2=nei[v2]+neiR[v2];
+                  var    sv1:int;
+                  var    lv2:int;
+                  var    sdv1:int;
+                  var    ldv2:int;
+                  
+                  if (dv1<=dv2) {
+                        sv1=v1;
+                        lv2=v2;
+                        sdv1=dv1;
+                        ldv2=dv2;
+                  } else {
+                        sv1=v2;
+                        lv2=v1;
+                        sdv1=dv2;
+                        ldv2=dv1;
+                  }
+                  {
+                      var nextStart=start_i[sv1];
+                      var nextEnd=start_i[sv1]+nei[sv1]-1;
+                      if (nei[sv1]>0) {
+                         forall j in nextStart..nextEnd with (+ reduce triCount){
+                             var v3=src[j];//v3==sv1
+                             var v4=dst[j]; 
+                             var tmpe:int;
+                             if ( ( lv2!=v4 ) ) {
+                                       var dv4=nei[v4]+neiR[v4];
+                                       if (ldv2<dv4) {
+                                            tmpe=findEdge(lv2,v4);
+                                       } else {
+                                            tmpe=findEdge(v4,lv2);
                                        }
-                                   }
+                                       if (tmpe!=-1) {// there is such third edge
+                                         triCount+=1;
+                                         TriNum[sv1].add(1);
+                                         TriNum[lv2].add(1);
+                                         TriNum[v4].add(1);					     
+                                       }
+                             }// end of if EdgeDeleted[j]<=-1
+                         }// end of  forall j in nextStart..nextEnd 
+                      }// end of if nei[v1]>1
+
+
+
+                      nextStart=start_iR[sv1];
+                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
+                      if (neiR[sv1]>0) {
+                         forall j in nextStart..nextEnd with (+ reduce triCount ){
+                             var v3=srcR[j];//sv1==v3
+                             var v4=dstR[j]; 
+                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
+                             var tmpe:int;
+                             if (e1!=-1) {
+                                if (( lv2!=v4 ) ) {
+                                       // we first check if  the two different vertices can be the third edge
+                                       var dv4=nei[v4]+neiR[v4];
+                                       if ldv2<dv4 {
+                                          tmpe=findEdge(lv2,v4);
+                                       } else {
+                                          tmpe=findEdge(v4,lv2);
+                                       }
+                                       if (tmpe!=-1) {// there is such third edge
+                                         triCount+=1;
+                                         TriNum[sv1].add(1);
+                                         TriNum[lv2].add(1);
+                                         TriNum[v4].add(1);
+                                       }
                                 }
                              }
-                            
-                             beginTmp=start_i[v];
-                             endTmp=beginTmp+nei[v]-1;
-                             if ( (u!=v) ){
-                                if ( (nei[v]>0)  ){
-                                   //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] with (+ reduce triCount) {
-                                       var  e=exactEdge(v,x);//here we find the edge ID to check if it has been removed
-                                       if (e!=-1){
-                                          if ( (x !=u) && (i<e)) {
-                                                 var e3=exactEdge(x,u);
-                                                 if (e3!=-1) {
-                                                     if ( (src[e3]==x) && (dst[e3]==u) && (i<e3)) {
-                                                         // cycle case i<e,i<e3, u->v->x->u
-                                                         triCount+=1;
-                                                         TriNum[u].add(1);
-                                                         TriNum[v].add(1);
-                                                         TriNum[x].add(1);
-                                                         NeiAry[i]=true;
-                                                         NeiAry[e]=true;
-                                                         NeiAry[e3]=true;
-                                                     }
-                                                 }
-                                          }
-                                       }
-                                   }
-                                }
-                             }
+                         }// end of  forall j in nextStart..nextEnd 
+                      }// end of if
+                  }// end of triangle counting
 
-                        }// end of if du<=dv
-                  }// end of forall. We get the number of triangles for each edge
-                  subTriSum[here.id]=triCount;
-
-
-                }// end of  on loc 
-          } // end of coforall loc in Locales 
-
+           // i is an undeleted edge
+	      
+             }// end of forall. We get the number of triangles for each edge
+             subTriSum[here.id]=triCount;
+          }// end of  on loc 
+      } // end of coforall loc in Locales  
 
 
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
 
-
-          coforall loc in Locales {
-                on loc {
-                     var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
-
-                     forall i in startEdge..endEdge {
-                         var u = src[i];
-                         var v = dst[i];
-                         if NeiAry[i] {
-                              NeiTriNum[u].add(TriNum[v].read());                   
-                              NeiTriNum[v].add(TriNum[u].read());                   
-                         }
-                     }
-
-                }// end of  on loc 
-          } // end of coforall loc in Locales 
-
+          for u in 0..Nv-1 {
+          //Go through u's adjacency list
+          writeln("Checking for, ", u);
+              var startEdge = start_i[u];
+              var endEdge = start_i[u] + nei[u] -1;
+              
+              for x in startEdge..endEdge {
+                  //For each edge in u's adjacency list
+                  var eOneVOne = src[x];
+                  var eOneVTwo = dst[x];
+                  writeln("adj 1 ", eOneVOne, ", ", eOneVTwo);
+                  var eOneVTwoStart = start_i[eOneVTwo];
+                  var eOneVTwoEnd = eOneVTwoStart + nei[eOneVTwoStart] -1;
+                  var check=true:bool;
+                  if (nei[eOneVTwoStart] > 0) {
+                  for y in eOneVTwoStart..eOneVTwoEnd {
+		       var w = dst[y];
+		       writeln("adj 2F ", w, " check against ", u);
+		       var e1 = findEdge(w,u);
+		       writeln("And e1", e1);
+		       if (e1 != -1) {
+		           check = false;
+		       }
+		       else {
+		       writeln("No problem for ", u, ", ", dst[x], ", ", w);
+		       }
+                  }
+                  }
+                  eOneVTwoStart = start_iR[eOneVTwo];
+                  eOneVTwoEnd = eOneVTwoStart + neiR[eOneVTwo] -1;
+                  if (neiR[eOneVTwo] > 0) {                  
+                  for y in eOneVTwoStart..eOneVTwoEnd {
+		       var w = dstR[y];
+		       writeln("adj 2R ", w, " check against ", u);
+		       var e1 = findEdge(w,u);
+		       writeln("And e1", e1);
+		       if (e1 != -1) {
+		           check = false;
+		       }
+		       else {
+		       writeln("No problem for ", u, ", ", dst[x], ", ", w);
+		       }
+                  }
+                  }                
+                  if check == true {
+                      writeln("Adding ", x, " to u ", u);
+                      NeiTriNum[u].add(TriNum[dst[x]].read());
+                  }
+              }
+          
+          }
+	  writeln("NeiTriNum, ", NeiTriNum);
+	  writeln("TriNum, ", TriNum);
+	  writeln("TotalCnt, ", TotalCnt[0]);
+	  
           coforall loc in Locales {
                 on loc {
 
@@ -286,7 +339,8 @@ module TriCtrMsg {
                              forall j in beginTmp..endTmp with (+ reduce curnum) {
                                    curnum+=TriNum[dstR[j]].read();
                              }
-                             TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2/3+TriNum[i].read()):real/TotalCnt[0]:real;
+                             //TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2/3+TriNum[i].read()):real/TotalCnt[0]:real;
+                             TriCtr[i] = (NeiTriNum[i].read() + TriNum[i].read()):real/TotalCnt[0]:real;
                      }
 
                 }// end of  on loc 
