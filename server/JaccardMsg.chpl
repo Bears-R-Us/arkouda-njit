@@ -10,25 +10,20 @@ module JaccardMsg {
   use ServerConfig;
   use MultiTypeSymbolTable;
   use MultiTypeSymEntry;
-  //use RandArray;
   use IO;
 
 
   use SymArrayDmap;
-  //use Random;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
   use ArgSortMsg;
   use Time;
   use CommAggregation;
-  //use Sort;
   use Map;
   use DistributedDeque;
 
 
-  //use List; 
-  //use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
@@ -48,8 +43,6 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var depthName:string;
-      var RCMFlag=RCMs:int;
       var timer:Timer;
 
 
@@ -140,7 +133,7 @@ module JaccardMsg {
                                    var u=df[e1];
                                    forall e2 in e1+1..nextEnd {
                                        var v=df[e2];
-                                       jaccard(u*Nv+v)+=1;
+                                       jaccard[u*Nv+v]+=1;
                                    }
                               } 
                        }
