@@ -846,11 +846,128 @@ def GenMinSearchTriCnt(InitAssign,AssignCnt):
 	return ret
 
 
+
+
+
+def GenNonMinSearchTriCnt(InitAssign,AssignCnt):
+	text1a='''
+              // first we calculate the number of triangles using mininum search  method.
+              coforall loc in Locales with (ref SetCurF ) {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     // each locale only handles the edges owned by itself
+                     forall i in startEdge..endEdge with(ref SetCurF){
+'''
+	text1b='''
+                           var Count:int;
+                           Count=0;
+                           if (EdgeDeleted[i]==-1) {
+                                  var    v1=src[i];
+                                  var    v2=dst[i];
+                                  var    dv1=nei[v1]+neiR[v1];
+                                  var    dv2=nei[v2]+neiR[v2];
+                                  var    sv1:int;
+                                  var    lv2:int;
+                                  var    sdv1:int;
+                                  var    ldv2:int;
+
+
+
+
+
+                                  {
+                                        sv1=v1;
+                                        lv2=v2;
+                                        sdv1=dv1;
+                                        ldv2=dv2;
+                                  } 
+                                  {
+                                      var nextStart=start_i[sv1];
+                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
+                                      if (nei[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (+ reduce Count){
+                                         //forall j in nextStart..nextEnd with (ref SetNextF){
+                                         //for j in nextStart..nextEnd {
+                                             var v3=src[j];//v3==sv1
+                                             var v4=dst[j]; 
+                                             var tmpe:int;
+                                             if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       {
+                                                            tmpe=findEdge(lv2,v4);
+                                                       } 
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                         if ( EdgeDeleted[tmpe]==-1 ) {
+                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
+                                                                      Count+=1;
+                                                               } 
+                                                         }
+                                                       }
+                                             }// end of if EdgeDeleted[j]<=-1
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if nei[v1]>1
+    
+
+
+                                      nextStart=start_iR[sv1];
+                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
+                                      if (neiR[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (+ reduce Count ){
+                                         //forall j in nextStart..nextEnd with (ref SetNextF){
+                                         //forall j in nextStart..nextEnd {
+                                             var v3=srcR[j];//sv1==v3
+                                             var v4=dstR[j]; 
+                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
+                                             var tmpe:int;
+                                             if (e1!=-1) {
+                                                if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
+                                                       // we first check if  the two different vertices can be the third edge
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       {
+                                                          tmpe=findEdge(lv2,v4);
+                                                       } 
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
+                                                               if ( (EdgeDeleted[e1]==-1) && (EdgeDeleted[tmpe]==-1) ) {
+                                                                      //TriCount[i]+=1;
+                                                                      Count+=1;
+                                                               } 
+                                                         }
+                                                       }
+                                                }
+                                             }
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if
+                                  }// end of triangle counting
+
+                           }// i is an undeleted edge
+'''
+	emptyline='''
+
+'''   
+	assign="                        "+AssignCnt
+#                        TriCount[i]=Count;
+
+	text2='''
+                     }// end of forall. We get the number of triangles for each edge
+                  }// end of  on loc 
+              } // end of coforall loc in Locales 
+'''
+	ret=text1a+InitAssign+text1b+AssignCnt+emptyline+text2
+	return ret
+
+
 MinSearchTriCount=GenMinSearchTriCnt(TriCntInit,TriCntAssignment)
 MinSearchTriCountAtomic=GenMinSearchTriCnt(TriCntInitAtomic,TriCntAssignmentAtomic)
+NonMinSearchTriCount=GenNonMinSearchTriCnt(TriCntInit,TriCntAssignment)
+NonMinSearchTriCountAtomic=GenNonMinSearchTriCnt(TriCntInitAtomic,TriCntAssignmentAtomic)
 
 NaiveMinSearchBodyCode=TimerAndWhileStart+MinSearchTriCount+MarkDelEdges
 NaiveMinSearchBodyCodeAtomic=TimerAndWhileStart+MinSearchTriCountAtomic+MarkDelEdgesAtomic
+NaiveNonMinSearchBodyCode=TimerAndWhileStart+NonMinSearchTriCount+MarkDelEdges
+NaiveNonMinSearchBodyCodeAtomic=TimerAndWhileStart+NonMinSearchTriCountAtomic+MarkDelEdgesAtomic
 
 
 #We define new start that need to calculate the total number of triangles first
@@ -1070,6 +1187,164 @@ MinSearchAffectedEdgeRemoval='''
               }// end of while 
 
 '''
+
+
+
+NonMinSearchAffectedEdgeRemoval='''
+              while (SetCurF.getSize()>0) {
+                  //first we build the edge set that will be affected by the removed edges in SetCurF
+                  coforall loc in Locales with ( ref SetNextF) {
+                      on loc {
+                           var ld = src.localSubdomain();
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
+                           forall i in SetCurF with (ref SetNextF) {
+                              if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
+                                  var    v1=src[i];
+                                  var    v2=dst[i];
+                                  var    dv1=nei[v1]+neiR[v1];
+                                  var    dv2=nei[v2]+neiR[v2];
+                                  var    sv1:int;
+                                  var    lv2:int;
+                                  var    sdv1:int;
+                                  var    ldv2:int;
+
+
+
+
+
+                                  {
+                                        sv1=v1;
+                                        lv2=v2;
+                                        sdv1=dv1;
+                                        ldv2=dv2;
+                                  } 
+                                  {
+                                      var nextStart=start_i[sv1];
+                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
+                                      if (nei[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                             var v3=src[j];//v3==sv1
+                                             var v4=dst[j]; 
+                                             var tmpe:int;
+                                             if ( (EdgeDeleted[j]<=-1) && ( lv2!=v4 ) ) {
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       {
+                                                            tmpe=findEdge(lv2,v4);
+                                                       } 
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
+
+
+                                                               if ((EdgeDeleted[j]==-1) && (EdgeDeleted[tmpe]==-1)) {
+
+                                                                      TriCount[tmpe].sub(1);
+                                                                      TriCount[j].sub(1);
+                                                               } else {
+                                                                   if ((EdgeDeleted[j]==-1) && (i<tmpe)) {
+                                                                      TriCount[j].sub(1);
+                                                                   } else { 
+                                                                       if ((EdgeDeleted[tmpe]==-1) &&(i<j)) {
+                                                                          TriCount[tmpe].sub(1);
+                                                                       }   
+                                                                   }   
+                                                               }
+                                                         }
+                                                       }
+                                             }// end of if EdgeDeleted[j]<=-1
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if nei[v1]>1
+    
+
+
+                                      nextStart=start_iR[sv1];
+                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
+                                      if (neiR[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                             var v3=srcR[j];//sv1==v3
+                                             var v4=dstR[j]; 
+                                             var e1=findEdge(v4,v3);// we need the edge ID in src instead of srcR
+                                             var tmpe:int;
+                                             if (e1!=-1) {
+                                                if ( (EdgeDeleted[e1]<=-1) && ( lv2!=v4 ) ) {
+                                                       // we first check if  the two different vertices can be the third edge
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       {
+                                                          tmpe=findEdge(lv2,v4);
+                                                       } 
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                         if ( EdgeDeleted[tmpe]<=-1 ) {
+                                                               if ( (EdgeDeleted[e1]==-1) && (EdgeDeleted[tmpe]==-1) ) {
+                                                                      TriCount[tmpe].sub(1);
+                                                                      TriCount[e1].sub(1);
+
+                                                               } else {
+                                                                   if ((EdgeDeleted[e1]==-1) && (i<tmpe)) {
+                                                                      TriCount[e1].sub(1);
+                                                                   } else { 
+                                                                       if ((EdgeDeleted[tmpe]==-1) &&(i<e1)) {
+                                                                          TriCount[tmpe].sub(1);
+                                                                       } 
+                                                                   } 
+                                                               }
+                                                         }
+                                                       }
+                                                }
+                                             }
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if
+                                  }// end of affected edge search 
+
+
+
+                              } // end if (xlocal(i,startEdge,endEdge) 
+
+                           } // end forall i in SetCurF with (ref SetNextF) 
+
+
+                      } //end on loc 
+                  } //end coforall loc in Locales 
+
+
+                  coforall loc in Locales with (ref SetCurF ) {
+                      on loc {
+                         var ld = src.localSubdomain();
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
+                         forall i in SetCurF {
+                              if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
+                                  EdgeDeleted[i]=k-1;
+                              }
+                           }
+                           
+                      }
+                  }
+
+                  RemovedEdge.add(SetCurF.getSize());
+                  SetCurF.clear();
+
+                  // then we try to remove the affected edges
+                  coforall loc in Locales with (ref SetCurF ) {
+                      on loc {
+                         var ld = src.localSubdomain();
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
+                         // each locale only handles the edges owned by itself
+                         forall i in startEdge..endEdge with(ref SetCurF){
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                                     EdgeDeleted[i] = 1-k;
+                                     SetCurF.add(i);
+                               }
+                         }
+                      }// end of  on loc
+                  } // end of coforall loc in Locales
+
+                  tmpN2+=1;
+                  SetNextF.clear();
+              }// end of while 
+
+'''
+
 
 
 PathMergeAffectedEdgeRemoval='''
@@ -1388,6 +1663,9 @@ MixMinSearchTriCountAtomic='''
 
 '''
 
+
+
+
 MixMinSearchAffectedEdgeRemoval='''
 
               while (SetCurF.getSize()>0) {
@@ -1556,6 +1834,8 @@ MixMinSearchAffectedEdgeRemoval='''
 
 TrussAtomicBodyCode=TimerAndNoWhileStart+MinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+MinSearchAffectedEdgeRemoval
 
+NonMSTrussAtomicBodyCode=TimerAndNoWhileStart+NonMinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+NonMinSearchAffectedEdgeRemoval
+
 TrussMixAtomicBodyCode=TimerAndNoWhileStart+MixMinSearchTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+MixMinSearchAffectedEdgeRemoval
 
 
@@ -1597,6 +1877,7 @@ MaxTrussStart='''
 
 MaxPathMergeBodyCode=MaxTrussStart+PathMergeAffectedEdgeRemoval
 MaxMinSearchBodyCode=MaxTrussStart+MinSearchAffectedEdgeRemoval
+MaxNonMinSearchBodyCode=MaxTrussStart+NonMinSearchAffectedEdgeRemoval
 MaxTrussMixBodyCode= MaxTrussStart+MixMinSearchAffectedEdgeRemoval
 
 
@@ -2488,6 +2769,8 @@ def GenCompleteTest():
 	print(text3)
 	print(InitialCountAtomic)
 	GenFunCall(True,"kTrussPathMerge")
+	print(InitialCountAtomic)
+	GenFunCall(True,"kTrussNonMinSearch")
 	print(InitialCountAtomic)
 	GenFunCall(True,"kTrussMinSearch")
 	print(InitialCountAtomic)
@@ -10432,6 +10715,7 @@ GenTrussFun("kTrussNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchSmallSeqBody
 GenTrussFun("kTrussNaivePathMerge",Parameters,NaivePathMergeBodyCode)
 GenTrussFun("kTrussNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
 GenTrussFun("kTrussPathMerge",ParametersAtomic,PathMergeBodyCode)
+GenTrussFun("kTrussNonMinSearch",ParametersAtomic,NonMSTrussAtomicBodyCode)
 GenTrussFun("kTrussMinSearch",ParametersAtomic,TrussAtomicBodyCode)
 GenTrussFun("kTrussMix",ParametersAtomic,TrussMixAtomicBodyCode)
 print("//End of K-Truss Functions")
@@ -10443,6 +10727,7 @@ print("")
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Max K-Truss Functions")
 GenMaxTrussAtomicFun("kTrussPathMerge","MaxTrussPathMerge",MaxPathMergeBodyCode)
+GenMaxTrussAtomicFun("kTrussNonMinSearch","MaxTrussNonMinSearch",MaxNonMinSearchBodyCode)
 GenMaxTrussAtomicFun("kTrussMinSearch","MaxTrussMinSearch",MaxMinSearchBodyCode)
 GenMaxTrussAtomicFun("kTrussMix","MaxTrussMix",MaxTrussMixBodyCode)
 print("//End of Max K-Truss Functions")
@@ -10458,6 +10743,7 @@ GenDecompositionFun("TrussDecoNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchS
 GenDecompositionFun("TrussDecoNaivePathMerge",Parameters,NaivePathMergeBodyCode)
 GenDecompositionFun("TrussDecoNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
 GenDecompositionFun("TrussDecoPathMerge",ParametersAtomic,PathMergeBodyCode)
+GenDecompositionFun("TrussDecoNonMinSearch",ParametersAtomic,NonMSTrussAtomicBodyCode)
 GenDecompositionFun("TrussDecoMinSearch",ParametersAtomic,TrussAtomicBodyCode)
 GenDecompositionFun("TrussDecoMix",ParametersAtomic,TrussMixAtomicBodyCode)
 print("//End of Truss Decomposition Functions")
