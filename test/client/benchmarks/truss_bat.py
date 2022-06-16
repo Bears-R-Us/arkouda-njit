@@ -17,12 +17,12 @@ def time_ak_truss_graph():
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
-    Test1=[ [53381,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
-            [198050,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.pr"],\
-            [93439,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.pr"],\
-            [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
-            [118489,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.pr"],\
+    Test1=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
             [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
+            [53381,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
+            [93439,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.pr"],\
+            [118489,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.pr"],\
+            [198050,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.pr"],\
             [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.pr"]\
              ]
@@ -59,9 +59,6 @@ def time_ak_truss_graph():
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
         Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
         k=4
-        truss=njit.graph_ktruss(Graph,k)
-        print("After k=",k)
-        k=6
         truss=njit.graph_ktruss(Graph,k)
         print("After k=",k)
         truss=njit.graph_ktruss(Graph,-1)

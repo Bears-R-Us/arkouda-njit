@@ -2473,11 +2473,11 @@ def GenCompleteTest():
 	print(text1)
 	print(text2)
 	print(InitialCount)
-	GenFunCall(False,"kTrussNaiveListIntersection")
+#	GenFunCall(False,"kTrussNaiveListIntersection")
 	print(InitialCount)
-	GenFunCall(False,"kTrussNaiveSetSearchSmall")
+#	GenFunCall(False,"kTrussNaiveSetSearchSmall")
 	print(InitialCount)
-	GenFunCall(False,"kTrussNaiveSetSearchSmallSeq")
+#	GenFunCall(False,"kTrussNaiveSetSearchSmallSeq")
 	print(InitialCount)
 	GenFunCall(False,"kTrussNaivePathMerge")
 	print(InitialCount)
@@ -2513,6 +2513,8 @@ def GenCompleteTest():
 	print(text23)
 
 
+	print(InitialCountAtomic)
+	GenFunCall(True,"MaxTrussPathMerge")
 	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussMinSearch")
 	print(InitialCountAtomic)
@@ -10413,6 +10415,14 @@ EndCode='''
 }
 
 '''
+
+
+
+
+
+
+
+
 print(BeginCode)
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of K-Truss Functions")
@@ -10432,6 +10442,7 @@ print("")
 
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Max K-Truss Functions")
+GenMaxTrussAtomicFun("kTrussPathMerge","MaxTrussPathMerge",MaxPathMergeBodyCode)
 GenMaxTrussAtomicFun("kTrussMinSearch","MaxTrussMinSearch",MaxMinSearchBodyCode)
 GenMaxTrussAtomicFun("kTrussMix","MaxTrussMix",MaxTrussMixBodyCode)
 print("//End of Max K-Truss Functions")
@@ -10443,6 +10454,7 @@ print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Truss Decomposition Functions")
 GenDecompositionFun("TrussDecoNaiveListIntersection",Parameters,NaiveListIntersectionBodyCode)
 GenDecompositionFun("TrussDecoNaiveSetSearchSmall",Parameters,NaiveSetSearchSmallBodyCode)
+GenDecompositionFun("TrussDecoNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchSmallSeqBodyCode)
 GenDecompositionFun("TrussDecoNaivePathMerge",Parameters,NaivePathMergeBodyCode)
 GenDecompositionFun("TrussDecoNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
 GenDecompositionFun("TrussDecoPathMerge",ParametersAtomic,PathMergeBodyCode)
