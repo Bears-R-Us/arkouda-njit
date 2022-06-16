@@ -156,9 +156,9 @@ module JaccardMsg {
           }
           var jaccardName = st.nextName();
           var jaccardEntry = new shared SymEntry(jaccard);
-          st.addEntry(depthName, jaccardEntry);
+          st.addEntry(jaccardName, jaccardEntry);
 
-          var jacMsg =  'created ' + st.attrib(depthName);
+          var jacMsg =  'created ' + st.attrib(jaccardName);
           return jacMsg;
 
       }//end of 
