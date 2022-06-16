@@ -287,6 +287,9 @@ module TriCtrMsg {
                                    curnum+=TriNum[dstR[j]].read();
                              }
                              TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2/3+TriNum[i].read()):real/TotalCnt[0]:real;
+                             writeln("Number of Triangles for vertex ", i," =",TriNum[i].read());
+                             writeln("Sum of number of Triangles for vertex ", i,"'s neighbour =",NeiTriNum[i].read());
+                             writeln("Triangle Centrality of  vertex ", i," =",TriCtr[i]);
                      }
 
                 }// end of  on loc 
