@@ -624,7 +624,7 @@ module TriCtrMsg {
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (+ reduce triCount) {
                          TriCount[i]=0;
                          var u = src[i];
                          var v = dst[i];
@@ -660,9 +660,16 @@ module TriCtrMsg {
                              //if ( (dst[jv]!=u) && (dst[iu]!=v) ) {
                              {
                                  if dst[iu]==dst[jv] {
-                                     TriCount[i]+=1;
-                                     iu+=1;
-                                     jv+=1;
+                                     triCount += 1;
+                                     TriNum[u] += 1;
+                                     TriNum[v] += 1;
+                                     TriNum[dst[jv]] += 1;
+                                     NeiAry[iu] = true;
+                                     NeiAry[jv] = true;
+                                     NeiAry[i] = true;
+                                     //TriCount[i]+=1;
+                                     //iu+=1;
+                                     //jv+=1;
                                  } else {
                                     if dst[iu]<dst[jv] {
                                        iu+=1;
@@ -689,9 +696,17 @@ module TriCtrMsg {
                              //if ( (dstR[jv]!=u) && (dst[iu]!=v) ) {
                              {
                                  if dst[iu]==dstR[jv] {
-                                     TriCount[i]+=1;
-                                     iu+=1;
-                                     jv+=1;
+                                     triCount += 1;
+                                     TriNum[u] += 1;
+                                     TriNum[v] += 1;
+                                     TriNum[dst[iu]] += 1;
+                                     NeiAry[iu] = true;
+                                     var tmpe = exactEdge(dstR[jv], srcR[jv]);
+                                     NeiAry[tmpe] = true;
+                                     NeiAry[i] = true;                                     
+                                     //TriCount[i]+=1;
+                                     //iu+=1;
+                                     //jv+=1;
                                  } else {
                                     if dst[iu]<dstR[jv] {
                                        iu+=1;
@@ -720,9 +735,17 @@ module TriCtrMsg {
                              //if ( (dst[jv]!=u) && (dstR[iu]!=v) ) {
                              {
                                  if dstR[iu]==dst[jv] {
-                                     TriCount[i]+=1;
-                                     iu+=1;
-                                     jv+=1;
+                                     triCount += 1;
+                                     TriNum[u] += 1;
+                                     TriNum[v] += 1;
+                                     TriNum[dst[jv]] += 1;
+                                     var tmpe = exactEdge(dstR[iu], srcR[iu]);
+                                     NeiAry[tmpe] = true;
+                                     NeiAry[jv] = true;
+                                     NeiAry[i] = true;                                     
+                                     //TriCount[i]+=1;
+                                     //iu+=1;
+                                     //jv+=1;
                                  } else {
                                     if dstR[iu]<dst[jv] {
                                        iu+=1;
@@ -751,9 +774,19 @@ module TriCtrMsg {
                              //if ( (dstR[jv]!=u) && (dstR[iu]!=v) ) {
                              {
                                  if dstR[iu]==dstR[jv] {
-                                     TriCount[i]+=1;
-                                     iu+=1;
-                                     jv+=1;
+                                     triCount += 1;
+                                     TriNum[u] += 1;
+                                     TriNum[v] += 1;
+                                     TriNum[dstR[jv]] += 1;
+                                     //FindEdge
+                                     var tmpe1 = exactEdge(dstR[iu], srcR[iu]);
+                                     var tmpe2 = exactEdge(dstR[jv], srcR[jv]);
+                                     NeiAry[tmpe1] = true;
+                                     NeiAry[tmpe2] = true;
+                                     NeiAry[i] = true;                                 
+                                     //TriCount[i]+=1;
+                                     //iu+=1;
+                                     //jv+=1;
                                  } else {
                                     if dstR[iu]<dstR[jv] {
                                        iu+=1;
