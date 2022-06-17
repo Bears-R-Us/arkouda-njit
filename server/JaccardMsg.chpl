@@ -37,8 +37,8 @@ module JaccardMsg {
   // calculate Jaccard coefficient
   proc segJaccardMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
-      var (RCMs, n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
-          = payload.splitMsgToTuple(7);
+      var (n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
+          = payload.splitMsgToTuple(6);
       var Nv=n_verticesN:int;
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
