@@ -591,7 +591,7 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
                          if ((EdgeDeleted[i]==-1) && (u!=v) ){
                            iu=beginUf;
                            jv=beginVf;
-                           while ( (iu <=endUf) &&   (jv<=endVf))  {
+                           while ( (iu <=endUf) &&   (jv<=endVf) && (nei[u]>0) && (nei[v]>0))  {
                              if  ( (EdgeDeleted[iu] !=-1) || (dst[iu]==v) ) {
                                   iu+=1;
                                   continue;
@@ -600,7 +600,6 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
                                   jv+=1;
                                   continue;
                              }
-                             //if ( (dst[jv]!=u) && (dst[iu]!=v) && ( EdgeDeleted[iu] ==-1) && (EdgeDeleted[jv]==-1) ) {
                              {
                                  if dst[iu]==dst[jv] {
                                      //TriCount[i]+=1;
@@ -619,7 +618,7 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
 
                            iu=beginUf;
                            jv=beginVb;
-                           while ( (iu <=endUf) &&   (jv<=endVb))  {
+                           while ( (iu <=endUf) &&   (jv<=endVb) && (nei[u]>0) && (neiR[v]>0) )  {
                              if  ( (EdgeDeleted[iu] !=-1) || (dst[iu]==v) ) {
                                   iu+=1;
                                   continue;
@@ -629,7 +628,6 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
                                   jv+=1;
                                   continue;
                              }
-                             //if ( (dstR[jv]!=u) && (dst[iu]!=v) && ( EdgeDeleted[iu] ==-1) && (EdgeDeleted[ev]==-1) ) {
                              {
                                  if dst[iu]==dstR[jv] {
                                      //TriCount[i]+=1;
@@ -650,7 +648,7 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
 
                            iu=beginUb;
                            jv=beginVf;
-                           while ( (iu <=endUb) &&   (jv<=endVf))  {
+                           while ( (iu <=endUb) &&   (jv<=endVf) && (neiR[u]>0) && (nei[v]>0))  {
                              eu=findEdge(dstR[iu],u);
                              if  ( (EdgeDeleted[eu] !=-1) || (dstR[iu]==v) ) {
                                   iu+=1;
@@ -679,7 +677,7 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
 
                            iu=beginUb;
                            jv=beginVb;
-                           while ( (iu <=endUb) &&   (jv<=endVb))  {
+                           while ( (iu <=endUb) &&   (jv<=endVb) && (neiR[u]>0) && (neiR[v]>0))  {
                              eu=findEdge(dstR[iu],u);
                              ev=findEdge(dstR[jv],v);
                              if  ( (EdgeDeleted[eu] !=-1) || (dstR[iu]==v) ) {
@@ -690,7 +688,6 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
                                   jv+=1;
                                   continue;
                              }
-                             //if ( (dstR[jv]!=u) && (dstR[iu]!=v) && ( EdgeDeleted[eu] ==-1) && (EdgeDeleted[ev]==-1) ) {
                              {
                                  if dstR[iu]==dstR[jv] {
                                      //TriCount[i]+=1;
@@ -1350,12 +1347,13 @@ NonMinSearchAffectedEdgeRemoval='''
 PathMergeAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
+
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF  {
 
 
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
@@ -1379,15 +1377,18 @@ PathMergeAffectedEdgeRemoval='''
                                   var jv:int;
                                   var eu:int;
                                   var ev:int;
-                                  if ( (u!=v) ){
+                                  if ( (u!=v) ){// edge <u,v> is not a self-loop
                                     iu=beginUf;
                                     jv=beginVf;
-                                    while ( (iu <=endUf) &&   (jv<=endVf))  {
-                                      if  ( (EdgeDeleted[iu] >0 ) || (dst[iu]==v) ) {
+                                    if  ((nei[u]<2) || (nei[v]==0)) {
+                                        iu=endUf+1;
+                                    }
+                                    while ( (iu <=endUf) &&   (jv<=endVf)  )  {
+                                      if  ( (EdgeDeleted[iu] >0 ) || (dst[iu]==v) || (dst[iu]==u)) {
                                             iu+=1;
                                             continue;
                                       }
-                                      if ( (EdgeDeleted[jv] >0 ) || (dst[jv]==u) ) {
+                                      if ( (EdgeDeleted[jv] >0 ) || (dst[jv]==u)|| (dst[jv]==v) ) {
                                            jv+=1;
                                            continue;
                                       }
@@ -1420,15 +1421,23 @@ PathMergeAffectedEdgeRemoval='''
 
                                     iu=beginUf;
                                     jv=beginVb;
-                                    while ( (iu <=endUf) &&   (jv<=endVb))  {
-                                      if  ( (EdgeDeleted[iu] >0) || (dst[iu]==v) ) {
+                                    if  ((nei[u]<2) || (neiR[v]==0)) {
+                                        iu=endUf+1;
+                                    }
+                                    while ( (iu <=endUf) &&   (jv<=endVb) )  {
+                                      if  ( (EdgeDeleted[iu] >0) || (dst[iu]==v)|| (dst[iu]==u) ) {
                                            iu+=1;
                                            continue;
                                       }
-                                      ev=findEdge(dstR[jv],v);
-                                      if ( (EdgeDeleted[ev]>0) || (dstR[jv]==u) ) {
-                                           jv+=1;
-                                           continue;
+                                      ev=exactEdge(dstR[jv],v);
+                                      if (ev!=-1) {
+                                          if ( (EdgeDeleted[ev]>0) || (dstR[jv]==u)|| (dstR[jv]==v)) {
+                                               jv+=1;
+                                               continue;
+                                          }
+                                      } else {
+                                          writeln("there is something wrong in the graph");
+                                          break;
                                       }
                                       {
                                           if dst[iu]==dstR[jv] {
@@ -1461,15 +1470,23 @@ PathMergeAffectedEdgeRemoval='''
 
                                     iu=beginUb;
                                     jv=beginVf;
-                                    while ( (iu <=endUb) &&   (jv<=endVf))  {
-                                      eu=findEdge(dstR[iu],u);
-                                      if  ( (EdgeDeleted[eu] >0) || (dstR[iu]==v) ) {
-                                           iu+=1;
-                                           continue;
-                                      }
-                                      if ( (EdgeDeleted[jv] >0) || (dst[jv]==u) ) {
-                                           jv+=1;
-                                           continue;
+                                    if  ((neiR[u]<1) || (nei[v]<1)) {
+                                        iu=endUb+1;
+                                    }
+                                    while ( (iu <=endUb) &&   (jv<=endVf) )  {
+                                      eu=exactEdge(dstR[iu],u);
+                                      if (eu!=-1){
+                                          if  ( (EdgeDeleted[eu] >0) || (dstR[iu]==v)|| (dstR[iu]==u) ) {
+                                               iu+=1;
+                                               continue;
+                                          }
+                                          if ( (EdgeDeleted[jv] >0) || (dst[jv]==u) || (dst[jv]==v)) {
+                                               jv+=1;
+                                               continue;
+                                          }
+                                      } else {
+                                          writeln("there is something wrong in the graph");
+                                          break;
                                       }
                                       {
                                           if dstR[iu]==dst[jv] {
@@ -1485,6 +1502,8 @@ PathMergeAffectedEdgeRemoval='''
                                                       }
                                                   }
                                               }
+                                              iu+=1;
+                                              jv+=1;
                                           } else {
                                              if dstR[iu]<dst[jv] {
                                                 iu+=1;
@@ -1498,16 +1517,26 @@ PathMergeAffectedEdgeRemoval='''
 
                                     iu=beginUb;
                                     jv=beginVb;
-                                    while ( (iu <=endUb) &&   (jv<=endVb))  {
-                                      eu=findEdge(dstR[iu],u);
-                                      ev=findEdge(dstR[jv],v);
-                                      if  ( (EdgeDeleted[eu] >0) || (dstR[iu]==v) ) {
-                                           iu+=1;
-                                           continue;
-                                      }
-                                      if ( (EdgeDeleted[ev] >0) || (dstR[jv]==u) ) {
-                                           jv+=1;
-                                           continue;
+                                    if  ((neiR[u]<1) || (neiR[v]<2)) {
+                                        iu=endUb+1;
+                                    }
+                                    while ( (iu <=endUb) &&   (jv<=endVb) )  {
+                                      eu=exactEdge(dstR[iu],u);
+                                      ev=exactEdge(dstR[jv],v);
+                                      if ((eu!=-1)&&(ev!=-1)){
+
+                                          if  ( (EdgeDeleted[eu] >0) || (dstR[iu]==v) || (dstR[iu]==u) ) {
+                                               iu+=1;
+                                               continue;
+                                          }
+                                          if ( (EdgeDeleted[ev] >0)  || (dstR[jv]==u) || (dstR[jv]==v)  ) {
+                                               jv+=1;
+                                               continue;
+                                          }
+                                      } else
+                                      {
+                                          writeln("there is something wrong in the graph");
+                                          break;
                                       }
                                       {
                                           if dstR[iu]==dstR[jv] {
@@ -1545,8 +1574,10 @@ PathMergeAffectedEdgeRemoval='''
                       } //end on loc 
                   } //end coforall loc in Locales 
 
+                  //outMsg="After forall ";
+                  //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
@@ -2799,6 +2830,8 @@ def GenCompleteTest():
 	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussPathMerge")
 	print(InitialCountAtomic)
+	GenFunCall(True,"MaxTrussNonMinSearch")
+	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussMinSearch")
 	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussMix")
@@ -2833,6 +2866,9 @@ def GenCompleteTest():
 	print(InitialCountAtomic)
 	print("                kValue=3;")
 	GenFunCall(True,"TrussDecoPathMerge")
+	print(InitialCountAtomic)
+	print("                kValue=3;")
+	GenFunCall(True,"TrussDecoNonMinSearch")
 	print(InitialCountAtomic)
 	print("                kValue=3;")
 	GenFunCall(True,"TrussDecoMinSearch")
