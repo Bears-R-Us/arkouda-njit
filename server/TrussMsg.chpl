@@ -3740,6 +3740,490 @@ module TrussMsg {
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //Begin of Max K-Truss Functions
+      proc OnceMaxTrussNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool{ 
+
+
+          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var N1=0:int;
+          var N2=0:int;
+          var ConFlag=true:bool;
+          var RemovedEdge: atomic int;
+          var k=kvalue:int;
+          var timer:Timer;
+          var largest:int;
+          largest=Ne;
+          RemovedEdge.write(0);
+
+
+          proc RemoveDuplicatedEdges( cur: int):int {
+               if ( (cur==0) ) {
+                    return -1;
+               }
+               var u=src[cur]:int;
+               var v=dst[cur]:int;
+               var lu=start_i[u]:int;
+               var nu=nei[u]:int;
+               var lv=start_i[v]:int;
+               var nv=nei[v]:int;
+               var DupE:int;
+               if ((nu<=1) || (cur<=lu)) {
+                   DupE=-1;
+               } else {
+                   
+                   DupE =binSearchE(dst,lu,cur-1,v);
+               }
+               if (DupE!=-1) {
+                    EdgeDeleted[cur]=k-1;
+                    RemovedEdge.add(1);
+               } else {
+                   if (u>v) {
+                      if (nv<=0) {
+                         DupE=-1;
+                      } else {
+                         DupE=binSearchE(dst,lv,lv+nv-1,u);
+                      }
+                      if (DupE!=-1) {
+                           EdgeDeleted[cur]=k-1;
+                           RemovedEdge.add(1);
+                      }
+                   }
+               }
+               return DupE;
+          }
+
+          // given vertces u and v, return the edge ID e=<u,v> 
+          proc exactEdge(u:int,v:int):int {
+              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+                    return -1;
+                    // we do not accept self-loop
+              }
+              var beginE=start_i[u];
+              var eid=-1:int;
+              if (nei[u]>0) {
+                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                       // search <u,v> in undirect edges 
+                  } 
+              } 
+              return eid;
+          }
+          // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
+          proc findEdge(u:int,v:int):int {
+              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+                    return -1;
+                    // we do not accept self-loop
+              }
+              var beginE=start_i[u];
+              var eid=-1:int;
+              if (nei[u]>0) {
+                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                       // search <u,v> in undirect edges 
+                  } 
+              } 
+              if (eid==-1) {// if b
+                 beginE=start_i[v];
+                 if (nei[v]>0) {
+                    if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
+                          eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
+                          // search <v,u> in undirect edges 
+                    } 
+                 }
+              }// end of if b
+              return eid;
+          }// end of  proc findEdge(u:int,v:int)
+
+
+          timer.start();
+          ConFlag=true;
+          while (ConFlag) {
+
+              // first we calculate the number of triangles
+              coforall loc in Locales {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     // each locale only handles the edges owned by itself
+                     forall i in startEdge..endEdge {
+                         TriCount[i]=0;
+                         var Count=0:int;
+                         var u = src[i];
+                         var v = dst[i];
+                         var beginUf=start_i[u];
+                         var endUf=beginUf+nei[u]-1;
+
+                         var beginUb=start_iR[u];
+                         var endUb=beginUb+neiR[u]-1;
+
+                         var beginVf=start_i[v];
+                         var endVf=beginVf+nei[v]-1;
+
+                         var beginVb=start_iR[v];
+                         var endVb=beginVb+neiR[v]-1;
+
+                         var iu:int;
+                         var jv:int;
+                         var eu:int;
+                         var ev:int;
+                         if ((EdgeDeleted[i]==-1) && (u!=v) ){
+                           iu=beginUf;
+                           jv=beginVf;
+                           while ( (iu <=endUf) &&   (jv<=endVf) && (nei[u]>0) && (nei[v]>0))  {
+                             if  ( (EdgeDeleted[iu] !=-1) || (dst[iu]==v) ) {
+                                  iu+=1;
+                                  continue;
+                             }
+                             if ( (EdgeDeleted[jv]!=-1) || (dst[jv]==u) ) {
+                                  jv+=1;
+                                  continue;
+                             }
+                             {
+                                 if dst[iu]==dst[jv] {
+                                     //TriCount[i]+=1;
+                                     Count+=1;
+                                     iu+=1;
+                                     jv+=1;
+                                 } else {
+                                    if dst[iu]<dst[jv] {
+                                       iu+=1;
+                                    } else {
+                                       jv+=1;
+                                    }
+                                 }
+                             } 
+                           }  
+
+                           iu=beginUf;
+                           jv=beginVb;
+                           while ( (iu <=endUf) &&   (jv<=endVb) && (nei[u]>0) && (neiR[v]>0) )  {
+                             if  ( (EdgeDeleted[iu] !=-1) || (dst[iu]==v) ) {
+                                  iu+=1;
+                                  continue;
+                             }
+                             ev=findEdge(dstR[jv],v);
+                             if ( (EdgeDeleted[ev]!=-1) || (dstR[jv]==u) ) {
+                                  jv+=1;
+                                  continue;
+                             }
+                             {
+                                 if dst[iu]==dstR[jv] {
+                                     //TriCount[i]+=1;
+                                     Count+=1;
+                                     iu+=1;
+                                     jv+=1;
+                                 } else {
+                                    if dst[iu]<dstR[jv] {
+                                       iu+=1;
+                                    } else {
+                                       jv+=1;
+                                    }
+                                 }
+                             } 
+                           }
+
+
+
+                           iu=beginUb;
+                           jv=beginVf;
+                           while ( (iu <=endUb) &&   (jv<=endVf) && (neiR[u]>0) && (nei[v]>0))  {
+                             eu=findEdge(dstR[iu],u);
+                             if  ( (EdgeDeleted[eu] !=-1) || (dstR[iu]==v) ) {
+                                  iu+=1;
+                                  continue;
+                             }
+                             if ( (EdgeDeleted[jv]!=-1) || (dst[jv]==u) ) {
+                                  jv+=1;
+                                  continue;
+                             }
+                             {
+                                 if dstR[iu]==dst[jv] {
+                                     //TriCount[i]+=1;
+                                     Count+=1;
+                                     iu+=1;
+                                     jv+=1;
+                                 } else {
+                                    if dstR[iu]<dst[jv] {
+                                       iu+=1;
+                                    } else {
+                                       jv+=1;
+                                    }
+                                 }
+                             } 
+                           }
+
+
+                           iu=beginUb;
+                           jv=beginVb;
+                           while ( (iu <=endUb) &&   (jv<=endVb) && (neiR[u]>0) && (neiR[v]>0))  {
+                             eu=findEdge(dstR[iu],u);
+                             ev=findEdge(dstR[jv],v);
+                             if  ( (EdgeDeleted[eu] !=-1) || (dstR[iu]==v) ) {
+                                  iu+=1;
+                                  continue;
+                             }
+                             if ( (EdgeDeleted[ev]!=-1) || (dstR[jv]==u) ) {
+                                  jv+=1;
+                                  continue;
+                             }
+                             {
+                                 if dstR[iu]==dstR[jv] {
+                                     //TriCount[i]+=1;
+                                     Count+=1;
+                                     iu+=1;
+                                     jv+=1;
+                                 } else {
+                                    if dstR[iu]<dstR[jv] {
+                                       iu+=1;
+                                    } else {
+                                       jv+=1;
+                                    }
+                                 }
+                             } 
+                           }
+                        }//end of if
+                               TriCount[i]=Count;
+
+
+                     }// end of forall. We get the number of triangles for each edge
+                  }// end of  on loc 
+
+              } // end of coforall loc in Locales 
+
+              coforall loc in Locales with (ref SetCurF ) {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
+                     // each locale only handles the edges owned by itself
+                     forall i in startEdge..endEdge with(ref SetCurF){
+                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                                     EdgeDeleted[i] = k-1;
+                                     SetCurF.add(i);
+                               }
+                     }
+                  }// end of  on loc 
+              } // end of coforall loc in Locales 
+              RemovedEdge.add(SetCurF.getSize());
+
+
+
+              if ( SetCurF.getSize()<=0){
+                      ConFlag=false;
+              } else {
+                      ConFlag=true;
+              }
+              SetCurF.clear();
+
+
+
+
+              
+              N2+=1;
+          }// end while 
+          AllRemoved=true;
+          var cnt:[0..numLocales-1] int=0;
+          coforall loc in Locales with (ref SetCurF ) {
+                      on loc {
+                         var ld = src.localSubdomain();
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
+                         // each locale only handles the edges owned by itself
+                         var tmpcnt:int=0;
+                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
+                               if ((EdgeDeleted[i]==-1) ) {
+                                   tmpcnt+=1;
+                               }
+                         }
+                         cnt[here.id]=tmpcnt;
+                      }// end of  on loc
+          } // end of coforall loc in Locales
+
+
+          for i in 0..numLocales-1  {
+               if cnt[i]>0 {
+                     AllRemoved=false;
+                     break;
+               }
+          }
+
+
+
+
+
+          return AllRemoved;
+
+      }// end of proc OnceMaxTrussNaivePathMerge
+
+
+
+      proc MaxTrussNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):string throws{
+
+                var PlTriCount =makeDistArray(Ne,int);
+                ref gEdgeDeleted=EdgeDeleted;
+                ref PTriCount=TriCount;
+                var lEdgeDeleted =makeDistArray(Ne,int);
+
+
+                PTriCount=0;
+                PlTriCount=0;
+                gEdgeDeleted=-1;
+                lEdgeDeleted=-1;//for local use
+                maxtimer.clear();
+                maxtimer.start();
+                kLow=3;
+                // we first check  kLow=3
+
+                repMsg=kTrussNaivePathMerge(kLow,
+
+
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+
+
+                gEdgeDeleted=lEdgeDeleted;
+                PTriCount=PlTriCount;
+
+
+
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                outMsg="Estimated kUp="+kUp:string;
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
+                    var ConLoop=true:bool;
+                    while ( (ConLoop) && (kLow<kUp)) {
+                         // we will continuely check if the up value can remove all edges
+                         lEdgeDeleted=gEdgeDeleted;
+                         PlTriCount=PTriCount;
+                             //restore the value for kUp check
+                         // we check the larget k vaule kUp which is the upper bound of max k
+                         // we will use kMid to reduce kUp
+
+                         AllRemoved=OnceMaxTrussNaivePathMerge(kUp,
+
+                              toSymEntry(ag.getNEIGHBOR(), int).a,
+                              toSymEntry(ag.getSTART_IDX(), int).a,
+                              toSymEntry(ag.getSRC(), int).a,
+                              toSymEntry(ag.getDST(), int).a,
+                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                              toSymEntry(ag.getSTART_IDX_R(), int).a,
+                              toSymEntry(ag.getSRC_R(), int).a,
+                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                         if (!AllRemoved) { //the up value is the max k
+                                ConLoop=false;
+                         } else {// we will check the mid value to reduce kUp
+
+                            kUp= kUp-1;
+                            kMid= (kLow+kUp)/2;
+                            while ((AllRemoved) && (kMid<kUp-1)) {
+
+                                lEdgeDeleted=gEdgeDeleted;
+                                PlTriCount=PTriCount;
+                                //restore the value for kMid check
+                                //"Try mid=",kMid;
+
+                                AllRemoved=OnceMaxTrussNaivePathMerge(kMid,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                                if (AllRemoved) {
+                                    kUp=kMid-1;
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
+
+
+                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
+                                if kMid>=kUp-1 {
+                                    ConLoop=false;
+                                    kUp=kMid;
+                                } else {// we will update the low value and then check the mid value
+                                        // until all edges are removed
+
+                                     while ((!AllRemoved) && (kMid<kUp-1)) {
+                                        kLow=kMid;
+                                        kMid= (kLow+kUp)/2;
+                                        gEdgeDeleted=lEdgeDeleted;
+                                        PTriCount=PlTriCount;
+                                        //store the latest no empty subgraph setup 
+                                        //("Try mid again=",kMid);
+
+                                        AllRemoved=OnceMaxTrussNaivePathMerge(kMid,
+
+                                             toSymEntry(ag.getNEIGHBOR(), int).a,
+                                             toSymEntry(ag.getSTART_IDX(), int).a,
+                                             toSymEntry(ag.getSRC(), int).a,
+                                             toSymEntry(ag.getDST(), int).a,
+                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                             toSymEntry(ag.getSRC_R(), int).a,
+                                             toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                                     }
+                                     if (AllRemoved) {
+                                         kUp=kMid-1;
+                                     }
+                                  }
+                            }
+                         }
+                    }// end of while
+                    var countName = st.nextName();
+                    var countEntry = new shared SymEntry(lEdgeDeleted);
+                    st.addEntry(countName, countEntry);
+                    repMsg =  'created ' + st.attrib(countName);
+                    maxtimer.stop();
+
+                    outMsg="After OnceMaxTrussNaivePathMerge, Total execution time ="+(maxtimer.elapsed()):string;
+
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                    outMsg="After OnceMaxTrussNaivePathMerge, Max K="+kUp:string;
+
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                } else {//kUp<=3 or AllRemoved==true
+                    maxtimer.stop();
+
+                    outMsg="After OnceMaxTrussNaivePathMerge,Total execution time ="+(maxtimer.elapsed()):string;
+
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    if (AllRemoved==false) {
+
+                        outMsg="After OnceMaxTrussNaivePathMerge, Max K=3";
+
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    } else {
+
+                        outMsg="After OnceMaxTrussNaivePathMerge,Max K=2";
+
+                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    }
+                }
+
+
+          return repMsg;
+
+      }// end of proc MaxTrussNaivePathMerge
+
+
+
       proc OnceMaxTrussPathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
@@ -9607,6 +10091,26 @@ module TrussMsg {
 
           if (kValue==-1) {// max k-truss analysis
                 var PTriCount=makeDistArray(Ne,int);
+
+
+                PTriCount=0;
+                gEdgeDeleted=-1;
+
+                repMsg=MaxTrussNaivePathMerge(kValue,
+
+
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a,
+
+
+                      PTriCount,gEdgeDeleted);
+
 
 
                 var AtoTriCount=makeDistArray(Ne,atomic int);

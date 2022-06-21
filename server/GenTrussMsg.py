@@ -721,8 +721,10 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
 PathMergeTriCount=GenPathMergeTriCount(TriCntInit,TriCntAssignment)
 PathMergeTriCountAtomic=GenPathMergeTriCount(TriCntInitAtomic,TriCntAssignmentAtomic)
 
+
 NaivePathMergeBodyCode=TimerAndWhileStart+PathMergeTriCount+MarkDelEdges
 NaivePathMergeBodyCodeAtomic=TimerAndWhileStart+PathMergeTriCountAtomic+MarkDelEdgesAtomic
+
 
 def GenMinSearchTriCnt(InitAssign,AssignCnt):
 	text1a='''
@@ -1616,6 +1618,7 @@ PathMergeAffectedEdgeRemoval='''
 
 '''
 
+
 PathMergeBodyCode=TimerAndNoWhileStart+PathMergeTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+PathMergeAffectedEdgeRemoval
 
 
@@ -1906,7 +1909,12 @@ MaxTrussStart='''
               var tmpN2=0:int;
 '''
 
+
+MaxNaivePathMergeBodyCode=NaivePathMergeBodyCode
 MaxPathMergeBodyCode=MaxTrussStart+PathMergeAffectedEdgeRemoval
+
+
+
 MaxMinSearchBodyCode=MaxTrussStart+MinSearchAffectedEdgeRemoval
 MaxNonMinSearchBodyCode=MaxTrussStart+NonMinSearchAffectedEdgeRemoval
 MaxTrussMixBodyCode= MaxTrussStart+MixMinSearchAffectedEdgeRemoval
@@ -2071,6 +2079,7 @@ def GenTrussFun(FunName,Parameters,BodyCode):
 	print(head)
 	print(kTrussFunStart)
 	print(BodyCode)
+
 	print(TrussEndCheck)
 	GenTrussOutput(FunName)
 	GenReturn(FunName)
@@ -2084,6 +2093,15 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 	print(head)
 	print(MaxTrussFunStart)
 	print(BodyCode)
+	txt='''
+              if ( SetCurF.getSize()<=0){
+                      ConFlag=false;
+              } else {
+                      ConFlag=true;
+              }
+              SetCurF.clear();
+'''
+	print(txt)
 	print(MaxTrussEndCheck)
 	GenMaxReturn(OnceFunName)
 
@@ -2094,8 +2112,9 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 
 	variabledel='''
                 var PlTriCount =makeDistArray(Ne,int);
-                var ref gEdgeDeleted=EdgeDeleted;
-                var lEdgeDeleted =makeDistArray(Ne,auto int);
+                ref gEdgeDeleted=EdgeDeleted;
+                ref PTriCount=TriCount;
+                var lEdgeDeleted =makeDistArray(Ne,int);
 '''
 	print(variabledel)
 
@@ -2120,35 +2139,10 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                gEdgeDeleted[i]=lEdgeDeleted[i];
+
+
+                gEdgeDeleted=lEdgeDeleted;
                 PTriCount=PlTriCount;
-
-'''
-
-	tmp1='''
-                while (!AllRemoved) {
-                    kLow+=1;
-'''
-	tmp2="                         AllRemoved="+OnceFunName+"(kLow,"
-
-	tmp3='''
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-
-
-        }
-'''
-
-	tmp4='''
-
-
-
 
 
 
@@ -2159,7 +2153,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
                          // we will continuely check if the up value can remove all edges
-                         lEdgeDeleted[i]=gEdgeDeleted[i];
+                         lEdgeDeleted=gEdgeDeleted;
                          PlTriCount=PTriCount;
                              //restore the value for kUp check
                          // we check the larget k vaule kUp which is the upper bound of max k
@@ -2178,29 +2172,40 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                          if (!AllRemoved) { //the up value is the max k
                                 ConLoop=false;
                          } else {// we will check the mid value to reduce kUp
+
+                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            lEdgeDeleted=gEdgeDeleted;
-                            PlTriCount=PTriCount;
-                            //"Try mid=",kMid;
+                            while ((AllRemoved) && (kMid<kUp-1)) {
+
+                                lEdgeDeleted=gEdgeDeleted;
+                                PlTriCount=PTriCount;
+                                //restore the value for kMid check
+                                //"Try mid=",kMid;
 '''
-	text6="                            AllRemoved="+OnceFunName+"(kMid,"
+	text6="                                AllRemoved="+OnceFunName+"(kMid,"
 	text7='''
-                                 toSymEntry(ag.getNEIGHBOR(), int).a,
-                                 toSymEntry(ag.getSTART_IDX(), int).a,
-                                 toSymEntry(ag.getSRC(), int).a,
-                                 toSymEntry(ag.getDST(), int).a,
-                                 toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                 toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                 toSymEntry(ag.getSRC_R(), int).a,
-                                 toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                            if (AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                  kUp=kMid-1;
-                            } else { // we will improve both low and mid value
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                                if (AllRemoved) {
+                                    kUp=kMid-1;
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
+
+
+                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
                                 if kMid>=kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
+                                } else {// we will update the low value and then check the mid value
                                         // until all edges are removed
+
                                      while ((!AllRemoved) && (kMid<kUp-1)) {
                                         kLow=kMid;
                                         kMid= (kLow+kUp)/2;
@@ -2220,10 +2225,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                              toSymEntry(ag.getSRC_R(), int).a,
                                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                                      }
-                                     if (!AllRemoved) {
-                                         kUp=kMid;
-                                         ConLoop=false;
-                                     } else {
+                                     if (AllRemoved) {
                                          kUp=kMid-1;
                                      }
                                   }
@@ -2265,13 +2267,6 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 	print(text1)
 	print(text2)
 	print(text3)
-
-	print(tmp1)
-	print(tmp2)
-	print(tmp3)
-	print(tmp4)
-
-
 
 
 	print(text4)
@@ -2820,6 +2815,8 @@ def GenCompleteTest():
                 var PTriCount=makeDistArray(Ne,int);
 '''
 	print(text21)
+	print(InitialCount)
+	GenFunCall(False,"MaxTrussNaivePathMerge")
 	text23='''
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 '''
@@ -10762,6 +10759,7 @@ print("")
 
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Max K-Truss Functions")
+GenMaxTrussFun("kTrussNaivePathMerge","MaxTrussNaivePathMerge",MaxNaivePathMergeBodyCode)
 GenMaxTrussAtomicFun("kTrussPathMerge","MaxTrussPathMerge",MaxPathMergeBodyCode)
 GenMaxTrussAtomicFun("kTrussNonMinSearch","MaxTrussNonMinSearch",MaxNonMinSearchBodyCode)
 GenMaxTrussAtomicFun("kTrussMinSearch","MaxTrussMinSearch",MaxMinSearchBodyCode)
