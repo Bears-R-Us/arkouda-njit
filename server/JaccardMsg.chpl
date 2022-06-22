@@ -127,15 +127,51 @@ module JaccardMsg {
                               var    edgeId=sf[i];
                               var nextStart=edgeId;
                               var nextEnd=edgeId+numNF-1;
-                              ref NF1=df[nextStart..nextEnd];
-                              ref NF2=df[nextStart+1..nextEnd];
-                              forall e1 in nextStart..nextEnd {
+                              forall e1 in nextStart..nextEnd-1 {
                                    var u=df[e1];
                                    forall e2 in e1+1..nextEnd {
                                        var v=df[e2];
-                                       jaccard[u*Nv+v]+=1;
+                                       if u!=v {
+                                           jaccard[u*Nv+v]+=1;
+                                       }
                                    }
                               } 
+                              numNF=nfR[i];
+                              edgeId=sfR[i];
+                              nextStart=edgeId;
+                              nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1 {
+                                   var u=dfR[e1];
+                                   forall e2 in e1+1..nextEnd {
+                                       var v=dfR[e2];
+                                       if u!=v {
+                                           jaccard[u*Nv+v]+=1;
+                                       }
+                                   }
+                              }
+
+
+
+                              forall e1 in nextStart..nextEnd {
+                                   var u=dfR[e1];
+
+                                   var    numNF2=nf[i];
+                                   var    edgeId2=sf[i];
+                                   var nextStart2=edgeId2;
+                                   var nextEnd2=edgeId2+numNF2-1;
+                                   forall e2 in nextStart2..nextEnd2 {
+                                       var v=df[e2];
+                                       if u<v {
+                                           jaccard[u*Nv+v]+=1;
+                                       } else {
+                                          if u>v {
+                                              jaccard[v*Nv+u]+=1;
+                                          }
+                                       }
+                                   }
+                              }
+
+
                        }
               }
           }//end coforall loc
@@ -144,6 +180,7 @@ module JaccardMsg {
              forall v in u+1..Nv-1 {
                   if jaccard[u*Nv+v]>0.0 {
                       jaccard[u*Nv+v]=jaccard[u*Nv+v]/(nei[u]+nei[v]-jaccard[u*Nv+v]);
+                      jaccard[v*Nv+u]=jaccard[u*Nv+v];
                   }
              }
           }

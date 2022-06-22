@@ -1424,7 +1424,7 @@ module GraphMsg {
       //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
       //}
       if (WriteFlag) {
-                  var wf = open(FileName+".my.gr", iomode.cw);
+                  var wf = open(FileName+".my.pr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   for i in 0..Ne-1 {
                       mw.writeln("%-12n    %-12n".format(src[i],dst[i]));
