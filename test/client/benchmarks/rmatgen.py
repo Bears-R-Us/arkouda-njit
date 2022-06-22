@@ -54,12 +54,6 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    '''
-    if args.correctness_only:
-        check_correctness(args.number, args.size, args.trials, args.dtype)
-        print("CORRECT")
-        sys.exit(0)
-    '''
-
     time_ak_rmat_graph(args.logvertices, args.vedges, args.possibility, args.directed,args.weighted)
     sys.exit(0)
+    ak.shutdown()
