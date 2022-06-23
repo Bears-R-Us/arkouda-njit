@@ -183,7 +183,7 @@ module JaccardMsg {
                   writeln("Garmma[",u,",",v,"]=",tmpjac);
                   if u>v {
                       JaccCoeff[u*Nv+v]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
-                      JaccCoeff[v*Nv+u]=JaccGamma[u*Nv+v];
+                      JaccCoeff[v*Nv+u]=JaccCoeff[u*Nv+v];
                   }
                   writeln("JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
              }
