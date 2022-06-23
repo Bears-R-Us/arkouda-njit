@@ -178,8 +178,9 @@ module JaccardMsg {
 
           forall u in 0..Nv-2 {
              forall v in u+1..Nv-1 {
+                  var tmpjac=jaccard[u*Nv+v];
                   if jaccard[u*Nv+v]>0.0 {
-                      jaccard[u*Nv+v]=jaccard[u*Nv+v]/(nei[u]+nei[v]-jaccard[u*Nv+v]);
+                      jaccard[u*Nv+v]=tmpjac/(nei[u]+nei[v]-tmpjac);
                       jaccard[v*Nv+u]=jaccard[u*Nv+v];
                   }
              }
