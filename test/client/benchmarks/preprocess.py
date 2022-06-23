@@ -19,16 +19,24 @@ def time_ak_process_graph():
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
     Test1=[ \
-          [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr"],\
+            [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr"],\
             [51971,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.gr"],\
+
+
+            [88234,4038,2,0,HomeDir+"Adata/SNAP/facebook_combined.txt"],\
             [106762,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.gr"],\
             [186936,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.gr"],\
             [237010,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.gr"],\
             [367662,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.gr"],\
             [396160,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.gr"],\
+            [428156,58227,2,0,HomeDir+"Adata/SNAP/loc-brightkite_edges.txt"],\
+            [508837,75879,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.txt"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"]\
             [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
 
+            [68993773,4847570,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
+
+              ]
     TestMtx=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
             [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx"] ,\
             [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx"] ,\
