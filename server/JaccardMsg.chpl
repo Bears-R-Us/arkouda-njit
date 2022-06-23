@@ -48,11 +48,12 @@ module JaccardMsg {
 
 
       timer.start();
-      var jaccard=makeDistArray(Nv*Nv,real);//we only need to save half results and we will optimize it later.
+      var JaccGamma=makeDistArray(Nv*Nv,atomic int);//we only need to save half results and we will optimize it later.
+      var JaccCoeff=makeDistArray(Nv*Nv, real);//we only need to save half results and we will optimize it later.
       coforall loc in Locales  {
                   on loc {
-                           forall i in jaccard.localSubdomain() {
-                                 jaccard[i]=0.0;
+                           forall i in JaccGamma.localSubdomain() {
+                                 JaccGamma[i].write(0);
                            }       
                   }
       }
@@ -131,8 +132,8 @@ module JaccardMsg {
                                    var u=df[e1];
                                    forall e2 in e1+1..nextEnd {
                                        var v=df[e2];
-                                       if u!=v {
-                                           jaccard[u*Nv+v]+=1;
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
                                        }
                                    }
                               } 
@@ -144,8 +145,8 @@ module JaccardMsg {
                                    var u=dfR[e1];
                                    forall e2 in e1+1..nextEnd {
                                        var v=dfR[e2];
-                                       if u!=v {
-                                           jaccard[u*Nv+v]+=1;
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
                                        }
                                    }
                               }
@@ -162,10 +163,10 @@ module JaccardMsg {
                                    forall e2 in nextStart2..nextEnd2 {
                                        var v=df[e2];
                                        if u<v {
-                                           jaccard[u*Nv+v]+=1;
+                                           JaccGamma[u*Nv+v].add(1);
                                        } else {
                                           if u>v {
-                                              jaccard[v*Nv+u]+=1;
+                                              JaccGamma[v*Nv+u].add(1);
                                           }
                                        }
                                    }
@@ -178,25 +179,27 @@ module JaccardMsg {
 
           forall u in 0..Nv-2 {
              forall v in u+1..Nv-1 {
-                  var tmpjac=jaccard[u*Nv+v];
-                  if jaccard[u*Nv+v]>0.0 {
-                      jaccard[u*Nv+v]=tmpjac/(nei[u]+nei[v]-tmpjac);
-                      jaccard[v*Nv+u]=jaccard[u*Nv+v];
+                  var tmpjac:real =JaccGamma[u*Nv+v].read();
+                  writeln("Garmma[",u,",",v,"]=",tmpjac);
+                  if u>v {
+                      JaccCoeff[u*Nv+v]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
+                      JaccCoeff[v*Nv+u]=JaccGamma[u*Nv+v];
                   }
+                  writeln("JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
              }
           }
-          var jaccardName = st.nextName();
-          var jaccardEntry = new shared SymEntry(jaccard);
-          st.addEntry(jaccardName, jaccardEntry);
+          var JaccGammaName = st.nextName();
+          var JaccGammaEntry = new shared SymEntry(JaccCoeff);
+          st.addEntry(JaccGammaName, JaccGammaEntry);
 
-          var jacMsg =  'created ' + st.attrib(jaccardName);
+          var jacMsg =  'created ' + st.attrib(JaccGammaName);
           return jacMsg;
 
       }//end of 
 
 
       if (!Directed) {
-                  repMsg=jaccard_coefficient_u(
+                  repMsg=JaccGamma_coefficient_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
