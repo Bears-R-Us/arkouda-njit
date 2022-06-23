@@ -199,7 +199,7 @@ module JaccardMsg {
 
 
       if (!Directed) {
-                  repMsg=JaccGamma_coefficient_u(
+                  repMsg=jaccard_coefficient_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
