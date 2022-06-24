@@ -172,7 +172,7 @@ module JaccardMsg {
                   if ((u<v) && (tmpjac>0.0)) {
                       JaccCoeff[u*Nv+v]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
                       JaccCoeff[v*Nv+u]=JaccCoeff[u*Nv+v];
-                      writeln("d(",u,")=",nei[u]+neiR[u]," d(",v,")=", nei[v]+neiR[v], " Garmma[",u,",",v,"]=",tmpjac, " JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
+                      //writeln("d(",u,")=",nei[u]+neiR[u]," d(",v,")=", nei[v]+neiR[v], " Garmma[",u,",",v,"]=",tmpjac, " JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
                   }
              }
           }
