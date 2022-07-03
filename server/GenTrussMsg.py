@@ -36,11 +36,29 @@ ParametersBoolAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] i
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ '''
 
 ConditionEdgeRemove='''
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
+                                     EdgeDeleted[i] = 1-k;
+                                     SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i] <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i];
+                                       }
+                                  }
+                               }
 '''
 
 ConditionEdgeRemoveAtomic='''
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
+                                     EdgeDeleted[i] = 1-k;
+                                     SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
+                               }
 '''
 
 
@@ -77,6 +95,8 @@ FunStartVariables='''
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 '''
 #We define the common local functions for every truss function
@@ -325,9 +345,15 @@ MarkDelEdges='''
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -344,9 +370,15 @@ MarkDelEdgesAtomic='''
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-                                     EdgeDeleted[i] = k-1;
-                                     SetCurF.add(i);
+                               if (EdgeDeleted[i]==-1) {
+                                    if  (TriCount[i].read() < k-2) {
+                                        EdgeDeleted[i] = k-1;
+                                        SetCurF.add(i);
+                                    } else {
+                                        if (TriCount[i].read()<MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                        }
+                                    }
                                }
                      }
                   }// end of  on loc 
@@ -998,11 +1030,11 @@ def GenWhileAndAffectEdgeRemoveStart(Condition):
 '''
 	comm='''
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
-'''
-	text2='''
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
                                }
+'''
+	text2='''
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -1173,9 +1205,15 @@ MinSearchAffectedEdgeRemoval='''
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -1330,9 +1368,15 @@ NonMinSearchAffectedEdgeRemoval='''
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -1604,9 +1648,15 @@ PathMergeAffectedEdgeRemoval='''
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -1852,9 +1902,15 @@ MixMinSearchAffectedEdgeRemoval='''
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc 
@@ -1996,7 +2052,14 @@ DecompositionEndCheck='''
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }

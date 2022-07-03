@@ -180,6 +180,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -398,9 +400,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -466,6 +474,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -682,9 +692,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -750,6 +766,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -970,9 +988,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -1038,6 +1062,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -1323,9 +1349,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -1391,6 +1423,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -1631,9 +1665,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -1699,6 +1739,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -1993,11 +2035,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -2268,9 +2316,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -2339,6 +2393,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -2579,11 +2635,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -2737,9 +2799,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -2808,6 +2876,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -3057,11 +3127,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -3224,9 +3300,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -3295,6 +3377,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -3510,11 +3594,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -3679,9 +3769,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc 
@@ -3756,6 +3852,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4002,9 +4100,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -4240,6 +4344,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4612,9 +4718,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -4850,6 +4962,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -5105,9 +5219,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -5343,6 +5463,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -5607,9 +5729,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -5845,6 +5973,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -6111,9 +6241,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc 
@@ -6355,6 +6491,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -6573,9 +6711,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -6596,7 +6740,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -6643,6 +6794,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -6859,9 +7012,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -6882,7 +7041,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -6929,6 +7095,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -7149,9 +7317,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -7172,7 +7346,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -7219,6 +7400,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -7504,9 +7687,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -7527,7 +7716,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -7574,6 +7770,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -7814,9 +8012,15 @@ module TrussMsg {
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
+                                   } else {
+                                       if TriCount[i]<MinNumTri[here.id] {
+                                           MinNumTri[here.id]=TriCount[i];
+                                       }
+                                   }
                                }
                      }
                   }// end of  on loc 
@@ -7837,7 +8041,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -7884,6 +8095,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -8178,11 +8391,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -8453,9 +8672,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -8479,7 +8704,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -8526,6 +8758,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -8766,11 +9000,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -8924,9 +9164,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -8950,7 +9196,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -8997,6 +9250,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -9246,11 +9501,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -9413,9 +9674,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1) {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc
@@ -9439,7 +9706,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
@@ -9486,6 +9760,8 @@ module TrussMsg {
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
+          var MinNumTri=makeDistArray(numLocales,int);
+          MinNumTri=1000000;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -9701,11 +9977,17 @@ module TrussMsg {
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
-
+                               if (EdgeDeleted[i]==-1) {
+                                  if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                       if (TriCount[i].read() <MinNumTri[here.id]) {
+                                            MinNumTri[here.id]=TriCount[i].read();
+                                       }
+                                  }
                                }
+
                      }
                   }// end of  on loc 
               } // end of coforall loc in Locales 
@@ -9870,9 +10152,15 @@ module TrussMsg {
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
-                               if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
+                               if (EdgeDeleted[i]==-1)  {
+                                  if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
+                                  } else {
+                                      if (TriCount[i].read() < MinNumTri[here.id]) {
+                                           MinNumTri[here.id]=TriCount[i].read();
+                                      }
+                                  }
                                }
                          }
                       }// end of  on loc 
@@ -9896,7 +10184,14 @@ module TrussMsg {
               if (ConFlag==false) {
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
-                          k=k+1;
+                          var tmp=MinNumTri[0];
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i] {
+                                   tmp=MinNumTri[i];
+                               }
+                          }
+                          k=tmp+2;
+                          MinNumTri=1000000;
                           largest=RemovedEdge.read();
                   } 
               }
