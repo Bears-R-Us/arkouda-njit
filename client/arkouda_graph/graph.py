@@ -8,6 +8,8 @@ from arkouda.dtypes import int64 as akint
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
+           "graph_file_preprocessing",
+           "graph_file_tonde",
            "graph_file_read_mtx",
            "graph_bfs",
            "graph_tri_cnt",
@@ -137,23 +139,116 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 
 @typechecked
+def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1) -> None:
+    """
+        This function is used for creating a preprocessed graph file (mapping vertices, 
+                remove duplicated edges and self loop ) from a given file.
+        Ne : the total number of edges of the graph
+        Nv : the total number of vertices of the graph
+        Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
+              and Ncol=3 means there is weight for each edge (so weighted=1). 
+        directed: 0 means undirected graph and 1 means directed graph
+        skipline: 0 means how many lines should be skiped
+        filename: the file that has the edge list
+        RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
+        DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
+        RCMFlag: we will remap the vertex ID based on the RCM algorithm
+        WriteFlag: we will output the final edge list src->dst array as a new input file.
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphPreProcessing"
+    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    print(args)
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return 
+
+
+
+
+@typechecked
+def graph_file_tonde(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1) -> None:
+    """
+        This function is used for transferring a graph file to NDE format
+
+- first line contains `N`, the number of nodes.
+- the next `N` lines contain two numbers, `i` and `degree[i]`
+- all the other lines contain two numbers, `a[i]` and `b[i]`, representing an
+  edge from node `a[i]` to node `b[i]`.
+
+
+        Ne : the total number of edges of the graph
+        Nv : the total number of vertices of the graph
+        Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
+              and Ncol=3 means there is weight for each edge (so weighted=1). 
+        directed: 0 means undirected graph and 1 means directed graph
+        skipline: 0 means how many lines should be skiped
+        filename: the file that has the edge list
+        RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
+        DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
+        RCMFlag: we will remap the vertex ID based on the RCM algorithm
+        WriteFlag: we will output the final file to NDE format
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphToNDE"
+    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    print(args)
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return 
+
+
+
+
+@typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                    RCMFlag:int=0,DegreeSortFlag:int=0,RemapFlag:int=0 ) -> Graph:
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
     """
         This function is used for creating a graph from a file.
         The file should like this
           1   5
           13  9
-          
-    if graph.weight:4   8
-          7   6
-        This file means the edges are <1,5>,<13,9>,<4,8>,<7,6>. If additional column is added, it is the weight
+          7   6 
+        This file means the edges are <1,5>,<13,9>,<7,6>. If additional column is added, it is the weight
         of each edge.
         Ne : the total number of edges of the graph
         Nv : the total number of vertices of the graph
         Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
               and Ncol=3 means there is weight for each edge (so weighted=1). 
         directed: 0 means undirected graph and 1 means directed graph
+        filename: the file that has the edge list
+        RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
+        DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
+        RCMFlag: we will remap the vertex ID based on the RCM algorithm
+        WriteFlag: we will output the final edge list src->dst array as a new input file.
         Returns
         -------
         Graph
@@ -170,8 +265,9 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
         RuntimeError
         """
     cmd = "segmentedGraphFile"
-    args = "{} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
-            RCMFlag, DegreeSortFlag,RemapFlag)
+    args = "{} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return Graph(*(cast(str, repMsg).split('+')))
@@ -182,22 +278,20 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
 
 @typechecked
 def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                    RCMFlag:int=0,DegreeSortFlag:int=0,RemapFlag:int=0 ) -> Graph:
+                        RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
     """
         This function is used for creating a graph from a mtx graph file.
-        The file should like this
-          1   5
-          13  9
-          
-    if graph.weight:4   8
-          7   6
-        This file means the edges are <1,5>,<13,9>,<4,8>,<7,6>. If additional column is added, it is the weight
-        of each edge.
+        compared with the graph_file_read function, it will skip the mtx head part
         Ne : the total number of edges of the graph
         Nv : the total number of vertices of the graph
         Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
               and Ncol=3 means there is weight for each edge (so weighted=1). 
         directed: 0 means undirected graph and 1 means directed graph
+        filename: the file that has the edge list
+        RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
+        DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
+        RCMFlag: we will remap the vertex ID based on the RCM algorithm
+        WriteFlag: we will output the final edge list src->dst array as a new input file.
         Returns
         -------
         Graph
@@ -213,9 +307,9 @@ def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: st
         ------  
         RuntimeError
         """
-    cmd = "segmentedGraphMtxFile"
-    args = "{} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
-            RCMFlag, DegreeSortFlag,RemapFlag)
+    cmd = "segmentedGraphFileMtx"
+    args = "{} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
     print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 

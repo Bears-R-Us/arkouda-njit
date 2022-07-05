@@ -27,6 +27,7 @@ module TriCntMsg {
   use DistributedDeque;
 
 
+  use AryUtil;
   use List; 
   use LockFreeStack;
   use Atomics;

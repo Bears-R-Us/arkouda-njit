@@ -65,3 +65,4 @@ if __name__ == "__main__":
     ak.connect(args.hostname, args.port)
 
     time_ak_truss_graph()
+    ak.shutdown()
