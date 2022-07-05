@@ -64,6 +64,7 @@ module TriCtrMsg {
       var TriCtr:[0..Nv-1] real;
       var TriNum=makeDistArray(Nv,atomic int);
       var NeiTriNum=makeDistArray(Nv,atomic int);
+      var NeiNonTriNum=makeDistArray(Nv,atomic int);
       var NeiAry=makeDistArray(Ne,bool);
       NeiAry=false;
       TriCtr=0.0;
@@ -71,6 +72,9 @@ module TriCtrMsg {
           i.write(0);
       }
       forall i in NeiTriNum {
+          i.write(0);
+      }
+      forall i in NeiNonTriNum {
           i.write(0);
       }
 
@@ -262,6 +266,9 @@ module TriCtrMsg {
                          if NeiAry[i] {
                               NeiTriNum[u].add(TriNum[v].read());                   
                               NeiTriNum[v].add(TriNum[u].read());                   
+                         }else{
+                              NeiNonTriNum[u].add(TriNum[v].read());                   
+                              NeiNonTriNum[v].add(TriNum[u].read()); 
                          }
                      }
 
@@ -274,21 +281,11 @@ module TriCtrMsg {
                      var ld = nei.localSubdomain();
                      var startVer = ld.low;
                      var endVer = ld.high;
-                     var curnum=0:int;
-                     forall i in startVer..endVer with (+ reduce curnum){
-                             var beginTmp=start_i[i];
-                             var endTmp=beginTmp+nei[i]-1;
-                             forall j in beginTmp..endTmp with (+ reduce curnum) {
-                                   curnum+=TriNum[dst[j]].read();
-                             }
-                             beginTmp=start_iR[i];
-                             endTmp=beginTmp+neiR[i]-1;
-                             forall j in beginTmp..endTmp with (+ reduce curnum) {
-                                   curnum+=TriNum[dstR[j]].read();
-                             }
-                             TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2/3+TriNum[i].read()):real/TotalCnt[0]:real;
+                     forall i in startVer..endVer {
+                             TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
                              writeln("Number of Triangles for vertex ", i," =",TriNum[i].read());
                              writeln("Sum of number of Triangles for vertex ", i,"'s neighbour =",NeiTriNum[i].read());
+                             writeln("Sum of number of Non Triangles for vertex ", i,"'s neighbour =",NeiNonTriNum[i].read());
                              writeln("Triangle Centrality of  vertex ", i," =",TriCtr[i]);
                      }
 
