@@ -113,4 +113,5 @@ if __name__ == "__main__":
     time_ak_sa(args.number, args.size, args.trials, args.dtype)
     if args.numpy:
         time_np_sa(args.number, args.size, args.trials, args.dtype)
+    ak.shutdown()
     sys.exit(0)
