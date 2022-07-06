@@ -63,6 +63,7 @@ module TriCtrMsg {
       var TriCtr:[0..Nv-1] real;
       var TriNum=makeDistArray(Nv,atomic int);
       var NeiTriNum=makeDistArray(Nv,atomic int);
+      var NeiNonTriNum=makeDistArray(Nv,atomic int);
       var NeiAry=makeDistArray(Ne,bool);
       NeiAry=false;
       TriCtr=0.0;
@@ -75,7 +76,6 @@ module TriCtrMsg {
       forall i in NeiNonTriNum {
           i.write(0);
       }
-
 
 
       TotalCnt=0;
@@ -264,6 +264,9 @@ module TriCtrMsg {
                          if NeiAry[i] {
                               NeiTriNum[u].add(TriNum[v].read());                   
                               NeiTriNum[v].add(TriNum[u].read());                   
+                         }else{
+                              NeiNonTriNum[u].add(TriNum[v].read());                   
+                              NeiNonTriNum[v].add(TriNum[u].read()); 
                          }
                          else {
                               NeiNonTriNum[u].add(TriNum[v].read());                   
@@ -280,6 +283,7 @@ module TriCtrMsg {
                      var ld = nei.localSubdomain();
                      var startVer = ld.low;
                      var endVer = ld.high;
+
                      var curnum=0:int;
                      forall i in startVer..endVer with (+ reduce curnum){
                              var beginTmp=start_i[i];
@@ -296,6 +300,7 @@ module TriCtrMsg {
                              //writeln("NAIVE Number of Triangles for vertex ", i," =",TriNum[i].read());
                              //writeln("NAIVE Sum of number of Triangles for vertex ", i,"'s neighbour =",NeiTriNum[i].read());
                              //writeln("Naive Triangle Centrality of  vertex ", i," =",TriCtr[i])
+
                      }
 
                 }// end of  on loc 
