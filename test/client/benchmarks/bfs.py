@@ -9,7 +9,7 @@ import arkouda_njit as njit
 
 TYPES = ('int64', 'float64', 'bool', 'str')
 
-def time_ak_bfs_graph(lgNv:int, Ne_per_v:int, p:float,directed:int,weighted:int):
+def time_ak_bfs():
     print("Graph BFS")
     cfg = ak.get_config()
     print("server Hostname =",cfg["serverHostname"])
@@ -82,20 +82,5 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    '''
-    if args.correctness_only:
-        check_correctness(args.number, args.size, args.trials, args.dtype)
-        print("CORRECT")
-        sys.exit(0)
-    '''
-    time_ak_bfs_graph(1,2,3.0,0,0)
-    '''
-    for i in range(10,25,2):
-        for j in range(3,30,4):
-           for k in np.arange(0.4,0.7,0.15):
-               for d in range(0,2):
-                   for w in range(0,1):
-                      time_ak_bfs_graph(i,j,k,d,w)
-    time_ak_bfs_graph(args.trials)
-    sys.exit(0)
-    '''
+    time_ak_bfs()
+    ak.shutdown()

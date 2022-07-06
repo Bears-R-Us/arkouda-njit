@@ -9,7 +9,7 @@ import arkouda_njit as njit
 
 TYPES = ('int64', 'float64', 'bool', 'str')
 
-def time_ak_process_graph():
+def time_ak_test():
     print("Graph Truss Analysis")
     cfg = ak.get_config()
     print("server Hostname =",cfg["serverHostname"])
@@ -19,31 +19,11 @@ def time_ak_process_graph():
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
     Test1=[ \
-            [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr"],\
-            [51971,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.gr"],\
-
-
-            [88234,4038,2,0,HomeDir+"Adata/SNAP/facebook_combined.txt"],\
-            [106762,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.gr"],\
-            [186936,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.gr"],\
-            [237010,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.gr"],\
-            [367662,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.gr"],\
-            [396160,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.gr"],\
-            [428156,58227,2,0,HomeDir+"Adata/SNAP/loc-brightkite_edges.txt"],\
-            [508837,75879,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.txt"],\
-            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"]\
-            [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
-
-            [68993773,4847570,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
-
+            [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
+            [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr.pr"],\
+            [11,6,2,0,"g.gr"],\
               ]
-    TestMtx=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
-            [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx"] ,\
-            [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx"] ,\
-            [24547,8192,2,0,HomeDir+"Adata/Delaunay/delaunay_n13/delaunay_n13.mtx"] ,\
-            [49122,16384,2,0,HomeDir+"Adata/Delaunay/delaunay_n14/delaunay_n14.mtx"] ,\
-            [98274,32768,2,0,HomeDir+"Adata/Delaunay/delaunay_n15/delaunay_n15.mtx"] ,\
-            [196575,65536,2,0,HomeDir+"Adata/Delaunay/delaunay_n16/delaunay_n16.mtx"],\
+    TestMtx=[ \
 
             [393176,131072,2,0,HomeDir+"Adata/Delaunay/delaunay_n17/delaunay_n17.mtx"],\
             [786396,262144,2,0,HomeDir+"Adata/Delaunay/delaunay_n18/delaunay_n18.mtx"],\
@@ -55,8 +35,6 @@ def time_ak_process_graph():
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx"],\
               ]
     TestRGG=[ \
-            [14487995,2097152,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_21_s0/rgg_n_2_21_s0.mtx"],\
-            [30359198,4194304,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_22_s0/rgg_n_2_22_s0.mtx"],\
             [63501393,8388608,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_23_s0/rgg_n_2_23_s0.mtx"],\
             [132557200,16777216,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_24_s0/rgg_n_2_24_s0.mtx"],\
               ]
@@ -77,16 +55,10 @@ def time_ak_process_graph():
         Columns=i[2]
         Directed=i[3]
         FileName=i[4]
+        print(i)
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        njit.graph_file_preprocessing(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,0,1)
-    for i in TestMtx:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
-        FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        njit.graph_file_preprocessing(Edges,Vertices,Columns,Directed,str(FileName),1,1,0,0,1)
+        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
+        Jacc=njit.graph_jaccard_coefficient(Graph)
     end = time.time()
     return
 
@@ -112,6 +84,6 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     ak.verbose = False
-    print("Preprocessing graph  batch")
+    print("Jaccard Coefficient Test")
     ak.connect(args.hostname, args.port)
-    time_ak_process_graph()
+    time_ak_test()
