@@ -46,7 +46,7 @@ def time_ak_truss_graph():
             [6291408,2097152,2,0,HomeDir+"Adata/Delaunay/delaunay_n21/delaunay_n21.mtx.pr"],\
             [12582869,4194304,2,0,HomeDir+"Adata/Delaunay/delaunay_n22/delaunay_n22.mtx.pr"],\
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx.pr"],\
-            [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx.pr"],\
+#            [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx.pr"],\
               ]
     TestRGG=[ \
             [14487995,2097148,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_21_s0/rgg_n_2_21_s0.mtx.pr"],\
@@ -63,6 +63,21 @@ def time_ak_truss_graph():
               ]
 
     start = time.time()
+    for i in Test1:
+        Edges=i[0]
+        Vertices=i[1]
+        Columns=i[2]
+        Directed=i[3]
+        FileName=i[4]
+        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
+        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
+        k=4
+        truss=njit.graph_ktruss(Graph,k)
+        print("After k=",k)
+        truss=njit.graph_ktruss(Graph,-1)
+        print("After max k")
+        truss=njit.graph_ktruss(Graph,-2)
+        print("After decomposition")
     for i in TestMtx:
         Edges=i[0]
         Vertices=i[1]
@@ -78,7 +93,7 @@ def time_ak_truss_graph():
         print("After max k")
         truss=njit.graph_ktruss(Graph,-2)
         print("After decomposition")
-    for i in Test1:
+    for i in TestRGG:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]
