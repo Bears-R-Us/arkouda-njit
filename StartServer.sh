@@ -23,6 +23,7 @@ echo "+ Running arkouda_server with ${numNodes} locales on the following nodes:"
 for node in "${NODES[@]}"
 do
     echo ${node} 
+    ~/bin/Knode ${node}
 done
 
 # Finally, start arkouda with the specified number of locales
