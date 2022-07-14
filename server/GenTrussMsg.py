@@ -3063,9 +3063,9 @@ def GenCompleteTest():
 	print(InitialCountAtomic)
 	GenFunCall(True,"kTrussSeqMinSearch")
 	print(InitialCountAtomic)
-	GenFunCall(True,"kTrussMinSearch")
-	print(InitialCountAtomic)
 	GenFunCall(True,"kTrussMix")
+	print(InitialCountAtomic)
+	GenFunCall(True,"kTrussMinSearch")
 
 	text4='''
 
@@ -3096,9 +3096,9 @@ def GenCompleteTest():
 	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussSeqMinSearch")
 	print(InitialCountAtomic)
-	GenFunCall(True,"MaxTrussMinSearch")
-	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussMix")
+	print(InitialCountAtomic)
+	GenFunCall(True,"MaxTrussMinSearch")
 
 
 	text24='''
@@ -3138,10 +3138,10 @@ def GenCompleteTest():
 	GenFunCall(True,"TrussDecoSeqMinSearch")
 	print(InitialCountAtomic)
 	print("                kValue=3;")
-	GenFunCall(True,"TrussDecoMinSearch")
+	GenFunCall(True,"TrussDecoMix")
 	print(InitialCountAtomic)
 	print("                kValue=3;")
-	GenFunCall(True,"TrussDecoMix")
+	GenFunCall(True,"TrussDecoMinSearch")
 
 	text34='''
 

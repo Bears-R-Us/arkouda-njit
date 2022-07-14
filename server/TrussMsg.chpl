@@ -11985,7 +11985,7 @@ module TrussMsg {
                 }
                 gEdgeDeleted=-1;
 
-                repMsg=kTrussMinSearch(kValue,
+                repMsg=kTrussMix(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12006,7 +12006,7 @@ module TrussMsg {
                 }
                 gEdgeDeleted=-1;
 
-                repMsg=kTrussMix(kValue,
+                repMsg=kTrussMinSearch(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12121,7 +12121,7 @@ module TrussMsg {
                 }
                 gEdgeDeleted=-1;
 
-                repMsg=MaxTrussMinSearch(kValue,
+                repMsg=MaxTrussMix(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12142,7 +12142,7 @@ module TrussMsg {
                 }
                 gEdgeDeleted=-1;
 
-                repMsg=MaxTrussMix(kValue,
+                repMsg=MaxTrussMinSearch(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12283,7 +12283,7 @@ module TrussMsg {
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoMinSearch(kValue,
+                repMsg=TrussDecoMix(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12305,7 +12305,7 @@ module TrussMsg {
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoMix(kValue,
+                repMsg=TrussDecoMinSearch(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
