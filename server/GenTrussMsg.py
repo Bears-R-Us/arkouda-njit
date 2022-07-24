@@ -1,19 +1,19 @@
 # We define all k-truss functions as follows
 kTrussFuns=[ "kTrussNaiveListIntersection", "kTrussNaiveSetSearchSmall",\
-"kTrussNaiveSetSearchSmallSeq", "kTrussNaivePathMerge",\
-"kTrussNaiveMinSearch", "kTrussPathMerge",\
+"kTrussNaiveSetSearchSmallSeq", "kTrussNaiveMergePath",\
+"kTrussNaiveMinSearch", "kTrussMergePath",\
 "kTrussMinSearch", "kTrussMix"]
 
 # We define all max k-truss functions as follows
 MaxTrussFuns=[ "MaxTrussNaiveListIntersection", "MaxTrussNaiveSetSearchSmall",\
-"MaxTrussNaiveSetSearchSmallSeq", "MaxTrussNaivePathMerge",\
-"MaxTrussNaiveMinSearch", "MaxTrussPathMerge",\
+"MaxTrussNaiveSetSearchSmallSeq", "MaxTrussNaiveMergePath",\
+"MaxTrussNaiveMinSearch", "MaxTrussMergePath",\
 "MaxTrussMinSearch", "MaxTrussMix"]
 
 # We define all truss decomposition functions as follows
 TrussDecoFuns=[ "TrussDecoNaiveListIntersection", "TrussDecoNaiveSetSearchSmall",\
-"DecoTrussNaiveSetSearchSmallSeq", "TrussDecoNaivePathMerge",\
-"TrussDecoNaiveMinSearch", "TrussDecoPathMerge",\
+"DecoTrussNaiveSetSearchSmallSeq", "TrussDecoNaiveMergePath",\
+"TrussDecoNaiveMinSearch", "TrussDecoMergePath",\
 "TrussDecoMinSearch", "TrussDecoMix"]
 
 #We define three kinds of Parameters for our truss functions
@@ -591,7 +591,7 @@ SetSearchSmallSeqTriCountAtomic=GenSetSearchSmallSeqTriCnt(TriCntInitAtomic,TriC
 NaiveSetSearchSmallSeqBodyCode=TimerAndWhileStart+SetSearchSmallSeqTriCount+MarkDelEdges
 NaiveSetSearchSmallSeqBodyCodeAtomic=TimerAndWhileStart+SetSearchSmallSeqTriCountAtomic+MarkDelEdgesAtomic
 
-def GenPathMergeTriCount(InitAssign,AssignCnt):
+def GenMergePathTriCount(InitAssign,AssignCnt):
 	text1a='''
               // first we calculate the number of triangles
               coforall loc in Locales {
@@ -752,12 +752,12 @@ def GenPathMergeTriCount(InitAssign,AssignCnt):
 
 
 
-PathMergeTriCount=GenPathMergeTriCount(TriCntInit,TriCntAssignment)
-PathMergeTriCountAtomic=GenPathMergeTriCount(TriCntInitAtomic,TriCntAssignmentAtomic)
+MergePathTriCount=GenMergePathTriCount(TriCntInit,TriCntAssignment)
+MergePathTriCountAtomic=GenMergePathTriCount(TriCntInitAtomic,TriCntAssignmentAtomic)
 
 
-NaivePathMergeBodyCode=TimerAndWhileStart+PathMergeTriCount+MarkDelEdges
-NaivePathMergeBodyCodeAtomic=TimerAndWhileStart+PathMergeTriCountAtomic+MarkDelEdgesAtomic
+NaiveMergePathBodyCode=TimerAndWhileStart+MergePathTriCount+MarkDelEdges
+NaiveMergePathBodyCodeAtomic=TimerAndWhileStart+MergePathTriCountAtomic+MarkDelEdgesAtomic
 
 
 def GenMinSearchTriCnt(InitAssign,AssignCnt,SeqFlag:bool=False):
@@ -1586,7 +1586,7 @@ NonMinSearchAffectedEdgeRemoval='''
 
 
 
-PathMergeAffectedEdgeRemoval='''
+MergePathAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
 
@@ -1865,7 +1865,7 @@ PathMergeAffectedEdgeRemoval='''
 '''
 
 
-PathMergeBodyCode=TimerAndNoWhileStart+PathMergeTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+PathMergeAffectedEdgeRemoval
+MergePathBodyCode=TimerAndNoWhileStart+MergePathTriCountAtomic+WhileAndAffectEdgeRemoveStartAtomic+MergePathAffectedEdgeRemoval
 
 
 MixMinSearchTriCountAtomic='''
@@ -2163,8 +2163,8 @@ MaxTrussStart='''
 '''
 
 
-MaxNaivePathMergeBodyCode=NaivePathMergeBodyCode
-MaxPathMergeBodyCode=MaxTrussStart+PathMergeAffectedEdgeRemoval
+MaxNaiveMergePathBodyCode=NaiveMergePathBodyCode
+MaxMergePathBodyCode=MaxTrussStart+MergePathAffectedEdgeRemoval
 
 
 
@@ -3049,7 +3049,7 @@ def GenCompleteTest():
 	print(InitialCount)
 #	GenFunCall(False,"kTrussNaiveSetSearchSmallSeq")
 	print(InitialCount)
-	GenFunCall(False,"kTrussNaivePathMerge")
+	GenFunCall(False,"kTrussNaiveMergePath")
 	print(InitialCount)
 	GenFunCall(False,"kTrussNaiveMinSearch")
 	text3='''
@@ -3057,7 +3057,7 @@ def GenCompleteTest():
 '''
 	print(text3)
 	print(InitialCountAtomic)
-	GenFunCall(True,"kTrussPathMerge")
+	GenFunCall(True,"kTrussMergePath")
 	print(InitialCountAtomic)
 	GenFunCall(True,"kTrussNonMinSearch")
 	print(InitialCountAtomic)
@@ -3081,7 +3081,7 @@ def GenCompleteTest():
 '''
 	print(text21)
 	print(InitialCount)
-	GenFunCall(False,"MaxTrussNaivePathMerge")
+	GenFunCall(False,"MaxTrussNaiveMergePath")
 	text23='''
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 '''
@@ -3090,7 +3090,7 @@ def GenCompleteTest():
 
 
 	print(InitialCountAtomic)
-	GenFunCall(True,"MaxTrussPathMerge")
+	GenFunCall(True,"MaxTrussMergePath")
 	print(InitialCountAtomic)
 	GenFunCall(True,"MaxTrussNonMinSearch")
 	print(InitialCountAtomic)
@@ -3116,7 +3116,7 @@ def GenCompleteTest():
 	print(text31)
 	print(InitialCount)
 	print("                kValue=3;")
-	GenFunCall(False,"TrussDecoNaivePathMerge")
+	GenFunCall(False,"TrussDecoNaiveMergePath")
 	print(InitialCount)
 	print("                kValue=3;")
 	GenFunCall(False,"TrussDecoNaiveMinSearch")
@@ -3129,7 +3129,7 @@ def GenCompleteTest():
 	print(text32)
 	print(InitialCountAtomic)
 	print("                kValue=3;")
-	GenFunCall(True,"TrussDecoPathMerge")
+	GenFunCall(True,"TrussDecoMergePath")
 	print(InitialCountAtomic)
 	print("                kValue=3;")
 	GenFunCall(True,"TrussDecoNonMinSearch")
@@ -4366,7 +4366,7 @@ module TrussMsg {
 
       // For undirected graph, using Naive and list intersection method. It should have worst performance.
       // This procedure is just used for worst case test
-      proc kTrussNaivePathMerge(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc kTrussNaiveMergePath(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
@@ -4674,7 +4674,7 @@ module TrussMsg {
 
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
-      } // end of proc KTrussNaivePathMerge
+      } // end of proc KTrussNaiveMergePath
 
 
 
@@ -8231,7 +8231,7 @@ module TrussMsg {
 
 
       //For undirected graph, using the naive method
-      proc TrussDecompositionNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc TrussDecompositionNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws {
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
@@ -8563,7 +8563,7 @@ module TrussMsg {
 
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
-      } // end of proc TrussDecompositionNaivePathMerge
+      } // end of proc TrussDecompositionNaiveMergePath
 
 
 
@@ -10551,7 +10551,7 @@ module TrussMsg {
                       PTriCount);
 
                 PTriCount=0;
-                repMsg=kTrussNaivePathMerge(kValue,
+                repMsg=kTrussNaiveMergePath(kValue,
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -10629,7 +10629,7 @@ module TrussMsg {
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,PTriCount);
                 */
                 PTriCount=0;
-                repMsg=TrussDecompositionNaivePathMerge(3,
+                repMsg=TrussDecompositionNaiveMergePath(3,
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
@@ -11015,9 +11015,9 @@ print("//Begin of K-Truss Functions")
 GenTrussFun("kTrussNaiveListIntersection",Parameters,NaiveListIntersectionBodyCode)
 GenTrussFun("kTrussNaiveSetSearchSmall",Parameters,NaiveSetSearchSmallBodyCode)
 GenTrussFun("kTrussNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchSmallSeqBodyCode)
-GenTrussFun("kTrussNaivePathMerge",Parameters,NaivePathMergeBodyCode)
+GenTrussFun("kTrussNaiveMergePath",Parameters,NaiveMergePathBodyCode)
 GenTrussFun("kTrussNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
-GenTrussFun("kTrussPathMerge",ParametersAtomic,PathMergeBodyCode)
+GenTrussFun("kTrussMergePath",ParametersAtomic,MergePathBodyCode)
 GenTrussFun("kTrussNonMinSearch",ParametersAtomic,NonMSTrussAtomicBodyCode)
 GenTrussFun("kTrussSeqMinSearch",ParametersAtomic,SeqTrussAtomicBodyCode)
 GenTrussFun("kTrussMinSearch",ParametersAtomic,TrussAtomicBodyCode)
@@ -11030,8 +11030,8 @@ print("")
 
 print("//@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
 print("//Begin of Max K-Truss Functions")
-GenMaxTrussFun("kTrussNaivePathMerge","MaxTrussNaivePathMerge",MaxNaivePathMergeBodyCode)
-GenMaxTrussAtomicFun("kTrussPathMerge","MaxTrussPathMerge",MaxPathMergeBodyCode)
+GenMaxTrussFun("kTrussNaiveMergePath","MaxTrussNaiveMergePath",MaxNaiveMergePathBodyCode)
+GenMaxTrussAtomicFun("kTrussMergePath","MaxTrussMergePath",MaxMergePathBodyCode)
 GenMaxTrussAtomicFun("kTrussNonMinSearch","MaxTrussNonMinSearch",MaxNonMinSearchBodyCode)
 GenMaxTrussAtomicFun("kTrussSeqMinSearch","MaxTrussSeqMinSearch",MaxSeqMinSearchBodyCode)
 GenMaxTrussAtomicFun("kTrussMinSearch","MaxTrussMinSearch",MaxMinSearchBodyCode)
@@ -11046,9 +11046,9 @@ print("//Begin of Truss Decomposition Functions")
 GenDecompositionFun("TrussDecoNaiveListIntersection",Parameters,NaiveListIntersectionBodyCode)
 GenDecompositionFun("TrussDecoNaiveSetSearchSmall",Parameters,NaiveSetSearchSmallBodyCode)
 GenDecompositionFun("TrussDecoNaiveSetSearchSmallSeq",Parameters,NaiveSetSearchSmallSeqBodyCode)
-GenDecompositionFun("TrussDecoNaivePathMerge",Parameters,NaivePathMergeBodyCode)
+GenDecompositionFun("TrussDecoNaiveMergePath",Parameters,NaiveMergePathBodyCode)
 GenDecompositionFun("TrussDecoNaiveMinSearch",Parameters,NaiveMinSearchBodyCode)
-GenDecompositionFun("TrussDecoPathMerge",ParametersAtomic,PathMergeBodyCode)
+GenDecompositionFun("TrussDecoMergePath",ParametersAtomic,MergePathBodyCode)
 GenDecompositionFun("TrussDecoNonMinSearch",ParametersAtomic,NonMSTrussAtomicBodyCode)
 GenDecompositionFun("TrussDecoSeqMinSearch",ParametersAtomic,SeqTrussAtomicBodyCode)
 GenDecompositionFun("TrussDecoMinSearch",ParametersAtomic,TrussAtomicBodyCode)
