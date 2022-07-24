@@ -1052,7 +1052,7 @@ module TrussMsg {
 
 
 
-      proc kTrussNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc kTrussNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] int, EdgeDeleted:[?D6] int ):string throws{
 
@@ -1395,13 +1395,13 @@ module TrussMsg {
 
 
 
-          outMsg="After kTrussNaivePathMerge, Given K ="+k:string;
+          outMsg="After kTrussNaiveMergePath, Given K ="+k:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After kTrussNaivePathMerge, Total execution time="+(timer.elapsed()):string;
+          outMsg="After kTrussNaiveMergePath, Total execution time="+(timer.elapsed()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After kTrussNaivePathMerge, Total number of iterations ="+N2:string;
+          outMsg="After kTrussNaiveMergePath, Total number of iterations ="+N2:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After kTrussNaivePathMerge, The k truss has edges ="+(Ne-RemovedEdge.read()):string;
+          outMsg="After kTrussNaiveMergePath, The k truss has edges ="+(Ne-RemovedEdge.read()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
@@ -1411,7 +1411,7 @@ module TrussMsg {
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
 
-      }// end of proc kTrussNaivePathMerge
+      }// end of proc kTrussNaiveMergePath
 
 
 
@@ -1738,7 +1738,7 @@ module TrussMsg {
 
 
 
-      proc kTrussPathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc kTrussMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{
 
@@ -2374,13 +2374,13 @@ module TrussMsg {
 
 
 
-          outMsg="After kTrussPathMerge, Given K ="+k:string;
+          outMsg="After kTrussMergePath, Given K ="+k:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After kTrussPathMerge, Total execution time="+(timer.elapsed()):string;
+          outMsg="After kTrussMergePath, Total execution time="+(timer.elapsed()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After kTrussPathMerge, Total number of iterations ="+N2:string;
+          outMsg="After kTrussMergePath, Total number of iterations ="+N2:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After kTrussPathMerge, The k truss has edges ="+(Ne-RemovedEdge.read()):string;
+          outMsg="After kTrussMergePath, The k truss has edges ="+(Ne-RemovedEdge.read()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
@@ -2390,7 +2390,7 @@ module TrussMsg {
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
 
-      }// end of proc kTrussPathMerge
+      }// end of proc kTrussMergePath
 
 
 
@@ -4371,7 +4371,7 @@ module TrussMsg {
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //Begin of Max K-Truss Functions
-      proc OnceMaxTrussNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc OnceMaxTrussNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool{ 
 
@@ -4699,11 +4699,11 @@ module TrussMsg {
 
           return AllRemoved;
 
-      }// end of proc OnceMaxTrussNaivePathMerge
+      }// end of proc OnceMaxTrussNaiveMergePath
 
 
 
-      proc MaxTrussNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc MaxTrussNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] int, EdgeDeleted:[?D6] int ):string throws{
 
@@ -4722,7 +4722,7 @@ module TrussMsg {
                 kLow=3;
                 // we first check  kLow=3
 
-                repMsg=kTrussNaivePathMerge(kLow,
+                repMsg=kTrussNaiveMergePath(kLow,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -4753,7 +4753,7 @@ module TrussMsg {
                          // we check the larget k vaule kUp which is the upper bound of max k
                          // we will use kMid to reduce kUp
 
-                         AllRemoved=OnceMaxTrussNaivePathMerge(kUp,
+                         AllRemoved=OnceMaxTrussNaiveMergePath(kUp,
 
                               toSymEntry(ag.getNEIGHBOR(), int).a,
                               toSymEntry(ag.getSTART_IDX(), int).a,
@@ -4776,7 +4776,7 @@ module TrussMsg {
                                 //restore the value for kMid check
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussNaivePathMerge(kMid,
+                                AllRemoved=OnceMaxTrussNaiveMergePath(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -4808,7 +4808,7 @@ module TrussMsg {
                                         //store the latest no empty subgraph setup 
                                         //("Try mid again=",kMid);
 
-                                        AllRemoved=OnceMaxTrussNaivePathMerge(kMid,
+                                        AllRemoved=OnceMaxTrussNaiveMergePath(kMid,
 
                                              toSymEntry(ag.getNEIGHBOR(), int).a,
                                              toSymEntry(ag.getSTART_IDX(), int).a,
@@ -4832,27 +4832,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussNaivePathMerge, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After OnceMaxTrussNaiveMergePath, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussNaivePathMerge, Max K="+kUp:string;
+                    outMsg="After OnceMaxTrussNaiveMergePath, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussNaivePathMerge,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After OnceMaxTrussNaiveMergePath,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussNaivePathMerge, Max K=3";
+                        outMsg="After OnceMaxTrussNaiveMergePath, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussNaivePathMerge,Max K=2";
+                        outMsg="After OnceMaxTrussNaiveMergePath,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -4861,11 +4861,11 @@ module TrussMsg {
 
           return repMsg;
 
-      }// end of proc MaxTrussNaivePathMerge
+      }// end of proc MaxTrussNaiveMergePath
 
 
 
-      proc OnceMaxTrussPathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc OnceMaxTrussMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
 
@@ -5314,11 +5314,11 @@ module TrussMsg {
 
           return AllRemoved;
 
-      }// end of proc OnceMaxTrussPathMerge
+      }// end of proc OnceMaxTrussMergePath
 
 
 
-      proc MaxTrussPathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc MaxTrussMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{
 
@@ -5339,7 +5339,7 @@ module TrussMsg {
                 kLow=3;
                 // we first check  kLow=3
 
-                repMsg=kTrussPathMerge(kLow,
+                repMsg=kTrussMergePath(kLow,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -5370,7 +5370,7 @@ module TrussMsg {
                          // we check the larget k vaule kUp which is the upper bound of max k
                          // we will use kMid to reduce kUp
 
-                         AllRemoved=OnceMaxTrussPathMerge(kUp,
+                         AllRemoved=OnceMaxTrussMergePath(kUp,
 
                               toSymEntry(ag.getNEIGHBOR(), int).a,
                               toSymEntry(ag.getSTART_IDX(), int).a,
@@ -5396,7 +5396,7 @@ module TrussMsg {
                                 }
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussPathMerge(kMid,
+                                AllRemoved=OnceMaxTrussMergePath(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -5426,7 +5426,7 @@ module TrussMsg {
                                             //store the latest no empty subgraph setup 
                                         }
 
-                                        AllRemoved=OnceMaxTrussPathMerge(kMid,
+                                        AllRemoved=OnceMaxTrussMergePath(kMid,
 
                                              toSymEntry(ag.getNEIGHBOR(), int).a,
                                              toSymEntry(ag.getSTART_IDX(), int).a,
@@ -5452,27 +5452,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussPathMerge, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After OnceMaxTrussMergePath, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussPathMerge, Max K="+kUp:string;
+                    outMsg="After OnceMaxTrussMergePath, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussPathMerge,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After OnceMaxTrussMergePath,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussPathMerge, Max K=3";
+                        outMsg="After OnceMaxTrussMergePath, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussPathMerge,Max K=2";
+                        outMsg="After OnceMaxTrussMergePath,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -5481,7 +5481,7 @@ module TrussMsg {
 
           return repMsg;
 
-      }// end of proc MaxTrussPathMerge
+      }// end of proc MaxTrussMergePath
 
 
 
@@ -8453,7 +8453,7 @@ module TrussMsg {
 
 
 
-      proc TrussDecoNaivePathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc TrussDecoNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] int, EdgeDeleted:[?D6] int ):string throws{
 
@@ -8807,13 +8807,13 @@ module TrussMsg {
           timer.stop();
 
 
-          outMsg="After TrussDecoNaivePathMerge, Max K="+(k-1):string;
+          outMsg="After TrussDecoNaiveMergePath, Max K="+(k-1):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After TrussDecoNaivePathMerge, Total execution time="+(timer.elapsed()):string;
+          outMsg="After TrussDecoNaiveMergePath, Total execution time="+(timer.elapsed()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After TrussDecoNaivePathMerge, Total number of iterations ="+N2:string;
+          outMsg="After TrussDecoNaiveMergePath, Total number of iterations ="+N2:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After TrussDecoNaivePathMerge, The largest number of k truss edges ="+(Ne-largest):string;
+          outMsg="After TrussDecoNaiveMergePath, The largest number of k truss edges ="+(Ne-largest):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
@@ -8823,7 +8823,7 @@ module TrussMsg {
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
 
-      }// end of proc TrussDecoNaivePathMerge
+      }// end of proc TrussDecoNaiveMergePath
 
 
 
@@ -9161,7 +9161,7 @@ module TrussMsg {
 
 
 
-      proc TrussDecoPathMerge(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc TrussDecoMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{
 
@@ -9808,13 +9808,13 @@ module TrussMsg {
           timer.stop();
 
 
-          outMsg="After TrussDecoPathMerge, Max K="+(k-1):string;
+          outMsg="After TrussDecoMergePath, Max K="+(k-1):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After TrussDecoPathMerge, Total execution time="+(timer.elapsed()):string;
+          outMsg="After TrussDecoMergePath, Total execution time="+(timer.elapsed()):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After TrussDecoPathMerge, Total number of iterations ="+N2:string;
+          outMsg="After TrussDecoMergePath, Total number of iterations ="+N2:string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          outMsg="After TrussDecoPathMerge, The largest number of k truss edges ="+(Ne-largest):string;
+          outMsg="After TrussDecoMergePath, The largest number of k truss edges ="+(Ne-largest):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
@@ -9824,7 +9824,7 @@ module TrussMsg {
           var cntMsg =  'created ' + st.attrib(countName);
           return cntMsg;
 
-      }// end of proc TrussDecoPathMerge
+      }// end of proc TrussDecoMergePath
 
 
 
@@ -11877,7 +11877,7 @@ module TrussMsg {
                 PTriCount=0;
                 gEdgeDeleted=-1;
 
-                repMsg=kTrussNaivePathMerge(kValue,
+                repMsg=kTrussNaiveMergePath(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -11922,7 +11922,7 @@ module TrussMsg {
                 }
                 gEdgeDeleted=-1;
 
-                repMsg=kTrussPathMerge(kValue,
+                repMsg=kTrussMergePath(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12033,7 +12033,7 @@ module TrussMsg {
                 PTriCount=0;
                 gEdgeDeleted=-1;
 
-                repMsg=MaxTrussNaivePathMerge(kValue,
+                repMsg=MaxTrussNaiveMergePath(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12058,7 +12058,7 @@ module TrussMsg {
                 }
                 gEdgeDeleted=-1;
 
-                repMsg=MaxTrussPathMerge(kValue,
+                repMsg=MaxTrussMergePath(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12170,7 +12170,7 @@ module TrussMsg {
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoNaivePathMerge(kValue,
+                repMsg=TrussDecoNaiveMergePath(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
@@ -12217,7 +12217,7 @@ module TrussMsg {
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoPathMerge(kValue,
+                repMsg=TrussDecoMergePath(kValue,
 
 
                       toSymEntry(ag.getNEIGHBOR(), int).a,
