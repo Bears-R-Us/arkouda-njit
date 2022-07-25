@@ -5,7 +5,7 @@ module TriCtrMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
+  use SegmentedString;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
@@ -1480,10 +1480,8 @@ module TriCtrMsg {
 
 
 
-    proc registerMe() {
-        use CommandMap;
-        registerFunction("segmentedGraphTriCtr", segTriCtrMsg);
-    }
+   use CommandMap;
+   registerFunction("segmentedGraphTriCtr", segTriCtrMsg);
 
 
 }

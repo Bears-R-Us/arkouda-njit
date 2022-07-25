@@ -4,7 +4,7 @@ module GraphMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
+  use SegmentedString;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
@@ -2131,16 +2131,14 @@ module GraphMsg {
       return new MsgTuple(attrMsg, MsgType.NORMAL);
     }
 
-    proc registerMe() {
-        use CommandMap;
-        registerFunction("segmentedGraphFile", segGraphFileMsg);
-        registerFunction("segmentedGraphPreProcessing", segGraphPreProcessingMsg);
-        registerFunction("segmentedGraphFileMtx", segGraphFileMtxMsg);
-        registerFunction("segmentedRMAT", segrmatgenMsg);
-        registerFunction("segmentedGraphQue", segGraphQueMsg);
-        registerFunction("segmentedGraphToNDE", segGraphNDEMsg);
+    use CommandMap;
+    registerFunction("segmentedGraphFile", segGraphFileMsg);
+    registerFunction("segmentedGraphPreProcessing", segGraphPreProcessingMsg);
+    registerFunction("segmentedGraphFileMtx", segGraphFileMtxMsg);
+    registerFunction("segmentedRMAT", segrmatgenMsg);
+    registerFunction("segmentedGraphQue", segGraphQueMsg);
+    registerFunction("segmentedGraphToNDE", segGraphNDEMsg);
 
-    }
  }
 
 

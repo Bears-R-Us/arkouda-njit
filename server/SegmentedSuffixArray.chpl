@@ -3,7 +3,7 @@ module SegmentedSuffixArray {
   use MultiTypeSymEntry;
   use CommAggregation;
   use SipHash;
-  use SegmentedArray;
+  use SegmentedString;
   use RadixSortLSD only radixSortLSD_ranks;
   use Reflection;
   use PrivateDist;

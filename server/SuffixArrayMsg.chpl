@@ -3,7 +3,7 @@ module SuffixArrayMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
+  use SegmentedString;
   use SegmentedSuffixArray only SegSuffixArray, in1d_Int;
   use ServerErrorStrings;
   use ServerConfig;
@@ -653,15 +653,13 @@ module SuffixArrayMsg {
       }
   }
 
-  proc registerMe() {
-    use CommandMap;
-    registerFunction("segmentIntLengths", segmentLengthsIntMsg, getModuleName());
-    registerFunction("segmentedIntIndex", segmentedIntIndexMsg, getModuleName());
-    registerFunction("segmentedBinopvvInt", segBinopvvIntMsg, getModuleName());
-    registerFunction("segmentedBinopvsInt", segBinopvsIntMsg, getModuleName());
-    registerFunction("segmentedIn1dInt", segIn1dIntMsg, getModuleName());
-    registerFunction("segmentedSuffixAry", segSuffixArrayMsg, getModuleName());
-    registerFunction("segmentedLCP", segLCPMsg, getModuleName());
-    registerFunction("segmentedSAFile", segSAFileMsg, getModuleName());
-  }
+  use CommandMap;
+  registerFunction("segmentIntLengths", segmentLengthsIntMsg, getModuleName());
+  registerFunction("segmentedIntIndex", segmentedIntIndexMsg, getModuleName());
+  registerFunction("segmentedBinopvvInt", segBinopvvIntMsg, getModuleName());
+  registerFunction("segmentedBinopvsInt", segBinopvsIntMsg, getModuleName());
+  registerFunction("segmentedIn1dInt", segIn1dIntMsg, getModuleName());
+  registerFunction("segmentedSuffixAry", segSuffixArrayMsg, getModuleName());
+  registerFunction("segmentedLCP", segLCPMsg, getModuleName());
+  registerFunction("segmentedSAFile", segSAFileMsg, getModuleName());
 }

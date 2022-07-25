@@ -5,7 +5,7 @@ module TriCntMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
+  use SegmentedString;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
@@ -2421,13 +2421,11 @@ module TriCntMsg {
 
 
 
-    proc registerMe() {
-        use CommandMap;
-        registerFunction("segmentedStreamFile", segStreamFileMsg);
-        registerFunction("segmentedGraphTri", segTriCntMsg);
-        registerFunction("segmentedStreamTri", segStreamTriCntMsg);
-        registerFunction("segmentedPLStreamTri", segStreamPLTriCntMsg);
-    }
+   use CommandMap;
+   registerFunction("segmentedStreamFile", segStreamFileMsg);
+   registerFunction("segmentedGraphTri", segTriCntMsg);
+   registerFunction("segmentedStreamTri", segStreamTriCntMsg);
+   registerFunction("segmentedPLStreamTri", segStreamPLTriCntMsg);
 
 
 }
