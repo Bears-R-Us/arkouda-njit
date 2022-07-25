@@ -37,7 +37,7 @@ def run(ak_loc, my_loc):
     
     # 2. Append our modules to Arkouda's ServerModules.cfg
     for c in mod_contrib:
-        print(f"echo {c} >> {tmp_cfg}")
+        print(f"echo {my_loc}/server/{c} >> {tmp_cfg}")
     
     # 3. Generate `make` command with vars
     # If this gets to long for the shell we'll need to switch to exporting our env vars

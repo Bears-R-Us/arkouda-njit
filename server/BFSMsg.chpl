@@ -5,7 +5,7 @@ module BFSMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
+  use SegmentedString;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
@@ -2352,10 +2352,8 @@ module BFSMsg {
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
-    proc registerMe() {
-        use CommandMap;
-        registerFunction("segmentedGraphBFS", segBFSMsg);
-    }
+    use CommandMap;
+    registerFunction("segmentedGraphBFS", segBFSMsg);
  }
 
 

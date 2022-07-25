@@ -6,7 +6,7 @@ module TrussMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
+  use SegmentedString;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
@@ -12338,10 +12338,8 @@ module TrussMsg {
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
-    proc registerMe() {
-        use CommandMap;
-        registerFunction("segmentedTruss", segTrussMsg);
-    }
+    use CommandMap;
+    registerFunction("segmentedTruss", segTrussMsg);
 
 
 }
