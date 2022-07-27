@@ -102,8 +102,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -284,8 +284,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -494,8 +494,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -600,8 +600,8 @@ module BFSMsg {
                        ref sf=start_i;
 
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
 
@@ -681,8 +681,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -792,8 +792,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -910,8 +910,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales with (+ reduce topdown, + reduce bottomup)  {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -1227,8 +1227,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1340,8 +1340,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1450,8 +1450,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1568,8 +1568,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];

@@ -104,7 +104,7 @@ module TrussMsg {
 
       // binary search if key is in ary from index l to h
       proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                        //    return -1;
                        //}
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -225,7 +225,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -242,7 +242,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -271,8 +271,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -313,8 +313,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -398,8 +398,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -521,7 +521,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -538,7 +538,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -567,8 +567,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -610,8 +610,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -692,8 +692,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -815,7 +815,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -832,7 +832,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -861,8 +861,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -904,8 +904,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -990,8 +990,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -1113,7 +1113,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1130,7 +1130,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1159,8 +1159,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -1202,8 +1202,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i]=0;
@@ -1353,8 +1353,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -1476,7 +1476,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1493,7 +1493,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1522,8 +1522,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -1565,8 +1565,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -1676,8 +1676,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -1799,7 +1799,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1816,7 +1816,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1845,8 +1845,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -1888,8 +1888,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i].write(0);
@@ -2047,8 +2047,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -2082,8 +2082,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF  {
 
 
@@ -2311,8 +2311,8 @@ module TrussMsg {
                   coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -2329,8 +2329,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -2455,7 +2455,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2472,7 +2472,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2501,8 +2501,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -2544,8 +2544,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -2649,8 +2649,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -2683,8 +2683,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -2796,8 +2796,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -2814,8 +2814,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -2940,7 +2940,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2957,7 +2957,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2986,8 +2986,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -3029,8 +3029,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -3147,8 +3147,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -3181,8 +3181,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -3303,8 +3303,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -3321,8 +3321,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -3447,7 +3447,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -3464,7 +3464,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -3493,8 +3493,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -3536,8 +3536,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -3655,8 +3655,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -3689,8 +3689,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -3811,8 +3811,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -3829,8 +3829,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -3955,7 +3955,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -3972,7 +3972,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4001,8 +4001,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -4044,8 +4044,8 @@ module TrussMsg {
               coforall loc in Locales with ( ref SetNextF) {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
 
                      forall i in startEdge..endEdge {
@@ -4124,8 +4124,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -4159,8 +4159,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
@@ -4284,8 +4284,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -4300,8 +4300,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -4432,7 +4432,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4449,7 +4449,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4482,8 +4482,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i]=0;
@@ -4633,8 +4633,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -4672,8 +4672,8 @@ module TrussMsg {
           coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          var tmpcnt:int=0;
                          forall i in startEdge..endEdge with (+reduce tmpcnt)  {
@@ -4926,7 +4926,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4943,7 +4943,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4979,8 +4979,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -5006,8 +5006,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF  {
 
 
@@ -5235,8 +5235,8 @@ module TrussMsg {
                   coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -5253,8 +5253,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -5287,8 +5287,8 @@ module TrussMsg {
           coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          var tmpcnt:int=0;
                          forall i in startEdge..endEdge with (+reduce tmpcnt)  {
@@ -5546,7 +5546,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -5563,7 +5563,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -5599,8 +5599,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -5625,8 +5625,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -5738,8 +5738,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -5756,8 +5756,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -5790,8 +5790,8 @@ module TrussMsg {
           coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          var tmpcnt:int=0;
                          forall i in startEdge..endEdge with (+reduce tmpcnt)  {
@@ -6049,7 +6049,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6066,7 +6066,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6102,8 +6102,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -6128,8 +6128,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -6250,8 +6250,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -6268,8 +6268,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -6302,8 +6302,8 @@ module TrussMsg {
           coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          var tmpcnt:int=0;
                          forall i in startEdge..endEdge with (+reduce tmpcnt)  {
@@ -6561,7 +6561,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6578,7 +6578,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6614,8 +6614,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -6640,8 +6640,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -6762,8 +6762,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -6780,8 +6780,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -6814,8 +6814,8 @@ module TrussMsg {
           coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          var tmpcnt:int=0;
                          forall i in startEdge..endEdge with (+reduce tmpcnt)  {
@@ -7073,7 +7073,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7090,7 +7090,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7126,8 +7126,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -7153,8 +7153,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
@@ -7278,8 +7278,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -7294,8 +7294,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -7328,8 +7328,8 @@ module TrussMsg {
           coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          var tmpcnt:int=0;
                          forall i in startEdge..endEdge with (+reduce tmpcnt)  {
@@ -7593,7 +7593,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7610,7 +7610,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7639,8 +7639,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -7681,8 +7681,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -7766,8 +7766,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -7900,7 +7900,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7917,7 +7917,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7946,8 +7946,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -7989,8 +7989,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -8071,8 +8071,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -8205,7 +8205,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8222,7 +8222,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8251,8 +8251,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -8294,8 +8294,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -8380,8 +8380,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -8514,7 +8514,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8531,7 +8531,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8560,8 +8560,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -8603,8 +8603,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i]=0;
@@ -8754,8 +8754,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -8888,7 +8888,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8905,7 +8905,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8934,8 +8934,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -8977,8 +8977,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -9088,8 +9088,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -9222,7 +9222,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9239,7 +9239,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9268,8 +9268,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -9311,8 +9311,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i].write(0);
@@ -9470,8 +9470,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -9505,8 +9505,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF  {
 
 
@@ -9734,8 +9734,8 @@ module TrussMsg {
                   coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -9752,8 +9752,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -9889,7 +9889,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9906,7 +9906,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9935,8 +9935,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -9978,8 +9978,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -10083,8 +10083,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -10117,8 +10117,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -10230,8 +10230,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -10248,8 +10248,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -10385,7 +10385,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10402,7 +10402,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10431,8 +10431,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -10474,8 +10474,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -10592,8 +10592,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -10626,8 +10626,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -10748,8 +10748,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -10766,8 +10766,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -10903,7 +10903,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10920,7 +10920,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10949,8 +10949,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -10992,8 +10992,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -11111,8 +11111,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -11145,8 +11145,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -11267,8 +11267,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -11285,8 +11285,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -11422,7 +11422,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -11439,7 +11439,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -11468,8 +11468,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
+                    //var startEdge = ld.lowBound;
+                    //var endEdge = ld.highBound;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -11511,8 +11511,8 @@ module TrussMsg {
               coforall loc in Locales with ( ref SetNextF) {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
 
                      forall i in startEdge..endEdge {
@@ -11591,8 +11591,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -11626,8 +11626,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.low;
-                           var endEdge = ld.high;
+                           var startEdge = ld.lowBound;
+                           var endEdge = ld.highBound;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
@@ -11751,8 +11751,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -11767,8 +11767,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.low;
-                         var endEdge = ld.high;
+                         var startEdge = ld.lowBound;
+                         var endEdge = ld.highBound;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
