@@ -1,4 +1,5 @@
 module SegmentedSuffixArray {
+  use ChplConfig;
   use MultiTypeSymbolTable;
   use MultiTypeSymEntry;
   use CommAggregation;
