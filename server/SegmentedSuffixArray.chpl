@@ -1,4 +1,5 @@
 module SegmentedSuffixArray {
+  use ChplConfig;
   use MultiTypeSymbolTable;
   use MultiTypeSymEntry;
   use CommAggregation;
@@ -305,7 +306,7 @@ module SegmentedSuffixArray {
 
     /* Apply a hash function to all strings. This is useful for grouping
        and set membership. The hash used is SipHash128.*/
-    proc hash() throws {
+    proc siphash() throws {
       // 128-bit hash values represented as 2-tuples of uint(64)
       var hashes: [offsets.aD] 2*uint(64);
       // Early exit for zero-length result
@@ -334,7 +335,7 @@ module SegmentedSuffixArray {
         // Hash all strings
         saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "Hashing strings");
         if logLevel == LogLevel.DEBUG { t.start(); }
-        var hashes = this.hash();
+        var hashes = this.siphash();
 
         if logLevel == LogLevel.DEBUG {
             t.stop();
@@ -452,7 +453,7 @@ module SegmentedSuffixArray {
     var t = new Timer();
     saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Hashing strings");
     if logLevel == LogLevel.DEBUG { t.start(); }
-    const hashes = mainSar.hash();
+    const hashes = mainSar.siphash();
     if logLevel == LogLevel.DEBUG {
         t.stop();
         saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -470,7 +471,7 @@ module SegmentedSuffixArray {
         // Local hashes of second array
         ref mySet = localTestHashes[here.id];
         mySet.requestCapacity(testSar.size);
-        const testHashes = testSar.hash();
+        const testHashes = testSar.siphash();
         for h in testHashes {
           mySet += h;
         }
