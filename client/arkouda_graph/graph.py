@@ -12,6 +12,7 @@ __all__ = ["Graph","graph_query",
            "graph_file_tonde",
            "graph_file_read_mtx",
            "graph_bfs",
+           "graph_cc",
            "graph_tri_cnt",
            "graph_tri_ctr",
            "stream_file_read",
@@ -273,9 +274,6 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
     return Graph(*(cast(str, repMsg).split('+')))
 
 
-
-
-
 @typechecked
 def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
                         RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
@@ -376,8 +374,32 @@ def graph_bfs(graph: Graph, root: int) -> pdarray:
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
+@typechecked
+def graph_cc(graph: Graph) -> pdarray:
+    """
+        This function is generating the connected components of a given graph.
+        Returns
+        -------
+        pdarray
+            The component each vertex belongs to.
 
+        See Also
+        --------
 
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphCC"
+    args = "{} {} {} {} {}".format(
+        graph.n_vertices, graph.n_edges,
+        graph.directed, graph.weighted,
+        graph.name)
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(repMsg)
 
 @typechecked
 def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
