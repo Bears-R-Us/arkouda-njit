@@ -77,8 +77,8 @@ module JaccardMsg {
 
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];

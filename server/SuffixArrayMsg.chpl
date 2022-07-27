@@ -353,7 +353,7 @@ module SuffixArrayMsg {
     st.checkTable(segName);
     st.checkTable(valName);
     var json = jsonToPdArrayInt(encodedVal, 1);
-    var value = json[json.domain.low];
+    var value = json[json.domain.lowBound];
     var rname = st.nextName();
     select (objtype, valtype) {
       when ("int", "int") {
@@ -361,12 +361,12 @@ module SuffixArrayMsg {
         select op {
           when "==" {
             var e = st.addEntry(rname, sarrays.size, bool);
-            var tmp=sarrays[sarrays.offsets.aD.low]:int;
+            var tmp=sarrays[sarrays.offsets.aD.lowBound]:int;
             e.a = (tmp == value);
           }
           when "!=" {
             var e = st.addEntry(rname, sarrays.size, bool);
-            var tmp=sarrays[sarrays.offsets.aD.low]:int;
+            var tmp=sarrays[sarrays.offsets.aD.lowBound]:int;
             e.a = (tmp != value);
           }
           otherwise {

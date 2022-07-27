@@ -11,6 +11,7 @@ module SegmentedSuffixArray {
   use Time only Timer, getCurrentTime;
   use Logging;
   use ServerErrors;
+  use ChplConfig;
 
   private config const logLevel = ServerConfig.logLevel;
   const saLogger = new Logger(logLevel);
@@ -118,7 +119,7 @@ module SegmentedSuffixArray {
 
     /* Retrieve one string from the array */
     proc this(idx: int): string throws {
-      if (idx < offsets.aD.low) || (idx > offsets.aD.high) {
+      if (idx < offsets.aD.lowBound) || (idx > offsets.aD.highBound) {
         throw new owned OutOfBoundsError();
       }
       // Start index of the string
@@ -142,10 +143,10 @@ module SegmentedSuffixArray {
     }
 
     /* Take a slice of indices from the array. The slice must be a
-       Chapel range, i.e. low..high by stride, not a Python slice.
+       Chapel range, i.e. low..highBound by stride, not a Python slice.
        Returns arrays for the segment offsets and bytes of the slice.*/
     proc this(const slice: range(stridable=true)) throws {
-      if (slice.low < offsets.aD.low) || (slice.high > offsets.aD.high) {
+      if (slice.lowBound < offsets.aD.lowBound) || (slice.highBound > offsets.aD.highBound) {
           saLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
           "Array is out of bounds");
           throw new owned OutOfBoundsError();
@@ -155,20 +156,20 @@ module SegmentedSuffixArray {
         return (makeDistArray(0, int), makeDistArray(0, int));
       }
       // Start of bytearray slice
-      var start = offsets.a[slice.low];
+      var start = offsets.a[slice.lowBound];
       // End of bytearray slice
       var end: int;
-      if (slice.high == offsets.aD.high) {
+      if (slice.highBound == offsets.aD.highBound) {
         // if slice includes the last string, go to the end of values
-        end = values.aD.high;
+        end = values.aD.highBound;
       } else {
-        end = offsets.a[slice.high+1] - 1;
+        end = offsets.a[slice.highBound+1] - 1;
       }
       // Segment offsets of the new slice
       var newSegs = makeDistArray(slice.size, int);
       ref oa = offsets.a;
       forall (i, ns) in zip(newSegs.domain, newSegs) with (var agg = newSrcAggregator(int)) {
-        agg.copy(ns, oa[slice.low + i]);
+        agg.copy(ns, oa[slice.lowBound + i]);
       }
       // Offsets need to be re-zeroed
       newSegs -= start;
@@ -200,7 +201,7 @@ module SegmentedSuffixArray {
                                               "Computing lengths and offsets");
       var t1 = getCurrentTime();
       ref oa = offsets.a;
-      const low = offsets.aD.low, high = offsets.aD.high;
+      const low = offsets.aD.lowBound, high = offsets.aD.highBound;
       // Gather the right and left boundaries of the indexed strings
       // NOTE: cannot compute lengths inside forall because agg.copy will
       // experience race condition with loop-private variable
@@ -218,7 +219,7 @@ module SegmentedSuffixArray {
       // The returned offsets are the 0-up cumulative lengths
       var gatheredOffsets = (+ scan gatheredLengths);
       // The total number of bytes in the gathered strings
-      var retBytes = gatheredOffsets[D.high];
+      var retBytes = gatheredOffsets[D.highBound];
       gatheredOffsets -= gatheredLengths;
 
       saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -241,7 +242,7 @@ module SegmentedSuffixArray {
         var srcIdx = makeDistArray(retBytes, int);
         srcIdx = 1;
         var diffs: [D] int;
-        diffs[D.low] = left[D.low]; // first offset is not affected by scan
+        diffs[D.lowBound] = left[D.lowBound]; // first offset is not affected by scan
         if (D.size > 1) {
           // This expression breaks when D.size == 1, resulting in strange behavior
           // However, this logic is only necessary when D.size > 1 anyway
@@ -284,7 +285,7 @@ module SegmentedSuffixArray {
                                                  "Computing lengths and offsets");
       var t1 = getCurrentTime();
       ref oa = offsets.a;
-      const low = offsets.aD.low, high = offsets.aD.high;
+      const low = offsets.aD.lowBound, high = offsets.aD.highBound;
       // Calculate the destination indices
       var steps = + scan iv;
       var newSize = steps[high];
@@ -351,8 +352,8 @@ module SegmentedSuffixArray {
         }
         if logLevel == LogLevel.DEBUG {
           var sortedHashes = [i in iv] hashes[i];
-          var diffs = sortedHashes[(iv.domain.low+1)..#(iv.size-1)] -
-                                                 sortedHashes[(iv.domain.low)..#(iv.size-1)];
+          var diffs = sortedHashes[(iv.domain.lowBound+1)..#(iv.size-1)] -
+                                                 sortedHashes[(iv.domain.lowBound)..#(iv.size-1)];
           printAry("diffs = ", diffs);
           var nonDecreasing = [(d0,d1) in diffs] ((d0 > 0) || ((d0 == 0) && (d1 >= 0)));
           saLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -372,8 +373,8 @@ module SegmentedSuffixArray {
         return lengths;
       }
       ref oa = offsets.a;
-      const low = offsets.aD.low;
-      const high = offsets.aD.high;
+      const low = offsets.aD.lowBound;
+      const high = offsets.aD.highBound;
       forall (i, o, l) in zip(offsets.aD, oa, lengths) {
         if (i == high) {
           l = values.size - o;
@@ -396,7 +397,7 @@ module SegmentedSuffixArray {
       }
       ref oa = offsets.a;
       ref va = values.a;
-      const high = offsets.aD.high;
+      const high = offsets.aD.highBound;
       forall (i, a) in zip(offsets.aD, diff) {
         if (i < high) {
           var asc: bool;
@@ -405,7 +406,7 @@ module SegmentedSuffixArray {
             const right = oa[i+1]..oa[i+2]-1;
             a = -memcmp(va, left, va, right);
           } else { // i == high - 1
-            const right = oa[i+1]..values.aD.high;
+            const right = oa[i+1]..values.aD.highBound;
             a = -memcmp(va, left, va, right);
           }
         } else { // i == high
@@ -530,7 +531,7 @@ module SegmentedSuffixArray {
       const lengths = sar.getLengths();
       const ref saro = sar.offsets.a;
       const ref sarv = sar.values.a;
-      const high = D.high;
+      const high = D.highBound;
       forall (i, f, o, l) in zip(D, flag, saro, lengths) {
         if (i < high) && (l == lengths[i+1]) {
           const left = o..saro[i+1]-1;
@@ -539,7 +540,7 @@ module SegmentedSuffixArray {
             const right = saro[i+1]..saro[i+2]-1;
             eq = (memcmp(sarv, left, sarv, right) == 0);
           } else {
-            const ref right = saro[i+1]..sar.values.aD.high;
+            const ref right = saro[i+1]..sar.values.aD.highBound;
             eq = (memcmp(sarv, left, sarv, right) == 0);
           }
           if eq {
