@@ -22,7 +22,11 @@ module GraphArray {
         START_IDX,    // The starting index of every vertex in src and dst
         START_IDX_R,  // Reverse of START_IDX
         NEIGHBOR,     // Numer of neighbors for a vertex  
-        NEIGHBOR_R,   // 
+        NEIGHBOR_R,   // Numer of neighbors for a vertex based on the reverse array
+        A_START_IDX,    // The starting index of every vertex in src and dst, aligned array based on src
+        A_START_IDX_R,  // Reverse of START_IDX, aligned array based on src
+        A_NEIGHBOR,     // Numer of neighbors for a vertex, aligned array based on src  
+        A_NEIGHBOR_R,   // Numer of neighbors for a vertex based on the reverse array, aligned array based on src
         EDGE_WEIGHT,  // Edge weight
         VERTEX_WEIGHT // Vertex weight
     }
@@ -74,6 +78,12 @@ module GraphArray {
         proc withNEIGHBOR(a:shared GenSymEntry):SegGraph { components.add(Component.NEIGHBOR, a); return this; }
         proc withNEIGHBOR_R(a:GenSymEntry):SegGraph { components.add(Component.NEIGHBOR_R, a); return this; }
 
+        proc withA_START_IDX(a:shared GenSymEntry):SegGraph { components.add(Component.A_START_IDX, a); return this; }
+        proc withA_START_IDX_R(a:shared GenSymEntry):SegGraph { components.add(Component.A_START_IDX_R, a); return this; }
+
+        proc withA_NEIGHBOR(a:shared GenSymEntry):SegGraph { components.add(Component.A_NEIGHBOR, a); return this; }
+        proc withA_NEIGHBOR_R(a:GenSymEntry):SegGraph { components.add(Component.A_NEIGHBOR_R, a); return this; }
+
         proc withEDGE_WEIGHT(a:shared GenSymEntry):SegGraph { components.add(Component.EDGE_WEIGHT, a); return this; }
         proc withVERTEX_WEIGHT(a:shared GenSymEntry):SegGraph { components.add(Component.VERTEX_WEIGHT, a); return this; }
 
@@ -85,6 +95,10 @@ module GraphArray {
         proc hasSTART_IDX_R():bool { return components.contains(Component.START_IDX_R); }
         proc hasNEIGHBOR():bool { return components.contains(Component.NEIGHBOR); }
         proc hasNEIGHBOR_R():bool { return components.contains(Component.NEIGHBOR_R); }
+        proc hasA_START_IDX():bool { return components.contains(Component.START_IDX); }
+        proc hasA_START_IDX_R():bool { return components.contains(Component.START_IDX_R); }
+        proc hasA_NEIGHBOR():bool { return components.contains(Component.NEIGHBOR); }
+        proc hasA_NEIGHBOR_R():bool { return components.contains(Component.NEIGHBOR_R); }
         proc hasEDGE_WEIGHT():bool { return components.contains(Component.EDGE_WEIGHT); }
         proc hasVERTEX_WEIGHT():bool { return components.contains(Component.VERTEX_WEIGHT); }
         
@@ -96,6 +110,10 @@ module GraphArray {
         proc getSTART_IDX_R() { return components.getBorrowed(Component.START_IDX_R); }
         proc getNEIGHBOR() { return components.getBorrowed(Component.NEIGHBOR); }
         proc getNEIGHBOR_R() { return components.getBorrowed(Component.NEIGHBOR_R); }
+        proc getA_START_IDX() { return components.getBorrowed(Component.A_START_IDX); }
+        proc getA_START_IDX_R() { return components.getBorrowed(Component.A_START_IDX_R); }
+        proc getA_NEIGHBOR() { return components.getBorrowed(Component.A_NEIGHBOR); }
+        proc getA_NEIGHBOR_R() { return components.getBorrowed(Component.A_NEIGHBOR_R); }
         proc getEDGE_WEIGHT() { return components.getBorrowed(Component.EDGE_WEIGHT); }
         proc getVERTEX_WEIGHT() { return components.getBorrowed(Component.VERTEX_WEIGHT); }
 
