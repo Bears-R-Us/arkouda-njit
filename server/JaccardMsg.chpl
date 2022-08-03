@@ -247,6 +247,7 @@ module JaccardMsg {
                        var vertexBegin=vertexBeginG[here.id];
                        var vertexEnd=vertexEndG[here.id];
 
+                       assert(src.localSubdomain().low<=vertexBegin && src.localSubdomain().high>=vertexEnd);
                        forall  i in vertexBegin..vertexEnd {
                               var    numNF=a_nei[here.id].A[i];
                               var    edgeId=a_start_i[here.id].A[i];
@@ -261,8 +262,8 @@ module JaccardMsg {
                                        }
                                    }
                               } 
-                              numNF=a_neiR[here.id].A[i];
-                              edgeId=a_start_iR[here.id].A[i];
+                              numNF=neiR[i];
+                              edgeId=start_iR[i];
                               nextStart=edgeId;
                               nextEnd=edgeId+numNF-1;
                               forall e1 in nextStart..nextEnd-1 {
@@ -280,8 +281,8 @@ module JaccardMsg {
                               forall e1 in nextStart..nextEnd {
                                    var u=dstR[e1];
 
-                                   var    numNF2=a_nei[here.id].A[i];
-                                   var    edgeId2=a_start_i[here.id].A[i];
+                                   var    numNF2=nei[i];
+                                   var    edgeId2=start_i[i];
                                    var nextStart2=edgeId2;
                                    var nextEnd2=edgeId2+numNF2-1;
                                    forall e2 in nextStart2..nextEnd2 {
