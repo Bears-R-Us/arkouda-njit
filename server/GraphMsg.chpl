@@ -635,7 +635,7 @@ module GraphMsg {
 
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphPreProcessingMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
-      var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(10);
+      var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(11);
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
@@ -650,6 +650,7 @@ module GraphMsg {
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+      var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
@@ -915,6 +916,8 @@ module GraphMsg {
               if (DegreeSortFlag) {
                     degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,mye_weight,WeightedFlag);
               }
+              if (AlignedArray==1) {
+              }
 
           }//end of undirected
           else {
@@ -922,6 +925,8 @@ module GraphMsg {
                  part_degree_sort(mysrc, mydst, mystart_i, myneighbour,mye_weight,myneighbour,WeightedFlag);
 
               }  
+              if (AlignedArray==1) {
+              }
           }  
           if (WriteFlag) {
                   var wf = open(FileName+".pr", iomode.cw);
@@ -1288,7 +1293,7 @@ module GraphMsg {
 
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphFileMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
-      var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(9);
+      var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(10);
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
@@ -1300,6 +1305,7 @@ module GraphMsg {
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+      var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.start();
@@ -1478,6 +1484,63 @@ module GraphMsg {
                .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
                .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
 
+
+          if (AlignedArray==1) {
+
+              record DynArray {
+                  var DO = {0..0};
+                  var A : [DO] int;
+                  proc new_dom(new_d : domain(1)) {
+                      this.DO = new_d;
+                  }
+              }
+
+              var aligned_nei=makeDistArray(numLocales,DynArray);
+              var aligned_neiR=makeDistArray(numLocales,DynArray);
+              var aligned_start_i=makeDistArray(numLocales,DynArray);
+              var aligned_start_iR=makeDistArray(numLocales,DynArray);
+
+              var D : [rcDomain] domain(1);
+              var DR : [rcDomain] domain(1);
+
+              coforall loc in Locales with (ref D, ref DR) {
+                   on loc {
+
+                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       DR[1] = {srcR[srcR.localSubdomain().lowBound]..srcR[srcR.localSubdomain().highBound]};
+
+                       aligned_nei[here.id].new_dom(D[1]);
+                       aligned_neiR[here.id].new_dom(DR[1]);
+
+                       aligned_start_i[here.id].new_dom(D[1]);
+                       aligned_start_iR[here.id].new_dom(DR[1]);
+                   }
+              }
+              coforall loc in Locales {
+                  on loc {
+                      forall i in aligned_nei[here.id].DO {
+                          aligned_nei[here.id].A[i] = neighbour[i];
+                      }
+                      forall i in aligned_neiR[here.id].DO {
+                          aligned_neiR[here.id].A[i] = neighbourR[i];
+                      }
+                      forall i in aligned_start_i[here.id].DO {
+                          aligned_start_i[here.id].A[i] = start_i[i];
+                      }
+                      forall i in aligned_start_iR[here.id].DO {
+                          aligned_start_iR[here.id].A[i] = start_iR[i];
+                      }
+                  }
+              }
+
+
+              graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
+                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neighbourR):GenSymEntry)
+                   .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+
+          }
+
       }//end of undirected
       else {
         if (DegreeSortFlag) {
@@ -1486,6 +1549,50 @@ module GraphMsg {
         if (RCMFlag) {
              RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
         }
+
+          if (AlignedArray==1) {
+
+              record DynArray {
+                  var DO = {0..0};
+                  var A : [DO] int;
+                  proc new_dom(new_d : domain(1)) {
+                      this.DO = new_d;
+                  }
+              }
+
+              var aligned_nei=makeDistArray(numLocales,DynArray);
+              var aligned_start_i=makeDistArray(numLocales,DynArray);
+
+              var D : [rcDomain] domain(1);
+
+              coforall loc in Locales with (ref D) {
+                   on loc {
+
+                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+
+                       aligned_nei[here.id].new_dom(D[1]);
+                       aligned_start_i[here.id].new_dom(D[1]);
+                   }
+              }
+              coforall loc in Locales {
+                  on loc {
+                      forall i in aligned_nei[here.id].DO {
+                          aligned_nei[here.id].A[i] = neighbour[i];
+                      }
+                      forall i in aligned_start_i[here.id].DO {
+                          aligned_start_i[here.id].A[i] = start_i[i];
+                      }
+                  }
+              }
+
+
+              graph.withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+
+          }
+
+
+
 
       }
       //if (WeightedFlag) {
@@ -1533,7 +1640,7 @@ module GraphMsg {
 
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphFileMtxMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
-      var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(9);
+      var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(10);
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
@@ -1545,6 +1652,7 @@ module GraphMsg {
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+      var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
       writeln(outMsg);
 
@@ -1742,6 +1850,69 @@ module GraphMsg {
                .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
                .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
 
+
+
+          if (AlignedArray==1) {
+
+              record DynArray {
+                  var DO = {0..0};
+                  var A : [DO] int;
+                  proc new_dom(new_d : domain(1)) {
+                      this.DO = new_d;
+                  }
+              }
+
+              var aligned_nei=makeDistArray(numLocales,DynArray);
+              var aligned_neiR=makeDistArray(numLocales,DynArray);
+              var aligned_start_i=makeDistArray(numLocales,DynArray);
+              var aligned_start_iR=makeDistArray(numLocales,DynArray);
+
+              var D : [rcDomain] domain(1);
+              var DR : [rcDomain] domain(1);
+
+              coforall loc in Locales with (ref D, ref DR) {
+                   on loc {
+
+                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       DR[1] = {srcR[srcR.localSubdomain().lowBound]..srcR[srcR.localSubdomain().highBound]};
+
+                       aligned_nei[here.id].new_dom(D[1]);
+                       aligned_neiR[here.id].new_dom(DR[1]);
+
+                       aligned_start_i[here.id].new_dom(D[1]);
+                       aligned_start_iR[here.id].new_dom(DR[1]);
+                   }
+              }
+              coforall loc in Locales {
+                  on loc {
+                      forall i in aligned_nei[here.id].DO {
+                          aligned_nei[here.id].A[i] = neighbour[i];
+                      }
+                      forall i in aligned_neiR[here.id].DO {
+                          aligned_neiR[here.id].A[i] = neighbourR[i];
+                      }
+                      forall i in aligned_start_i[here.id].DO {
+                          aligned_start_i[here.id].A[i] = start_i[i];
+                      }
+                      forall i in aligned_start_iR[here.id].DO {
+                          aligned_start_iR[here.id].A[i] = start_iR[i];
+                      }
+                  }
+              }
+
+
+              graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
+                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neighbourR):GenSymEntry)
+                   .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+
+          }
+
+
+
+
+
+
       }//end of undirected
       else {
         if (DegreeSortFlag) {
@@ -1750,6 +1921,51 @@ module GraphMsg {
         if (RCMFlag) {
              RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
         }
+
+          if (AlignedArray==1) {
+
+              record DynArray {
+                  var DO = {0..0};
+                  var A : [DO] int;
+                  proc new_dom(new_d : domain(1)) {
+                      this.DO = new_d;
+                  }
+              }
+
+              var aligned_nei=makeDistArray(numLocales,DynArray);
+              var aligned_start_i=makeDistArray(numLocales,DynArray);
+
+              var D : [rcDomain] domain(1);
+
+              coforall loc in Locales with (ref D ) {
+                   on loc {
+
+                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+
+                       aligned_nei[here.id].new_dom(D[1]);
+
+                       aligned_start_i[here.id].new_dom(D[1]);
+                   }
+              }
+              coforall loc in Locales {
+                  on loc {
+                      forall i in aligned_nei[here.id].DO {
+                          aligned_nei[here.id].A[i] = neighbour[i];
+                      }
+                      forall i in aligned_start_i[here.id].DO {
+                          aligned_start_i[here.id].A[i] = start_i[i];
+                      }
+                  }
+              }
+
+
+              graph.withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+
+          }
+
+
+
 
       }
       //if (WeightedFlag) {
@@ -2106,6 +2322,30 @@ module GraphMsg {
            }
            when "neighbourR" {
               var retV=toSymEntry(ag.getNEIGHBOR_R(), int).a;
+              var attrEntry = new shared SymEntry(retV);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "astart_i" {
+              var retV=toSymEntry(ag.getA_START_IDX(), int).a;
+              var attrEntry = new shared SymEntry(retV);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "aneighbour" {
+              var retV=toSymEntry(ag.getA_NEIGHBOR(), int).a;
+              var attrEntry = new shared SymEntry(retV);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "astart_iR" {
+              var retV=toSymEntry(ag.getA_START_IDX_R(), int).a;
+              var attrEntry = new shared SymEntry(retV);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "aneighbourR" {
+              var retV=toSymEntry(ag.getA_NEIGHBOR_R(), int).a;
               var attrEntry = new shared SymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
