@@ -1486,7 +1486,7 @@ module GraphMsg {
 
 
           if (AlignedArray==1) {
-
+              pragma "default intent is ref"
               record DynArray {
                   var DO = {0..0};
                   var A : [DO] int;
