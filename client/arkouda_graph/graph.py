@@ -126,19 +126,19 @@ def graph_query(graph: Graph, component: str) -> pdarray:
     elif component =="neighbourR":
         attr=8
     elif component =="astart_i":
-        attr=13
+        attr=-3
     elif component =="aneighbour":
-        attr=14
+        attr=-4
     elif component =="astart_iR":
-        attr=17
+        attr=-7
     elif component =="aneighbourR":
-        attr=18
+        attr=-8
     elif component =="v_weight":
         attr=-1
     elif component =="e_weight":
         attr=-2
     if int(graph.directed) > 0  :
-        assert (attr<=4 || attr==13 || attr==14) 
+        assert (attr<=4) 
     if attr < 0:
         assert graph.weighted > 0
     args = "{} {}".format(graph.name,component)
