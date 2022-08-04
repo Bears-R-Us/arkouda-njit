@@ -140,7 +140,7 @@ module TriCntMsg {
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
-                  while r.readline(line) {
+                  while r.readLine(line) {
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -977,7 +977,7 @@ module TriCntMsg {
                         start_iR[i]=-1;
                   }
 
-                  while r.readline(line) {
+                  while r.readLine(line) {
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -1761,7 +1761,7 @@ module TriCntMsg {
                   initvalue(start_i3,-1);
                   initvalue(start_iR3,-1);
 
-                  while r.readline(line) {
+                  while r.readLine(line) {
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
