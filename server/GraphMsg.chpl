@@ -1499,6 +1499,8 @@ module GraphMsg {
               var aligned_neiR=makeDistArray(numLocales,DynArray);
               var aligned_start_i=makeDistArray(numLocales,DynArray);
               var aligned_start_iR=makeDistArray(numLocales,DynArray);
+              var aligned_srcR=makeDistArray(numLocales,DynArray);
+              var aligned_dstR=makeDistArray(numLocales,DynArray);
 
               var D : [rcDomain] domain(1);
               var DR : [rcDomain] domain(1);
@@ -1507,13 +1509,15 @@ module GraphMsg {
                    on loc {
 
                        D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
-                       DR[1] = {srcR[srcR.localSubdomain().lowBound]..srcR[srcR.localSubdomain().highBound]};
+                       DR[1] = {start_iR[src.localSubdomain().lowBound]..start_iR[src.localSubdomain().highBound]};
 
                        aligned_nei[here.id].new_dom(D[1]);
-                       aligned_neiR[here.id].new_dom(DR[1]);
+                       aligned_neiR[here.id].new_dom(D[1]);
 
                        aligned_start_i[here.id].new_dom(D[1]);
-                       aligned_start_iR[here.id].new_dom(DR[1]);
+                       aligned_start_iR[here.id].new_dom(D[1]);
+                       aligned_srcR[here.id].new_dom(DR[1]);
+                       aligned_dstR[here.id].new_dom(DR[1]);
                    }
               }
               coforall loc in Locales {
@@ -1530,6 +1534,12 @@ module GraphMsg {
                       forall i in aligned_start_iR[here.id].DO {
                           aligned_start_iR[here.id].A[i] = start_iR[i];
                       }
+                      forall i in aligned_srcR[here.id].DO {
+                          aligned_srcR[here.id].A[i] = srcR[i];
+                      }
+                      forall i in aligned_dstR[here.id].DO {
+                          aligned_dstR[here.id].A[i] = dstR[i];
+                      }
                   }
               }
 
@@ -1537,7 +1547,9 @@ module GraphMsg {
               graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
                    .withA_NEIGHBOR_R(new shared SymEntry(aligned_neighbourR):GenSymEntry)
                    .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry)
+                   .withSRC_R(new shared SymEntry(aligned_srcR):GenSymEntry)
+                   .withDST_R(new shared SymEntry(aligned_dstR):GenSymEntry);
 
           }
 
