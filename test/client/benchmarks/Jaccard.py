@@ -57,7 +57,7 @@ def time_ak_test():
         FileName=i[4]
         print(i)
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0)
+        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
         Jacc=njit.graph_jaccard_coefficient(Graph)
     end = time.time()
     return

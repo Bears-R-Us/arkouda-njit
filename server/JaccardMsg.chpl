@@ -201,7 +201,8 @@ module JaccardMsg {
       proc aligned_jaccard_coefficient_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         a_nei:[?D21] DynArray, a_start_i:[?D22] DynArray,
-                        a_neiR:[?D31] DynArray, a_start_iR:[?D32] DynArray):string throws{
+                        a_neiR:[?D31] DynArray, a_start_iR:[?D32] DynArray,
+                        a_srcR:[?D41] DynArray, a_dstR:[?D42] DynArray ):string throws{
 
           var edgeBeginG=makeDistArray(numLocales,int);//each locale's starting edge ID
           var edgeEndG=makeDistArray(numLocales,int);//each locales'ending edge ID
@@ -262,14 +263,14 @@ module JaccardMsg {
                                        }
                                    }
                               } 
-                              numNF=neiR[i];
-                              edgeId=start_iR[i];
+                              numNF=a_neiR[here.id].A[i];
+                              edgeId=a_start_iR[here.id].A[i];
                               nextStart=edgeId;
                               nextEnd=edgeId+numNF-1;
                               forall e1 in nextStart..nextEnd-1 {
-                                   var u=dstR[e1];
+                                   var u=a_dstR[here.id].A[e1];
                                    forall e2 in e1+1..nextEnd {
-                                       var v=dstR[e2];
+                                       var v=a_dstR[here.id].A[e2];
                                        if u<v {
                                            JaccGamma[u*Nv+v].add(1);
                                        }
@@ -279,10 +280,10 @@ module JaccardMsg {
 
 
                               forall e1 in nextStart..nextEnd {
-                                   var u=dstR[e1];
+                                   var u=a_dstR[here.id].A[e1];
 
-                                   var    numNF2=nei[i];
-                                   var    edgeId2=start_i[i];
+                                   var    numNF2=a_nei[here.id].A[i];
+                                   var    edgeId2=a_start_i[here.id].A[i];
                                    var nextStart2=edgeId2;
                                    var nextEnd2=edgeId2+numNF2-1;
                                    forall e2 in nextStart2..nextEnd2 {

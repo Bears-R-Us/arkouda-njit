@@ -27,6 +27,8 @@ module GraphArray {
         A_START_IDX_R,  // Reverse of START_IDX, aligned array based on src
         A_NEIGHBOR,     // Numer of neighbors for a vertex, aligned array based on src  
         A_NEIGHBOR_R,   // Numer of neighbors for a vertex based on the reverse array, aligned array based on src
+        A_SRC_R,        // Reverse of SRC, aligned array based on srcR
+        A_DST_R,        // Reverse of DST, aligned array based on dstR
         EDGE_WEIGHT,  // Edge weight
         VERTEX_WEIGHT // Vertex weight
     }
@@ -68,9 +70,11 @@ module GraphArray {
         /* Use the withCOMPONENT methods to compose the graph object */
         proc withSRC(a:shared GenSymEntry):SegGraph { components.add(Component.SRC, a); return this; }
         proc withSRC_R(a:shared GenSymEntry):SegGraph { components.add(Component.SRC_R, a); return this; }
+        proc withA_SRC_R(a:shared GenSymEntry):SegGraph { components.add(Component.A_SRC_R, a); return this; }
         
         proc withDST(a:shared GenSymEntry):SegGraph { components.add(Component.DST, a); return this; }
         proc withDST_R(a:shared GenSymEntry):SegGraph { components.add(Component.DST_R, a); return this; }
+        proc withA_DST_R(a:shared GenSymEntry):SegGraph { components.add(Component.A_DST_R, a); return this; }
         
         proc withSTART_IDX(a:shared GenSymEntry):SegGraph { components.add(Component.START_IDX, a); return this; }
         proc withSTART_IDX_R(a:shared GenSymEntry):SegGraph { components.add(Component.START_IDX_R, a); return this; }
@@ -89,8 +93,10 @@ module GraphArray {
 
         proc hasSRC():bool { return components.contains(Component.SRC); }
         proc hasSRC_R():bool { return components.contains(Component.SRC_R); }
+        proc hasA_SRC_R():bool { return components.contains(Component.A_SRC_R); }
         proc hasDST():bool { return components.contains(Component.DST); }
         proc hasDST_R():bool { return components.contains(Component.DST_R); }
+        proc hasA_DST_R():bool { return components.contains(Component.A_DST_R); }
         proc hasSTART_IDX():bool { return components.contains(Component.START_IDX); }
         proc hasSTART_IDX_R():bool { return components.contains(Component.START_IDX_R); }
         proc hasNEIGHBOR():bool { return components.contains(Component.NEIGHBOR); }
@@ -104,8 +110,10 @@ module GraphArray {
         
         proc getSRC() { return components.getBorrowed(Component.SRC); }
         proc getSRC_R() { return components.getBorrowed(Component.SRC_R); }
+        proc getA_SRC_R() { return components.getBorrowed(Component.A_SRC_R); }
         proc getDST() { return components.getBorrowed(Component.DST); }
         proc getDST_R() { return components.getBorrowed(Component.DST_R); }
+        proc getA_DST_R() { return components.getBorrowed(Component.A_DST_R); }
         proc getSTART_IDX() { return components.getBorrowed(Component.START_IDX); }
         proc getSTART_IDX_R() { return components.getBorrowed(Component.START_IDX_R); }
         proc getNEIGHBOR() { return components.getBorrowed(Component.NEIGHBOR); }
