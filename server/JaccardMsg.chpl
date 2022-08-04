@@ -357,7 +357,9 @@ module JaccardMsg {
                           toSymEntry(ag.getA_NEIGHBOR(), int).a,
                           toSymEntry(ag.getA_START_IDX(), int).a,
                           toSymEntry(ag.getA_NEIGHBOR_R(), int).a,
-                          toSymEntry(ag.getA_START_IDX_R(), int).a);
+                          toSymEntry(ag.getA_START_IDX_R(), int).a,
+                          toSymEntry(ag.getA_SRCR(), int).a,
+                          toSymEntry(ag.getA_DSTR(), int).a);
                   }
                   timer.stop();
                   outMsg= "graph aligned Jaccard takes "+timer.elapsed():string;
