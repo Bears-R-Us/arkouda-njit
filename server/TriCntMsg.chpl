@@ -207,7 +207,7 @@ module TriCntMsg {
                             ref A = ary;
                             const r = 0..#nBits by bitsPerDigit;
                             for rshift in r {
-                                 const myDigit = (r.high - rshift) / bitsPerDigit;
+                                 const myDigit = (r.highBound - rshift) / bitsPerDigit;
                                  const last = myDigit == 0;
                                  forall (m, a) in zip(merged, A) {
                                      m[curDigit+myDigit] =  getDigit(a, rshift, last, neg):uint(bitsPerDigit);
@@ -298,7 +298,7 @@ module TriCntMsg {
                      ref A = ary;
                      const r = 0..#nBits by bitsPerDigit;
                      for rshift in r {
-                        const myDigit = (r.high - rshift) / bitsPerDigit;
+                        const myDigit = (r.highBound - rshift) / bitsPerDigit;
                         const last = myDigit == 0;
                         forall (m, a) in zip(merged, A) {
                              m[curDigit+myDigit] =  getDigit(a, rshift, last, neg):uint(bitsPerDigit);
@@ -1040,7 +1040,7 @@ module TriCntMsg {
                             ref A = ary;
                             const r = 0..#nBits by bitsPerDigit;
                             for rshift in r {
-                                 const myDigit = (r.high - rshift) / bitsPerDigit;
+                                 const myDigit = (r.highBound - rshift) / bitsPerDigit;
                                  const last = myDigit == 0;
                                  forall (m, a) in zip(merged, A) {
                                      m[curDigit+myDigit] =  getDigit(a, rshift, last, neg):uint(bitsPerDigit);
@@ -1158,7 +1158,7 @@ module TriCntMsg {
                      ref A = ary;
                      const r = 0..#nBits by bitsPerDigit;
                      for rshift in r {
-                        const myDigit = (r.high - rshift) / bitsPerDigit;
+                        const myDigit = (r.highBound - rshift) / bitsPerDigit;
                         const last = myDigit == 0;
                         forall (m, a) in zip(merged, A) {
                              m[curDigit+myDigit] =  getDigit(a, rshift, last, neg):uint(bitsPerDigit);
@@ -1877,7 +1877,7 @@ module TriCntMsg {
                             ref A = ary;
                             const r = 0..#nBits by bitsPerDigit;
                             for rshift in r {
-                                 const myDigit = (r.high - rshift) / bitsPerDigit;
+                                 const myDigit = (r.highBound - rshift) / bitsPerDigit;
                                  const last = myDigit == 0;
                                  forall (m, a) in zip(merged, A) {
                                      //writeln("merged element=",m," a=",a);
