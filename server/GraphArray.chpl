@@ -10,7 +10,7 @@ module GraphArray {
     use NumPyDType;
     use Map;
 
-    private config const logLevel = ServerConfig.logLevel;
+    private config const logLevel = LogLevel.DEBUG;
     const graphLogger = new Logger(logLevel);
 
     // These are the component Key names stored in our components map
@@ -70,20 +70,23 @@ module GraphArray {
         /* Use the withCOMPONENT methods to compose the graph object */
         proc withSRC(a:shared GenSymEntry):SegGraph { components.add(Component.SRC, a); return this; }
         proc withSRC_R(a:shared GenSymEntry):SegGraph { components.add(Component.SRC_R, a); return this; }
+
         proc withA_SRC_R(a:shared GenSymEntry):SegGraph { components.add(Component.A_SRC_R, a); return this; }
         
         proc withDST(a:shared GenSymEntry):SegGraph { components.add(Component.DST, a); return this; }
         proc withDST_R(a:shared GenSymEntry):SegGraph { components.add(Component.DST_R, a); return this; }
+
         proc withA_DST_R(a:shared GenSymEntry):SegGraph { components.add(Component.A_DST_R, a); return this; }
         
         proc withSTART_IDX(a:shared GenSymEntry):SegGraph { components.add(Component.START_IDX, a); return this; }
         proc withSTART_IDX_R(a:shared GenSymEntry):SegGraph { components.add(Component.START_IDX_R, a); return this; }
 
-        proc withNEIGHBOR(a:shared GenSymEntry):SegGraph { components.add(Component.NEIGHBOR, a); return this; }
-        proc withNEIGHBOR_R(a:GenSymEntry):SegGraph { components.add(Component.NEIGHBOR_R, a); return this; }
-
         proc withA_START_IDX(a:shared GenSymEntry):SegGraph { components.add(Component.A_START_IDX, a); return this; }
         proc withA_START_IDX_R(a:shared GenSymEntry):SegGraph { components.add(Component.A_START_IDX_R, a); return this; }
+
+
+        proc withNEIGHBOR(a:shared GenSymEntry):SegGraph { components.add(Component.NEIGHBOR, a); return this; }
+        proc withNEIGHBOR_R(a:GenSymEntry):SegGraph { components.add(Component.NEIGHBOR_R, a); return this; }
 
         proc withA_NEIGHBOR(a:shared GenSymEntry):SegGraph { components.add(Component.A_NEIGHBOR, a); return this; }
         proc withA_NEIGHBOR_R(a:GenSymEntry):SegGraph { components.add(Component.A_NEIGHBOR_R, a); return this; }
@@ -99,10 +102,10 @@ module GraphArray {
         proc hasA_DST_R():bool { return components.contains(Component.A_DST_R); }
         proc hasSTART_IDX():bool { return components.contains(Component.START_IDX); }
         proc hasSTART_IDX_R():bool { return components.contains(Component.START_IDX_R); }
-        proc hasNEIGHBOR():bool { return components.contains(Component.NEIGHBOR); }
-        proc hasNEIGHBOR_R():bool { return components.contains(Component.NEIGHBOR_R); }
         proc hasA_START_IDX():bool { return components.contains(Component.START_IDX); }
         proc hasA_START_IDX_R():bool { return components.contains(Component.START_IDX_R); }
+        proc hasNEIGHBOR():bool { return components.contains(Component.NEIGHBOR); }
+        proc hasNEIGHBOR_R():bool { return components.contains(Component.NEIGHBOR_R); }
         proc hasA_NEIGHBOR():bool { return components.contains(Component.NEIGHBOR); }
         proc hasA_NEIGHBOR_R():bool { return components.contains(Component.NEIGHBOR_R); }
         proc hasEDGE_WEIGHT():bool { return components.contains(Component.EDGE_WEIGHT); }
@@ -116,10 +119,10 @@ module GraphArray {
         proc getA_DST_R() { return components.getBorrowed(Component.A_DST_R); }
         proc getSTART_IDX() { return components.getBorrowed(Component.START_IDX); }
         proc getSTART_IDX_R() { return components.getBorrowed(Component.START_IDX_R); }
-        proc getNEIGHBOR() { return components.getBorrowed(Component.NEIGHBOR); }
-        proc getNEIGHBOR_R() { return components.getBorrowed(Component.NEIGHBOR_R); }
         proc getA_START_IDX() { return components.getBorrowed(Component.A_START_IDX); }
         proc getA_START_IDX_R() { return components.getBorrowed(Component.A_START_IDX_R); }
+        proc getNEIGHBOR() { return components.getBorrowed(Component.NEIGHBOR); }
+        proc getNEIGHBOR_R() { return components.getBorrowed(Component.NEIGHBOR_R); }
         proc getA_NEIGHBOR() { return components.getBorrowed(Component.A_NEIGHBOR); }
         proc getA_NEIGHBOR_R() { return components.getBorrowed(Component.A_NEIGHBOR_R); }
         proc getEDGE_WEIGHT() { return components.getBorrowed(Component.EDGE_WEIGHT); }

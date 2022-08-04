@@ -17,10 +17,10 @@ def time_ak_test():
     print("number of PUs =",cfg["numPUs"])
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
-    HomeDir="/rhome/zhihui/"
+    HomeDir="/home/gridsan/zdu/"
     Test1=[ \
-            [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
-            [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr.pr"],\
+            [3056,1024,2,0,HomeDir+"Adata/delaunay_n10.mtx.pr"],\
+            [28980,5242,2,0,HomeDir+"Adata/ca-GrQc.txt.gr.pr"],\
             [11,6,2,0,"g.gr"],\
               ]
     TestMtx=[ \

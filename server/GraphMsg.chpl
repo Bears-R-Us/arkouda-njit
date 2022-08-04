@@ -1562,8 +1562,8 @@ module GraphMsg {
                    .withA_NEIGHBOR_R(new shared SymEntry(aligned_neiR):GenSymEntry)
                    .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
                    .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry)
-                   .withSRC_R(new shared SymEntry(aligned_srcR):GenSymEntry)
-                   .withDST_R(new shared SymEntry(aligned_dstR):GenSymEntry);
+                   .withA_SRC_R(new shared SymEntry(aligned_srcR):GenSymEntry)
+                   .withA_DST_R(new shared SymEntry(aligned_dstR):GenSymEntry);
 
           }
 

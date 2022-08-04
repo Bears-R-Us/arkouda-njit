@@ -30,8 +30,10 @@ module JaccardMsg {
   use GraphMsg;
 
 
-  private config const logLevel = ServerConfig.logLevel;
+
+  private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
+
   
 
   // calculate Jaccard coefficient

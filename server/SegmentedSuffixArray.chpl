@@ -146,7 +146,7 @@ module SegmentedSuffixArray {
        Chapel range, i.e. low..high by stride, not a Python slice.
        Returns arrays for the segment offsets and bytes of the slice.*/
     proc this(const slice: range(stridable=true)) throws {
-      if (slice.low < offsets.aD.low) || (slice.high > offsets.aD.high) {
+      if (slice.lowBound < offsets.aD.low) || (slice.highBound > offsets.aD.high) {
           saLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
           "Array is out of bounds");
           throw new owned OutOfBoundsError();
@@ -156,20 +156,20 @@ module SegmentedSuffixArray {
         return (makeDistArray(0, int), makeDistArray(0, int));
       }
       // Start of bytearray slice
-      var start = offsets.a[slice.low];
+      var start = offsets.a[slice.lowBound];
       // End of bytearray slice
       var end: int;
-      if (slice.high == offsets.aD.high) {
+      if (slice.highBound == offsets.aD.highBound) {
         // if slice includes the last string, go to the end of values
-        end = values.aD.high;
+        end = values.aD.highBound;
       } else {
-        end = offsets.a[slice.high+1] - 1;
+        end = offsets.a[slice.highBound+1] - 1;
       }
       // Segment offsets of the new slice
       var newSegs = makeDistArray(slice.size, int);
       ref oa = offsets.a;
       forall (i, ns) in zip(newSegs.domain, newSegs) with (var agg = newSrcAggregator(int)) {
-        agg.copy(ns, oa[slice.low + i]);
+        agg.copy(ns, oa[slice.lowBound + i]);
       }
       // Offsets need to be re-zeroed
       newSegs -= start;
