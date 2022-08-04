@@ -1545,9 +1545,9 @@ module GraphMsg {
 
 
               graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
-                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neighbourR):GenSymEntry)
+                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neiR):GenSymEntry)
                    .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry)
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry)
                    .withSRC_R(new shared SymEntry(aligned_srcR):GenSymEntry)
                    .withDST_R(new shared SymEntry(aligned_dstR):GenSymEntry);
 
@@ -1599,7 +1599,7 @@ module GraphMsg {
 
 
               graph.withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry);
 
           }
 
@@ -1914,9 +1914,9 @@ module GraphMsg {
 
 
               graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
-                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neighbourR):GenSymEntry)
+                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neiR):GenSymEntry)
                    .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry);
 
           }
 
@@ -1972,7 +1972,7 @@ module GraphMsg {
 
 
               graph.withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_neighbour):GenSymEntry);
+                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry);
 
           }
 
