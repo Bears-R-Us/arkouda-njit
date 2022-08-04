@@ -33,6 +33,9 @@ module GraphMsg {
   use IO.FormattedIO; 
   use AryUtil;
 
+  use ReplicatedDist;
+  use ReplicatedVar;
+
 
 
   //private config const logLevel = ServerConfig.logLevel;
