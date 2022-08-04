@@ -325,7 +325,12 @@ module GraphMsg {
                      }
                  }
           }
-          cmary.reverse();
+          //cmary.reverse();
+          forall i in 0..(Nv-1)/2 {
+              var tmp=cmary[i];
+              cmary[i]=cmary[Nv-1-i];
+              cmary[Nv-1-i]=tmp;
+          }
           forall i in 0..Nv-1{
               indexary[cmary[i]]=i;
           }
@@ -507,7 +512,13 @@ module GraphMsg {
                      }
                  }
               }
-              cmary.reverse();
+              //cmary.reverse();
+              forall i in 0..(Nv-1)/2 {
+                  var tmp=cmary[i];
+                  cmary[i]=cmary[Nv-1-i];
+                  cmary[Nv-1-i]=tmp;
+              }
+
               forall i in 0..Nv-1{
                   indexary[cmary[i]]=i;
               }
