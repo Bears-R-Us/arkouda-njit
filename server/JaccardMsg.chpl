@@ -47,6 +47,15 @@ module JaccardMsg {
 
 
 
+      pragma "default intent is ref"
+        record DynArray {
+            var DO = {0..0};
+            var A : [DO] int;
+
+            proc new_dom(new_d : domain(1)) {
+                this.DO = new_d;
+            }
+      }
       var JaccGamma=makeDistArray(Nv*Nv,atomic int);//we only need to save half results and we will optimize it later.
       var JaccCoeff=makeDistArray(Nv*Nv, real);//we only need to save half results and we will optimize it later.
       coforall loc in Locales  {
@@ -186,15 +195,6 @@ module JaccardMsg {
       }//end of 
 
 
-      pragma "default intent is ref"
-        record DynArray {
-            var DO = {0..0};
-            var A : [DO] int;
-
-            proc new_dom(new_d : domain(1)) {
-                this.DO = new_d;
-            }
-      }
 
 
 
@@ -354,12 +354,12 @@ module JaccardMsg {
                           toSymEntry(ag.getSTART_IDX_R(), int).a,
                           toSymEntry(ag.getSRC_R(), int).a,
                           toSymEntry(ag.getDST_R(), int).a,
-                          toSymEntry(ag.getA_NEIGHBOR(), int).a,
-                          toSymEntry(ag.getA_START_IDX(), int).a,
-                          toSymEntry(ag.getA_NEIGHBOR_R(), int).a,
-                          toSymEntry(ag.getA_START_IDX_R(), int).a,
-                          toSymEntry(ag.getA_SRC_R(), int).a,
-                          toSymEntry(ag.getA_DST_R(), int).a);
+                          toSymEntry(ag.getA_NEIGHBOR(), DynArray).a,
+                          toSymEntry(ag.getA_START_IDX(), DynArray).a,
+                          toSymEntry(ag.getA_NEIGHBOR_R(), DynArray).a,
+                          toSymEntry(ag.getA_START_IDX_R(), DynArray).a,
+                          toSymEntry(ag.getA_SRC_R(), DynArray).a,
+                          toSymEntry(ag.getA_DST_R(), DynArray).a);
                   }
                   timer.stop();
                   outMsg= "graph aligned Jaccard takes "+timer.elapsed():string;
