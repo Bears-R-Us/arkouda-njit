@@ -498,7 +498,7 @@ module CCMsg {
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, int); 
 
-      forall i in 0..Nv {
+      forall i in 0..Nv-1 {
         f[i] = i;
         f_next[i] = i;
       }
@@ -516,7 +516,7 @@ module CCMsg {
 
         // Stochastic hooking.
         // writeln("Stochastic hooking:");
-        forall x in 0..Ne {
+        forall x in 0..Ne-1 {
           // Get edges from src, dst, srcR, and dstR.
           var u = src[x];
           var v = dst[x];
@@ -538,7 +538,7 @@ module CCMsg {
 
         // Aggresive hooking.
         // writeln("Aggresive hooking:");
-        forall x in 0..Ne {
+        forall x in 0..Ne-1 {
           var u = src[x];
           var v = dst[x];
 
@@ -559,7 +559,7 @@ module CCMsg {
 
         // Shortcutting.
         // writeln("Shortcutting:");
-        forall u in 0..Nv {
+        forall u in 0..Nv-1 {
           if(f[f[u]] < f_next[u]) {
             // writeln("inner u v = ", u, " ", v);
             f_next[u] = f[f[u]];
@@ -574,13 +574,13 @@ module CCMsg {
         f = f_next; 
 
         // Recompute gf.
-        forall x in 0..Nv {
+        forall x in 0..Nv-1 {
           gf[x] = f[f[x]];
         }
 
         // Check if gf converged.
         var diff = makeDistArray(Nv, int);
-        forall x in 0..Nv {
+        forall x in 0..Nv-1 {
           diff[x] = gf[x] - dup[x];
         }
         var sum = + reduce diff;
