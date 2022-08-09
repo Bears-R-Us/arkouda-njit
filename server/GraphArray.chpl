@@ -33,6 +33,16 @@ module GraphArray {
         VERTEX_WEIGHT // Vertex weight
     }
 
+    pragma "default intent is ref"
+    record DomArray {
+         var DO = {0..0};
+         var A : [DO] int;
+         proc new_dom(new_d : domain(1)) {
+             this.DO = new_d;
+         }
+    }
+
+
     /**
     * We use several arrays and intgers to represent a graph 
     * Instances are ephemeral, not stored in the symbol table. Instead, attributes
@@ -131,6 +141,22 @@ module GraphArray {
     }
 
     /**
+    * DomArraySymEntry is the wrapper class around DomArray record
+    * so it may be stored in the Symbol Table (SymTab)
+    */
+    class DomArraySymEntry:CompositeSymEntry {
+        var dtype = NumPyDType.DType.UNDEF;
+        var domary =makeDistArray(numLocales,DomArray);
+
+        proc init(disArray :[?aD] DomArray) {
+            super.init();
+            this.entryType = SymbolEntryType.CompositeSymEntry;
+            assignableTypes.add(this.entryType);
+            this.domary = disArray;
+        }
+    }
+
+    /**
     * GraphSymEntry is the wrapper class around SegGraph
     * so it may be stored in the Symbol Table (SymTab)
     */
@@ -158,6 +184,13 @@ module GraphArray {
             throw new Error(errorMsg);
         }
         return (abstractEntry: borrowed GraphSymEntry);
+    }
+
+    /**
+    * Helper proc to cat AbstractSymEntry to DomArraySymEntry
+    */
+    proc toDomArraySymEntry(entry: borrowed AbstractSymEntry): borrowed DomArraySymEntry throws {
+        return (entry: borrowed DomArraySymEntry);
     }
 
     /**
