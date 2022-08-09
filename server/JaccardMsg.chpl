@@ -49,8 +49,9 @@ module JaccardMsg {
 
 
 
+      /*
       pragma "default intent is ref"
-        record DynArray {
+        record DomArray {
             var DO = {0..0};
             var A : [DO] int;
 
@@ -58,6 +59,7 @@ module JaccardMsg {
                 this.DO = new_d;
             }
       }
+      */
       var JaccGamma=makeDistArray(Nv*Nv,atomic int);//we only need to save half results and we will optimize it later.
       var JaccCoeff=makeDistArray(Nv*Nv, real);//we only need to save half results and we will optimize it later.
       coforall loc in Locales  {
@@ -202,9 +204,14 @@ module JaccardMsg {
 
       proc aligned_jaccard_coefficient_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        a_nei:[?D21] DynArray, a_start_i:[?D22] DynArray,
-                        a_neiR:[?D31] DynArray, a_start_iR:[?D32] DynArray,
-                        a_srcR:[?D41] DynArray, a_dstR:[?D42] DynArray ):string throws{
+                        /*
+                        a_nei: shared DomArray, a_start_i: shared DomArray,
+                        a_neiR: shared DomArray, a_start_iR: shared DomArray,
+                        a_srcR: shared DomArray, a_dstR:shared DomArray ):string throws{
+                        */
+                        a_nei:[?D21] DomArray, a_start_i:[?D22] DomArray,
+                        a_neiR:[?D31] DomArray, a_start_iR:[?D32] DomArray,
+                        a_srcR:[?D41] DomArray, a_dstR:[?D42] DomArray ):string throws{
 
           var edgeBeginG=makeDistArray(numLocales,int);//each locale's starting edge ID
           var edgeEndG=makeDistArray(numLocales,int);//each locales'ending edge ID
@@ -356,12 +363,20 @@ module JaccardMsg {
                           toSymEntry(ag.getSTART_IDX_R(), int).a,
                           toSymEntry(ag.getSRC_R(), int).a,
                           toSymEntry(ag.getDST_R(), int).a,
-                          toSymEntry(ag.getA_NEIGHBOR(), DynArray).a,
-                          toSymEntry(ag.getA_START_IDX(), DynArray).a,
-                          toSymEntry(ag.getA_NEIGHBOR_R(), DynArray).a,
-                          toSymEntry(ag.getA_START_IDX_R(), DynArray).a,
-                          toSymEntry(ag.getA_SRC_R(), DynArray).a,
-                          toSymEntry(ag.getA_DST_R(), DynArray).a);
+                          toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                          toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                          toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                          toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                          toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                          toDomArraySymEntry(ag.getA_DST_R()).domary);
+                          /*
+                          toDomArraySymEntry(ag.getA_NEIGHBOR(), DomArray).domary,
+                          toDomArraySymEntry(ag.getA_START_IDX(), DomArray).domary,
+                          toDomArraySymEntry(ag.getA_NEIGHBOR_R(), DomArray).domary,
+                          toDomArraySymEntry(ag.getA_START_IDX_R(), DomArray).domary,
+                          toDomArraySymEntry(ag.getA_SRC_R(), DomArray).domary,
+                          toDomArraySymEntry(ag.getA_DST_R(), DomArray).domary);
+                          */
                   }
                   timer.stop();
                   outMsg= "graph aligned Jaccard takes "+timer.elapsed():string;
