@@ -1500,21 +1500,22 @@ module GraphMsg {
 
 
           if (AlignedArray==1) {
+              /*
               pragma "default intent is ref"
-              record DynArray {
+              record DomArray {
                   var DO = {0..0};
                   var A : [DO] int;
                   proc new_dom(new_d : domain(1)) {
                       this.DO = new_d;
                   }
               }
-
-              var aligned_nei=makeDistArray(numLocales,DynArray);
-              var aligned_neiR=makeDistArray(numLocales,DynArray);
-              var aligned_start_i=makeDistArray(numLocales,DynArray);
-              var aligned_start_iR=makeDistArray(numLocales,DynArray);
-              var aligned_srcR=makeDistArray(numLocales,DynArray);
-              var aligned_dstR=makeDistArray(numLocales,DynArray);
+              */
+              var aligned_nei=makeDistArray(numLocales,DomArray);
+              var aligned_neiR=makeDistArray(numLocales,DomArray);
+              var aligned_start_i=makeDistArray(numLocales,DomArray);
+              var aligned_start_iR=makeDistArray(numLocales,DomArray);
+              var aligned_srcR=makeDistArray(numLocales,DomArray);
+              var aligned_dstR=makeDistArray(numLocales,DomArray);
 
               var D : [rcDomain] domain(1);
               var DR : [rcDomain] domain(1);
@@ -1558,12 +1559,12 @@ module GraphMsg {
               }
 
 
-              graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
-                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neiR):GenSymEntry)
-                   .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry)
-                   .withA_SRC_R(new shared SymEntry(aligned_srcR):GenSymEntry)
-                   .withA_DST_R(new shared SymEntry(aligned_dstR):GenSymEntry);
+              graph.withA_START_IDX_R(new shared DomArraySymEntry(aligned_start_iR):CompositeSymEntry)
+                   .withA_NEIGHBOR_R(new shared DomArraySymEntry(aligned_neiR):CompositeSymEntry)
+                   .withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
+                   .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry)
+                   .withA_SRC_R(new shared DomArraySymEntry(aligned_srcR):CompositeSymEntry)
+                   .withA_DST_R(new shared DomArraySymEntry(aligned_dstR):CompositeSymEntry);
 
           }
 
@@ -1577,17 +1578,17 @@ module GraphMsg {
         }
 
           if (AlignedArray==1) {
-
-              record DynArray {
+              /*
+              record DomArray {
                   var DO = {0..0};
                   var A : [DO] int;
                   proc new_dom(new_d : domain(1)) {
                       this.DO = new_d;
                   }
               }
-
-              var aligned_nei=makeDistArray(numLocales,DynArray);
-              var aligned_start_i=makeDistArray(numLocales,DynArray);
+              */
+              var aligned_nei=makeDistArray(numLocales,DomArray);
+              var aligned_start_i=makeDistArray(numLocales,DomArray);
 
               var D : [rcDomain] domain(1);
 
@@ -1612,8 +1613,8 @@ module GraphMsg {
               }
 
 
-              graph.withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry);
+              graph.withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
+                   .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
 
           }
 
@@ -1879,19 +1880,19 @@ module GraphMsg {
 
 
           if (AlignedArray==1) {
-
-              record DynArray {
+              /*
+              record DomArray {
                   var DO = {0..0};
                   var A : [DO] int;
                   proc new_dom(new_d : domain(1)) {
                       this.DO = new_d;
                   }
               }
-
-              var aligned_nei=makeDistArray(numLocales,DynArray);
-              var aligned_neiR=makeDistArray(numLocales,DynArray);
-              var aligned_start_i=makeDistArray(numLocales,DynArray);
-              var aligned_start_iR=makeDistArray(numLocales,DynArray);
+              */
+              var aligned_nei=makeDistArray(numLocales,DomArray);
+              var aligned_neiR=makeDistArray(numLocales,DomArray);
+              var aligned_start_i=makeDistArray(numLocales,DomArray);
+              var aligned_start_iR=makeDistArray(numLocales,DomArray);
 
               var D : [rcDomain] domain(1);
               var DR : [rcDomain] domain(1);
@@ -1927,10 +1928,10 @@ module GraphMsg {
               }
 
 
-              graph.withA_START_IDX_R(new shared SymEntry(aligned_start_iR):GenSymEntry)
-                   .withA_NEIGHBOR_R(new shared SymEntry(aligned_neiR):GenSymEntry)
-                   .withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry);
+              graph.withA_START_IDX_R(new shared DomArraySymEntry(aligned_start_iR):CompositeSymEntry)
+                   .withA_NEIGHBOR_R(new shared DomArraySymEntry(aligned_neiR):CompositeSymEntry)
+                   .withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
+                   .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
 
           }
 
@@ -1949,17 +1950,17 @@ module GraphMsg {
         }
 
           if (AlignedArray==1) {
-
-              record DynArray {
+              /*
+              record DomArray {
                   var DO = {0..0};
                   var A : [DO] int;
                   proc new_dom(new_d : domain(1)) {
                       this.DO = new_d;
                   }
               }
-
-              var aligned_nei=makeDistArray(numLocales,DynArray);
-              var aligned_start_i=makeDistArray(numLocales,DynArray);
+              */
+              var aligned_nei=makeDistArray(numLocales,DomArray);
+              var aligned_start_i=makeDistArray(numLocales,DomArray);
 
               var D : [rcDomain] domain(1);
 
@@ -1985,8 +1986,8 @@ module GraphMsg {
               }
 
 
-              graph.withA_START_IDX(new shared SymEntry(aligned_start_i):GenSymEntry)
-                   .withA_NEIGHBOR(new shared SymEntry(aligned_nei):GenSymEntry);
+              graph.withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
+                   .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
 
           }
 
@@ -2352,6 +2353,7 @@ module GraphMsg {
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
+           /*
            when "astart_i" {
               var retV=toSymEntry(ag.getA_START_IDX(), int).a;
               var attrEntry = new shared SymEntry(retV);
@@ -2376,6 +2378,7 @@ module GraphMsg {
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
+           */
            when "v_weight" {
               var retV=toSymEntry(ag.getVERTEX_WEIGHT(), int).a;
               var attrEntry = new shared SymEntry(retV);
