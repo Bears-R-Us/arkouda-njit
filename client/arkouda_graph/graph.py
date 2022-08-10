@@ -125,6 +125,14 @@ def graph_query(graph: Graph, component: str) -> pdarray:
         attr=7
     elif component =="neighbourR":
         attr=8
+    elif component =="astart_i":
+        attr=-3
+    elif component =="aneighbour":
+        attr=-4
+    elif component =="astart_iR":
+        attr=-7
+    elif component =="aneighbourR":
+        attr=-8
     elif component =="v_weight":
         attr=-1
     elif component =="e_weight":
@@ -141,7 +149,7 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 @typechecked
 def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
-                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1) -> None:
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1, BuildAlignedArray:int=0) -> None:
     """
         This function is used for creating a preprocessed graph file (mapping vertices, 
                 remove duplicated edges and self loop ) from a given file.
@@ -172,9 +180,9 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
         RuntimeError
         """
     cmd = "segmentedGraphPreProcessing"
-    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
-    print(args)
+    args = "{} {} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    # currently we will not handle the BuildAlignedArray flag except in the read procedure
     repMsg = generic_msg(cmd=cmd, args=args)
     return 
 
@@ -231,7 +239,7 @@ def graph_file_tonde(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,s
 
 @typechecked
 def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0, BuildAlignedArray:int=0) -> Graph:
     """
         This function is used for creating a graph from a file.
         The file should like this
@@ -266,8 +274,8 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
         RuntimeError
         """
     cmd = "segmentedGraphFile"
-    args = "{} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
     print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 
@@ -276,7 +284,7 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
 
 @typechecked
 def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
-                        RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0) -> Graph:
+                        RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=0, BuildAlignedArray:int=0) -> Graph:
     """
         This function is used for creating a graph from a mtx graph file.
         compared with the graph_file_read function, it will skip the mtx head part
@@ -306,8 +314,8 @@ def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: st
         RuntimeError
         """
     cmd = "segmentedGraphFileMtx"
-    args = "{} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
     print(args)
     repMsg = generic_msg(cmd=cmd, args=args)
 

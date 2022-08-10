@@ -12,6 +12,8 @@ module BFSMsg {
     use ReplicatedVar;
     use GraphArray;
     use GraphMsg;
+    use CopyAggregation;
+    use AggregationPrimitives;
 
     // private config const logLevel = ServerConfig.logLevel;
     private config const logLevel = LogLevel.DEBUG;
@@ -59,9 +61,13 @@ module BFSMsg {
         var gEntry : borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
         var ag = gEntry.graph;
 
-        // Create a "dynamic" array record.
+        /******************************************************************************************/
+        /***************** RECORDS MADE BY OLIVER FOR VERTEX TO EDGE LOCALITY -- START ************/
+        /******************************************************************************************/
+        
+        // Create a "ragged" array record.
         pragma "default intent is ref"
-        record DynArray {
+        record RagArray {
             var DO = {0..0};
             var A : [DO] int;
 
@@ -74,6 +80,10 @@ module BFSMsg {
             }
         }
 
+        /******************************************************************************************/
+        /***************** RECORDS MADE BY OLIVER FOR VERTEX TO EDGE LOCALITY -- END **************/
+        /******************************************************************************************/
+
         // Maintain on each locale the lows and highs of the src and srcR arrays.
         var block_locale_D : domain(1) dmapped Block(boundingBox=LocaleSpace) = LocaleSpace;
         var lows : [block_locale_D] int;
@@ -82,10 +92,10 @@ module BFSMsg {
         var highsR : [block_locale_D] int;
 
         // Create arrays on each locale 
-        var nei_local_vertices : [block_locale_D] DynArray;
-        var neiR_local_vertices : [block_locale_D] DynArray;
-        var start_i_local_vertices : [block_locale_D] DynArray;
-        var start_iR_local_vertices : [block_locale_D] DynArray;
+        var nei_local_vertices : [block_locale_D] RagArray;
+        var neiR_local_vertices : [block_locale_D] RagArray;
+        var start_i_local_vertices : [block_locale_D] RagArray;
+        var start_iR_local_vertices : [block_locale_D] RagArray;
 
         // Copies of arrays to work with. 
         var nei1 = toSymEntry(ag.getNEIGHBOR(), int).a;
@@ -415,7 +425,7 @@ module BFSMsg {
             // writeln("rangesR: ", rangesR);
             // writeln();
 
-            // First, add root to curr_f where root is located.
+            // First, add root to curr_frontiers where root is located.
             for i in 1..numLocales - 1 {
                 if (root >= ranges[i-1] && root < ranges[i]) {
                     curr_frontiers[i-1] += root;
@@ -449,87 +459,91 @@ module BFSMsg {
                 // writeln("$$$$$ ITERATION ", cur_level, " $$$$$");
                 // writeln("curr_frontiers = ", curr_frontiers);
                 var pending_work : bool;
-                coforall curr_f in curr_frontiers with (|| reduce pending_work, + reduce num_visits) do on curr_f {
-                    var edge_begin = src.localSubdomain().low;
-                    var edge_end = src.localSubdomain().high;
+                coforall loc in Locales with (|| reduce pending_work, + reduce num_visits) {
+                    on loc {
+                        var agg = new DstAggregator(int);
+                        var curr_f = curr_frontiers[loc.id];
+                        var edge_begin = src.localSubdomain().low;
+                        var edge_end = src.localSubdomain().high;
 
-                    forall u in curr_f with (|| reduce pending_work, + reduce num_visits) {
-                        if depth[u] == -1 {
-                            // Update depth and other variables.
-                            depth[u] = cur_level;
-                            pending_work = true;
-                            num_visits += 1;
-              
-                            // Get neighbors from src and dst arrays.
-                            var num_neighbors = nei[u];
-                            var edge_id = start_i[u];
-                            var next_start = max(edge_id, edge_begin);
-                            var next_end = min(edge_end, edge_id + num_neighbors - 1);
-                            var neighbors = dst[next_start..next_end];
-                            // writeln("neighbors = ", neighbors);
+                        forall u in curr_f with (|| reduce pending_work, + reduce num_visits) {
+                            if depth[u] == -1 {
+                                // Update depth and other variables.
+                                depth[u] = cur_level;
+                                pending_work = true;
+                                num_visits += 1;
+                
+                                // Get neighbors from src and dst arrays.
+                                var num_neighbors = nei[u];
+                                var edge_id = start_i[u];
+                                var next_start = max(edge_id, edge_begin);
+                                var next_end = min(edge_end, edge_id + num_neighbors - 1);
+                                var neighbors = dst[next_start..next_end];
+                                // writeln("neighbors = ", neighbors);
 
-                            // Get neighbors from srcR and dstR arrays.
-                            var num_neighborsR = neiR[u];
-                            var edge_idR = start_iR[u];
-                            var next_startR = max(edge_idR, edge_begin);
-                            var next_endR = min(edge_end, edge_idR + num_neighborsR - 1);
-                            var neighborsR = dstR[next_startR..next_endR];
-                            // writeln("neighborsR = ", neighborsR);
+                                // Get neighbors from srcR and dstR arrays.
+                                var num_neighborsR = neiR[u];
+                                var edge_idR = start_iR[u];
+                                var next_startR = max(edge_idR, edge_begin);
+                                var next_endR = min(edge_end, edge_idR + num_neighborsR - 1);
+                                var neighborsR = dstR[next_startR..next_endR];
+                                // writeln("neighborsR = ", neighborsR);
 
-                            // Add neighbors from src and dst to the proper next_frontiers associative domain.
-                            for n in neighbors {
-                                if depth[n] == -1 {
-                                    for i in 1..numLocales - 1 {
-                                        if (n >= ranges[i - 1] && n < ranges[i]) {
-                                            next_frontiers[i - 1] += n;
+                                // Add neighbors from src and dst to the proper next_frontiers associative domain.
+                                for n in neighbors {
+                                    if depth[n] == -1 {
+                                        for i in 1..numLocales - 1 {
+                                            if (n >= ranges[i - 1] && n < ranges[i]) {
+                                                next_frontiers[i - 1] += n;
+                                            }
+                                            if (i == numLocales -  1) {
+                                                if n >= ranges[i] {
+                                                    next_frontiers[i] += n;
+                                                }
+                                            }
                                         }
-                                        if (i == numLocales -  1) {
-                                            if n >= ranges[i] {
-                                                next_frontiers[i] += n;
+                                        for i in 1..numLocales - 1 {
+                                            if (n >= rangesR[i - 1] && n < rangesR[i]) {
+                                                next_frontiers[i - 1] += n;
+                                            }
+                                            if (i == numLocales - 1) {
+                                                if n >= rangesR[i] {
+                                                    next_frontiers[i] += n;
+                                                }
                                             }
                                         }
                                     }
-                                    for i in 1..numLocales - 1 {
-                                        if (n >= rangesR[i - 1] && n < rangesR[i]) {
-                                            next_frontiers[i - 1] += n;
+                                }
+
+                                // Add neighbors from srcR and dstR to the proper next_frontiers associative domain.
+                                forall nR in neighborsR {
+                                    if depth[nR] == -1 {
+                                        for i in 1..numLocales - 1 {
+                                            if (nR >= ranges[i - 1] && nR < ranges[i]) {
+                                                next_frontiers[i - 1] += nR;
+                                            }
+                                            if (i == numLocales-1) {
+                                                if nR >= ranges[i] {
+                                                    next_frontiers[i] += nR;
+                                                }
+                                            }
                                         }
-                                        if (i == numLocales - 1) {
-                                            if n >= rangesR[i] {
-                                                next_frontiers[i] += n;
+                                        for i in 1..numLocales - 1 {
+                                            if (nR >= rangesR[i - 1] && nR < rangesR[i]) {
+                                                next_frontiers[i - 1] += nR;
+                                            }
+                                            if (i == numLocales - 1) {
+                                                if nR >= rangesR[i] {
+                                                    next_frontiers[i] += nR;
+                                                }
                                             }
                                         }
                                     }
                                 }
                             }
-
-                            // Add neighbors from srcR and dstR to the proper next_frontiers associative domain.
-                            forall nR in neighborsR {
-                                if depth[nR] == -1 {
-                                    for i in 1..numLocales - 1 {
-                                        if (nR >= ranges[i - 1] && nR < ranges[i]) {
-                                            next_frontiers[i - 1] += nR;
-                                        }
-                                        if (i == numLocales-1) {
-                                            if nR >= ranges[i] {
-                                                next_frontiers[i] += nR;
-                                            }
-                                        }
-                                    }
-                                    for i in 1..numLocales - 1 {
-                                        if (nR >= rangesR[i - 1] && nR < rangesR[i]) {
-                                            next_frontiers[i - 1] += nR;
-                                        }
-                                        if (i == numLocales - 1) {
-                                            if nR >= rangesR[i] {
-                                                next_frontiers[i] += nR;
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } /* end of forall u */
-                } /* end of coforall curr_f */
+                        } /* end of forall u */
+                    } /* end of on loc */
+                } /* end of coforall loc in Locales */
 
                 // Size of the frontiers.
                 var size = 0;
@@ -556,8 +570,8 @@ module BFSMsg {
             return depth;
         }//end of bfs_kernel_u
 
-        proc fo_bag_bfs_kernel_u_local_vertices( nei : [?D1] DynArray, start_i : [?D2] DynArray, src : [?D3] int, dst : [?D4] int, 
-                                                 neiR : [?D11] DynArray, start_iR : [?D12] DynArray, srcR : [?D13] int, dstR : [?D14] int, 
+        proc fo_bag_bfs_kernel_u_local_vertices( nei : [?D1] RagArray, start_i : [?D2] RagArray, src : [?D3] int, dst : [?D4] int, 
+                                                 neiR : [?D11] RagArray, start_iR : [?D12] RagArray, srcR : [?D13] int, dstR : [?D14] int, 
                                                  LF : int, GivenRatio : real) throws {
       
             // Initialize distributed depth array.
@@ -690,8 +704,8 @@ module BFSMsg {
             return depth;
         }// end of fo_bag_bfs_kernel_u_local_vertices
 
-        proc bfs_kernel_u_local_vertices( nei : [?D1] DynArray, start_i : [?D2] DynArray, src : [?D3] int, dst : [?D4] int,
-                                          neiR : [?D11] DynArray, start_iR : [?D12] DynArray, srcR : [?D13] int, 
+        proc bfs_kernel_u_local_vertices( nei : [?D1] RagArray, start_i : [?D2] RagArray, src : [?D3] int, dst : [?D4] int,
+                                          neiR : [?D11] RagArray, start_iR : [?D12] RagArray, srcR : [?D13] int, 
                                           dstR : [?D14] int) throws {
       
             // Initialize depth array.
