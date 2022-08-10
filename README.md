@@ -19,7 +19,7 @@ python server-config.py --arkouda=$ArkoudaHomeDirectory | bash
 ```
 
 ## Client code
-Now we have three directories
+Now we have two directories
 ```bash
 arkouda_graph/
 All graph algorithm related functions
@@ -27,8 +27,6 @@ All graph algorithm related functions
 suffix_array/
 All suffix array related python functions
 
-benchmark/
-All python testing code for different python functions
 ```
 
 ## Server code
@@ -42,6 +40,7 @@ SuffixArrayMsg
 GraphMsg-- for the basic graph operation
 TriCtrMsg-- for triangle centrality
 JaccardMsg-- for Jaccard coefficients
+CCMsg-- for Connected Components
 ```
 
 
