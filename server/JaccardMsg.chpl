@@ -49,17 +49,6 @@ module JaccardMsg {
 
 
 
-      /*
-      pragma "default intent is ref"
-        record DomArray {
-            var DO = {0..0};
-            var A : [DO] int;
-
-            proc new_dom(new_d : domain(1)) {
-                this.DO = new_d;
-            }
-      }
-      */
       var JaccGamma=makeDistArray(Nv*Nv,atomic int);//we only need to save half results and we will optimize it later.
       var JaccCoeff=makeDistArray(Nv*Nv, real);//we only need to save half results and we will optimize it later.
       coforall loc in Locales  {
@@ -189,6 +178,16 @@ module JaccardMsg {
                   }
              }
           }
+
+          var wf = open("Jaccard-Original.dat", iomode.cw);
+          var mw = wf.writer(kind=ionative);
+          for i in 0..Nv*Nv-1 {
+                 mw.writeln("%7.3f".format(JaccCoeff[i]));
+          }
+          mw.close();
+          wf.close();
+
+
           var JaccName = st.nextName();
           var JaccEntry = new shared SymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
@@ -204,11 +203,6 @@ module JaccardMsg {
 
       proc aligned_jaccard_coefficient_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        /*
-                        a_nei: shared DomArray, a_start_i: shared DomArray,
-                        a_neiR: shared DomArray, a_start_iR: shared DomArray,
-                        a_srcR: shared DomArray, a_dstR:shared DomArray ):string throws{
-                        */
                         a_nei:[?D21] DomArray, a_start_i:[?D22] DomArray,
                         a_neiR:[?D31] DomArray, a_start_iR:[?D32] DomArray,
                         a_srcR:[?D41] DomArray, a_dstR:[?D42] DomArray ):string throws{
@@ -322,6 +316,16 @@ module JaccardMsg {
                   }
              }
           }
+
+          var wf = open("Jaccard-Aligned.dat", iomode.cw);
+          var mw = wf.writer(kind=ionative);
+          for i in 0..Nv*Nv-1 {
+                 mw.writeln("%7.3f".format(JaccCoeff[i]));
+          }
+          mw.close();
+          wf.close();
+
+
           var JaccName = st.nextName();
           var JaccEntry = new shared SymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
@@ -350,6 +354,15 @@ module JaccardMsg {
                   timer.stop();
                   var outMsg= "graph Jaccard takes "+timer.elapsed():string;
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                 coforall loc in Locales  {
+                    on loc {
+                           forall i in JaccGamma.localSubdomain() {
+                                 JaccGamma[i].write(0);
+                           }
+                    }
+                  }
+
                   timer.clear();
                   timer.start();
 
@@ -369,14 +382,6 @@ module JaccardMsg {
                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
                           toDomArraySymEntry(ag.getA_DST_R()).domary);
-                          /*
-                          toDomArraySymEntry(ag.getA_NEIGHBOR(), DomArray).domary,
-                          toDomArraySymEntry(ag.getA_START_IDX(), DomArray).domary,
-                          toDomArraySymEntry(ag.getA_NEIGHBOR_R(), DomArray).domary,
-                          toDomArraySymEntry(ag.getA_START_IDX_R(), DomArray).domary,
-                          toDomArraySymEntry(ag.getA_SRC_R(), DomArray).domary,
-                          toDomArraySymEntry(ag.getA_DST_R(), DomArray).domary);
-                          */
                   }
                   timer.stop();
                   outMsg= "graph aligned Jaccard takes "+timer.elapsed():string;

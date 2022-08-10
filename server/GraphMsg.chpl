@@ -1500,16 +1500,7 @@ module GraphMsg {
 
 
           if (AlignedArray==1) {
-              /*
-              pragma "default intent is ref"
-              record DomArray {
-                  var DO = {0..0};
-                  var A : [DO] int;
-                  proc new_dom(new_d : domain(1)) {
-                      this.DO = new_d;
-                  }
-              }
-              */
+
               var aligned_nei=makeDistArray(numLocales,DomArray);
               var aligned_neiR=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
@@ -1517,22 +1508,22 @@ module GraphMsg {
               var aligned_srcR=makeDistArray(numLocales,DomArray);
               var aligned_dstR=makeDistArray(numLocales,DomArray);
 
-              var D : [rcDomain] domain(1);
-              var DR : [rcDomain] domain(1);
+              var DVertex : [rcDomain] domain(1);
+              var DEdge : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref D, ref DR) {
+              coforall loc in Locales with (ref DVertex, ref DEdge) {
                    on loc {
 
-                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
-                       DR[1] = {start_iR[src.localSubdomain().lowBound]..start_iR[src.localSubdomain().highBound]};
+                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       DEdge[1] = {start_iR[src[src.localSubdomain().lowBound]]..start_iR[src[src.localSubdomain().highBound]]};
 
-                       aligned_nei[here.id].new_dom(D[1]);
-                       aligned_neiR[here.id].new_dom(D[1]);
+                       aligned_nei[here.id].new_dom(DVertex[1]);
+                       aligned_neiR[here.id].new_dom(DVertex[1]);
 
-                       aligned_start_i[here.id].new_dom(D[1]);
-                       aligned_start_iR[here.id].new_dom(D[1]);
-                       aligned_srcR[here.id].new_dom(DR[1]);
-                       aligned_dstR[here.id].new_dom(DR[1]);
+                       aligned_start_i[here.id].new_dom(DVertex[1]);
+                       aligned_start_iR[here.id].new_dom(DVertex[1]);
+                       aligned_srcR[here.id].new_dom(DEdge[1]);
+                       aligned_dstR[here.id].new_dom(DEdge[1]);
                    }
               }
               coforall loc in Locales {
@@ -1578,27 +1569,19 @@ module GraphMsg {
         }
 
           if (AlignedArray==1) {
-              /*
-              record DomArray {
-                  var DO = {0..0};
-                  var A : [DO] int;
-                  proc new_dom(new_d : domain(1)) {
-                      this.DO = new_d;
-                  }
-              }
-              */
+
               var aligned_nei=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
 
-              var D : [rcDomain] domain(1);
+              var DVertex : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref D) {
+              coforall loc in Locales with (ref DVertex) {
                    on loc {
 
-                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
 
-                       aligned_nei[here.id].new_dom(D[1]);
-                       aligned_start_i[here.id].new_dom(D[1]);
+                       aligned_nei[here.id].new_dom(DVertex[1]);
+                       aligned_start_i[here.id].new_dom(DVertex[1]);
                    }
               }
               coforall loc in Locales {
@@ -1880,34 +1863,26 @@ module GraphMsg {
 
 
           if (AlignedArray==1) {
-              /*
-              record DomArray {
-                  var DO = {0..0};
-                  var A : [DO] int;
-                  proc new_dom(new_d : domain(1)) {
-                      this.DO = new_d;
-                  }
-              }
-              */
+
               var aligned_nei=makeDistArray(numLocales,DomArray);
               var aligned_neiR=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
               var aligned_start_iR=makeDistArray(numLocales,DomArray);
 
-              var D : [rcDomain] domain(1);
-              var DR : [rcDomain] domain(1);
+              var DVertex : [rcDomain] domain(1);
+              var DEdge : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref D, ref DR) {
+              coforall loc in Locales with (ref DVertex, ref DEdge) {
                    on loc {
 
-                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
-                       DR[1] = {srcR[srcR.localSubdomain().lowBound]..srcR[srcR.localSubdomain().highBound]};
+                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       DEdge[1] = {start_iR[src[src.localSubdomain().lowBound]]..start_iR[src[src.localSubdomain().highBound]]};
 
-                       aligned_nei[here.id].new_dom(D[1]);
-                       aligned_neiR[here.id].new_dom(DR[1]);
+                       aligned_nei[here.id].new_dom(DVertex[1]);
+                       aligned_neiR[here.id].new_dom(DEdge[1]);
 
-                       aligned_start_i[here.id].new_dom(D[1]);
-                       aligned_start_iR[here.id].new_dom(DR[1]);
+                       aligned_start_i[here.id].new_dom(DVertex[1]);
+                       aligned_start_iR[here.id].new_dom(DEdge[1]);
                    }
               }
               coforall loc in Locales {
@@ -1950,28 +1925,17 @@ module GraphMsg {
         }
 
           if (AlignedArray==1) {
-              /*
-              record DomArray {
-                  var DO = {0..0};
-                  var A : [DO] int;
-                  proc new_dom(new_d : domain(1)) {
-                      this.DO = new_d;
-                  }
-              }
-              */
+
               var aligned_nei=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
 
-              var D : [rcDomain] domain(1);
+              var DVertex : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref D ) {
+              coforall loc in Locales with (ref DVertex ) {
                    on loc {
-
-                       D[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
-
-                       aligned_nei[here.id].new_dom(D[1]);
-
-                       aligned_start_i[here.id].new_dom(D[1]);
+                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       aligned_nei[here.id].new_dom(DVertex[1]);
+                       aligned_start_i[here.id].new_dom(DVertex[1]);
                    }
               }
               coforall loc in Locales {
