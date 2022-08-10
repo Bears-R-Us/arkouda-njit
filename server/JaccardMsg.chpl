@@ -182,7 +182,7 @@ module JaccardMsg {
           var wf = open("Jaccard-Original.dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
           for i in 0..Nv*Nv-1 {
-                 mw.writeln("%7.3f".format(JaccCoeff[i]));
+                 mw.writeln("%7.3df".format(JaccCoeff[i]));
           }
           mw.close();
           wf.close();
@@ -320,7 +320,7 @@ module JaccardMsg {
           var wf = open("Jaccard-Aligned.dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
           for i in 0..Nv*Nv-1 {
-                 mw.writeln("%7.3f".format(JaccCoeff[i]));
+                 mw.writeln("%7.3df".format(JaccCoeff[i]));
           }
           mw.close();
           wf.close();
