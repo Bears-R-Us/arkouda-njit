@@ -2051,7 +2051,7 @@ module BFSMsg {
                   );
                   
                   timer.stop();
-                  var outMsg= "graph BFS takes "+timer.elapsed():string+ " for fo_bag version";
+                  var outMsg= "graph BFS takes "+timer.elapsed():string+" for fo_bag version";
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
                   depth=-1;
@@ -2069,7 +2069,7 @@ module BFSMsg {
                       toDomArraySymEntry(ag.getA_DST_R()).domary,
                       1, GivenRatio
                   );
-                  outMsg= "graph BFS takes "+timer.elapsed():string+ " for aligned_fo_bag version";
+                  outMsg= "graph BFS takes "+timer.elapsed():string+" for aligned_fo_bag version";
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   repMsg=return_depth();
  
