@@ -33,7 +33,8 @@ module BFSMsg {
   use GraphMsg;
 
 
-  private config const logLevel = ServerConfig.logLevel;
+  //private config const logLevel = ServerConfig.logLevel;
+  private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
   
   config const start_min_degree = 1000000;
@@ -68,8 +69,7 @@ module BFSMsg {
       coforall loc in Locales  {
                   on loc {
                            forall i in depth.localSubdomain() {
-                                 depth[i]=-1;
-                           }       
+                                 depth[i]=-1; }       
                   }
       }
       var root:int;
