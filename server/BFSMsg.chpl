@@ -581,6 +581,110 @@ module BFSMsg {
       }//end of fo_bag_bfs_kernel_u
 
 
+
+
+      proc aligned_fo_bag_bfs_kernel_u(a_nei:[?D1] DomArray, a_start_i:[?D2] DomArray,src:[?D3] int, dst:[?D4] int,
+                        a_neiR:[?D11] DomArray, a_start_iR:[?D12] DomArray,a_srcR:[?D13] DomArray, a_dstR:[?D14] DomArray, 
+                        LF:int,GivenRatio:real):string throws{
+          var cur_level=0;
+          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          while (numCurF>0) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                   on loc {
+
+                       var edgeBegin=src.localSubdomain().low;
+                       var edgeEnd=src.localSubdomain().high;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=a_srcR[here.id].A[edgeBegin];
+                       var vertexEndR=a_srcR[here.id].A[edgeEnd];
+
+                       var switchratio=(numCurF:real)/src.size:real;
+                       if (switchratio<GivenRatio) {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) || (LF==0)) {// current edge has the vertex
+                                  var    numNF=a_nei[here.id].A[i];
+                                  var    edgeId=a_start_i[here.id].A[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dst[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR)) || (LF==0))  {
+                                  var    numNF=a_neiR[here.id].A[i];
+                                  var    edgeId=a_start_iR[here.id].A[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=a_dstR[here.id].A[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }else {// bottom up
+                           bottomup+=1;
+                           forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                              if depth[i]==-1 {
+                                  var    numNF=a_nei[here.id].A[i];
+                                  var    edgeId=a_start_i[here.id].A[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dst[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (SetCurF.contains(j)) {
+                                               depth[i]=cur_level+1;
+                                               SetNextF.add(i);
+                                         }
+                                  }
+
+                              }
+                           }
+                           forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
+                              if depth[i]==-1 {
+                                  var    numNF=a_neiR[here.id].A[i];
+                                  var    edgeId=a_start_iR[here.id].A[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=a_dstR[here.id].A[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF)  {
+                                         if (SetCurF.contains(j)) {
+                                               depth[i]=cur_level+1;
+                                               SetNextF.add(i);
+                                         }
+                                  }
+                              }
+                           }
+                       }
+                   }//end on loc
+                }//end coforall loc
+                cur_level+=1;
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+          }//end while  
+          var outMsg="Search Radius = "+ (cur_level+1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="number of top down = "+(topdown:string)+" number of bottom up="+(bottomup:string);
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          return "success";
+      }//end of aligned_fo_bag_bfs_kernel_u
+
+
+
       proc fo_bag_bfs_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
@@ -1934,10 +2038,6 @@ module BFSMsg {
               var GivenRatio=ratios:real;
               if (GivenRatio <0  ) {//do default call
                   GivenRatio=-1.0* GivenRatio;
-                  //co_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                  //         ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,GivenRatio);
-                 //   fo_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                //            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,1,GivenRatio);
                   fo_bag_bfs_kernel_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -1950,6 +2050,27 @@ module BFSMsg {
                       1, GivenRatio
                   );
                   
+                  timer.stop();
+                  var outMsg= "graph BFS takes "+timer.elapsed():string+ " for fo_bag version";
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                  depth=-1;
+                  depth[root]=0;
+                  timer.clear();
+                  timer.start();
+                  aligned_fo_bag_bfs_kernel_u(
+                      toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                      toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                      toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                      toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                      toDomArraySymEntry(ag.getA_DST_R()).domary,
+                      1, GivenRatio
+                  );
+                  outMsg= "graph BFS takes "+timer.elapsed():string+ " for aligned_fo_bag version";
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   repMsg=return_depth();
  
               } else {// do batch test
