@@ -168,6 +168,7 @@ module JaccardMsg {
               }
           }//end coforall loc
 
+          /*
           forall u in 0..Nv-2 {
              forall v in u+1..Nv-1 {
                   var tmpjac:real =JaccGamma[u*Nv+v].read();
@@ -178,8 +179,29 @@ module JaccardMsg {
                   }
              }
           }
+          */
+          coforall loc in Locales   {
+              on loc {
 
-          var wf = open("Jaccard-Original.dat", iomode.cw);
+                 var vertexBegin=vertexBeginG[here.id];
+                 var vertexEnd=vertexEndG[here.id];
+                 if here.id==numLocales-1 {
+                       vertexEnd=Nv-2;
+                 }
+                 forall u in vertexBegin..vertexEnd {
+                     forall v in u+1..Nv-1 {
+                        var tmpjac:real =JaccGamma[u*Nv+v].read();
+                        if ((u<v) && (tmpjac>0.0)) {
+                            JaccCoeff[u*Nv+v]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
+                            JaccCoeff[v*Nv+u]=JaccCoeff[u*Nv+v];
+                            //writeln("d(",u,")=",nei[u]+neiR[u]," d(",v,")=", nei[v]+neiR[v], " Garmma[",u,",",v,"]=",tmpjac, " JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
+                        }
+                     }
+                 }
+              }
+          }
+
+          var wf = open("Jaccard-Original"+graphEntryName+".dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
           for i in 0..Nv*Nv-1 {
                  mw.writeln("%7.3dr".format(JaccCoeff[i]));
@@ -418,18 +440,28 @@ module JaccardMsg {
               } //end on loc 
           }//end coforall loc
 
-          forall u in 0..Nv-2 {
-             forall v in u+1..Nv-1 {
-                  var tmpjac:real =JaccGamma[u*Nv+v].read();
-                  if ((u<v) && (tmpjac>0.0)) {
-                      JaccCoeff[u*Nv+v]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
-                      JaccCoeff[v*Nv+u]=JaccCoeff[u*Nv+v];
-                      //writeln("d(",u,")=",nei[u]+neiR[u]," d(",v,")=", nei[v]+neiR[v], " Garmma[",u,",",v,"]=",tmpjac, " JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
-                  }
-             }
+          coforall loc in Locales   {
+              on loc {
+
+                 var vertexBegin=vertexBeginG[here.id];
+                 var vertexEnd=vertexEndG[here.id];
+                 if here.id==numLocales-1 {
+                       vertexEnd=Nv-2;
+                 }
+                 forall u in vertexBegin..vertexEnd {
+                     forall v in u+1..Nv-1 {
+                        var tmpjac:real =JaccGamma[u*Nv+v].read();
+                        if ((u<v) && (tmpjac>0.0)) {
+                            JaccCoeff[u*Nv+v]=tmpjac/(a_nei[here.id].A[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
+                            JaccCoeff[v*Nv+u]=JaccCoeff[u*Nv+v];
+                            //writeln("d(",u,")=",nei[u]+neiR[u]," d(",v,")=", nei[v]+neiR[v], " Garmma[",u,",",v,"]=",tmpjac, " JaccCoeff[",u,",",v,"]=",JaccCoeff[u*Nv+v]);
+                        }
+                     }
+                 }
+              }
           }
 
-          var wf = open("Jaccard-Aligned.dat", iomode.cw);
+          var wf = open("Jaccard-Aligned"+graphEntryName+".dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
           for i in 0..Nv*Nv-1 {
                  mw.writeln("%7.3dr".format(JaccCoeff[i]));
