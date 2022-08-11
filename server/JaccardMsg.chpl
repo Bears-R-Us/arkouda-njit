@@ -182,7 +182,7 @@ module JaccardMsg {
           var wf = open("Jaccard-Original.dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
           for i in 0..Nv*Nv-1 {
-                 mw.writeln("%7.3df".format(JaccCoeff[i]));
+                 mw.writeln("%7.3dr".format(JaccCoeff[i]));
           }
           mw.close();
           wf.close();
@@ -248,13 +248,124 @@ module JaccardMsg {
           coforall loc in Locales   {
               on loc {
 
-                       var vertexBegin=vertexBeginG[here.id];
-                       var vertexEnd=vertexEndG[here.id];
+                 var vertexBegin=vertexBeginG[here.id];
+                 var vertexEnd=vertexEndG[here.id];
+                      
+                 var Lver=a_nei[here.id].DO.low;
+                 var Hver=a_nei[here.id].DO.high;
 
-                       assert(src.localSubdomain().low<=vertexBegin && src.localSubdomain().high>=vertexEnd);
-                       forall  i in vertexBegin..vertexEnd {
-                              var    numNF=a_nei[here.id].A[i];
-                              var    edgeId=a_start_i[here.id].A[i];
+                 if ( (Lver>vertexBegin) && (Lver<vertexEnd) ) {
+                       forall  i in vertexBegin..Lver-1  {
+                              var    numNF=nei[i];
+                              var    edgeId=start_i[i];
+                              var nextStart=edgeId;
+                              var nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1 {
+                                   var u=dst[e1];
+                                   forall e2 in e1+1..nextEnd {
+                                       var v=dst[e2];
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
+                                       }
+                                   }
+                              } 
+                              numNF=neiR[i];
+                              edgeId=start_iR[i];
+                              nextStart=edgeId;
+                              nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1 {
+                                   var u=dstR[e1];
+                                   forall e2 in e1+1..nextEnd {
+                                       var v=dstR[e2];
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
+                                       }
+                                   }
+                              }
+
+
+
+                              forall e1 in nextStart..nextEnd {
+                                   var u=dstR[e1];
+
+                                   var    numNF2=nei[i];
+                                   var    edgeId2=start_i[i];
+                                   var nextStart2=edgeId2;
+                                   var nextEnd2=edgeId2+numNF2-1;
+                                   forall e2 in nextStart2..nextEnd2 {
+                                       var v=dst[e2];
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
+                                       } else {
+                                          if u>v {
+                                              JaccGamma[v*Nv+u].add(1);
+                                          }
+                                       }
+                                   }
+                              }
+
+
+                       }// end forall
+                 }//end if
+
+                 if ( (Hver>vertexBegin) && (Hver<vertexEnd) ) {
+                       forall  i in Hver+1..vertexEnd {
+                              var    numNF=nei[i];
+                              var    edgeId=start_i[i];
+                              var nextStart=edgeId;
+                              var nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1 {
+                                   var u=dst[e1];
+                                   forall e2 in e1+1..nextEnd {
+                                       var v=dst[e2];
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
+                                       }
+                                   }
+                              } 
+                              numNF=neiR[i];
+                              edgeId=start_iR[i];
+                              nextStart=edgeId;
+                              nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1 {
+                                   var u=dstR[e1];
+                                   forall e2 in e1+1..nextEnd {
+                                       var v=dstR[e2];
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
+                                       }
+                                   }
+                              }
+
+
+
+                              forall e1 in nextStart..nextEnd {
+                                   var u=dstR[e1];
+
+                                   var    numNF2=nei[i];
+                                   var    edgeId2=start_i[i];
+                                   var nextStart2=edgeId2;
+                                   var nextEnd2=edgeId2+numNF2-1;
+                                   forall e2 in nextStart2..nextEnd2 {
+                                       var v=dst[e2];
+                                       if u<v {
+                                           JaccGamma[u*Nv+v].add(1);
+                                       } else {
+                                          if u>v {
+                                              JaccGamma[v*Nv+u].add(1);
+                                          }
+                                       }
+                                   }
+                              }
+
+
+                       }//end forall
+                 }// end if
+
+                 if ( true ) {
+                       forall  i in max(vertexBegin,Lver)..min(Hver,vertexEnd) {
+                              var numNF=a_nei[here.id].A[i];
+                              var edgeId=a_start_i[here.id].A[i];
                               var nextStart=edgeId;
                               var nextEnd=edgeId+numNF-1;
                               forall e1 in nextStart..nextEnd-1 {
@@ -302,8 +413,9 @@ module JaccardMsg {
                               }
 
 
-                       }
-              }
+                       }//end forall
+                 }// end if 
+              } //end on loc 
           }//end coforall loc
 
           forall u in 0..Nv-2 {
@@ -320,7 +432,7 @@ module JaccardMsg {
           var wf = open("Jaccard-Aligned.dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
           for i in 0..Nv*Nv-1 {
-                 mw.writeln("%7.3df".format(JaccCoeff[i]));
+                 mw.writeln("%7.3dr".format(JaccCoeff[i]));
           }
           mw.close();
           wf.close();
