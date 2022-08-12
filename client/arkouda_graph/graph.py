@@ -371,7 +371,7 @@ def graph_bfs(graph: Graph, root: int) -> pdarray:
         RuntimeError
         """
     cmd = "segmentedGraphBFS"
-    DefaultRatio = 0.9
+    DefaultRatio = -0.9
     RCMFlag = 1
     args = "{} {} {} {} {} {} {} {}".format(
         RCMFlag,
