@@ -23,6 +23,25 @@ def time_ak_bfs():
     p=0.40
     directed=0
     weighted=0
+
+
+
+    HomeDir="/home/gridsan/zdu/"
+    Test=[ [14484,5242,2,0,HomeDir+"Adata/ca-GrQc.txt.pr"]]
+    Test1=[ [14484,5242,2,0,HomeDir+"Adata/ca-GrQc.txt.pr"],\
+            [25973,9877,2,0,HomeDir+"Adata/ca-HepTh.txt.pr"],\
+            [53381,26475,3,0,HomeDir+"Adata/as-caida20071105.txt.pr"],\
+            [88234,4039,2,0,HomeDir+"Adata/facebook_combined.txt.pr"],\
+            [93439,23133,2,0,HomeDir+"Adata/ca-CondMat.txt.pr"],\
+            [118489,12008,2,0,HomeDir+"Adata/ca-HepPh.txt.pr"],\
+            [198050,18772,2,0,HomeDir+"Adata/ca-AstroPh.txt.pr"],\
+            [183831,36692,2,0,HomeDir+"Adata/email-Enron.gr.pr"],\
+            [214078,58228,2,0,HomeDir+"Adata/loc-brightkite_edges.txt.pr"],\
+            [405740,75879,2,0,HomeDir+"Adata/soc-Epinions1.txt.pr"],\
+            [2443408,403394,2,0,HomeDir+"Adata/amazon0601.txt.pr"],\
+            [3056,1024,2,0,HomeDir+"Adata/delaunay_n10.mtx.pr"],\
+            [393176,131072,2,0,HomeDir+"Adata/delaunay_n17.mtx.pr"]]
+
     #print(lgNv,Ne_per_v,p,directed,weighted)
     start = time.time()
     #Graph=ak.graph_file_read(91,20,3,directed,"kang.gr")
@@ -33,7 +52,8 @@ def time_ak_bfs():
     #Graph=ak.graph_file_read(103689,8276,2,directed,"data/graphs/wiki")
     #Graph=ak.graph_file_read(2981,2888,2,directed,"data/graphs/fb")
     #Graph=njit.graph_file_read(1000,1001,2,directed,"line.gr")
-    Graph=njit.graph_file_read(6,4,2,0,"/home/z/zd4/Mike/arkouda/t.gr")
+    #Graph=njit.graph_file_read(6,4,2,0,"/home/z/zd4/Mike/arkouda/t.gr")
+    Graph=njit.graph_file_read(14484,5242,2,0,HomeDir+"Adata/ca-GrQc.txt.pr",0,0,0,0,1)
     #Graph=ak.graph_file_read(10000,10001,2,directed,"data/10000-1.gr")
     #Graph=ak.graph_file_read(100,101,2,directed,"data/100-1.gr")
     #Graph=ak.graph_file_read(2000,1002,2,directed,"data/2.gr")

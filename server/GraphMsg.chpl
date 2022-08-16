@@ -1513,9 +1513,46 @@ module GraphMsg {
 
               coforall loc in Locales with (ref DVertex, ref DEdge) {
                    on loc {
-
-                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
-                       DEdge[1] = {start_iR[src[src.localSubdomain().lowBound]]..start_iR[src[src.localSubdomain().highBound]]};
+                       var Lver=src[src.localSubdomain().lowBound];
+                       var Ledg=start_iR[Lver];
+                       if (Ledg==-1) {
+                            var i=Lver-1;
+                            while (i>=0) {
+                                 if (start_iR[i]!=-1){
+                                      Ledg=start_iR[i];
+                                      break;
+                                 }
+                                 i=i-1;
+                            }
+                            if (Ledg==-1) {
+                                Ledg=0;
+                            }
+                       }
+                       var Hver=src[src.localSubdomain().highBound];
+                       var Hedg=start_iR[Hver];
+                       if (Hedg==-1) {
+                            var j=Hver+1;
+                            while (j<Nv) {
+                                 if (start_iR[j]!=-1){
+                                      Hedg=start_iR[j];
+                                      break;
+                                 }
+                                 j=j+1;
+                            }
+                            if (Hedg==-1) {
+                                Hedg=Ne-1;
+                            }
+                       }
+                       if (here.id==0) {
+                             Lver=0;
+                             Ledg=0;
+                       }
+                       if (here.id==numLocales-1) {
+                             Hver=Nv-1;
+                             Hedg=Ne-1;
+                       }
+                       DVertex[1] = {Lver..Hver};
+                       DEdge[1] = {Ledg..Hedg};
 
                        aligned_nei[here.id].new_dom(DVertex[1]);
                        aligned_neiR[here.id].new_dom(DVertex[1]);
@@ -1557,6 +1594,52 @@ module GraphMsg {
                    .withA_SRC_R(new shared DomArraySymEntry(aligned_srcR):CompositeSymEntry)
                    .withA_DST_R(new shared DomArraySymEntry(aligned_dstR):CompositeSymEntry);
 
+              /* the following is evaluating code
+              var v_aligned_start_i=toDomArraySymEntry(graph.getA_START_IDX()).domary;
+              var v_aligned_start_iR=toDomArraySymEntry(graph.getA_START_IDX_R()).domary;
+              var v_aligned_nei=toDomArraySymEntry(graph.getA_NEIGHBOR()).domary;
+              var v_aligned_neiR= toDomArraySymEntry(graph.getA_NEIGHBOR_R()).domary;
+
+              var v_aligned_srcR=toDomArraySymEntry(graph.getA_SRC_R()).domary;
+              var v_aligned_dstR=toDomArraySymEntry(graph.getA_DST_R()).domary;
+
+              coforall loc in Locales {
+                  on loc {
+                      writeln("myid=",here.id," the vertex domain=",v_aligned_start_i[here.id].DO);
+                      writeln("myid=",here.id," the edge domain=",v_aligned_srcR[here.id].DO);
+                      forall i in v_aligned_start_i[here.id].DO {
+                          if v_aligned_start_i[here.id].A[i]!=start_i[i] {
+                              writeln("myid=",here.id, "v_aligned_start_i[",i,"]=",v_aligned_start_i[here.id].A[i],"!=start_i[",i,"]=",start_i[i]);
+                          }
+                      }
+                      forall i in v_aligned_start_iR[here.id].DO {
+                          if v_aligned_start_iR[here.id].A[i]!=start_iR[i] {
+                              writeln("myid=",here.id, "v_aligned_start_iR[",i,"]=",v_aligned_start_iR[here.id].A[i],"!=start_iR[",i,"]=",start_iR[i]);
+                          }
+                      }
+                      forall i in v_aligned_nei[here.id].DO {
+                          if v_aligned_nei[here.id].A[i]!=neighbour[i] {
+                              writeln("myid=",here.id, "v_aligned_nei[",i,"]=",v_aligned_nei[here.id].A[i],"!=neighbour[",i,"]=",neighbour[i]);
+                          }
+                      }
+                      forall i in v_aligned_neiR[here.id].DO {
+                          if v_aligned_neiR[here.id].A[i]!=neighbourR[i] {
+                              writeln("myid=",here.id, "v_aligned_neiR[",i,"]=",v_aligned_neiR[here.id].A[i],"!=neighbourR[",i,"]=",neighbourR[i]);
+                          }
+                      }
+                      forall i in v_aligned_srcR[here.id].DO {
+                          if v_aligned_srcR[here.id].A[i]!=srcR[i] {
+                              writeln("myid=",here.id, "v_aligned_srcR[",i,"]=",v_aligned_srcR[here.id].A[i],"!=srcR[",i,"]=",srcR[i]);
+                          }
+                      }
+                      forall i in v_aligned_dstR[here.id].DO {
+                          if v_aligned_dstR[here.id].A[i]!=dstR[i] {
+                              writeln("myid=",here.id, "v_aligned_dstR[",i,"]=",v_aligned_dstR[here.id].A[i],"!=dstR[",i,"]=",dstR[i]);
+                          }
+                      }
+                  }
+              }
+              */
           }
 
       }//end of undirected
@@ -1568,19 +1651,27 @@ module GraphMsg {
              RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
         }
 
-          if (AlignedArray==1) {
+        if (AlignedArray==1) {
 
               var aligned_nei=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
 
               var DVertex : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref DVertex) {
+              coforall loc in Locales with (ref DVertex ) {
                    on loc {
-
-                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       var Lver=src[src.localSubdomain().lowBound];
+                       var Hver=src[src.localSubdomain().highBound];
+                       if (here.id==0) {
+                             Lver=0;
+                       }
+                       if (here.id==numLocales-1) {
+                             Hver=Nv-1;
+                       }
+                       DVertex[1] = {Lver..Hver};
 
                        aligned_nei[here.id].new_dom(DVertex[1]);
+
                        aligned_start_i[here.id].new_dom(DVertex[1]);
                    }
               }
@@ -1595,20 +1686,15 @@ module GraphMsg {
                   }
               }
 
-
               graph.withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
                    .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
 
-          }
-
-
-
-
-      }
-      //if (WeightedFlag) {
-      //     graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
-      //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
-      //}
+        }// end of if (AlignedArray==1)
+        //if (WeightedFlag) {
+        //     graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
+        //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
+        //}
+      }//end of else
       if (WriteFlag) {
                   var wf = open(FileName+".my.gr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
@@ -1868,21 +1954,63 @@ module GraphMsg {
               var aligned_neiR=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
               var aligned_start_iR=makeDistArray(numLocales,DomArray);
+              var aligned_srcR=makeDistArray(numLocales,DomArray);
+              var aligned_dstR=makeDistArray(numLocales,DomArray);
 
               var DVertex : [rcDomain] domain(1);
               var DEdge : [rcDomain] domain(1);
 
               coforall loc in Locales with (ref DVertex, ref DEdge) {
                    on loc {
+                       var Lver=src[src.localSubdomain().lowBound];
+                       var Ledg=start_iR[Lver];
+                       if (Ledg==-1) {
+                            var i=Lver-1;
+                            while (i>=0) {
+                                 if (start_iR[i]!=-1){
+                                      Ledg=start_iR[i];
+                                      break;
+                                 }
+                                 i=i-1;
+                            }
+                            if (Ledg==-1) {
+                                Ledg=0;
+                            }
+                       }
+                       var Hver=src[src.localSubdomain().highBound];
+                       var Hedg=start_iR[Hver];
+                       if (Hedg==-1) {
+                            var j=Hver+1;
+                            while (j<Nv) {
+                                 if (start_iR[j]!=-1){
+                                      Hedg=start_iR[j];
+                                      break;
+                                 }
+                                 j=j+1;
+                            }
+                            if (Hedg==-1) {
+                                Hedg=Ne-1;
+                            }
+                       }
+                       if (here.id==0) {
+                             Lver=0;
+                             Ledg=0;
+                       }
+                       if (here.id==numLocales-1) {
+                             Hver=Nv-1;
+                             Hedg=Ne-1;
+                       }
+                       DVertex[1] = {Lver..Hver};
+                       DEdge[1] = {Ledg..Hedg};
 
-                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
-                       DEdge[1] = {start_iR[src[src.localSubdomain().lowBound]]..start_iR[src[src.localSubdomain().highBound]]};
-
+                       //writeln("Myid=",here.id," Low vertex=",Lver, " High vertex=",Hver," Low edge=", Ledg, " High Edge=",Hedg);
                        aligned_nei[here.id].new_dom(DVertex[1]);
-                       aligned_neiR[here.id].new_dom(DEdge[1]);
+                       aligned_neiR[here.id].new_dom(DVertex[1]);
 
                        aligned_start_i[here.id].new_dom(DVertex[1]);
-                       aligned_start_iR[here.id].new_dom(DEdge[1]);
+                       aligned_start_iR[here.id].new_dom(DVertex[1]);
+                       aligned_srcR[here.id].new_dom(DEdge[1]);
+                       aligned_dstR[here.id].new_dom(DEdge[1]);
                    }
               }
               coforall loc in Locales {
@@ -1899,6 +2027,12 @@ module GraphMsg {
                       forall i in aligned_start_iR[here.id].DO {
                           aligned_start_iR[here.id].A[i] = start_iR[i];
                       }
+                      forall i in aligned_srcR[here.id].DO {
+                          aligned_srcR[here.id].A[i] = srcR[i];
+                      }
+                      forall i in aligned_dstR[here.id].DO {
+                          aligned_dstR[here.id].A[i] = dstR[i];
+                      }
                   }
               }
 
@@ -1906,13 +2040,11 @@ module GraphMsg {
               graph.withA_START_IDX_R(new shared DomArraySymEntry(aligned_start_iR):CompositeSymEntry)
                    .withA_NEIGHBOR_R(new shared DomArraySymEntry(aligned_neiR):CompositeSymEntry)
                    .withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
-                   .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
+                   .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry)
+                   .withA_SRC_R(new shared DomArraySymEntry(aligned_srcR):CompositeSymEntry)
+                   .withA_DST_R(new shared DomArraySymEntry(aligned_dstR):CompositeSymEntry);
 
-          }
-
-
-
-
+          }// end of if (AlignedArray==1)
 
 
       }//end of undirected
@@ -1924,7 +2056,7 @@ module GraphMsg {
              RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
         }
 
-          if (AlignedArray==1) {
+        if (AlignedArray==1) {
 
               var aligned_nei=makeDistArray(numLocales,DomArray);
               var aligned_start_i=makeDistArray(numLocales,DomArray);
@@ -1933,8 +2065,18 @@ module GraphMsg {
 
               coforall loc in Locales with (ref DVertex ) {
                    on loc {
-                       DVertex[1] = { src[src.localSubdomain().lowBound]..src[src.localSubdomain().highBound]};
+                       var Lver=src[src.localSubdomain().lowBound];
+                       var Hver=src[src.localSubdomain().highBound];
+                       if (here.id==0) {
+                             Lver=0;
+                       }
+                       if (here.id==numLocales-1) {
+                             Hver=Nv-1;
+                       }
+                       DVertex[1] = {Lver..Hver};
+
                        aligned_nei[here.id].new_dom(DVertex[1]);
+
                        aligned_start_i[here.id].new_dom(DVertex[1]);
                    }
               }
@@ -1953,16 +2095,12 @@ module GraphMsg {
               graph.withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
                    .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
 
-          }
-
-
-
-
+        }// end of if (AlignedArray==1)
+        //if (WeightedFlag) {
+        //     graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
+        //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
+        //}
       }
-      //if (WeightedFlag) {
-      //     graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
-      //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
-      //}
       if (WriteFlag) {
                   var wf = open(FileName+".my.pr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
