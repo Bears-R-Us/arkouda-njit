@@ -745,6 +745,86 @@ module CCMsg {
       return f;
     }
 
+
+
+
+    // FastSpread: a  propogation based connected components algorithm
+    proc cc_fs_dist(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_next = makeDistArray(Nv, int); 
+      var gf = makeDistArray(Nv, int);
+      var dup = makeDistArray(Nv, int);
+      var diff = makeDistArray(Nv, int);
+
+      // Initialize f and f_next in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            f_next[i] = i;
+          }
+        }
+      }
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        var count:int=0;
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+
+
+              var minindex=min(f[u],f[v],f[f[u]],f[f[v]]);
+              //we may include more f[f[f[u]]] and f[f[f[v]]] to accelerate the convergence speed
+              if(minindex < f_next[f[u]]) {
+                f_next[f[u]] = minindex;
+                count+=1;
+              }
+              if(minindex < f_next[f[v]]) {
+                f_next[f[v]] = minindex;
+                count+=1;
+              }
+              if(minindex < f_next[u]) {
+                f_next[u] = minindex;
+                count+=1;
+              }
+              if(minindex < f_next[v]) {
+                f_next[v] = minindex;
+                count+=1;
+              }
+
+              
+            }
+          }
+        }
+
+
+        f = f_next; 
+
+
+        if(count == 0) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+
+      return f;
+    }
+
+
     var timer:Timer;
     // We only care for undirected graphs, they can be weighted or unweighted. 
     if (Weighted == 0)  {
@@ -776,6 +856,20 @@ module CCMsg {
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
         outMsg = "Time elapsed for fast sv cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        var f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for simple fs cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         coforall loc in Locales {
@@ -850,6 +944,20 @@ module CCMsg {
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
         outMsg = "Time elapsed for fast sv cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        var f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for simple fs cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         coforall loc in Locales {

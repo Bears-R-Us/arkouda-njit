@@ -33,7 +33,8 @@ module BFSMsg {
   use GraphMsg;
 
 
-  private config const logLevel = ServerConfig.logLevel;
+  //private config const logLevel = ServerConfig.logLevel;
+  private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
   
   config const start_min_degree = 1000000;
@@ -68,8 +69,7 @@ module BFSMsg {
       coforall loc in Locales  {
                   on loc {
                            forall i in depth.localSubdomain() {
-                                 depth[i]=-1;
-                           }       
+                                 depth[i]=-1; }       
                   }
       }
       var root:int;
@@ -579,6 +579,104 @@ module BFSMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           return "success";
       }//end of fo_bag_bfs_kernel_u
+
+
+
+
+      proc aligned_fo_bag_bfs_kernel_u(a_nei:[?D1] DomArray, a_start_i:[?D2] DomArray,src:[?D3] int, dst:[?D4] int,
+                        a_neiR:[?D11] DomArray, a_start_iR:[?D12] DomArray,a_srcR:[?D13] DomArray, a_dstR:[?D14] DomArray, 
+                        LF:int,GivenRatio:real):string throws{
+          var cur_level=0;
+          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          while (numCurF>0) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                   on loc {
+
+                       var edgeBegin=src.localSubdomain().low;
+                       var edgeEnd=src.localSubdomain().high;
+                       var vertexBegin=a_nei[here.id].DO.low;
+                       var vertexEnd=a_nei[here.id].DO.high;
+                       //var vertexBeginR=a_srcR[here.id].A[a_start_iR[here.id].A[vertexBegin]];
+                       //var vertexEndR=a_srcR[here.id].A[a_start_iR[here.id].A[vertexEnd]];
+
+                       var switchratio=(numCurF:real)/src.size:real;
+                       if (switchratio<GivenRatio) {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) || (LF==0)) {// current edge has the vertex
+                                  var    numNF=a_nei[here.id].A[i];
+                                  var    edgeId=a_start_i[here.id].A[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dst[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                                  numNF=a_neiR[here.id].A[i];
+                                  edgeId=a_start_iR[here.id].A[i];
+                                  nextStart=edgeId;
+                                  nextEnd=edgeId+numNF-1;
+                                  NF=a_dstR[here.id].A[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }else {// bottom up
+                           bottomup+=1;
+                           forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                              if depth[i]==-1 {
+                                  var    numNF=a_nei[here.id].A[i];
+                                  var    edgeId=a_start_i[here.id].A[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dst[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (SetCurF.contains(j)) {
+                                               depth[i]=cur_level+1;
+                                               SetNextF.add(i);
+                                         }
+                                  }
+
+                                  numNF=a_neiR[here.id].A[i];
+                                  edgeId=a_start_iR[here.id].A[i];
+                                  nextStart=edgeId;
+                                  nextEnd=edgeId+numNF-1;
+                                  NF=a_dstR[here.id].A[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF)  {
+                                         if (SetCurF.contains(j)) {
+                                               depth[i]=cur_level+1;
+                                               SetNextF.add(i);
+                                         }
+                                  }
+                              }
+                           }
+                       }
+                   }//end on loc
+                }//end coforall loc
+                cur_level+=1;
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+          }//end while  
+          var outMsg="Search Radius = "+ (cur_level+1):string;
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          outMsg="number of top down = "+(topdown:string)+" number of bottom up="+(bottomup:string);
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          return "success";
+      }//end of aligned_fo_bag_bfs_kernel_u
+
 
 
       proc fo_bag_bfs_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
@@ -1874,7 +1972,6 @@ module BFSMsg {
       }
 
       if (Directed!=0) {
-          if (Weighted!=0) {
               var ratios:string;
                (rootN,ratios)=
                    restpart.splitMsgToTuple(2);
@@ -1898,29 +1995,8 @@ module BFSMsg {
 
                repMsg=return_depth();
 
-          } else {
-              var ratios:string;
-
-              (rootN,ratios )=restpart.splitMsgToTuple(2);
-              root=rootN:int;
-              var GivenRatio=ratios:real;
-              if (RCMFlag>0) {
-                  root=0;
-              }
-              depth[root]=0;
-             //   fo_bag_bfs_kernel(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,1,GivenRatio);
-              fo_bag_bfs_kernel(
-                  toSymEntry(ag.getNEIGHBOR(), int).a,
-                  toSymEntry(ag.getSTART_IDX(), int).a,
-                  toSymEntry(ag.getSRC(), int).a,
-                  toSymEntry(ag.getDST(), int).a,
-                  1, GivenRatio);
-
-               repMsg=return_depth();
-          }
       }
       else {
-          if (Weighted!=0) {
               var ratios:string;
               (rootN, ratios)=
                    restpart.splitMsgToTuple(2);
@@ -1934,10 +2010,6 @@ module BFSMsg {
               var GivenRatio=ratios:real;
               if (GivenRatio <0  ) {//do default call
                   GivenRatio=-1.0* GivenRatio;
-                  //co_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                  //         ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,GivenRatio);
-                 //   fo_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                //            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,1,GivenRatio);
                   fo_bag_bfs_kernel_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -1950,6 +2022,27 @@ module BFSMsg {
                       1, GivenRatio
                   );
                   
+                  timer.stop();
+                  var outMsg= "graph BFS takes "+timer.elapsed():string+" for fo_bag version";
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                  depth=-1;
+                  depth[root]=0;
+                  timer.clear();
+                  timer.start();
+                  aligned_fo_bag_bfs_kernel_u(
+                      toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                      toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                      toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                      toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                      toDomArraySymEntry(ag.getA_DST_R()).domary,
+                      1, GivenRatio
+                  );
+                  outMsg= "graph BFS takes "+timer.elapsed():string+" for aligned_fo_bag version";
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   repMsg=return_depth();
  
               } else {// do batch test
@@ -1959,8 +2052,6 @@ module BFSMsg {
                   timer.clear();
                   timer.start();
  
-                //   co_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                //            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,GivenRatio);
                   co_d1_bfs_kernel_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2136,213 +2227,6 @@ module BFSMsg {
                   repMsg=return_depth();
               }//end of batch test
 
-          } else {
-              var ratios:string;
-              (rootN,ratios )=
-                   restpart.splitMsgToTuple(2);
- 
-              root=rootN:int;
-              if (RCMFlag>0) {
-                  root=0;
-              }
-              depth=-1;
-              depth[root]=0;
-              var Flag=0:int;
-              var GivenRatio=ratios:real;
-              if (GivenRatio <0 ) {//do default call
-                  GivenRatio=-1.0*GivenRatio;
-                  //co_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                  //         ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,GivenRatio);
-                   fo_bag_bfs_kernel_u(
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-                      1, GivenRatio);
-                  
-                   repMsg=return_depth();
- 
-              } else {// do batch test
-                  timer.stop();
-                  timer.clear();
-                  timer.start();
- 
-                  co_d1_bfs_kernel_u(
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-                      GivenRatio);
-                  timer.stop();
-                  var outMsg= "graph BFS takes "+timer.elapsed():string+ " for Co D Hybrid version";
-                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                  /*
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  co_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,2.0);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co D TopDown version $$$$$$$$$$$$$$$$$$");
-
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  co_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Bag L version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=0;
-                  co_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Bag G version $$$$$$$$$$$$$$$$$$");
-
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  co_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Set L version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=0;
-                  co_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Set G version $$$$$$$$$$$$$$$$$$");
-
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  co_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Domain L version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=0;
-                  co_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Domain G version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  fo_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for D Hybrid version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  fo_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,2.0);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for D TopDown version $$$$$$$$$$$$$$$$$$");
-
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  fo_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Bag L version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.start();
-                  Flag=0;
-                  fo_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Bag G version $$$$$$$$$$$$$$$$$$");
-
- 
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  fo_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Set L version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=0;
-                  fo_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Set G version $$$$$$$$$$$$$$$$$$");
-
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=1;
-                  fo_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Domain L version $$$$$$$$$$$$$$$$$$");
-
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  Flag=0;
-                  fo_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
-                           ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
-                  timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Domain G version $$$$$$$$$$$$$$$$$$");
-
-                  */
-
-                  repMsg=return_depth();
-              }
-          }
       }
       timer.stop();
       //writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), "$$$$$$$$$$$$$$$$$$");
