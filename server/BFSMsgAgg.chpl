@@ -15,6 +15,9 @@ module BFSMsg {
     use CopyAggregation;
     use AggregationPrimitives;
 
+    // Oliver-Made Modules:
+    use Utils; 
+
     // private config const logLevel = ServerConfig.logLevel;
     private config const logLevel = LogLevel.DEBUG;
     const smLogger = new Logger(logLevel);
@@ -60,29 +63,6 @@ module BFSMsg {
         var srcRN, dstRN, startRN, neighbourRN : string;
         var gEntry : borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
         var ag = gEntry.graph;
-
-        /******************************************************************************************/
-        /***************** RECORDS MADE BY OLIVER FOR VERTEX TO EDGE LOCALITY -- START ************/
-        /******************************************************************************************/
-        
-        // Create a "ragged" array record.
-        pragma "default intent is ref"
-        record RagArray {
-            var DO = {0..0};
-            var A : [DO] int;
-
-            proc new_dom(new_d : domain(1)) {
-                this.DO = new_d;
-            }
-
-            proc size() {
-                return A.size;
-            }
-        }
-
-        /******************************************************************************************/
-        /***************** RECORDS MADE BY OLIVER FOR VERTEX TO EDGE LOCALITY -- END **************/
-        /******************************************************************************************/
 
         // Maintain on each locale the lows and highs of the src and srcR arrays.
         var block_locale_D : domain(1) dmapped Block(boundingBox=LocaleSpace) = LocaleSpace;
@@ -392,7 +372,7 @@ module BFSMsg {
             // The current and next frontiers for each locale. The frontiers hold the
             // vertex to process and its parent (i.e., the vertex who added it to the frontier
             // from the previous level).
-            var block_locale_D : domain(1) dmapped Block(boundingBox = LocaleSpace) = LocaleSpace;
+            // var block_locale_D : domain(1) dmapped Block(boundingBox = LocaleSpace) = LocaleSpace;
             var comm_timers : [block_locale_D] Timer;
 
             var curr_frontiers : [block_locale_D] domain(int);
@@ -461,7 +441,6 @@ module BFSMsg {
                 var pending_work : bool;
                 coforall loc in Locales with (|| reduce pending_work, + reduce num_visits) {
                     on loc {
-                        var agg = new DstAggregator(int);
                         var curr_f = curr_frontiers[loc.id];
                         var edge_begin = src.localSubdomain().low;
                         var edge_end = src.localSubdomain().high;
