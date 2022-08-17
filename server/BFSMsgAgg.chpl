@@ -1,4 +1,4 @@
-module BFSMsg {
+module BFSMsgAgg {
     // Arkouda Modules:
     use Logging;
     use Message;
