@@ -7,26 +7,38 @@ import arkouda_njit as njit
 import sys
 
 def process_graph(num_edges:int, num_vertices:int, num_cols:int, directed:int, filename:str,\
-                    skipline:int, remap_flag:int, degree_sort_flag:int, rec_flag:int,\
-                    write_flag:int, build_aligned_array_flag:int):
+                    skipline:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+                    write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
     print("Graph Preprocessing -- Single Mode")
-    print("server Hostname =",cfg["serverHostname"])
-    print("Number of Locales=",cfg["numLocales"])
-    print("number of PUs =",cfg["numPUs"])
-    print("Max Tasks =",cfg["maxTaskPar"])
-    print("Memory =",cfg["physicalMemory"])
+    print("server Hostname =", cfg["serverHostname"])
+    print("Number of Locales=", cfg["numLocales"])
+    print("number of PUs =", cfg["numPUs"])
+    print("Max Tasks =", cfg["maxTaskPar"])
+    print("Memory =", cfg["physicalMemory"])
 
-def process_graphs(num_edges:int, num_vertices:int, num_cols:int, directed:int, dirname:str,\
-                    skipline:int, remap_flag:int, degree_sort_flag:int, rec_flag:int,\
-                    write_flag:int, build_aligned_array_flag:int):
+    start = time.time()
+    for i in range(trials):
+        njit.graph_file_preprocessing(num_edges, num_vertices, num_cols, directed, filename, skipline,\
+                                        remap_flag, degree_sort_flag, rcm_flag, write_flag,\
+                                        build_aligned_array_flag)
+    end = time.time()
+    avg = (end-start) / trials
+    print("Average performance for {} trials: {}".format(trials, avg))
+
+
+def process_graphs(infoname:str, dirname:str, skipline:int, remap_flag:int, degree_sort_flag:int,\
+                    rcm_flag:int, write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
     print("Graph Preprocessing -- Batch Mode")
-    print("server Hostname =",cfg["serverHostname"])
-    print("Number of Locales=",cfg["numLocales"])
-    print("number of PUs =",cfg["numPUs"])
-    print("Max Tasks =",cfg["maxTaskPar"])
-    print("Memory =",cfg["physicalMemory"])
+    print("server Hostname =", cfg["serverHostname"])
+    print("Number of Locales=", cfg["numLocales"])
+    print("number of PUs =", cfg["numPUs"])
+    print("Max Tasks =", cfg["maxTaskPar"])
+    print("Memory =", cfg["physicalMemory"])
+
+def correctness():
+    #TODO: simple correctness test!
     
 def create_parser():
     parser = argparse.ArgumentParser(
@@ -131,7 +143,7 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     
-    print("Preprocessing graph benchmark.")
+    print("PREPROCESSING GRAPH BENCHMARK")
     ak.verbose = False
     ak.connect(args.hostname, args.port)
     
@@ -142,3 +154,5 @@ if __name__ == "__main__":
     else:
         print("Error with arguments.")
         sys.exit(0)
+
+    ak.shutdown()
