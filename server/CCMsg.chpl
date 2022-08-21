@@ -595,7 +595,7 @@ module CCMsg {
         }
         itera += 1;
       }
-      writeln("Fast sv visited =      ", f, " Number of iterations = ", itera);
+      //writeln("Fast sv visited =      ", f, " Number of iterations = ", itera);
 
       return f;
     }
@@ -740,7 +740,7 @@ module CCMsg {
         }
         itera += 1;
       }
-      writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
 
       return f;
     }
@@ -819,7 +819,7 @@ module CCMsg {
         }
         itera += 1;
       }
-      writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
 
       return f;
     }
@@ -877,7 +877,7 @@ module CCMsg {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              if (f1[i] != f2[i]) {
+              if (f2[i] != f3[i]) {
                 var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 exit(0);
@@ -965,7 +965,7 @@ module CCMsg {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              if (f1[i] != f2[i]) {
+              if (f2[i] != f3[i]) {
                 var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 exit(0);
