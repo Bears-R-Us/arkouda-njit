@@ -164,6 +164,7 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
         DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
         RCMFlag: we will remap the vertex ID based on the RCM algorithm
         WriteFlag: we will output the final edge list src->dst array as a new input file.
+        BuildAlignedArray: using the Edge-Vertex-Locale aligned mapping instead of the default distribution
         Returns
         -------
         Graph
@@ -258,6 +259,7 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
         DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
         RCMFlag: we will remap the vertex ID based on the RCM algorithm
         WriteFlag: we will output the final edge list src->dst array as a new input file.
+        BuildAlignedArray: using the Edge-Vertex-Locale aligned mapping instead of the default distribution
         Returns
         -------
         Graph
@@ -298,6 +300,7 @@ def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: st
         DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
         RCMFlag: we will remap the vertex ID based on the RCM algorithm
         WriteFlag: we will output the final edge list src->dst array as a new input file.
+        BuildAlignedArray: using the Edge-Vertex-Locale aligned mapping instead of the default distribution
         Returns
         -------
         Graph
