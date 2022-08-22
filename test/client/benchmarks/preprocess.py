@@ -37,6 +37,9 @@ def process_graphs(infoname:str, dirname:str, skipline:int, remap_flag:int, degr
     print("Max Tasks =", cfg["maxTaskPar"])
     print("Memory =", cfg["physicalMemory"])
 
+    for i in range(trials):
+        
+
 def correctness():
     #TODO: simple correctness test!
     
@@ -50,7 +53,7 @@ def create_parser():
         "-t", 
         "--trials", 
         type=int, 
-        default=10, 
+        default=1, 
         help="Number of times to run the benchmark."
     )
     parser.add_argument(
