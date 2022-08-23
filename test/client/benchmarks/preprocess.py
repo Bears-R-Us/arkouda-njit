@@ -2,46 +2,90 @@
 
 import argparse
 import time 
+import sys
 import arkouda as ak
 import arkouda_njit as njit
-import sys
 
-def process_graph(num_edges:int, num_vertices:int, num_cols:int, directed:int, filename:str,\
-                    skipline:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+def process_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
                     write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
-    print("Graph Preprocessing -- Single Mode")
+    print("GRAPH PREPROCESSING -- SINGLE MODE")
     print("server Hostname =", cfg["serverHostname"])
     print("Number of Locales=", cfg["numLocales"])
     print("number of PUs =", cfg["numPUs"])
     print("Max Tasks =", cfg["maxTaskPar"])
     print("Memory =", cfg["physicalMemory"])
 
+    # Split up filename parameter to only path and only name of file.
+    filepath_and_filename = filename.rsplit("/", 1)
+    only_filepath = filepath_and_filename[0] + "/"
+    only_filename = filepath_and_filename[1]
+
+    info_file = open(only_filepath + "info_pre.txt", "r")
+
+    # Make a dictionary of the metadata for each of the files used. 
+    file_dict = {}
+    for line in info_file:
+        text = line.split()
+        file_dict[text[0]] = (int(text[1]), int(text[2]), int(text[3]), int(text[4]))
+
+    # Extract the metadata from the dictionary. 
+    num_edges = file_dict[only_filename][0]
+    num_vertices = file_dict[only_filename][1]
+    num_cols = file_dict[only_filename][2]
+    directed = file_dict[only_filename][3]
+    
+    # Perform the preprocessing steps.
     start = time.time()
     for i in range(trials):
-        njit.graph_file_preprocessing(num_edges, num_vertices, num_cols, directed, filename, skipline,\
-                                        remap_flag, degree_sort_flag, rcm_flag, write_flag,\
-                                        build_aligned_array_flag)
+        njit.graph_file_preprocessing(num_edges, num_vertices, num_cols, directed, filename,\
+                                        skiplines, remap_flag, degree_sort_flag, rcm_flag,\
+                                        write_flag, build_aligned_array_flag)
     end = time.time()
     avg = (end-start) / trials
-    print("Average performance for {} trials: {}".format(trials, avg))
+    print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
 
-
-def process_graphs(infoname:str, dirname:str, skipline:int, remap_flag:int, degree_sort_flag:int,\
-                    rcm_flag:int, write_flag:int, build_aligned_array_flag:int, trials:int):
+def process_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+                    write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
-    print("Graph Preprocessing -- Batch Mode")
+    print("GRAPH PREPROCESSING -- BATCH MODE")
     print("server Hostname =", cfg["serverHostname"])
     print("Number of Locales=", cfg["numLocales"])
     print("number of PUs =", cfg["numPUs"])
     print("Max Tasks =", cfg["maxTaskPar"])
     print("Memory =", cfg["physicalMemory"])
 
-    for i in range(trials):
-        
+    # Split up filename parameter to only path and only name of file.
+    only_filepath = dirname + "/"
+
+    info_file = open(only_filepath + "info_pre.txt", "r")
+
+    # Make a dictionary of the metadata for each of the files used. 
+    file_dict = {}
+    for line in info_file:
+        text = line.split()
+        file_dict[text[0]] = (int(text[1]), int(text[2]), int(text[3]), int(text[4]))
+
+    for only_filename in file_dict:
+        num_edges = file_dict[only_filename][0]
+        num_vertices = file_dict[only_filename][1]
+        num_cols = file_dict[only_filename][2]
+        directed = file_dict[only_filename][3]
+
+        filename = only_filepath + only_filename
+
+        start = time.time()
+        for i in range(trials):
+            njit.graph_file_preprocessing(num_edges, num_vertices, num_cols, directed, filename,\
+                                            skiplines, remap_flag, degree_sort_flag, rcm_flag,\
+                                            write_flag, build_aligned_array_flag)
+        end = time.time()
+        avg = (end-start) / trials
+        print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
 
 def correctness():
     #TODO: simple correctness test!
+    return
     
 def create_parser():
     parser = argparse.ArgumentParser(
@@ -66,42 +110,29 @@ def create_parser():
         "-f",
         "--filename",
         type=str,
-        help="Single filename of a graph to preprocess."
-    )
-    parser.add_argument(
-        "--num_edges",
-        type=int,
-        help="Number of edges of a graph. Only to be used out of batch mode!"
-    )
-    parser.add_argument(
-        "--num_vertices",
-        type=int,
-        help="Number of vertices of a graph. Only to be used out of batch mode!"
-    )
-    parser.add_argument(
-        "--num_cols",
-        type=int,
-        help="Number of columns of a graph mtx file. Only to be used out of batch mode!"
-    )
-    parser.add_argument(
-        "--is_directed",
-        default=False,
-        action="store_true",
-        help="Whether or not a graph is directed. Only to be used out of batch mode!"
-    )
-    parser.add_argument(
-        "-d",
-        "--dirname",
-        type=str,
-        help="""Directory name containing multiple files to preprocess (batch method). An extra
-                metadata file must be found in same directory named 'info.txt'. This file must
+        help="""Absolute path to file of the graph we wish to preprocess. An extra
+                metadata file must be found in same directory named 'info_pre.txt'. This file must
                 contain number of lines equal to the number of files in the directory. It must 
                 contain the name of the files, the number of edges in a file, the number of 
                 vertices, the number of columns, and 1 if directed, 0 otherwise. The format of each 
                 line must be as follows:
     
-                name_of_file.mtx       [num_edges]         [num_vertices]      [num_cols]      [0/1]
-                """
+                name_of_file.ext       [num_edges]         [num_vertices]      [num_cols]      [0/1]
+            """
+    )
+    parser.add_argument(
+        "-d",
+        "--dirname",
+        type=str,
+        help="""Absolute path to directory with multiple files to preprocess (batch method). An extra
+                metadata file must be found in same directory named 'info_pre.txt'. This file must
+                contain number of lines equal to the number of files in the directory. It must 
+                contain the name of the files, the number of edges in a file, the number of 
+                vertices, the number of columns, and 1 if directed, 0 otherwise. The format of each 
+                line must be as follows:
+    
+                name_of_file.ext       [num_edges]         [num_vertices]      [num_cols]      [0/1]
+            """
     )
     parser.add_argument(
         "--skiplines",
@@ -116,7 +147,7 @@ def create_parser():
         help="Do not remap the vertex IDs that are larger than the total number of vertices."
     )
     parser.add_argument(
-        "--degreesort-flag",
+        "--degree-sort-flag",
         default=False,
         action="store_true",
         help="The smallest vertex ID is the vertex whose degree is the smallest."
@@ -149,11 +180,17 @@ if __name__ == "__main__":
     print("PREPROCESSING GRAPH BENCHMARK")
     ak.verbose = False
     ak.connect(args.hostname, args.port)
+
+    print(args)
     
     if args.filename is not None:
-        process_graph()
+        process_graph(args.filename, args.skiplines, int(args.no_remap_flag),\
+                        int(args.degree_sort_flag), int(args.rcm_flag), int(args.no_write_flag),\
+                        int(args.aligned_ary_flag), args.trials)
     elif args.dirname is not None:
-        process_graphs()
+        process_graphs(args.dirname, args.skiplines, int(args.no_remap_flag),\
+                        int(args.degree_sort_flag), int(args.rcm_flag), int(args.no_write_flag),\
+                        int(args.aligned_ary_flag), args.trials)
     else:
         print("Error with arguments.")
         sys.exit(0)
