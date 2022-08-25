@@ -969,6 +969,32 @@ module BFSMsg {
                 numCurF=SetNextF.size;
                 SetCurF=SetNextF;
                 SetNextF.clear();
+
+                if (numCurF==0) {
+
+                    coforall loc in Locales  with (ref SetNextF) {
+                       on loc {
+                             var lbound=depth.localSubdomain().low;
+                             var upbound=depth.localSubdomain().high;
+                             for i in lbound..upbound {
+                                   if depth[i]==-1 {
+                                       SetNextF.add(i);
+                                       break;
+                                   }
+                             }
+                       }
+                    }
+                    if (SetNextF.getSize()>0) {
+                       cur_level=0;
+                       root=SetNextF.remove();
+                       depth[root]=0;
+                       SetCurF.add(root);
+                       numCurF=1;
+                       SetNextF.clear();
+                    }
+
+                }
+
           }//end while  
           var outMsg="Search Radius = "+ (cur_level+1):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
