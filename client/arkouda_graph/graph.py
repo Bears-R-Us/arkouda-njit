@@ -13,7 +13,6 @@ __all__ = ["Graph","graph_query",
            "graph_file_read_mtx",
            "graph_bfs",
            "graph_cc",
-           "graph_tri_cnt",
            "graph_tri_ctr",
            "stream_file_read",
            "stream_tri_cnt",
@@ -508,13 +507,6 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         return create_pdarray(repMsg)
 
 
-
-@typechecked
-def graph_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str)  -> pdarray:
-        cmd = "segmentedGraphTri"
-        args="{} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename);
-        repMsg = generic_msg(cmd=cmd,args=args)
-        return create_pdarray(repMsg)
 
 @typechecked
 def stream_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
