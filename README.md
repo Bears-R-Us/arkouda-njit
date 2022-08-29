@@ -1,4 +1,4 @@
-Arachne: An Arkouda Package for Large-Scale Graph Analytics
+## Arachne: An Arkouda Package for Large-Scale Graph Analytics
 
 ## Purpose
 
