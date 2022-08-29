@@ -1,4 +1,7 @@
+Arachne: An Arkouda Package for Large-Scale Graph Analytics
+
 ## Purpose
+
 This is an external repo to build Graph related functionality for `Arkouda`
 (see https://github.com/Bears-R-Us/Arkouda)
 
