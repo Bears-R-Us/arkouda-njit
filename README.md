@@ -1,4 +1,7 @@
+## Arachne: An Arkouda Package for Large-Scale Graph Analytics
+
 ## Purpose
+
 This is an external repo to build Graph related functionality for `Arkouda`
 (see https://github.com/Bears-R-Us/Arkouda)
 
@@ -33,11 +36,10 @@ All suffix array related python functions
 Now we have the following chapel modules.
 ```bash
 BFSMsg--for breadth first search
-TriCntMsg--for triangle counting
 TrussMsg--for truss analysis
 SuffixArrayMsg--for suffix array
-SuffixArrayMsg
 GraphMsg-- for the basic graph operation
+TriCntMsg--for triangle counting
 TriCtrMsg-- for triangle centrality
 JaccardMsg-- for Jaccard coefficients
 CCMsg-- for Connected Components
@@ -53,7 +55,7 @@ server:
 ```
 
 
-## Call extended functions in
+## Call extended functions 
 ```bash
 (1) Under the master arkouda directory, copy the arkouda-njit directory to here and rename it as arkouda_njit or 
 create a arkouda_njit link to the arkouda-njit directory
