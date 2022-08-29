@@ -36,11 +36,10 @@ All suffix array related python functions
 Now we have the following chapel modules.
 ```bash
 BFSMsg--for breadth first search
-TriCntMsg--for triangle counting
 TrussMsg--for truss analysis
 SuffixArrayMsg--for suffix array
-SuffixArrayMsg
 GraphMsg-- for the basic graph operation
+TriCntMsg--for triangle counting
 TriCtrMsg-- for triangle centrality
 JaccardMsg-- for Jaccard coefficients
 CCMsg-- for Connected Components
