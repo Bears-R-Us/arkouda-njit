@@ -787,20 +787,20 @@ module CCMsg {
 
               var minindex=min(f[u],f[v],f[f[u]],f[f[v]]);
               //we may include more f[f[f[u]]] and f[f[f[v]]] to accelerate the convergence speed
-              if(minindex < f_next[f[u]]) {
-                f_next[f[u]] = minindex;
-                count+=1;
-              }
-              if(minindex < f_next[f[v]]) {
-                f_next[f[v]] = minindex;
-                count+=1;
-              }
               if(minindex < f_next[u]) {
                 f_next[u] = minindex;
                 count+=1;
               }
               if(minindex < f_next[v]) {
                 f_next[v] = minindex;
+                count+=1;
+              }
+              if(minindex < f_next[f[u]]) {
+                f_next[f[u]] = minindex;
+                count+=1;
+              }
+              if(minindex < f_next[f[v]]) {
+                f_next[f[v]] = minindex;
                 count+=1;
               }
 
