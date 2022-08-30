@@ -90,7 +90,7 @@ module TriCtrMsg {
 
           
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -122,7 +122,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -151,7 +151,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v>
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -173,8 +173,8 @@ module TriCtrMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      var triCount=0:int;
 
 
@@ -254,8 +254,8 @@ module TriCtrMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge {
                          var u = src[i];
@@ -276,8 +276,8 @@ module TriCtrMsg {
                 on loc {
 
                      var ld = nei.localSubdomain();
-                     var startVer = ld.low;
-                     var endVer = ld.high;
+                     var startVer = ld.lowBound;
+                     var endVer = ld.highBound;
 
                      var curnum=0:int;
                      forall i in startVer..endVer with (+ reduce curnum){
@@ -556,7 +556,7 @@ module TriCtrMsg {
           subTriSum=0;	  
 	  timer.start();
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -586,7 +586,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -615,7 +615,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v>
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -633,8 +633,8 @@ module TriCtrMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      var triCount=0:int;
                      forall i in startEdge..endEdge with(+ reduce triCount){
                            var Count:int;
@@ -732,8 +732,8 @@ module TriCtrMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge {
                          var u = src[i];
@@ -755,8 +755,8 @@ module TriCtrMsg {
                 on loc {
 
                      var ld = nei.localSubdomain();
-                     var startVer = ld.low;
-                     var endVer = ld.high;
+                     var startVer = ld.lowBound;
+                     var endVer = ld.highBound;
                      var curnum=0:int;
                      forall i in startVer..endVer with (+ reduce curnum){
                              var beginTmp=start_i[i];
@@ -805,7 +805,7 @@ module TriCtrMsg {
           subTriSum=0;	
           
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -837,7 +837,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -866,7 +866,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v>
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -888,8 +888,8 @@ module TriCtrMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      var triCount=0:int;
                      //writeln("Start of CoForall");
                      // each locale only handles the edges owned by itself
@@ -1087,8 +1087,8 @@ module TriCtrMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge {
                          var u = src[i];
@@ -1110,8 +1110,8 @@ module TriCtrMsg {
                 on loc {
 
                      var ld = nei.localSubdomain();
-                     var startVer = ld.low;
-                     var endVer = ld.high;
+                     var startVer = ld.lowBound;
+                     var endVer = ld.highBound;
                      var curnum=0:int;
                      forall i in startVer..endVer with (+ reduce curnum){
                              var beginTmp=start_i[i];
@@ -1162,7 +1162,7 @@ module TriCtrMsg {
           subTriSum=0;	
                     
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -1194,7 +1194,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1223,7 +1223,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v>
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1245,8 +1245,8 @@ module TriCtrMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      var triCount = 0:int;
 
                      forall i in startEdge..endEdge with (+ reduce triCount){
@@ -1341,8 +1341,8 @@ module TriCtrMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge {
                          var u = src[i];
@@ -1364,8 +1364,8 @@ module TriCtrMsg {
                 on loc {
 
                      var ld = nei.localSubdomain();
-                     var startVer = ld.low;
-                     var endVer = ld.high;
+                     var startVer = ld.lowBound;
+                     var endVer = ld.highBound;
                      var curnum=0:int;
                      forall i in startVer..endVer with (+ reduce curnum){
                              var beginTmp=start_i[i];
@@ -1415,7 +1415,7 @@ module TriCtrMsg {
           subTriSum=0;	
           
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -1447,7 +1447,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1476,7 +1476,7 @@ module TriCtrMsg {
           // given vertces u and v, return the edge ID e=<u,v>
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1498,8 +1498,8 @@ module TriCtrMsg {
               coforall loc in Locales  {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      var triCount=0:int;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(+ reduce triCount){
@@ -1593,8 +1593,8 @@ module TriCtrMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
 
                      forall i in startEdge..endEdge {
                          var u = src[i];
@@ -1616,8 +1616,8 @@ module TriCtrMsg {
                 on loc {
 
                      var ld = nei.localSubdomain();
-                     var startVer = ld.low;
-                     var endVer = ld.high;
+                     var startVer = ld.lowBound;
+                     var endVer = ld.highBound;
                      var curnum=0:int;
                      forall i in startVer..endVer with (+ reduce curnum){
                              var beginTmp=start_i[i];
