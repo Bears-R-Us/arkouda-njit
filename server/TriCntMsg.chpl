@@ -453,7 +453,7 @@ module TriCntMsg {
       proc tri_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
 
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -485,7 +485,7 @@ module TriCntMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
+              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -513,8 +513,8 @@ module TriCntMsg {
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.low;
-                     var endEdge = ld.high;
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
                      var triCount=0:int;
 
 
@@ -598,13 +598,13 @@ module TriCntMsg {
                        var ldR=srcfR.localSubdomain();
 
                        // first we divide vertices based on the number of edges
-                       var startVer=srcf[ld.low];
-                       var endVer=srcf[ld.high];
+                       var startVer=srcf[ld.lowBound];
+                       var endVer=srcf[ld.highBound];
 
                        StartVerAry[here.id]=startVer;
                        EndVerAry[here.id]=endVer;
-                       var startEdge=ld.low;
-                       var endEdge=ld.high;
+                       var startEdge=ld.lowBound;
+                       var endEdge=ld.highBound;
 
                        var lastVer=-1;
 
@@ -652,7 +652,7 @@ module TriCntMsg {
                            //writeln("6 Locale=",here.id, " u[",startu_adj, ",",endu_adj, "], num=",numu_adj);
 
                            if (numu_adj>0) {
-                               if (startu_adj>=ld.low && endu_adj<=ld.high) {
+                               if (startu_adj>=ld.lowBound && endu_adj<=ld.highBound) {
                                    forall i in df[startu_adj..endu_adj] with (ref uadj,+ reduce localCnt) {
                                       if (u<i) {
                                          uadj.add(i);
@@ -676,7 +676,7 @@ module TriCntMsg {
                                }
                            }
                            if (numuR_adj>0) {
-                               if (startuR_adj>=ldR.low && enduR_adj<=ldR.high) {
+                               if (startuR_adj>=ldR.lowBound && enduR_adj<=ldR.highBound) {
                                    forall i in dfR[startuR_adj..enduR_adj] with (ref uadj,+ reduce localCnt) {
                                       if (u<i) {
                                          uadj.add(i);
@@ -727,7 +727,7 @@ module TriCntMsg {
                                aggv.flush();
 
                                if (numv_adj>0) {
-                                   if (startv_adj>=ld.low && endv_adj<=ld.high) {
+                                   if (startv_adj>=ld.lowBound && endv_adj<=ld.highBound) {
                                        forall i in df[startv_adj..endv_adj] with (ref vadj,+ reduce localCnt) {
                                           if (v<i) {
                                              vadj.add(i);
@@ -753,7 +753,7 @@ module TriCntMsg {
 
                                }
                                if (numvR_adj>0) {
-                                   if (startvR_adj>=ldR.low && endvR_adj<=ldR.high) {
+                                   if (startvR_adj>=ldR.lowBound && endvR_adj<=ldR.highBound) {
                                        forall i in dfR[startvR_adj..endvR_adj] with (ref vadj,+ reduce localCnt) {
                                           if (v<i) {
                                              vadj.add(i);
@@ -1095,13 +1095,13 @@ module TriCntMsg {
                        ref sf=start_i;
                        var ld=srcf.localSubdomain();
                        // first we divide vertices based on the number of edges
-                       var startVer=srcf[ld.low];
-                       var endVer=srcf[ld.high];
+                       var startVer=srcf[ld.lowBound];
+                       var endVer=srcf[ld.highBound];
 
                        StartVerAry[here.id]=startVer;
                        EndVerAry[here.id]=endVer;
-                       var startEdge=ld.low;
-                       var endEdge=ld.high;
+                       var startEdge=ld.lowBound;
+                       var endEdge=ld.highBound;
 
                        forall i in startEdge..endEdge {
                           var srci=src[i];
@@ -1208,11 +1208,11 @@ module TriCntMsg {
                        ref sfR=start_iR;
                        var ldR=srcfR.localSubdomain();
                        // first we divide vertices based on the number of edges
-                       var startVer=srcfR[ldR.low];
-                       var endVer=srcfR[ldR.high];
+                       var startVer=srcfR[ldR.lowBound];
+                       var endVer=srcfR[ldR.highBound];
 
-                       var startEdge=ldR.low;
-                       var endEdge=ldR.high;
+                       var startEdge=ldR.lowBound;
+                       var endEdge=ldR.highBound;
 
                        forall i in startEdge..endEdge {
                           var srci=srcR[i];
@@ -1298,13 +1298,13 @@ module TriCntMsg {
                        var ldR=srcfR.localSubdomain();
 
                        // first we divide vertices based on the number of edges
-                       var startVer=srcf[ld.low];
-                       var endVer=srcf[ld.high];
+                       var startVer=srcf[ld.lowBound];
+                       var endVer=srcf[ld.highBound];
 
                        StartVerAry[here.id]=startVer;
                        EndVerAry[here.id]=endVer;
-                       var startEdge=ld.low;
-                       var endEdge=ld.high;
+                       var startEdge=ld.lowBound;
+                       var endEdge=ld.highBound;
 
                        var lastVer=-1;
 
@@ -1352,7 +1352,7 @@ module TriCntMsg {
                            //writeln("6 Locale=",here.id, " u[",startu_adj, ",",endu_adj, "], num=",numu_adj);
 
                            if (numu_adj>0) {
-                               if (startu_adj>=ld.low && endu_adj<=ld.high) {
+                               if (startu_adj>=ld.lowBound && endu_adj<=ld.highBound) {
                                    forall i in df[startu_adj..endu_adj] with (ref uadj,+ reduce localCnt) {
                                       if (u<i) {
                                          uadj.add(i);
@@ -1376,7 +1376,7 @@ module TriCntMsg {
                                }
                            }
                            if (numuR_adj>0) {
-                               if (startuR_adj>=ldR.low && enduR_adj<=ldR.high) {
+                               if (startuR_adj>=ldR.lowBound && enduR_adj<=ldR.highBound) {
                                    forall i in dfR[startuR_adj..enduR_adj] with (ref uadj,+ reduce localCnt) {
                                       if (u<i) {
                                          uadj.add(i);
@@ -1427,7 +1427,7 @@ module TriCntMsg {
                                aggv.flush();
 
                                if (numv_adj>0) {
-                                   if (startv_adj>=ld.low && endv_adj<=ld.high) {
+                                   if (startv_adj>=ld.lowBound && endv_adj<=ld.highBound) {
                                        forall i in df[startv_adj..endv_adj] with (ref vadj,+ reduce localCnt) {
                                           if (v<i) {
                                              vadj.add(i);
@@ -1453,7 +1453,7 @@ module TriCntMsg {
 
                                }
                                if (numvR_adj>0) {
-                                   if (startvR_adj>=ldR.low && endvR_adj<=ldR.high) {
+                                   if (startvR_adj>=ldR.lowBound && endvR_adj<=ldR.highBound) {
                                        forall i in dfR[startvR_adj..endvR_adj] with (ref vadj,+ reduce localCnt) {
                                           if (v<i) {
                                              vadj.add(i);
@@ -1927,10 +1927,10 @@ module TriCntMsg {
                        ref sf=start_i;
                        var ld=src.localSubdomain();
                        // first we divide vertices based on the number of edges
-                       var startVer=srcf[ld.low];
-                       var endVer=srcf[ld.high];
-                       var startEdge=ld.low;
-                       var endEdge=ld.high;
+                       var startVer=srcf[ld.lowBound];
+                       var endVer=srcf[ld.highBound];
+                       var startEdge=ld.lowBound;
+                       var endEdge=ld.highBound;
 
                        forall i in startEdge..endEdge {
                           var srci=src[i];
@@ -2100,13 +2100,13 @@ module TriCntMsg {
                        var ldR=srcfR.localSubdomain();
 
                        // first we divide vertices based on the number of edges
-                       var startVer=srcf[ld.low];
-                       var endVer=srcf[ld.high];
+                       var startVer=srcf[ld.lowBound];
+                       var endVer=srcf[ld.highBound];
 
                        StartVerAry[here.id]=startVer;
                        EndVerAry[here.id]=endVer;
-                       var startEdge=ld.low;
-                       var endEdge=ld.high;
+                       var startEdge=ld.lowBound;
+                       var endEdge=ld.highBound;
 
                        var lastVer=-1;
 
@@ -2154,7 +2154,7 @@ module TriCntMsg {
                            //writeln("6 Locale=",here.id, " u[",startu_adj, ",",endu_adj, "], num=",numu_adj);
 
                            if (numu_adj>0) {
-                               if (startu_adj>=ld.low && endu_adj<=ld.high) {
+                               if (startu_adj>=ld.lowBound && endu_adj<=ld.highBound) {
                                    forall i in df[startu_adj..endu_adj] with (ref uadj,+ reduce localCnt) {
                                       if (u<i) {
                                          uadj.add(i);
@@ -2178,7 +2178,7 @@ module TriCntMsg {
                                }
                            }
                            if (numuR_adj>0) {
-                               if (startuR_adj>=ldR.low && enduR_adj<=ldR.high) {
+                               if (startuR_adj>=ldR.lowBound && enduR_adj<=ldR.highBound) {
                                    forall i in dfR[startuR_adj..enduR_adj] with (ref uadj,+ reduce localCnt) {
                                       if (u<i) {
                                          uadj.add(i);
@@ -2229,7 +2229,7 @@ module TriCntMsg {
                                aggv.flush();
 
                                if (numv_adj>0) {
-                                   if (startv_adj>=ld.low && endv_adj<=ld.high) {
+                                   if (startv_adj>=ld.lowBound && endv_adj<=ld.highBound) {
                                        forall i in df[startv_adj..endv_adj] with (ref vadj,+ reduce localCnt) {
                                           if (v<i) {
                                              vadj.add(i);
@@ -2255,7 +2255,7 @@ module TriCntMsg {
 
                                }
                                if (numvR_adj>0) {
-                                   if (startvR_adj>=ldR.low && endvR_adj<=ldR.high) {
+                                   if (startvR_adj>=ldR.lowBound && endvR_adj<=ldR.highBound) {
                                        forall i in dfR[startvR_adj..endvR_adj] with (ref vadj,+ reduce localCnt) {
                                           if (v<i) {
                                              vadj.add(i);

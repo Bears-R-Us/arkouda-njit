@@ -27,6 +27,8 @@ module CCMsg {
   use GraphArray;
   use GraphMsg;
 
+  use Set;
+
   // private config const logLevel = ServerConfig.logLevel;
   private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
@@ -498,7 +500,7 @@ module CCMsg {
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, int); 
 
-      forall i in 0..Nv {
+      forall i in 0..Nv-1 {
         f[i] = i;
         f_next[i] = i;
       }
@@ -516,7 +518,7 @@ module CCMsg {
 
         // Stochastic hooking.
         // writeln("Stochastic hooking:");
-        forall x in 0..Ne {
+        forall x in 0..Ne-1 {
           // Get edges from src, dst, srcR, and dstR.
           var u = src[x];
           var v = dst[x];
@@ -538,7 +540,7 @@ module CCMsg {
 
         // Aggresive hooking.
         // writeln("Aggresive hooking:");
-        forall x in 0..Ne {
+        forall x in 0..Ne-1 {
           var u = src[x];
           var v = dst[x];
 
@@ -559,7 +561,7 @@ module CCMsg {
 
         // Shortcutting.
         // writeln("Shortcutting:");
-        forall u in 0..Nv {
+        forall u in 0..Nv-1 {
           if(f[f[u]] < f_next[u]) {
             // writeln("inner u v = ", u, " ", v);
             f_next[u] = f[f[u]];
@@ -574,13 +576,13 @@ module CCMsg {
         f = f_next; 
 
         // Recompute gf.
-        forall x in 0..Nv {
+        forall x in 0..Nv-1 {
           gf[x] = f[f[x]];
         }
 
         // Check if gf converged.
         var diff = makeDistArray(Nv, int);
-        forall x in 0..Nv {
+        forall x in 0..Nv-1 {
           diff[x] = gf[x] - dup[x];
         }
         var sum = + reduce diff;
@@ -827,12 +829,15 @@ module CCMsg {
 
     var timer:Timer;
     // We only care for undirected graphs, they can be weighted or unweighted. 
+    var f1 = makeDistArray(Nv, int);
+    var f2 = makeDistArray(Nv, int);
+    var f3 = makeDistArray(Nv, int);
     if (Weighted == 0)  {
       if (Directed == 0) {
         (srcN, dstN, startN, neighbourN, srcRN, dstRN, startRN, neighbourRN) = restpart.splitMsgToTuple(8);
         timer.clear();
         timer.start(); 
-        var f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
                                 toSymEntry(ag.getSTART_IDX(), int).a, 
                                 toSymEntry(ag.getSRC(), int).a, 
                                 toSymEntry(ag.getDST(), int).a, 
@@ -846,7 +851,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        var f2 = cc_fast_sv(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f2 = cc_fast_sv(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -860,7 +865,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        var f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -920,7 +925,7 @@ module CCMsg {
         (srcN, dstN, startN, neighbourN, srcRN, dstRN, startRN, neighbourRN, vweightN, eweightN) = restpart.splitMsgToTuple(10);
         timer.clear();
         timer.start();
-        var f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
                                     toSymEntry(ag.getSTART_IDX(), int).a, 
                                     toSymEntry(ag.getSRC(), int).a, 
                                     toSymEntry(ag.getDST(), int).a, 
@@ -934,7 +939,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        var f2 = cc_fast_sv(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f2 = cc_fast_sv(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -948,7 +953,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        var f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1005,9 +1010,16 @@ module CCMsg {
     }
     
     // The message that is sent back to the Python front-end. 
+    var comps = new set(int);
+
+    for x in f2 {
+      comps.add(x);
+    }
+    var num_comps = comps.size;
+
     proc return_CC(): string throws {
       CCName = st.nextName();
-      var CCEntry = new shared SymEntry(visited);
+      var CCEntry = new shared SymEntry([num_comps]);
       st.addEntry(CCName, CCEntry);
 
       var CCMsg =  'created ' + st.attrib(CCName);

@@ -102,8 +102,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -284,8 +284,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -494,8 +494,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -698,8 +698,8 @@ module BFSMsg {
                        ref sf=start_i;
 
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
 
@@ -779,8 +779,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -890,8 +890,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1034,8 +1034,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales with (+ reduce topdown, + reduce bottomup)  {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -1351,8 +1351,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1464,8 +1464,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1574,8 +1574,8 @@ module BFSMsg {
                        ref nfR=neiR;
                        ref sfR=start_iR;
 
-                       var edgeBegin=src.localSubdomain().low;
-                       var edgeEnd=src.localSubdomain().high;
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
                        var vertexBegin=src[edgeBegin];
                        var vertexEnd=src[edgeEnd];
                        var vertexBeginR=srcR[edgeBegin];
@@ -1692,8 +1692,8 @@ module BFSMsg {
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
           coforall loc in Locales   {
               on loc {
-                 edgeBeginG[here.id]=src.localSubdomain().low;
-                 edgeEndG[here.id]=src.localSubdomain().high;
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
 
                  vertexBeginG[here.id]=src[edgeBeginG[here.id]];
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
@@ -1987,7 +1987,7 @@ module BFSMsg {
 
       proc return_depth(): string throws{
           var depthName = st.nextName();
-          var depthEntry = new shared SymEntry(depth);
+          var depthEntry = new shared SymEntry([0]);
           st.addEntry(depthName, depthEntry);
           //try! st.addEntry(vertexName, vertexEntry);
 
@@ -2049,26 +2049,26 @@ module BFSMsg {
                   );
                   
                   timer.stop();
-                  var outMsg= "graph BFS takes "+timer.elapsed():string+" for fo_bag version";
+                  var outMsg= "graph BFS takes "+timer.elapsed():string+" for fo_bag_bfs_kernel_u version";
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                  depth=-1;
-                  depth[root]=0;
-                  timer.clear();
-                  timer.start();
-                  aligned_fo_bag_bfs_kernel_u(
-                      toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
-                      toDomArraySymEntry(ag.getA_START_IDX()).domary,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
-                      toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
-                      toDomArraySymEntry(ag.getA_SRC_R()).domary,
-                      toDomArraySymEntry(ag.getA_DST_R()).domary,
-                      1, GivenRatio
-                  );
-                  outMsg= "graph BFS takes "+timer.elapsed():string+" for aligned_fo_bag version";
-                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                //   depth=-1;
+                //   depth[root]=0;
+                //   timer.clear();
+                //   timer.start();
+                //   aligned_fo_bag_bfs_kernel_u(
+                //       toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                //       toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                //       toSymEntry(ag.getSRC(), int).a,
+                //       toSymEntry(ag.getDST(), int).a,
+                //       toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                //       toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                //       toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                //       toDomArraySymEntry(ag.getA_DST_R()).domary,
+                //       1, GivenRatio
+                //   );
+                //   outMsg= "graph BFS takes "+timer.elapsed():string+" for aligned_fo_bag version";
+                //   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   repMsg=return_depth();
  
               } else {// do batch test
@@ -2254,7 +2254,7 @@ module BFSMsg {
               }//end of batch test
 
       }
-      timer.stop();
+      //timer.stop();
       //writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), "$$$$$$$$$$$$$$$$$$");
       var outMsg= "graph BFS takes "+timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);

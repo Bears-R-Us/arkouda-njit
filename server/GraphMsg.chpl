@@ -78,7 +78,7 @@ module GraphMsg {
   }
 
   private proc binSearchV(ary:[?D] int,l:int,h:int,key:int):int {
-                       if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
                        }
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -240,8 +240,8 @@ module GraphMsg {
                        ref nf=lneighbour;
                        ref sf=lstart_i;
 
-                       var edgeBegin=lsrc.localSubdomain().low;
-                       var edgeEnd=lsrc.localSubdomain().high;
+                       var edgeBegin=lsrc.localSubdomain().lowBound;
+                       var edgeEnd=lsrc.localSubdomain().highBound;
                        var vertexBegin=lsrc[edgeBegin];
                        var vertexEnd=lsrc[edgeEnd];
 
@@ -403,8 +403,8 @@ module GraphMsg {
                            ref nfR=lneighbourR;
                            ref sfR=lstart_iR;
 
-                           var edgeBegin=lsrc.localSubdomain().low;
-                           var edgeEnd=lsrc.localSubdomain().high;
+                           var edgeBegin=lsrc.localSubdomain().lowBound;
+                           var edgeEnd=lsrc.localSubdomain().highBound;
                            var vertexBegin=lsrc[edgeBegin];
                            var vertexEnd=lsrc[edgeEnd];
                            var vertexBeginR=lsrcR[edgeBegin];
@@ -669,7 +669,7 @@ module GraphMsg {
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                        //    return -1;
                        //}
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -783,11 +783,11 @@ module GraphMsg {
                                dst[curline]=(b:int);
                       }
                       curline+=1;
-                      if curline>srclocal.high {
+                      if curline>srclocal.highBound {
                           break;
                       }
                   } 
-                  if (curline<=srclocal.high) {
+                  if (curline<=srclocal.highBound) {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
                      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
@@ -997,7 +997,7 @@ module GraphMsg {
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
+                       //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                        //    return -1;
                        //}
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -1111,11 +1111,11 @@ module GraphMsg {
                                dst[curline]=(b:int);
                       }
                       curline+=1;
-                      if curline>srclocal.high {
+                      if curline>srclocal.highBound {
                           break;
                       }
                   } 
-                  if (curline<=srclocal.high) {
+                  if (curline<=srclocal.highBound) {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
                      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
@@ -1424,11 +1424,11 @@ module GraphMsg {
                           }
                       }
                       curline+=1;
-                      if curline>srclocal.high {
+                      if curline>srclocal.highBound {
                           break;
                       }
                   } 
-                  if (curline<=srclocal.high) {
+                  if (curline<=srclocal.highBound) {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
                      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
@@ -1867,11 +1867,11 @@ module GraphMsg {
                           }
                       }
                       curline+=1;
-                      if curline>srclocal.high {
+                      if curline>srclocal.highBound {
                           break;
                       }
                   } 
-                  if (curline<=srclocal.high) {
+                  if (curline<=srclocal.highBound) {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string;
                      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
