@@ -2409,36 +2409,15 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 
 
 
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         lEdgeDeleted=gEdgeDeleted;
-                         PlTriCount=PTriCount;
-                             //restore the value for kUp check
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
-'''
-	text4="                         AllRemoved="+OnceFunName+"(kUp,"
-	text5='''
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
+                    while ( ConLoop)  {
 
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 lEdgeDeleted=gEdgeDeleted;
                                 PlTriCount=PTriCount;
@@ -2456,44 +2435,19 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
 
 
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value
-                                        // until all edges are removed
-
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        gEdgeDeleted=lEdgeDeleted;
-                                        PTriCount=PlTriCount;
-                                        //store the latest no empty subgraph setup 
-                                        //("Try mid again=",kMid);
-'''
-	text8="                                        AllRemoved="+OnceFunName+"(kMid,"
-	text9='''
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     }
-                                  }
-                            }
-                         }
+                            } 
+                            
                     }// end of while
                     var countName = st.nextName();
                     var countEntry = new shared SymEntry(lEdgeDeleted);
@@ -2532,12 +2486,12 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 	print(text3)
 
 
-	print(text4)
-	print(text5)
+#	print(text4)
+#	print(text5)
 	print(text6)
 	print(text7)
-	print(text8)
-	print(text9)
+#	print(text8)
+#	print(text9)
 	print(text10)
 	print(text11)
 	print(text12)
@@ -2646,39 +2600,15 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
 
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
-'''
-	text4="                         AllRemoved="+OnceFunName+"(kUp,"
-	text5='''
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
+                    while ( ConLoop) {
 
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -2698,45 +2628,16 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        //forall i in 0..Ne-1 { 
-                                        //    gEdgeDeleted[i]=lEdgeDeleted[i];
-                                        //    aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        //}
-'''
-	text8="                                        AllRemoved="+OnceFunName+"(kMid,"
-	text9='''
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (!AllRemoved) {
-                                         kUp=kMid;
-                                         ConLoop=false;
-                                     } else {
-                                         kUp=kMid-1;
-                                     }
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -2779,8 +2680,8 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
 	print(text5)
 	print(text6)
 	print(text7)
-	print(text8)
-	print(text9)
+#	print(text8)
+#	print(text9)
 	print(text10)
 	print(text11)
 	print(text12)
@@ -2844,39 +2745,15 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
-'''
-	text4="                         AllRemoved="+OnceFunName+"(kUp,"
-	text5='''
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
+                    while ( ConLoop)  {
 
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -2896,42 +2773,16 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
-                                            gEdgeDeleted[i]=lEdgeDeleted[i];
-                                            aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        }
-'''
-	text8="                                        AllRemoved="+OnceFunName+"(kMid,"
-	text9='''
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     } 
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -2970,12 +2821,12 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
 	print(text1)
 	print(text2)
 	print(text3)
-	print(text4)
-	print(text5)
+#	print(text4)
+#	print(text5)
 	print(text6)
 	print(text7)
-	print(text8)
-	print(text9)
+#	print(text8)
+#	print(text9)
 	print(text10)
 	print(text11)
 	print(text12)
@@ -3161,7 +3012,6 @@ module TrussMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedArray;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
