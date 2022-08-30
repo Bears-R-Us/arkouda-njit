@@ -6,7 +6,6 @@ module TrussMsg {
   use ServerErrors;
   use Logging;
   use Message;
-  use SegmentedString;
   use ServerErrorStrings;
   use ServerConfig;
   use MultiTypeSymbolTable;
@@ -4740,36 +4739,15 @@ module TrussMsg {
 
 
 
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         lEdgeDeleted=gEdgeDeleted;
-                         PlTriCount=PTriCount;
-                             //restore the value for kUp check
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
+                    while ( ConLoop)  {
 
-                         AllRemoved=OnceMaxTrussNaiveMergePath(kUp,
-
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 lEdgeDeleted=gEdgeDeleted;
                                 PlTriCount=PTriCount;
@@ -4787,44 +4765,19 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
 
 
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value
-                                        // until all edges are removed
-
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        gEdgeDeleted=lEdgeDeleted;
-                                        PTriCount=PlTriCount;
-                                        //store the latest no empty subgraph setup 
-                                        //("Try mid again=",kMid);
-
-                                        AllRemoved=OnceMaxTrussNaiveMergePath(kMid,
-
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     }
-                                  }
-                            }
-                         }
+                            } 
+                            
                     }// end of while
                     var countName = st.nextName();
                     var countEntry = new shared SymEntry(lEdgeDeleted);
@@ -5355,39 +5308,15 @@ module TrussMsg {
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
+                    while ( ConLoop)  {
 
-                         AllRemoved=OnceMaxTrussMergePath(kUp,
-
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
-
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -5407,42 +5336,16 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
-                                            gEdgeDeleted[i]=lEdgeDeleted[i];
-                                            aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        }
-
-                                        AllRemoved=OnceMaxTrussMergePath(kMid,
-
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     } 
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -5858,39 +5761,15 @@ module TrussMsg {
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
+                    while ( ConLoop)  {
 
-                         AllRemoved=OnceMaxTrussNonMinSearch(kUp,
-
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
-
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -5910,42 +5789,16 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
-                                            gEdgeDeleted[i]=lEdgeDeleted[i];
-                                            aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        }
-
-                                        AllRemoved=OnceMaxTrussNonMinSearch(kMid,
-
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     } 
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -6370,39 +6223,15 @@ module TrussMsg {
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
+                    while ( ConLoop)  {
 
-                         AllRemoved=OnceMaxTrussSeqMinSearch(kUp,
-
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
-
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -6422,42 +6251,16 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
-                                            gEdgeDeleted[i]=lEdgeDeleted[i];
-                                            aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        }
-
-                                        AllRemoved=OnceMaxTrussSeqMinSearch(kMid,
-
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     } 
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -6882,39 +6685,15 @@ module TrussMsg {
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
+                    while ( ConLoop)  {
 
-                         AllRemoved=OnceMaxTrussMinSearch(kUp,
-
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
-
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -6934,42 +6713,16 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
-                                            gEdgeDeleted[i]=lEdgeDeleted[i];
-                                            aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        }
-
-                                        AllRemoved=OnceMaxTrussMinSearch(kMid,
-
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     } 
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -7396,39 +7149,15 @@ module TrussMsg {
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a);
+                kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
                 outMsg="Estimated kUp="+kUp:string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
-                    while ( (ConLoop) && (kLow<kUp)) {
-                         // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
-                             lEdgeDeleted[i]=gEdgeDeleted[i];
-                             aPlTriCount[i].write(aPTriCount[i].read());
-                             //restore the value for kUp check
-                         }
-                         // we check the larget k vaule kUp which is the upper bound of max k
-                         // we will use kMid to reduce kUp
+                    while ( ConLoop)  {
 
-                         AllRemoved=OnceMaxTrussMix(kUp,
-
-                              toSymEntry(ag.getNEIGHBOR(), int).a,
-                              toSymEntry(ag.getSTART_IDX(), int).a,
-                              toSymEntry(ag.getSRC(), int).a,
-                              toSymEntry(ag.getDST(), int).a,
-                              toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                              toSymEntry(ag.getSTART_IDX_R(), int).a,
-                              toSymEntry(ag.getSRC_R(), int).a,
-                              toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                         if (!AllRemoved) { //the up value is the max k
-                                ConLoop=false;
-                         } else {// we will check the mid value to reduce kUp
-
-
-                            kUp= kUp-1;
                             kMid= (kLow+kUp)/2;
-                            while ((AllRemoved) && (kMid<kUp-1)) {
+                            while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
                                     lEdgeDeleted[i]=gEdgeDeleted[i];
@@ -7448,42 +7177,16 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid-1;
+                                    kUp=kMid;
                                     kMid= (kLow+kUp)/2;
+                                } else {
+                                    kLow=kMid;
                                 }
                             }
-                            if (!AllRemoved) { // if mid value can remove all edges, we will reduce the up value for checking
-                                if kMid>=kUp-1 {
+                            if kMid==kUp-1 {
                                     ConLoop=false;
                                     kUp=kMid;
-                                } else {// we will update the low value and then check the mid value 
-                                        // until all edges are removed
-                                     while ((!AllRemoved) && (kMid<kUp-1)) {
-                                        kLow=kMid;
-                                        kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
-                                            gEdgeDeleted[i]=lEdgeDeleted[i];
-                                            aPTriCount[i].write(aPlTriCount[i].read());
-                                            //store the latest no empty subgraph setup 
-                                        }
-
-                                        AllRemoved=OnceMaxTrussMix(kMid,
-
-                                             toSymEntry(ag.getNEIGHBOR(), int).a,
-                                             toSymEntry(ag.getSTART_IDX(), int).a,
-                                             toSymEntry(ag.getSRC(), int).a,
-                                             toSymEntry(ag.getDST(), int).a,
-                                             toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                                             toSymEntry(ag.getSTART_IDX_R(), int).a,
-                                             toSymEntry(ag.getSRC_R(), int).a,
-                                             toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                     }
-                                     if (AllRemoved) {
-                                         kUp=kMid-1;
-                                     } 
-                                  }
-                            }
-                         }
+                            } 
                     }// end of while
                     var countName = st.nextName();
                     var maxKAry:[0..1] int;
@@ -12338,8 +12041,10 @@ module TrussMsg {
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
-    use CommandMap;
-    registerFunction("segmentedTruss", segTrussMsg);
+    proc registerMe() {
+        use CommandMap;
+        registerFunction("segmentedTruss", segTrussMsg);
+    }
 
 
 }
