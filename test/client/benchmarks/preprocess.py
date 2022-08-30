@@ -179,7 +179,7 @@ if __name__ == "__main__":
     
     print("PREPROCESSING GRAPH BENCHMARK")
     ak.verbose = False
-    ak.connect(args.hostname, args.port)
+    ak.connect(args.hostname, args.port) 
 
     print(args)
     

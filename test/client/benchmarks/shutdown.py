@@ -10,8 +10,6 @@ def create_parser():
     parser.add_argument('port', type=int, help='Port of arkouda server')
     return parser
 
-
-    
 if __name__ == "__main__":
     import sys
     parser = create_parser()
