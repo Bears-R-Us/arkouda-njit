@@ -12041,10 +12041,8 @@ module TrussMsg {
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
-    proc registerMe() {
-        use CommandMap;
-        registerFunction("segmentedTruss", segTrussMsg);
-    }
+    use CommandMap;
+    registerFunction("segmentedTruss", segTrussMsg);
 
 
 }
