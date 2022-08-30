@@ -4746,7 +4746,15 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 lEdgeDeleted=gEdgeDeleted;
@@ -5315,7 +5323,15 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
@@ -5768,7 +5784,15 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
@@ -6230,7 +6254,15 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
@@ -6692,7 +6724,15 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
@@ -7156,7 +7196,15 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {

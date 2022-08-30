@@ -2416,11 +2416,17 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>50 {
+                                kMid=kLow+(kUp-kLow)/10;
+                            } else {
+                                if kUp-kLow>16 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
-                                lEdgeDeleted=gEdgeDeleted;
-                                PlTriCount=PTriCount;
                                 //restore the value for kMid check
                                 //"Try mid=",kMid;
 '''
@@ -2436,9 +2442,21 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    if kUp-kLow>50 {
+                                        kMid=kLow+(kUp-kLow)/10;
+                                    } else {
+                                        if kUp-kLow>16 {
+                                            kMid=kLow+(kUp-kLow)/4;
+                                        } else {
+                                            kMid= (kLow+kUp)/2;
+                                        }
+                                    }
+                                    lEdgeDeleted=gEdgeDeleted;
+                                    PlTriCount=PTriCount;
                                 } else {
                                     kLow=kMid;
+                                    gEdgeDeleted=lEdgeDeleted;
+                                    PTriCount=PlTriCount;
                                 }
                             }
 
@@ -2607,7 +2625,15 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                     var ConLoop=true:bool;
                     while ( ConLoop) {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>8 {
+                                kMid=kLow+(kUp-kLow)/8;
+                            } else {
+                                if kUp-kLow>4 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
                                 forall i in 0..Ne-1 {
@@ -2752,14 +2778,17 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
 
-                            kMid= (kLow+kUp)/2;
+                            if kUp-kLow>50 {
+                                kMid=kLow+(kUp-kLow)/10;
+                            } else {
+                                if kUp-kLow>16 {
+                                    kMid=kLow+(kUp-kLow)/4;
+                                } else {
+                                    kMid= (kLow+kUp)/2;
+                                }
+                            }
                             while (kMid>kLow) {
 
-                                forall i in 0..Ne-1 {
-                                    lEdgeDeleted[i]=gEdgeDeleted[i];
-                                    aPlTriCount[i].write(aPTriCount[i].read());
-                                //restore the value for kMid check
-                                }
                                 //"Try mid=",kMid;
 '''
 	text6="                                AllRemoved="+OnceFunName+"(kMid,"
@@ -2774,9 +2803,27 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    if kUp-kLow>50 {
+                                         kMid=kLow+(kUp-kLow)/10;
+                                    } else {
+                                        if kUp-kLow>16 {
+                                            kMid=kLow+(kUp-kLow)/4;
+                                        } else {
+                                          kMid= (kLow+kUp)/2;
+                                        }
+                                    }
+                                    forall i in 0..Ne-1 {
+                                        lEdgeDeleted[i]=gEdgeDeleted[i];
+                                        aPlTriCount[i].write(aPTriCount[i].read());
+                                    //restore the value for kMid check
+                                    }
                                 } else {
                                     kLow=kMid;
+                                    forall i in 0..Ne-1 {
+                                        gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        aPTriCount[i].write(aPlTriCount[i].read());
+                                    //restore the value for kMid check
+                                    }
                                 }
                             }
                             if kMid==kUp-1 {
