@@ -32,15 +32,15 @@ def cc_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, 
 
     # Extract the metadata from the dictionary. 
     num_edges = file_dict[only_filename][0]
-    num_vertices = file_dict[only_filename][1]
+    num_vertices = file_dict[only_filename][1] 
     num_cols = file_dict[only_filename][2]
-    directed = file_dict[only_filename][3]
+    directed = file_dict[only_filename][3] 
 
     # Read in the graph. 
     G = njit.graph_file_read(num_edges, num_vertices, num_cols, directed, filename, remap_flag,\
                                 degree_sort_flag, rcm_flag, write_flag, build_aligned_array_flag)
     
-    # Perform the bfs steps.
+    # Perform the cc steps.
     start = time.time()
     for i in range(trials):
         ccs = njit.graph_cc(G)
@@ -82,7 +82,7 @@ def cc_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, 
         G = njit.graph_file_read(num_edges, num_vertices, num_cols, directed, filename, remap_flag,\
                                     degree_sort_flag, rcm_flag, write_flag, build_aligned_array_flag)
 
-        # Perform the bfs steps.
+        # Perform the cc steps.
         start = time.time()
         for i in range(trials):
             ccs = njit.graph_cc(G)

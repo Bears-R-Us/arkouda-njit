@@ -32,7 +32,7 @@ def bfs_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
 
     # Extract the metadata from the dictionary. 
     num_edges = file_dict[only_filename][0]
-    num_vertices = file_dict[only_filename][1]
+    num_vertices = file_dict[only_filename][1] 
     num_cols = file_dict[only_filename][2]
     directed = file_dict[only_filename][3]
 
@@ -89,7 +89,7 @@ def bfs_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
             njit.graph_bfs(G, int(root), int(rcm_flag))
         end = time.time()
         avg = (end-start) / trials
-        print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
+        print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg)) 
 
 def correctness():
     #TODO: simple correctness test!

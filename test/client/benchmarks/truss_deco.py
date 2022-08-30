@@ -3,13 +3,14 @@
 import argparse
 import time 
 import sys
+import numpy as np
 import arkouda as ak
 import arkouda_njit as njit
 
-def process_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+def truss_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
                     write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
-    print("GRAPH PREPROCESSING -- SINGLE MODE")
+    print("GRAPH TRUSS -- SINGLE MODE")
     print("server Hostname =", cfg["serverHostname"])
     print("Number of Locales=", cfg["numLocales"])
     print("number of PUs =", cfg["numPUs"])
@@ -21,11 +22,13 @@ def process_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:
     only_filepath = filepath_and_filename[0] + "/"
     only_filename = filepath_and_filename[1]
 
-    info_file = open(only_filepath + "info_pre.txt", "r")
+    info_file = open(only_filepath + "info_post.txt", "r")
 
     # Make a dictionary of the metadata for each of the files used. 
     file_dict = {}
     for line in info_file:
+        if line[0] == "#":
+            continue
         text = line.split()
         file_dict[text[0]] = (int(text[1]), int(text[2]), int(text[3]), int(text[4]))
 
@@ -34,21 +37,25 @@ def process_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:
     num_vertices = file_dict[only_filename][1]
     num_cols = file_dict[only_filename][2]
     directed = file_dict[only_filename][3]
+
+    # Read in the graph. 
+    G = njit.graph_file_read(num_edges, num_vertices, num_cols, directed, filename, remap_flag,\
+                                degree_sort_flag, rcm_flag, write_flag, build_aligned_array_flag)
     
-    # Perform the preprocessing steps.
+    # Perform the tri cnt steps.
     start = time.time()
     for i in range(trials):
-        njit.graph_file_preprocessing(num_edges, num_vertices, num_cols, directed, filename,\
-                                        skiplines, remap_flag, degree_sort_flag, rcm_flag,\
-                                        write_flag, build_aligned_array_flag)
+        # njit.graph_ktruss(G, 4)
+        # njit.graph_ktruss(G, -1)
+        njit.graph_ktruss(G, -2)
     end = time.time()
     avg = (end-start) / trials
     print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
 
-def process_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+def truss_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
                     write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
-    print("GRAPH PREPROCESSING -- BATCH MODE")
+    print("GRAPH TRUSS -- BATCH MODE")
     print("server Hostname =", cfg["serverHostname"])
     print("Number of Locales=", cfg["numLocales"])
     print("number of PUs =", cfg["numPUs"])
@@ -58,11 +65,13 @@ def process_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:
     # Split up filename parameter to only path and only name of file.
     only_filepath = dirname + "/"
 
-    info_file = open(only_filepath + "info_pre.txt", "r")
+    info_file = open(only_filepath + "info_post.txt", "r")
 
     # Make a dictionary of the metadata for each of the files used. 
     file_dict = {}
     for line in info_file:
+        if line[0] == "#":
+            continue
         text = line.split()
         file_dict[text[0]] = (int(text[1]), int(text[2]), int(text[3]), int(text[4]))
 
@@ -74,11 +83,14 @@ def process_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:
 
         filename = only_filepath + only_filename
 
+        # Read in the graph. 
+        G = njit.graph_file_read(num_edges, num_vertices, num_cols, directed, filename, remap_flag,\
+                                    degree_sort_flag, rcm_flag, write_flag, build_aligned_array_flag)
+
+        # Perform the tri cnt steps.
         start = time.time()
         for i in range(trials):
-            njit.graph_file_preprocessing(num_edges, num_vertices, num_cols, directed, filename,\
-                                            skiplines, remap_flag, degree_sort_flag, rcm_flag,\
-                                            write_flag, build_aligned_array_flag)
+            njit.graph_ktruss(G, -2)
         end = time.time()
         avg = (end-start) / trials
         print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
@@ -89,10 +101,10 @@ def correctness():
     
 def create_parser():
     parser = argparse.ArgumentParser(
-        description="Measure the performance of preprocessing a graph."
+        description="Measure the performance of connected components on a graph. Must be preprocessed!"
     )
     parser.add_argument("hostname", help="Hostname of arkouda server")
-    parser.add_argument("port", type=int, help="Port of arkouda server") 
+    parser.add_argument("port", type=int, help="Port of arkouda server")
     parser.add_argument(
         "-t", 
         "--trials", 
@@ -111,7 +123,7 @@ def create_parser():
         "--filename",
         type=str,
         help="""Absolute path to file of the graph we wish to preprocess. An extra
-                metadata file must be found in same directory named 'info_pre.txt'. This file must
+                metadata file must be found in same directory named 'info_post.txt'. This file must
                 contain number of lines equal to the number of files in the directory. It must 
                 contain the name of the files, the number of edges in a file, the number of 
                 vertices, the number of columns, and 1 if directed, 0 otherwise. The format of each 
@@ -125,7 +137,7 @@ def create_parser():
         "--dirname",
         type=str,
         help="""Absolute path to directory with multiple files to preprocess (batch method). An extra
-                metadata file must be found in same directory named 'info_pre.txt'. This file must
+                metadata file must be found in same directory named 'info_post.txt'. This file must
                 contain number of lines equal to the number of files in the directory. It must 
                 contain the name of the files, the number of edges in a file, the number of 
                 vertices, the number of columns, and 1 if directed, 0 otherwise. The format of each 
@@ -177,18 +189,18 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     
-    print("PREPROCESSING GRAPH BENCHMARK")
+    print("TRUSS GRAPH BENCHMARK")
     ak.verbose = False
-    ak.connect(args.hostname, args.port) 
+    ak.connect(args.hostname, args.port)
 
     print(args)
     
     if args.filename is not None:
-        process_graph(args.filename, args.skiplines, int(args.no_remap_flag),\
+        truss_graph(args.filename, args.skiplines, int(args.no_remap_flag),\
                         int(args.degree_sort_flag), int(args.rcm_flag), int(args.no_write_flag),\
                         int(args.aligned_ary_flag), args.trials)
     elif args.dirname is not None:
-        process_graphs(args.dirname, args.skiplines, int(args.no_remap_flag),\
+        truss_graphs(args.dirname, args.skiplines, int(args.no_remap_flag),\
                         int(args.degree_sort_flag), int(args.rcm_flag), int(args.no_write_flag),\
                         int(args.aligned_ary_flag), args.trials)
     else:

@@ -482,7 +482,7 @@ module BFSMsg {
           var topdown=0:int;
           var bottomup=0:int;
           while (numCurF>0) {
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -572,6 +572,28 @@ module BFSMsg {
                 numCurF=SetNextF.getSize();
                 SetCurF<=>SetNextF;
                 SetNextF.clear();
+                if (numCurF==0) {
+                    coforall loc in Locales  with (ref SetNextF, ref root) {
+                       on loc {
+                             var lbound=depth.localSubdomain().low;
+                             var upbound=depth.localSubdomain().high;
+                             for i in lbound..upbound {
+                                   if depth[i]==-1 {
+                                       SetNextF.add(i);
+                                       root = i; 
+                                       break;
+                                   }
+                             }
+                       }
+                    }
+                    if (SetNextF.getSize()>0) {
+                       cur_level=0;
+                       depth[root]=0;
+                       SetCurF.add(root);
+                       numCurF=1;
+                       SetNextF.clear();
+                    }
+                }
           }//end while  
           var outMsg="Search Radius = "+ (cur_level+1):string;
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
