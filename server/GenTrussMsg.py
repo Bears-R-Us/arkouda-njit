@@ -2900,9 +2900,9 @@ def GenCompleteTest():
 	print(InitialCount)
 #	GenFunCall(False,"kTrussNaiveSetSearchSmallSeq")
 	print(InitialCount)
-	GenFunCall(False,"kTrussNaiveMergePath")
+#	GenFunCall(False,"kTrussNaiveMergePath")
 	print(InitialCount)
-	GenFunCall(False,"kTrussNaiveMinSearch")
+#	GenFunCall(False,"kTrussNaiveMinSearch")
 	text3='''
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 '''
@@ -2932,7 +2932,7 @@ def GenCompleteTest():
 '''
 	print(text21)
 	print(InitialCount)
-	GenFunCall(False,"MaxTrussNaiveMergePath")
+#	GenFunCall(False,"MaxTrussNaiveMergePath")
 	text23='''
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 '''
@@ -2967,10 +2967,10 @@ def GenCompleteTest():
 	print(text31)
 	print(InitialCount)
 	print("                kValue=3;")
-	GenFunCall(False,"TrussDecoNaiveMergePath")
+#	GenFunCall(False,"TrussDecoNaiveMergePath")
 	print(InitialCount)
 	print("                kValue=3;")
-	GenFunCall(False,"TrussDecoNaiveMinSearch")
+#	GenFunCall(False,"TrussDecoNaiveMinSearch")
 
 
 
