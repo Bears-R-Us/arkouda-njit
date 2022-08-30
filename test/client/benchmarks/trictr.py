@@ -49,7 +49,7 @@ def trictr_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:i
     print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
 
 def trictr_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
-                    write_flag:int, build_aligned_array_flag:int, trials:int):
+                    write_flag:int, build_aligned_array_flag:int, trials:int): 
     cfg = ak.get_config()
     print("GRAPH TRICTR -- BATCH MODE")
     print("server Hostname =", cfg["serverHostname"])

@@ -158,7 +158,7 @@ def create_parser():
         "--no-remap-flag",
         default=True,
         action="store_false",
-        help="Do not remap the vertex IDs that are larger than the total number of vertices."
+        help="Do not remap the vertex IDs that are larger than the total number of vertices." 
     )
     parser.add_argument(
         "--degree-sort-flag",

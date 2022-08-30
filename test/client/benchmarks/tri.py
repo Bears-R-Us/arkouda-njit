@@ -89,7 +89,7 @@ def tri_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
         end = time.time()
         avg = (end-start) / trials
         print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
-        print("Num tris =", tris)
+        print("Num tris =", tris)  
 
 def correctness():
     #TODO: simple correctness test!
