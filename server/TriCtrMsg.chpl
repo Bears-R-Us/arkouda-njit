@@ -400,6 +400,8 @@ module TriCtrMsg {
 
 	  var timer:Timer;
 	  timer.start();
+      var tmptimer:Timer;
+      tmptimer.start();
           coforall loc in Locales {
                 on loc {
                      var ld = src.localSubdomain();
@@ -479,7 +481,8 @@ module TriCtrMsg {
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
-
+          tmptimer.stop();
+          writeln("Elapsed time for triangle Counting ="+(tmptimer.elapsed()):string);
 
           coforall loc in Locales {
                 on loc {
@@ -554,7 +557,7 @@ module TriCtrMsg {
 
           TotalCnt=0;
           subTriSum=0;	  
-	  timer.start();
+	      timer.start();
           proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
                        if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                            return -1;
@@ -630,6 +633,8 @@ module TriCtrMsg {
               return eid;
           }// end of  proc exatEdge(u:int,v:int)
 
+              var tmptimer:Timer;
+              tmptimer.start();
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
@@ -727,6 +732,8 @@ module TriCtrMsg {
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
+          tmptimer.stop();
+          writeln("Elapsed time for triangle Counting minimum search ="+(tmptimer.elapsed()):string);
 
 
           coforall loc in Locales {
@@ -885,6 +892,8 @@ module TriCtrMsg {
 
 	  var timer:Timer;
 	  timer.start();
+      var tmptimer:Timer;
+      tmptimer.start();
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
@@ -1082,6 +1091,8 @@ module TriCtrMsg {
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
+           tmptimer.stop();
+          writeln("Elapsed time for triangle Counting path merge ="+(tmptimer.elapsed()):string);
 
 	   //writeln("Beginning of NeiTriNum");
           coforall loc in Locales {
@@ -1650,24 +1661,24 @@ module TriCtrMsg {
       
 
       if (!Directed) {
-              repMsg=triCtr_ori_kernel(
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a);
-              repMsg=triCtr_kernel(
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a);
+            //   repMsg=triCtr_ori_kernel(
+            //           toSymEntry(ag.getNEIGHBOR(), int).a,
+            //           toSymEntry(ag.getSTART_IDX(), int).a,
+            //           toSymEntry(ag.getSRC(), int).a,
+            //           toSymEntry(ag.getDST(), int).a,
+            //           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+            //           toSymEntry(ag.getSTART_IDX_R(), int).a,
+            //           toSymEntry(ag.getSRC_R(), int).a,
+            //           toSymEntry(ag.getDST_R(), int).a);
+            //   repMsg=triCtr_kernel(
+            //           toSymEntry(ag.getNEIGHBOR(), int).a,
+            //           toSymEntry(ag.getSTART_IDX(), int).a,
+            //           toSymEntry(ag.getSRC(), int).a,
+            //           toSymEntry(ag.getDST(), int).a,
+            //           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+            //           toSymEntry(ag.getSTART_IDX_R(), int).a,
+            //           toSymEntry(ag.getSRC_R(), int).a,
+            //           toSymEntry(ag.getDST_R(), int).a);
               repMsg=triCtr_kernelMST(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -1686,24 +1697,24 @@ module TriCtrMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a); 
-              repMsg=triCtr_kernelSetSmallSearch(
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a);  
-              repMsg=triCtr_kernelListIntersection(
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a);                                                                                    
+    //           repMsg=triCtr_kernelSetSmallSearch(
+    //                   toSymEntry(ag.getNEIGHBOR(), int).a,
+    //                   toSymEntry(ag.getSTART_IDX(), int).a,
+    //                   toSymEntry(ag.getSRC(), int).a,
+    //                   toSymEntry(ag.getDST(), int).a,
+    //                   toSymEntry(ag.getNEIGHBOR_R(), int).a,
+    //                   toSymEntry(ag.getSTART_IDX_R(), int).a,
+    //                   toSymEntry(ag.getSRC_R(), int).a,
+    //                   toSymEntry(ag.getDST_R(), int).a);  
+    //           repMsg=triCtr_kernelListIntersection(
+    //                   toSymEntry(ag.getNEIGHBOR(), int).a,
+    //                   toSymEntry(ag.getSTART_IDX(), int).a,
+    //                   toSymEntry(ag.getSRC(), int).a,
+    //                   toSymEntry(ag.getDST(), int).a,
+    //                   toSymEntry(ag.getNEIGHBOR_R(), int).a,
+    //                   toSymEntry(ag.getSTART_IDX_R(), int).a,
+    //                   toSymEntry(ag.getSRC_R(), int).a,
+    //                   toSymEntry(ag.getDST_R(), int).a);                                                                                    
       }
       
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
