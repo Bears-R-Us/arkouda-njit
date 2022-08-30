@@ -32,7 +32,7 @@ def bfs_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
 
     # Extract the metadata from the dictionary. 
     num_edges = file_dict[only_filename][0]
-    num_vertices = file_dict[only_filename][1]
+    num_vertices = file_dict[only_filename][1] 
     num_cols = file_dict[only_filename][2]
     directed = file_dict[only_filename][3]
 

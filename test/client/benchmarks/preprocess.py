@@ -92,7 +92,7 @@ def create_parser():
         description="Measure the performance of preprocessing a graph."
     )
     parser.add_argument("hostname", help="Hostname of arkouda server")
-    parser.add_argument("port", type=int, help="Port of arkouda server")
+    parser.add_argument("port", type=int, help="Port of arkouda server") 
     parser.add_argument(
         "-t", 
         "--trials", 
