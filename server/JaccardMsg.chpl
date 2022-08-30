@@ -211,7 +211,7 @@ module JaccardMsg {
           */
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry(JaccCoeff);
+          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -483,7 +483,7 @@ module JaccardMsg {
 
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry(JaccCoeff);
+          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -520,28 +520,28 @@ module JaccardMsg {
                   }
 
                   timer.clear();
-                  timer.start();
+                //   timer.start();
 
-                  if (ag.hasA_START_IDX()) {
-                      repMsg=aligned_jaccard_coefficient_u(
-                          toSymEntry(ag.getNEIGHBOR(), int).a,
-                          toSymEntry(ag.getSTART_IDX(), int).a,
-                          toSymEntry(ag.getSRC(), int).a,
-                          toSymEntry(ag.getDST(), int).a,
-                          toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                          toSymEntry(ag.getSTART_IDX_R(), int).a,
-                          toSymEntry(ag.getSRC_R(), int).a,
-                          toSymEntry(ag.getDST_R(), int).a,
-                          toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
-                          toDomArraySymEntry(ag.getA_START_IDX()).domary,
-                          toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
-                          toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
-                          toDomArraySymEntry(ag.getA_SRC_R()).domary,
-                          toDomArraySymEntry(ag.getA_DST_R()).domary);
-                  }
-                  timer.stop();
-                  outMsg= "graph aligned Jaccard takes "+timer.elapsed():string;
-                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                //   if (ag.hasA_START_IDX()) {
+                //       repMsg=aligned_jaccard_coefficient_u(
+                //           toSymEntry(ag.getNEIGHBOR(), int).a,
+                //           toSymEntry(ag.getSTART_IDX(), int).a,
+                //           toSymEntry(ag.getSRC(), int).a,
+                //           toSymEntry(ag.getDST(), int).a,
+                //           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                //           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                //           toSymEntry(ag.getSRC_R(), int).a,
+                //           toSymEntry(ag.getDST_R(), int).a,
+                //           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                //           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                //           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                //           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                //           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                //           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                //   }
+                //   timer.stop();
+                //   outMsg= "graph aligned Jaccard takes "+timer.elapsed():string;
+                //   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   
  
       }
