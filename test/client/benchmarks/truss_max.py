@@ -7,10 +7,10 @@ import numpy as np
 import arkouda as ak
 import arkouda_njit as njit
 
-def bfs_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+def truss_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
                     write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
-    print("GRAPH BFS -- SINGLE MODE")
+    print("GRAPH TRUSS -- SINGLE MODE")
     print("server Hostname =", cfg["serverHostname"])
     print("Number of Locales=", cfg["numLocales"])
     print("number of PUs =", cfg["numPUs"])
@@ -27,6 +27,8 @@ def bfs_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
     # Make a dictionary of the metadata for each of the files used. 
     file_dict = {}
     for line in info_file:
+        if line[0] == "#":
+            continue
         text = line.split()
         file_dict[text[0]] = (int(text[1]), int(text[2]), int(text[3]), int(text[4]))
 
@@ -40,19 +42,20 @@ def bfs_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
     G = njit.graph_file_read(num_edges, num_vertices, num_cols, directed, filename, remap_flag,\
                                 degree_sort_flag, rcm_flag, write_flag, build_aligned_array_flag)
     
-    # Perform the bfs steps.
-    selectroot = np.random.randint(0, num_vertices-1, trials)
+    # Perform the tri cnt steps.
     start = time.time()
-    for root in selectroot:
-        njit.graph_bfs(G, int(root), int(rcm_flag))
+    for i in range(trials):
+        # njit.graph_ktruss(G, 4)
+        njit.graph_ktruss(G, -1)
+        # njit.graph_ktruss(G, -2)
     end = time.time()
     avg = (end-start) / trials
     print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
 
-def bfs_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
+def truss_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
                     write_flag:int, build_aligned_array_flag:int, trials:int):
     cfg = ak.get_config()
-    print("GRAPH BFS -- BATCH MODE")
+    print("GRAPH TRUSS -- BATCH MODE")
     print("server Hostname =", cfg["serverHostname"])
     print("Number of Locales=", cfg["numLocales"])
     print("number of PUs =", cfg["numPUs"])
@@ -67,6 +70,8 @@ def bfs_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
     # Make a dictionary of the metadata for each of the files used. 
     file_dict = {}
     for line in info_file:
+        if line[0] == "#":
+            continue
         text = line.split()
         file_dict[text[0]] = (int(text[1]), int(text[2]), int(text[3]), int(text[4]))
 
@@ -82,14 +87,13 @@ def bfs_graphs(dirname:str, skiplines:int, remap_flag:int, degree_sort_flag:int,
         G = njit.graph_file_read(num_edges, num_vertices, num_cols, directed, filename, remap_flag,\
                                     degree_sort_flag, rcm_flag, write_flag, build_aligned_array_flag)
 
-        # Perform the bfs steps.
-        selectroot = np.random.randint(0, num_vertices-1, trials)
+        # Perform the tri cnt steps.
         start = time.time()
-        for root in selectroot:
-            njit.graph_bfs(G, int(root), int(rcm_flag))
+        for i in range(trials):
+            njit.graph_ktruss(G, -1)
         end = time.time()
         avg = (end-start) / trials
-        print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg)) 
+        print("Average performance for {} trials for graph {}: {}".format(trials, only_filename, avg))
 
 def correctness():
     #TODO: simple correctness test!
@@ -97,7 +101,7 @@ def correctness():
     
 def create_parser():
     parser = argparse.ArgumentParser(
-        description="Measure the performance of breadth-first search on a graph. Must be preprocessed!"
+        description="Measure the performance of connected components on a graph. Must be preprocessed!"
     )
     parser.add_argument("hostname", help="Hostname of arkouda server")
     parser.add_argument("port", type=int, help="Port of arkouda server")
@@ -185,18 +189,18 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
     
-    print("BFS GRAPH BENCHMARK")
+    print("TRUSS GRAPH BENCHMARK")
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
     print(args)
     
     if args.filename is not None:
-        bfs_graph(args.filename, args.skiplines, int(args.no_remap_flag),\
+        truss_graph(args.filename, args.skiplines, int(args.no_remap_flag),\
                         int(args.degree_sort_flag), int(args.rcm_flag), int(args.no_write_flag),\
                         int(args.aligned_ary_flag), args.trials)
     elif args.dirname is not None:
-        bfs_graphs(args.dirname, args.skiplines, int(args.no_remap_flag),\
+        truss_graphs(args.dirname, args.skiplines, int(args.no_remap_flag),\
                         int(args.degree_sort_flag), int(args.rcm_flag), int(args.no_write_flag),\
                         int(args.aligned_ary_flag), args.trials)
     else:

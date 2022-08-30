@@ -7,7 +7,6 @@ import random
 import string
 import arkouda_njit as njit
 
-
 def get_config():
     cfg = ak.get_config()
     print("Number of Locales=", cfg["numLocales"])
@@ -26,7 +25,7 @@ if __name__ == "__main__":
     parser = create_parser()
     args = parser.parse_args()
 
-    print("ARKOUDA CONFIGURATION INFORMATION")
+    print("ARKOUDA CONFIGURATION INFORMATION") 
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
