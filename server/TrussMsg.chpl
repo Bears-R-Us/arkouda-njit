@@ -11580,41 +11580,9 @@ module TrussMsg {
                 PTriCount=0;
                 gEdgeDeleted=-1;
 
-                repMsg=kTrussNaiveMergePath(kValue,
-
-
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-
-
-                      PTriCount,gEdgeDeleted);
-
-
 
                 PTriCount=0;
                 gEdgeDeleted=-1;
-
-                repMsg=kTrussNaiveMinSearch(kValue,
-
-
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-
-
-                      PTriCount,gEdgeDeleted);
-
 
 
                 var AtoTriCount=makeDistArray(Ne,atomic int);
@@ -11735,22 +11703,6 @@ module TrussMsg {
 
                 PTriCount=0;
                 gEdgeDeleted=-1;
-
-                repMsg=MaxTrussNaiveMergePath(kValue,
-
-
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-
-
-                      PTriCount,gEdgeDeleted);
-
 
 
                 var AtoTriCount=makeDistArray(Ne,atomic int);
@@ -11873,43 +11825,11 @@ module TrussMsg {
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoNaiveMergePath(kValue,
-
-
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-
-
-                      PTriCount,gEdgeDeleted);
-
-
 
                 PTriCount=0;
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoNaiveMinSearch(kValue,
-
-
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-
-
-                      PTriCount,gEdgeDeleted);
-
-
 
                 var AtoTriCount=makeDistArray(Ne,atomic int);
 
