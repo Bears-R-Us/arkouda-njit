@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     print("ARKOUDA CONFIGURATION INFORMATION")
     ak.verbose = False
-    ak.connect(args.hostname, args.port)
+    ak.connect(args.hostname, args.port) 
 
     get_config()
 

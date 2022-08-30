@@ -185,7 +185,7 @@ if __name__ == "__main__":
     
     print("JACCARD GRAPH BENCHMARK")
     ak.verbose = False
-    ak.connect(args.hostname, args.port)
+    ak.connect(args.hostname, args.port) 
 
     print(args)
     
