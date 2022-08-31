@@ -84,6 +84,12 @@ module TrussMsg {
       var gEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var AllRemoved:bool;
+      var BigKRange:int=100;
+      var BigKDividedBy:int=10;
+      var SmallKRange:int=16;
+      var SmallKDividedBy:int=4;
+      var ToK:int=100000000;
+
       gEdgeDeleted=-1;
       lEdgeDeleted=-1;
       var kLow=3:int;
@@ -103,7 +109,7 @@ module TrussMsg {
 
       // binary search if key is in ary from index l to h
       proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
+                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
                        //    return -1;
                        //}
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
@@ -224,7 +230,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -241,7 +247,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -270,8 +276,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -306,14 +312,23 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -397,8 +412,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -520,7 +535,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -537,7 +552,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -566,8 +581,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -602,6 +617,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -609,8 +633,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -691,8 +715,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -814,7 +838,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -831,7 +855,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -860,8 +884,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -896,6 +920,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -903,8 +936,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -989,8 +1022,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -1112,7 +1145,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1129,7 +1162,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1158,8 +1191,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -1194,6 +1227,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -1201,8 +1243,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i]=0;
@@ -1352,8 +1394,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -1475,7 +1517,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1492,7 +1534,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1521,8 +1563,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -1557,6 +1599,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -1564,8 +1615,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -1675,8 +1726,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -1798,7 +1849,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1815,7 +1866,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -1844,8 +1895,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -1880,6 +1931,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -1887,8 +1947,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i].write(0);
@@ -2046,8 +2106,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -2081,8 +2141,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF  {
 
 
@@ -2310,8 +2370,8 @@ module TrussMsg {
                   coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -2328,8 +2388,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -2454,7 +2514,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2471,7 +2531,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2500,8 +2560,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -2536,6 +2596,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -2543,8 +2612,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -2648,8 +2717,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -2682,8 +2751,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -2795,8 +2864,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -2813,8 +2882,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -2939,7 +3008,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2956,7 +3025,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -2985,8 +3054,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -3021,6 +3090,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -3028,8 +3106,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -3146,8 +3224,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -3180,8 +3258,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -3302,8 +3380,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -3320,8 +3398,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -3446,7 +3524,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -3463,7 +3541,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -3492,8 +3570,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -3528,6 +3606,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -3535,8 +3622,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -3654,8 +3741,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -3688,8 +3775,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -3810,8 +3897,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -3828,8 +3915,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -3954,7 +4041,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -3971,7 +4058,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4000,8 +4087,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -4036,6 +4123,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -4043,8 +4139,8 @@ module TrussMsg {
               coforall loc in Locales with ( ref SetNextF) {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
 
 
                      forall i in startEdge..endEdge {
@@ -4123,8 +4219,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -4158,8 +4254,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
@@ -4283,8 +4379,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -4299,8 +4395,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -4370,9 +4466,9 @@ module TrussMsg {
 
 //@@@@@@@@@@@@@@@@@@@@@@@@@@@@
 //Begin of Max K-Truss Functions
-      proc OnceMaxTrussNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc BatchMaxTrussNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool{ 
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -4431,7 +4527,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4448,7 +4544,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4474,6 +4570,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -4481,8 +4586,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i]=0;
@@ -4632,8 +4737,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -4657,48 +4762,44 @@ module TrussMsg {
                       ConFlag=false;
               } else {
                       ConFlag=true;
+                      SetCurF.clear();
+                      continue;
               }
               SetCurF.clear();
 
 
 
 
-              
-              N2+=1;
-          }// end while 
-          AllRemoved=true;
-          var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
-                         // each locale only handles the edges owned by itself
-                         var tmpcnt:int=0;
-                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
-                               if ((EdgeDeleted[i]==-1) ) {
-                                   tmpcnt+=1;
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
                                }
-                         }
-                         cnt[here.id]=tmpcnt;
-                      }// end of  on loc
-          } // end of coforall loc in Locales
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
+
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
+          }// end while 
 
 
-          for i in 0..numLocales-1  {
-               if cnt[i]>0 {
-                     AllRemoved=false;
-                     break;
-               }
-          }
 
 
-
-
-
-          return AllRemoved;
-
-      }// end of proc OnceMaxTrussNaiveMergePath
+      }// end of proc BatchMaxTrussNaiveMergePath
 
 
 
@@ -4740,29 +4841,16 @@ module TrussMsg {
 
 
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
 
-                            if kUp-kLow>8 {
-                                kMid=kLow+(kUp-kLow)/8;
-                            } else {
-                                if kUp-kLow>4 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
-                                }
-                            }
-                            while (kMid>kLow) {
-
-                                lEdgeDeleted=gEdgeDeleted;
-                                PlTriCount=PTriCount;
-                                //restore the value for kMid check
-                                //"Try mid=",kMid;
-
-                                AllRemoved=OnceMaxTrussNaiveMergePath(kMid,
+                                 kUp=BatchMaxTrussNaiveMergePath(kLow+1,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -4772,11 +4860,49 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
+                            } else {
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                }
+                            }
+
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
+
+
+                                var tmpK=BatchMaxTrussNaiveMergePath(kMid,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+
+
                                 if (AllRemoved) {
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
+                                    }
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    lEdgeDeleted=gEdgeDeleted;
+                                    PlTriCount=PTriCount;
                                 } else {
                                     kLow=kMid;
+                                    gEdgeDeleted=lEdgeDeleted;
+                                    PTriCount=PlTriCount;
                                 }
                             }
 
@@ -4793,27 +4919,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussNaiveMergePath, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussNaiveMergePath, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussNaiveMergePath, Max K="+kUp:string;
+                    outMsg="After BatchMaxTrussNaiveMergePath, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussNaiveMergePath,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussNaiveMergePath,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussNaiveMergePath, Max K=3";
+                        outMsg="After BatchMaxTrussNaiveMergePath, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussNaiveMergePath,Max K=2";
+                        outMsg="After BatchMaxTrussNaiveMergePath,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -4826,9 +4952,9 @@ module TrussMsg {
 
 
 
-      proc OnceMaxTrussMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc BatchMaxTrussMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -4887,7 +5013,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4904,7 +5030,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -4931,17 +5057,23 @@ module TrussMsg {
 
           timer.start();
 
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
           ConFlag=true;
-          //while (ConFlag) {
-          {
+          while (ConFlag) {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -4967,8 +5099,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF  {
 
 
@@ -5196,8 +5328,8 @@ module TrussMsg {
                   coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -5214,8 +5346,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -5239,43 +5371,36 @@ module TrussMsg {
 
 
 
-
-              
-              N2+=1;
-          }// end while 
-          AllRemoved=true;
-          var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
-                         // each locale only handles the edges owned by itself
-                         var tmpcnt:int=0;
-                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
-                               if ((EdgeDeleted[i]==-1) ) {
-                                   tmpcnt+=1;
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
                                }
-                         }
-                         cnt[here.id]=tmpcnt;
-                      }// end of  on loc
-          } // end of coforall loc in Locales
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
+
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
+          }// end while 
 
 
-          for i in 0..numLocales-1  {
-               if cnt[i]>0 {
-                     AllRemoved=false;
-                     break;
-               }
-          }
 
 
-
-
-
-          return AllRemoved;
-
-      }// end of proc OnceMaxTrussMergePath
+      }// end of proc BatchMaxTrussMergePath
 
 
 
@@ -5317,31 +5442,45 @@ module TrussMsg {
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
 
-                            if kUp-kLow>8 {
-                                kMid=kLow+(kUp-kLow)/8;
+                                 kUp=BatchMaxTrussMergePath(kLow+1,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>4 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
+
+
+
                             while (kMid>kLow) {
 
-                                forall i in 0..Ne-1 {
-                                    lEdgeDeleted[i]=gEdgeDeleted[i];
-                                    aPlTriCount[i].write(aPTriCount[i].read());
-                                //restore the value for kMid check
-                                }
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussMergePath(kMid,
+                                var tmpK =BatchMaxTrussMergePath(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -5352,11 +5491,25 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
+                                    }
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    forall i in 0..Ne-1 {
+                                        lEdgeDeleted[i]=gEdgeDeleted[i];
+                                        aPlTriCount[i].write(aPTriCount[i].read());
+                                    }
                                 } else {
                                     kLow=kMid;
+                                    forall i in 0..Ne-1 {
+                                        gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        aPTriCount[i].write(aPlTriCount[i].read());
+                                    }
                                 }
+
                             }
                             if kMid==kUp-1 {
                                     ConLoop=false;
@@ -5371,27 +5524,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussMergePath, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussMergePath, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussMergePath, Max K="+kUp:string;
+                    outMsg="After BatchMaxTrussMergePath, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussMergePath,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussMergePath,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussMergePath, Max K=3";
+                        outMsg="After BatchMaxTrussMergePath, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussMergePath,Max K=2";
+                        outMsg="After BatchMaxTrussMergePath,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -5404,9 +5557,9 @@ module TrussMsg {
 
 
 
-      proc OnceMaxTrussNonMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc BatchMaxTrussNonMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -5465,7 +5618,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -5482,7 +5635,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -5509,17 +5662,23 @@ module TrussMsg {
 
           timer.start();
 
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
           ConFlag=true;
-          //while (ConFlag) {
-          {
+          while (ConFlag) {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -5544,8 +5703,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -5657,8 +5816,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -5675,8 +5834,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -5700,43 +5859,36 @@ module TrussMsg {
 
 
 
-
-              
-              N2+=1;
-          }// end while 
-          AllRemoved=true;
-          var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
-                         // each locale only handles the edges owned by itself
-                         var tmpcnt:int=0;
-                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
-                               if ((EdgeDeleted[i]==-1) ) {
-                                   tmpcnt+=1;
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
                                }
-                         }
-                         cnt[here.id]=tmpcnt;
-                      }// end of  on loc
-          } // end of coforall loc in Locales
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
+
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
+          }// end while 
 
 
-          for i in 0..numLocales-1  {
-               if cnt[i]>0 {
-                     AllRemoved=false;
-                     break;
-               }
-          }
 
 
-
-
-
-          return AllRemoved;
-
-      }// end of proc OnceMaxTrussNonMinSearch
+      }// end of proc BatchMaxTrussNonMinSearch
 
 
 
@@ -5778,31 +5930,45 @@ module TrussMsg {
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
 
-                            if kUp-kLow>8 {
-                                kMid=kLow+(kUp-kLow)/8;
+                                 kUp=BatchMaxTrussNonMinSearch(kLow+1,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>4 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
+
+
+
                             while (kMid>kLow) {
 
-                                forall i in 0..Ne-1 {
-                                    lEdgeDeleted[i]=gEdgeDeleted[i];
-                                    aPlTriCount[i].write(aPTriCount[i].read());
-                                //restore the value for kMid check
-                                }
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussNonMinSearch(kMid,
+                                var tmpK =BatchMaxTrussNonMinSearch(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -5813,11 +5979,25 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
+                                    }
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    forall i in 0..Ne-1 {
+                                        lEdgeDeleted[i]=gEdgeDeleted[i];
+                                        aPlTriCount[i].write(aPTriCount[i].read());
+                                    }
                                 } else {
                                     kLow=kMid;
+                                    forall i in 0..Ne-1 {
+                                        gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        aPTriCount[i].write(aPlTriCount[i].read());
+                                    }
                                 }
+
                             }
                             if kMid==kUp-1 {
                                     ConLoop=false;
@@ -5832,27 +6012,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussNonMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussNonMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussNonMinSearch, Max K="+kUp:string;
+                    outMsg="After BatchMaxTrussNonMinSearch, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussNonMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussNonMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussNonMinSearch, Max K=3";
+                        outMsg="After BatchMaxTrussNonMinSearch, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussNonMinSearch,Max K=2";
+                        outMsg="After BatchMaxTrussNonMinSearch,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -5865,9 +6045,9 @@ module TrussMsg {
 
 
 
-      proc OnceMaxTrussSeqMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc BatchMaxTrussSeqMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -5926,7 +6106,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -5943,7 +6123,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -5970,17 +6150,23 @@ module TrussMsg {
 
           timer.start();
 
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
           ConFlag=true;
-          //while (ConFlag) {
-          {
+          while (ConFlag) {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -6005,8 +6191,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -6127,8 +6313,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -6145,8 +6331,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -6170,43 +6356,36 @@ module TrussMsg {
 
 
 
-
-              
-              N2+=1;
-          }// end while 
-          AllRemoved=true;
-          var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
-                         // each locale only handles the edges owned by itself
-                         var tmpcnt:int=0;
-                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
-                               if ((EdgeDeleted[i]==-1) ) {
-                                   tmpcnt+=1;
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
                                }
-                         }
-                         cnt[here.id]=tmpcnt;
-                      }// end of  on loc
-          } // end of coforall loc in Locales
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
+
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
+          }// end while 
 
 
-          for i in 0..numLocales-1  {
-               if cnt[i]>0 {
-                     AllRemoved=false;
-                     break;
-               }
-          }
 
 
-
-
-
-          return AllRemoved;
-
-      }// end of proc OnceMaxTrussSeqMinSearch
+      }// end of proc BatchMaxTrussSeqMinSearch
 
 
 
@@ -6248,31 +6427,45 @@ module TrussMsg {
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
 
-                            if kUp-kLow>8 {
-                                kMid=kLow+(kUp-kLow)/8;
+                                 kUp=BatchMaxTrussSeqMinSearch(kLow+1,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>4 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
+
+
+
                             while (kMid>kLow) {
 
-                                forall i in 0..Ne-1 {
-                                    lEdgeDeleted[i]=gEdgeDeleted[i];
-                                    aPlTriCount[i].write(aPTriCount[i].read());
-                                //restore the value for kMid check
-                                }
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussSeqMinSearch(kMid,
+                                var tmpK =BatchMaxTrussSeqMinSearch(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6283,11 +6476,25 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
+                                    }
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    forall i in 0..Ne-1 {
+                                        lEdgeDeleted[i]=gEdgeDeleted[i];
+                                        aPlTriCount[i].write(aPTriCount[i].read());
+                                    }
                                 } else {
                                     kLow=kMid;
+                                    forall i in 0..Ne-1 {
+                                        gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        aPTriCount[i].write(aPlTriCount[i].read());
+                                    }
                                 }
+
                             }
                             if kMid==kUp-1 {
                                     ConLoop=false;
@@ -6302,27 +6509,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussSeqMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussSeqMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussSeqMinSearch, Max K="+kUp:string;
+                    outMsg="After BatchMaxTrussSeqMinSearch, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussSeqMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussSeqMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussSeqMinSearch, Max K=3";
+                        outMsg="After BatchMaxTrussSeqMinSearch, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussSeqMinSearch,Max K=2";
+                        outMsg="After BatchMaxTrussSeqMinSearch,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -6335,9 +6542,9 @@ module TrussMsg {
 
 
 
-      proc OnceMaxTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc BatchMaxTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -6396,7 +6603,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6413,7 +6620,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6440,17 +6647,23 @@ module TrussMsg {
 
           timer.start();
 
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
           ConFlag=true;
-          //while (ConFlag) {
-          {
+          while (ConFlag) {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -6475,8 +6688,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -6597,8 +6810,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -6615,8 +6828,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -6640,43 +6853,36 @@ module TrussMsg {
 
 
 
-
-              
-              N2+=1;
-          }// end while 
-          AllRemoved=true;
-          var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
-                         // each locale only handles the edges owned by itself
-                         var tmpcnt:int=0;
-                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
-                               if ((EdgeDeleted[i]==-1) ) {
-                                   tmpcnt+=1;
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
                                }
-                         }
-                         cnt[here.id]=tmpcnt;
-                      }// end of  on loc
-          } // end of coforall loc in Locales
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
+
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
+          }// end while 
 
 
-          for i in 0..numLocales-1  {
-               if cnt[i]>0 {
-                     AllRemoved=false;
-                     break;
-               }
-          }
 
 
-
-
-
-          return AllRemoved;
-
-      }// end of proc OnceMaxTrussMinSearch
+      }// end of proc BatchMaxTrussMinSearch
 
 
 
@@ -6718,31 +6924,45 @@ module TrussMsg {
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
 
-                            if kUp-kLow>8 {
-                                kMid=kLow+(kUp-kLow)/8;
+                                 kUp=BatchMaxTrussMinSearch(kLow+1,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>4 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
+
+
+
                             while (kMid>kLow) {
 
-                                forall i in 0..Ne-1 {
-                                    lEdgeDeleted[i]=gEdgeDeleted[i];
-                                    aPlTriCount[i].write(aPTriCount[i].read());
-                                //restore the value for kMid check
-                                }
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussMinSearch(kMid,
+                                var tmpK =BatchMaxTrussMinSearch(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -6753,11 +6973,25 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
+                                    }
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    forall i in 0..Ne-1 {
+                                        lEdgeDeleted[i]=gEdgeDeleted[i];
+                                        aPlTriCount[i].write(aPTriCount[i].read());
+                                    }
                                 } else {
                                     kLow=kMid;
+                                    forall i in 0..Ne-1 {
+                                        gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        aPTriCount[i].write(aPlTriCount[i].read());
+                                    }
                                 }
+
                             }
                             if kMid==kUp-1 {
                                     ConLoop=false;
@@ -6772,27 +7006,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussMinSearch, Max K="+kUp:string;
+                    outMsg="After BatchMaxTrussMinSearch, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussMinSearch, Max K=3";
+                        outMsg="After BatchMaxTrussMinSearch, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussMinSearch,Max K=2";
+                        outMsg="After BatchMaxTrussMinSearch,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -6805,9 +7039,9 @@ module TrussMsg {
 
 
 
-      proc OnceMaxTrussMix(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc BatchMaxTrussMix(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -6866,7 +7100,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6883,7 +7117,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -6910,17 +7144,23 @@ module TrussMsg {
 
           timer.start();
 
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
           ConFlag=true;
-          //while (ConFlag) {
-          {
+          while (ConFlag) {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
@@ -6946,8 +7186,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
@@ -7071,8 +7311,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -7087,8 +7327,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -7112,43 +7352,36 @@ module TrussMsg {
 
 
 
-
-              
-              N2+=1;
-          }// end while 
-          AllRemoved=true;
-          var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
-                      on loc {
-                         var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
-                         // each locale only handles the edges owned by itself
-                         var tmpcnt:int=0;
-                         forall i in startEdge..endEdge with (+reduce tmpcnt)  {
-                               if ((EdgeDeleted[i]==-1) ) {
-                                   tmpcnt+=1;
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
                                }
-                         }
-                         cnt[here.id]=tmpcnt;
-                      }// end of  on loc
-          } // end of coforall loc in Locales
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
+
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
+          }// end while 
 
 
-          for i in 0..numLocales-1  {
-               if cnt[i]>0 {
-                     AllRemoved=false;
-                     break;
-               }
-          }
 
 
-
-
-
-          return AllRemoved;
-
-      }// end of proc OnceMaxTrussMix
+      }// end of proc BatchMaxTrussMix
 
 
 
@@ -7190,31 +7423,45 @@ module TrussMsg {
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
 
-                            if kUp-kLow>8 {
-                                kMid=kLow+(kUp-kLow)/8;
+                                 kUp=BatchMaxTrussMix(kLow+1,
+
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>4 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
+
+
+
                             while (kMid>kLow) {
 
-                                forall i in 0..Ne-1 {
-                                    lEdgeDeleted[i]=gEdgeDeleted[i];
-                                    aPlTriCount[i].write(aPTriCount[i].read());
-                                //restore the value for kMid check
-                                }
                                 //"Try mid=",kMid;
 
-                                AllRemoved=OnceMaxTrussMix(kMid,
+                                var tmpK =BatchMaxTrussMix(kMid,
 
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -7225,11 +7472,25 @@ module TrussMsg {
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
+                                    }
                                     kUp=kMid;
-                                    kMid= (kLow+kUp)/2;
+                                    forall i in 0..Ne-1 {
+                                        lEdgeDeleted[i]=gEdgeDeleted[i];
+                                        aPlTriCount[i].write(aPTriCount[i].read());
+                                    }
                                 } else {
                                     kLow=kMid;
+                                    forall i in 0..Ne-1 {
+                                        gEdgeDeleted[i]=lEdgeDeleted[i];
+                                        aPTriCount[i].write(aPlTriCount[i].read());
+                                    }
                                 }
+
                             }
                             if kMid==kUp-1 {
                                     ConLoop=false;
@@ -7244,27 +7505,27 @@ module TrussMsg {
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussMix, Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussMix, Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                    outMsg="After OnceMaxTrussMix, Max K="+kUp:string;
+                    outMsg="After BatchMaxTrussMix, Max K="+kUp:string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
-                    outMsg="After OnceMaxTrussMix,Total execution time ="+(maxtimer.elapsed()):string;
+                    outMsg="After BatchMaxTrussMix,Total execution time ="+(maxtimer.elapsed()):string;
 
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
-                        outMsg="After OnceMaxTrussMix, Max K=3";
+                        outMsg="After BatchMaxTrussMix, Max K=3";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
-                        outMsg="After OnceMaxTrussMix,Max K=2";
+                        outMsg="After BatchMaxTrussMix,Max K=2";
 
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -7344,7 +7605,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7361,7 +7622,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7390,8 +7651,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -7426,14 +7687,23 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -7517,8 +7787,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -7651,7 +7921,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7668,7 +7938,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7697,8 +7967,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -7733,6 +8003,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -7740,8 +8019,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -7822,8 +8101,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -7956,7 +8235,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -7973,7 +8252,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8002,8 +8281,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -8038,6 +8317,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -8045,8 +8333,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
 
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -8131,8 +8419,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -8265,7 +8553,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8282,7 +8570,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8311,8 +8599,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -8347,6 +8635,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -8354,8 +8651,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i]=0;
@@ -8505,8 +8802,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -8639,7 +8936,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8656,7 +8953,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8685,8 +8982,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -8721,6 +9018,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 
@@ -8728,8 +9034,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i]=0;
@@ -8839,8 +9145,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -8973,7 +9279,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -8990,7 +9296,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9019,8 +9325,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -9055,6 +9361,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -9062,8 +9377,8 @@ module TrussMsg {
               coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge {
                          TriCount[i].write(0);
@@ -9221,8 +9536,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -9256,8 +9571,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF  {
 
 
@@ -9485,8 +9800,8 @@ module TrussMsg {
                   coforall loc in Locales  {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -9503,8 +9818,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -9640,7 +9955,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9657,7 +9972,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -9686,8 +10001,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -9722,6 +10037,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -9729,8 +10053,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -9834,8 +10158,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -9868,8 +10192,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -9981,8 +10305,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -9999,8 +10323,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
@@ -10136,7 +10460,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10153,7 +10477,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10182,8 +10506,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -10218,6 +10542,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -10225,8 +10558,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -10343,8 +10676,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -10377,8 +10710,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -10499,8 +10832,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -10517,8 +10850,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -10654,7 +10987,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10671,7 +11004,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -10700,8 +11033,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -10736,6 +11069,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -10743,8 +11085,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
                          TriCount[i].write(0);
@@ -10862,8 +11204,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -10896,8 +11238,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
@@ -11018,8 +11360,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -11036,8 +11378,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1) {
@@ -11173,7 +11515,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> 
           proc exactEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -11190,7 +11532,7 @@ module TrussMsg {
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
           proc findEdge(u:int,v:int):int {
               //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
                     return -1;
                     // we do not accept self-loop
               }
@@ -11219,8 +11561,8 @@ module TrussMsg {
           {
               {
                     //var ld = src.localSubdomain();
-                    //var startEdge = ld.lowBound;
-                    //var endEdge = ld.highBound;
+                    //var startEdge = ld.low;
+                    //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
                     forall i in startEdge..endEdge {
@@ -11255,6 +11597,15 @@ module TrussMsg {
 
 
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 
@@ -11262,8 +11613,8 @@ module TrussMsg {
               coforall loc in Locales with ( ref SetNextF) {
                 on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
 
 
                      forall i in startEdge..endEdge {
@@ -11342,8 +11693,8 @@ module TrussMsg {
               coforall loc in Locales with (ref SetCurF ) {
                   on loc {
                      var ld = src.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     var startEdge = ld.low;
+                     var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
                      forall i in startEdge..endEdge with(ref SetCurF){
 
@@ -11377,8 +11728,8 @@ module TrussMsg {
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
                            var ld = src.localSubdomain();
-                           var startEdge = ld.lowBound;
-                           var endEdge = ld.highBound;
+                           var startEdge = ld.low;
+                           var endEdge = ld.high;
                            forall i in SetCurF with (ref SetNextF) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
@@ -11502,8 +11853,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          forall i in SetCurF {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
@@ -11518,8 +11869,8 @@ module TrussMsg {
                   coforall loc in Locales with (ref SetCurF ) {
                       on loc {
                          var ld = src.localSubdomain();
-                         var startEdge = ld.lowBound;
-                         var endEdge = ld.highBound;
+                         var startEdge = ld.low;
+                         var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
                          forall i in startEdge..endEdge with(ref SetCurF){
                                if (EdgeDeleted[i]==-1)  {
