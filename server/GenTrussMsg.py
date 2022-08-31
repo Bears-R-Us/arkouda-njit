@@ -31,9 +31,17 @@ ParametersBool='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, ds
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool{ '''
 
+ParametersInt='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int{ '''
+
 ParametersBoolAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ '''
+
+ParametersIntAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ '''
 
 ConditionEdgeRemove='''
                                if (EdgeDeleted[i]==-1) {
@@ -239,6 +247,15 @@ TrussDecoFunStart=kTrussFunStart
 #We defind the timer before the truss analysis
 TimerAndWhileStart='''
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+
           ConFlag=true;
           while (ConFlag) {
 '''
@@ -1027,6 +1044,15 @@ NaiveNonMinSearchBodyCodeAtomic=TimerAndWhileStart+NonMinSearchTriCountAtomic+Ma
 #We define new start that need to calculate the total number of triangles first
 TimerAndNoWhileStart='''
           timer.start();
+
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
+          
           //while (ConFlag) {
           {
 '''
@@ -2131,9 +2157,15 @@ TrussMixAtomicBodyCode=TimerAndNoWhileStart+MixMinSearchTriCountAtomic+WhileAndA
 MaxTrussStart='''
           timer.start();
 
+          forall i in EdgeDeleted {
+               if (i!=-1) {
+                    RemovedEdge.add(1);
+               }
+          }
+
+
           ConFlag=true;
-          //while (ConFlag) {
-          {
+          while (ConFlag) {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
@@ -2202,10 +2234,34 @@ TrussEndCheck='''
 
 MaxTrussEndCheck='''
 
+              if (RemovedEdge.read()>=Ne-1) {
+                       ConFlag=false;
+                       AllRemoved=true;
+                       return k;
+              } else {
+                    if k<ToK {
+                          var tmp=MinNumTri[0].read();
+                          for i in 1..numLocales-1 {
+                               if tmp>MinNumTri[i].read() {
+                                   tmp=MinNumTri[i].read();
+                               }
+                          }
+                          k=max(tmp+2,k+1);
+                          forall i in MinNumTri {
+                             i.write(1000000);
+                          }
+                          ConFlag=true;
 
-              
-              N2+=1;
+                    } else {
+                        AllRemoved=false;
+                        return k;
+                    }
+              }
+
           }// end while 
+
+'''
+'''
           AllRemoved=true;
           var cnt:[0..numLocales-1] int=0;
           coforall loc in Locales with (ref SetCurF ) {
@@ -2312,7 +2368,6 @@ def GenReturn(FunName):
 
 def GenMaxReturn(FunName):
 	text='''
-          return AllRemoved;
 '''
 	lastone="      }// end of proc "+FunName
 
@@ -2350,9 +2405,9 @@ def GenTrussFun(FunName,Parameters,BodyCode):
 
 
 def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
-#We first generate fun1, for once max call
-	OnceFunName="Once"+CallFunName
-	head="      proc "+OnceFunName+ParametersBool
+#We first generate fun1, for batch max call
+	BatchFunName="Batch"+CallFunName
+	head="      proc "+BatchFunName+ParametersInt
 	print(head)
 	print(MaxTrussFunStart)
 	print(BodyCode)
@@ -2361,12 +2416,15 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                       ConFlag=false;
               } else {
                       ConFlag=true;
+                      SetCurF.clear();
+                      continue;
               }
               SetCurF.clear();
+
 '''
 	print(txt)
 	print(MaxTrussEndCheck)
-	GenMaxReturn(OnceFunName)
+	GenMaxReturn(BatchFunName)
 
 #We then generate fun2, for achieving the max k truss value
 	Fun2Head="      proc "+CallFunName+Parameters
@@ -2410,27 +2468,44 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 
 
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
+'''
 
-                            if kUp-kLow>50 {
-                                kMid=kLow+(kUp-kLow)/10;
+	text4="                                 kUp="+BatchFunName+"(kLow+1,"
+	text5='''
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
+
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>16 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
-                            while (kMid>kLow) {
 
-                                //restore the value for kMid check
-                                //"Try mid=",kMid;
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
+
 '''
-	text6="                                AllRemoved="+OnceFunName+"(kMid,"
+	text6="                                var tmpK="+BatchFunName+"(kMid,"
 	text7='''
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2440,17 +2515,16 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
+
+
                                 if (AllRemoved) {
-                                    kUp=kMid;
-                                    if kUp-kLow>50 {
-                                        kMid=kLow+(kUp-kLow)/10;
-                                    } else {
-                                        if kUp-kLow>16 {
-                                            kMid=kLow+(kUp-kLow)/4;
-                                        } else {
-                                            kMid= (kLow+kUp)/2;
-                                        }
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
                                     }
+                                    kUp=kMid;
                                     lEdgeDeleted=gEdgeDeleted;
                                     PlTriCount=PTriCount;
                                 } else {
@@ -2473,27 +2547,27 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 '''
-	text10='                    outMsg="After '+OnceFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
+	text10='                    outMsg="After '+BatchFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
 	text11='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 '''
-	text12='                    outMsg="After '+OnceFunName+', Max K="+kUp:string;'
+	text12='                    outMsg="After '+BatchFunName+', Max K="+kUp:string;'
 	text13='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 '''
-	text14='                    outMsg="After '+OnceFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
+	text14='                    outMsg="After '+BatchFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
 	text15='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 '''
-	text16='                        outMsg="After '+OnceFunName+', Max K=3";'
+	text16='                        outMsg="After '+BatchFunName+', Max K=3";'
 	text17='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 '''
-	text18='                        outMsg="After '+OnceFunName+',Max K=2";'
+	text18='                        outMsg="After '+BatchFunName+',Max K=2";'
 	text19='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -2504,8 +2578,8 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 	print(text3)
 
 
-#	print(text4)
-#	print(text5)
+	print(text4)
+	print(text5)
 	print(text6)
 	print(text7)
 #	print(text8)
@@ -2525,17 +2599,17 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
 def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:str):
 #have not finished
 #We first generate fun1, for once max call
-	OnceFunName="Once"+CallFunName
+	BatchFunName="Batch"+CallFunName
 	if IsAtomic:
-		head="      proc "+OnceFunName+ParametersBoolAtomic
+		head="      proc "+BatchFunName+ParametersIntAtomic
 	else:
-		head="      proc "+OnceFunName+ParametersBool
-#	head="      proc "+OnceFunName+ParametersBoolAtomic
+		head="      proc "+BatchFunName+ParametersInt
+#	head="      proc "+BatchFunName+ParametersBoolAtomic
 	print(head)
 	print(MaxTrussFunStart)
 	print(BodyCode)
 	print(MaxTrussEndCheck)
-	GenMaxReturn(OnceFunName)
+	GenMaxReturn(BatchFunName)
 
 #We then generate fun2, for achieving the max k truss value
 	if IsAtomic:
@@ -2643,7 +2717,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                                 }
                                 //"Try mid=",kMid;
 '''
-	text6="                                AllRemoved="+OnceFunName+"(kMid,"
+	text6="                                AllRemoved="+BatchFunName+"(kMid,"
 	text7='''
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2673,27 +2747,27 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 '''
-	text10='                    outMsg="After '+OnceFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
+	text10='                    outMsg="After '+BatchFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
 	text11='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 '''
-	text12='                    outMsg="After '+OnceFunName+', Max K="+kUp:string;'
+	text12='                    outMsg="After '+BatchFunName+', Max K="+kUp:string;'
 	text13='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 '''
-	text14='                    outMsg="After '+OnceFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
+	text14='                    outMsg="After '+BatchFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
 	text15='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 '''
-	text16='                        outMsg="After '+OnceFunName+', Max K=3";'
+	text16='                        outMsg="After '+BatchFunName+', Max K=3";'
 	text17='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 '''
-	text18='                        outMsg="After '+OnceFunName+',Max K=2";'
+	text18='                        outMsg="After '+BatchFunName+',Max K=2";'
 	text19='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -2722,13 +2796,13 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
 
 def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
 #We first generate fun1, for once max call
-	OnceFunName="Once"+CallFunName
-	head="      proc "+OnceFunName+ParametersBoolAtomic
+	BatchFunName="Batch"+CallFunName
+	head="      proc "+BatchFunName+ParametersIntAtomic
 	print(head)
 	print(MaxTrussFunStart)
 	print(BodyCode)
 	print(MaxTrussEndCheck)
-	GenMaxReturn(OnceFunName)
+	GenMaxReturn(BatchFunName)
 
 #We then generate fun2, for achieving the max k truss value
 	Fun2Head="      proc "+CallFunName+ParametersAtomic
@@ -2772,26 +2846,45 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
                 kUp=getupK(toSymEntry(ag.getNEIGHBOR(), int).a, toSymEntry(ag.getNEIGHBOR_R(), int).a)+1;
-                outMsg="Estimated kUp="+kUp:string;
+                outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     while ( ConLoop)  {
+                            ToK=kUp-1;
+                            if (kUp-kLow<SmallKRange) {
+                                // for small kUp, we directly get the answer
+'''          
+	text4="                                 kUp="+BatchFunName+"(kLow+1,"
+	text5='''
+                                     toSymEntry(ag.getNEIGHBOR(), int).a,
+                                     toSymEntry(ag.getSTART_IDX(), int).a,
+                                     toSymEntry(ag.getSRC(), int).a,
+                                     toSymEntry(ag.getDST(), int).a,
+                                     toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                                     toSymEntry(ag.getSTART_IDX_R(), int).a,
+                                     toSymEntry(ag.getSRC_R(), int).a,
+                                     toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                 ConLoop=false;
+                                 continue;
 
-                            if kUp-kLow>50 {
-                                kMid=kLow+(kUp-kLow)/10;
+                            }
+
+                            if kUp-kLow>BigKRange {
+                                kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
-                                if kUp-kLow>16 {
-                                    kMid=kLow+(kUp-kLow)/4;
-                                } else {
-                                    kMid= (kLow+kUp)/2;
+                                if kUp-kLow>SmallKRange {
+                                    kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 }
                             }
+
+
+
                             while (kMid>kLow) {
 
                                 //"Try mid=",kMid;
 '''
-	text6="                                AllRemoved="+OnceFunName+"(kMid,"
+	text6="                                var tmpK ="+BatchFunName+"(kMid,"
 	text7='''
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2802,29 +2895,25 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                 if (AllRemoved) {
-                                    kUp=kMid;
-                                    if kUp-kLow>50 {
-                                         kMid=kLow+(kUp-kLow)/10;
-                                    } else {
-                                        if kUp-kLow>16 {
-                                            kMid=kLow+(kUp-kLow)/4;
-                                        } else {
-                                          kMid= (kLow+kUp)/2;
-                                        }
+                                    if tmpK>kMid {
+                                          kMid=tmpK;
+                                          kUp=kMid+1;
+                                          ConLoop=false;
+                                          continue;
                                     }
+                                    kUp=kMid;
                                     forall i in 0..Ne-1 {
                                         lEdgeDeleted[i]=gEdgeDeleted[i];
                                         aPlTriCount[i].write(aPTriCount[i].read());
-                                    //restore the value for kMid check
                                     }
                                 } else {
                                     kLow=kMid;
                                     forall i in 0..Ne-1 {
                                         gEdgeDeleted[i]=lEdgeDeleted[i];
                                         aPTriCount[i].write(aPlTriCount[i].read());
-                                    //restore the value for kMid check
                                     }
                                 }
+
                             }
                             if kMid==kUp-1 {
                                     ConLoop=false;
@@ -2839,27 +2928,27 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 '''
-	text10='                    outMsg="After '+OnceFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
+	text10='                    outMsg="After '+BatchFunName+', Total execution time ="+(maxtimer.elapsed()):string;'
 	text11='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 '''
-	text12='                    outMsg="After '+OnceFunName+', Max K="+kUp:string;'
+	text12='                    outMsg="After '+BatchFunName+', Max K="+kUp:string;'
 	text13='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 '''
-	text14='                    outMsg="After '+OnceFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
+	text14='                    outMsg="After '+BatchFunName+',Total execution time ="+(maxtimer.elapsed()):string;'
 	text15='''
                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 '''
-	text16='                        outMsg="After '+OnceFunName+', Max K=3";'
+	text16='                        outMsg="After '+BatchFunName+', Max K=3";'
 	text17='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 '''
-	text18='                        outMsg="After '+OnceFunName+',Max K=2";'
+	text18='                        outMsg="After '+BatchFunName+',Max K=2";'
 	text19='''
                         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
@@ -2868,8 +2957,8 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
 	print(text1)
 	print(text2)
 	print(text3)
-#	print(text4)
-#	print(text5)
+	print(text4)
+	print(text5)
 	print(text6)
 	print(text7)
 #	print(text8)
@@ -3137,6 +3226,12 @@ module TrussMsg {
       var gEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var AllRemoved:bool;
+      var BigKRange:int=100;
+      var BigKDividedBy:int=10;
+      var SmallKRange:int=16;
+      var SmallKDividedBy:int=4;
+      var ToK:int=100000000;
+
       gEdgeDeleted=-1;
       lEdgeDeleted=-1;
       var kLow=3:int;
