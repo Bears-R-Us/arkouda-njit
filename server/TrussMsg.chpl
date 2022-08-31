@@ -4773,7 +4773,6 @@ module TrussMsg {
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -4790,7 +4789,7 @@ module TrussMsg {
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -4798,6 +4797,8 @@ module TrussMsg {
 
 
 
+
+          return k;
 
       }// end of proc BatchMaxTrussNaiveMergePath
 
@@ -4870,6 +4871,8 @@ module TrussMsg {
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
@@ -5374,7 +5377,6 @@ module TrussMsg {
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -5391,7 +5393,7 @@ module TrussMsg {
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -5399,6 +5401,8 @@ module TrussMsg {
 
 
 
+
+          return k;
 
       }// end of proc BatchMaxTrussMergePath
 
@@ -5471,12 +5475,16 @@ module TrussMsg {
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
 
 
-                            while (kMid>kLow) {
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
 
                                 //"Try mid=",kMid;
 
@@ -5521,6 +5529,8 @@ module TrussMsg {
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
+                                ToK=kMid+SmallKDividedBy;
+                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
@@ -5862,7 +5872,6 @@ module TrussMsg {
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -5879,7 +5888,7 @@ module TrussMsg {
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -5887,6 +5896,8 @@ module TrussMsg {
 
 
 
+
+          return k;
 
       }// end of proc BatchMaxTrussNonMinSearch
 
@@ -5959,12 +5970,16 @@ module TrussMsg {
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
 
 
-                            while (kMid>kLow) {
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
 
                                 //"Try mid=",kMid;
 
@@ -6009,6 +6024,8 @@ module TrussMsg {
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
+                                ToK=kMid+SmallKDividedBy;
+                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
@@ -6359,7 +6376,6 @@ module TrussMsg {
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -6376,7 +6392,7 @@ module TrussMsg {
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -6384,6 +6400,8 @@ module TrussMsg {
 
 
 
+
+          return k;
 
       }// end of proc BatchMaxTrussSeqMinSearch
 
@@ -6456,12 +6474,16 @@ module TrussMsg {
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
 
 
-                            while (kMid>kLow) {
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
 
                                 //"Try mid=",kMid;
 
@@ -6506,6 +6528,8 @@ module TrussMsg {
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
+                                ToK=kMid+SmallKDividedBy;
+                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
@@ -6856,7 +6880,6 @@ module TrussMsg {
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -6873,7 +6896,7 @@ module TrussMsg {
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -6881,6 +6904,8 @@ module TrussMsg {
 
 
 
+
+          return k;
 
       }// end of proc BatchMaxTrussMinSearch
 
@@ -6953,12 +6978,16 @@ module TrussMsg {
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
 
 
-                            while (kMid>kLow) {
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
 
                                 //"Try mid=",kMid;
 
@@ -7003,6 +7032,8 @@ module TrussMsg {
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
+                                ToK=kMid+SmallKDividedBy;
+                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 
@@ -7355,7 +7386,6 @@ module TrussMsg {
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -7372,7 +7402,7 @@ module TrussMsg {
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -7380,6 +7410,8 @@ module TrussMsg {
 
 
 
+
+          return k;
 
       }// end of proc BatchMaxTrussMix
 
@@ -7452,12 +7484,16 @@ module TrussMsg {
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
 
 
-                            while (kMid>kLow) {
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
 
                                 //"Try mid=",kMid;
 
@@ -7502,6 +7538,8 @@ module TrussMsg {
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
+                                ToK=kMid+SmallKDividedBy;
+                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 

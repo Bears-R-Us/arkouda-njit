@@ -2237,7 +2237,6 @@ MaxTrussEndCheck='''
               if (RemovedEdge.read()>=Ne-1) {
                        ConFlag=false;
                        AllRemoved=true;
-                       return k;
               } else {
                     if k<ToK {
                           var tmp=MinNumTri[0].read();
@@ -2254,7 +2253,7 @@ MaxTrussEndCheck='''
 
                     } else {
                         AllRemoved=false;
-                        return k;
+                        ConFlag=false;
                     }
               }
 
@@ -2368,6 +2367,8 @@ def GenReturn(FunName):
 
 def GenMaxReturn(FunName):
 	text='''
+
+          return k;
 '''
 	lastone="      }// end of proc "+FunName
 
@@ -2498,6 +2499,8 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
@@ -2875,12 +2878,16 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                } else {
+                                
+                                    kMid=(kUp+kLow)/2;
                                 }
                             }
 
 
 
-                            while (kMid>kLow) {
+                            while ((kMid>kLow) && ConLoop) {
+                                ToK=kMid+SmallKDividedBy;
 
                                 //"Try mid=",kMid;
 '''
@@ -2925,6 +2932,8 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
+                                ToK=kMid+SmallKDividedBy;
+                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 '''
@@ -3230,7 +3239,7 @@ module TrussMsg {
       var BigKDividedBy:int=10;
       var SmallKRange:int=16;
       var SmallKDividedBy:int=4;
-      var ToK:int=100000000;
+      var ToK:int=1000;
 
       gEdgeDeleted=-1;
       lEdgeDeleted=-1;
