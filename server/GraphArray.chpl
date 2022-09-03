@@ -146,13 +146,13 @@ module GraphArray {
     * so it may be stored in the Symbol Table (SymTab)
     */
     class DomArraySymEntry:CompositeSymEntry {
-        var dtype = NumPyDType.DType.UNDEF;
+        //var dtype = NumPyDType.DType.UNDEF;
         var domary =makeDistArray(numLocales,DomArray);
 
         proc init(disArray :[?aD] DomArray) {
-            super.init();
-            this.entryType = SymbolEntryType.CompositeSymEntry;
-            assignableTypes.add(this.entryType);
+            super.init(DomArray,0);
+            //this.entryType = SymbolEntryType.CompositeSymEntry;
+            //assignableTypes.add(this.entryType);
             this.domary = disArray;
         }
     }
@@ -162,13 +162,13 @@ module GraphArray {
     * so it may be stored in the Symbol Table (SymTab)
     */
     class GraphSymEntry:CompositeSymEntry {
-        var dtype = NumPyDType.DType.UNDEF;
+        //var dtype = NumPyDType.DType.UNDEF;
         var graph: shared SegGraph;
 
         proc init(segGraph: shared SegGraph) {
-            super.init();
-            this.entryType = SymbolEntryType.CompositeSymEntry;
-            assignableTypes.add(this.entryType);
+            super.init(SegGraph,0);
+            //this.entryType = SymbolEntryType.CompositeSymEntry;
+            //assignableTypes.add(this.entryType);
             this.graph = segGraph;
         }
     }
