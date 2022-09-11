@@ -598,6 +598,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv visited =      ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
 
       return f;
     }
@@ -743,6 +744,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
 
       return f;
     }
@@ -785,7 +787,8 @@ module CCMsg {
               var v = dst[x];
 
 
-              var minindex=min(f[u],f[v],f[f[u]],f[f[v]]);
+              //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+              var minindex=min(f[u],f[v]);
               //we may include more f[f[f[u]]] and f[f[f[v]]] to accelerate the convergence speed
               if(minindex < f_next[u]) {
                 f_next[u] = minindex;
@@ -795,6 +798,7 @@ module CCMsg {
                 f_next[v] = minindex;
                 count+=1;
               }
+              /*
               if(minindex < f_next[f[u]]) {
                 f_next[f[u]] = minindex;
                 count+=1;
@@ -803,7 +807,7 @@ module CCMsg {
                 f_next[f[v]] = minindex;
                 count+=1;
               }
-
+              */
               
             }
           }
@@ -822,6 +826,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
 
       return f;
     }
@@ -882,7 +887,7 @@ module CCMsg {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              if (f2[i] != f3[i]) {
+              if ((f1[i] != f3[i]) || (f2[i]!=f3[i])) {
                 var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 exit(0);
@@ -970,7 +975,7 @@ module CCMsg {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              if (f2[i] != f3[i]) {
+              if ((f1[i] != f3[i]) || (f2[i]!=f3[i])) {
                 var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 exit(0);
