@@ -802,7 +802,12 @@ module CCMsg {
 
 
               //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
-              var minindex=min(f[u],f[v]);
+              var minindex:int;
+              if (numLocales >1) {
+                     minindex=min(f[u],f[v]);
+              } else {
+                     minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+              }
               //we may include more f[f[f[u]]] and f[f[f[v]]] to accelerate the convergence speed
               if(minindex < f_next[u]) {
                 f_next[u] = minindex;
@@ -812,16 +817,24 @@ module CCMsg {
                 f_next[v] = minindex;
                 count+=1;
               }
-              /*
-              if(minindex < f_next[f[u]]) {
-                f_next[f[u]] = minindex;
-                count+=1;
+              if (numLocales==1)  {
+                   if(minindex < f_next[f[u]]) {
+                     f_next[f[u]] = minindex;
+                     count+=1;
+                   }
+                   if(minindex < f_next[f[v]]) {
+                     f_next[f[v]] = minindex;
+                     count+=1;
+                   }
+                   if(minindex < f_next[f[f[u]]]) {
+                     f_next[f[f[u]]] = minindex;
+                     count+=1;
+                   }
+                   if(minindex < f_next[f[f[v]]]) {
+                     f_next[f[f[v]]] = minindex;
+                     count+=1;
+                   }
               }
-              if(minindex < f_next[f[v]]) {
-                f_next[f[v]] = minindex;
-                count+=1;
-              }
-              */
               
             }
           }
