@@ -147,15 +147,19 @@ module GraphArray {
     */
     class DomArraySymEntry:CompositeSymEntry {
         //var dtype = NumPyDType.DType.UNDEF;
+        //type etype = int;
         var domary =makeDistArray(numLocales,DomArray);
 
         proc init(disArray :[?aD] DomArray) {
+            //super.init(etype,0);
             super.init(DomArray,0);
-            //this.entryType = SymbolEntryType.CompositeSymEntry;
-            //assignableTypes.add(this.entryType);
+            this.entryType = SymbolEntryType.CompositeSymEntry;
+            assignableTypes.add(this.entryType);
             this.domary = disArray;
         }
     }
+
+
 
     /**
     * GraphSymEntry is the wrapper class around SegGraph
@@ -163,12 +167,14 @@ module GraphArray {
     */
     class GraphSymEntry:CompositeSymEntry {
         //var dtype = NumPyDType.DType.UNDEF;
+        //type etype = int;
         var graph: shared SegGraph;
 
         proc init(segGraph: shared SegGraph) {
+            //super.init(etype,0);
             super.init(SegGraph,0);
-            //this.entryType = SymbolEntryType.CompositeSymEntry;
-            //assignableTypes.add(this.entryType);
+            this.entryType = SymbolEntryType.CompositeSymEntry;
+            assignableTypes.add(this.entryType);
             this.graph = segGraph;
         }
     }
