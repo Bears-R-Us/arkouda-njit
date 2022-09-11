@@ -769,6 +769,20 @@ module CCMsg {
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
             f_next[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                     f_next[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                     f_next[i]=tmpv;
+                }
+            }
           }
         }
       }
