@@ -791,22 +791,23 @@ module CCMsg {
       var itera = 1;
       while(!converged) {
         var count:int=0;
-        coforall loc in Locales with ( + reduce count) {
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
               var u = src[x];
               var v = dst[x];
 
 
               //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               var minindex:int;
-              if (numLocales >1) {
-                     minindex=min(f[u],f[v]);
-              } else {
+              if ((numLocales ==1) || (itera %5==0) ) {
                      minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+              } else {
+                     minindex=min(f[u],f[v]);
               }
               //we may include more f[f[f[u]]] and f[f[f[v]]] to accelerate the convergence speed
               if(minindex < f_next[u]) {
@@ -817,7 +818,7 @@ module CCMsg {
                 f_next[v] = minindex;
                 count+=1;
               }
-              if (numLocales==1)  {
+              if ( (numLocales==1) || (itera % 5 == 0) ) {
                    if(minindex < f_next[f[u]]) {
                      f_next[f[u]] = minindex;
                      count+=1;
@@ -829,10 +830,12 @@ module CCMsg {
                    if(minindex < f_next[f[f[u]]]) {
                      f_next[f[f[u]]] = minindex;
                      count+=1;
+                     count1+=1;
                    }
                    if(minindex < f_next[f[f[v]]]) {
                      f_next[f[f[v]]] = minindex;
                      count+=1;
+                     count1+=1;
                    }
               }
               
@@ -844,7 +847,7 @@ module CCMsg {
         f = f_next; 
 
 
-        if(count == 0) {
+        if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
           converged = true;
         }
         else {
