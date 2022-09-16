@@ -248,6 +248,7 @@ TrussDecoFunStart=kTrussFunStart
 TimerAndWhileStart='''
           timer.start();
 
+          RemovedEdge.write(0);
           forall i in EdgeDeleted {
                if (i!=-1) {
                     RemovedEdge.add(1);
@@ -1045,6 +1046,7 @@ NaiveNonMinSearchBodyCodeAtomic=TimerAndWhileStart+NonMinSearchTriCountAtomic+Ma
 TimerAndNoWhileStart='''
           timer.start();
 
+          RemovedEdge.write(0);
           forall i in EdgeDeleted {
                if (i!=-1) {
                     RemovedEdge.add(1);
@@ -2234,28 +2236,20 @@ TrussEndCheck='''
 
 MaxTrussEndCheck='''
 
-              if (RemovedEdge.read()>=Ne-1) {
+              if (RemovedEdge.read()>=Ne) {
                        ConFlag=false;
                        AllRemoved=true;
+                      
               } else {
+                    AllRemoved=false;
                     if k<ToK {
-                          var tmp=MinNumTri[0].read();
-                          for i in 1..numLocales-1 {
-                               if tmp>MinNumTri[i].read() {
-                                   tmp=MinNumTri[i].read();
-                               }
-                          }
-                          k=max(tmp+2,k+1);
-                          forall i in MinNumTri {
-                             i.write(1000000);
-                          }
+                          k=k+1;
                           ConFlag=true;
-
                     } else {
-                        AllRemoved=false;
                         ConFlag=false;
                     }
               }
+              //writeln("k=",k ," Removed Edge=",RemovedEdge.read()," Ne=",Ne, " AllRemoved=",AllRemoved);
 
           }// end while 
 
@@ -2306,6 +2300,7 @@ DecompositionEndCheck='''
                   if (RemovedEdge.read()<Ne) {
                           ConFlag=true;
                           var tmp=MinNumTri[0].read();
+                          var oldk=k;
                           for i in 1..numLocales-1 {
                                if tmp>MinNumTri[i].read() {
                                    tmp=MinNumTri[i].read();
@@ -2316,7 +2311,12 @@ DecompositionEndCheck='''
                              i.write(1000000);
                           }
                           largest=RemovedEdge.read();
-                  } 
+                          AllRemoved=false;
+                          //writeln("Improve k from ",oldk, " to ",k);
+                  } else {
+                      AllRemoved=true;
+                  }
+                  //writeln("k=", k, " Removed Edge=",RemovedEdge.read()," Ne=",Ne, " AllRemoved=",AllRemoved);
               }
               
               N2+=1;
@@ -2473,13 +2473,16 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+
+
                     while ( ConLoop)  {
                             ToK=kUp-1;
+                            // we only check k to ToK
+                            //writeln("After ConLoop ToK=",ToK);
                             if (kUp-kLow<SmallKRange) {
                                 // for small kUp, we directly get the answer
-'''
-
-	text4="                                 kUp="+BatchFunName+"(kLow+1,"
+'''          
+	text4="                                 var tmpkUp="+BatchFunName+"(kLow+1,"
 	text5='''
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2490,25 +2493,26 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
                                  ConLoop=false;
+                                 //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
+                                 if AllRemoved {
+                                     kUp=tmpkUp-1;
+                                 }
                                  continue;
-
                             }
-
                             if kUp-kLow>BigKRange {
                                 kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
                                 if kUp-kLow>SmallKRange {
                                     kMid=kLow+(kUp-kLow)/SmallKDividedBy;
                                 } else {
+                                
                                     kMid=(kUp+kLow)/2;
                                 }
                             }
-
                             while ((kMid>kLow) && ConLoop) {
                                 ToK=kMid+SmallKDividedBy;
-
 '''
-	text6="                                var tmpK="+BatchFunName+"(kMid,"
+	text6="                                var tmpK ="+BatchFunName+"(kMid,"
 	text7='''
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2518,32 +2522,44 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-
-
+                                //writeln("1 After kMid>kLow  tmpK=",tmpK," kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
                                 if (AllRemoved) {
                                     if tmpK>kMid {
-                                          kMid=tmpK;
+                                          kMid=tmpK-1;
                                           kUp=kMid+1;
                                           ConLoop=false;
                                           continue;
                                     }
                                     kUp=kMid;
+                                    if (kUp-kLow)>BigKRange {
+                                        kMid=kLow+(kUp-kLow)/BigKDividedBy;
+                                    } else {
+                                        if (kUp-kLow)>SmallKRange {
+                                            kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                        } else {
+                                            kMid=(kUp+kLow)/2;
+                                        }
+                                    }
+
                                     lEdgeDeleted=gEdgeDeleted;
                                     PlTriCount=PTriCount;
                                 } else {
-                                    kLow=kMid;
+                                    kLow=tmpK;
+                                    kMid=tmpK;
                                     gEdgeDeleted=lEdgeDeleted;
                                     PTriCount=PlTriCount;
                                 }
+                                //writeln("2 After kMid>kLow  tmpK=",tmpK," kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
+
                             }
 
-
-                            if kMid==kUp-1 {
+                            if kMid>=kUp-1 {
                                     ConLoop=false;
+                                    //writeln("After kMid>kUp kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
                                     kUp=kMid;
                             } 
-                            
                     }// end of while
+
                     var countName = st.nextName();
                     var countEntry = new shared SymEntry(lEdgeDeleted);
                     st.addEntry(countName, countEntry);
@@ -2853,12 +2869,17 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+
+
+
                     while ( ConLoop)  {
                             ToK=kUp-1;
+                            // we only check k to ToK
+                            //writeln("After ConLoop ToK=",ToK);
                             if (kUp-kLow<SmallKRange) {
                                 // for small kUp, we directly get the answer
 '''          
-	text4="                                 kUp="+BatchFunName+"(kLow+1,"
+	text4="                                 var tmpkUp="+BatchFunName+"(kLow+1,"
 	text5='''
                                      toSymEntry(ag.getNEIGHBOR(), int).a,
                                      toSymEntry(ag.getSTART_IDX(), int).a,
@@ -2869,10 +2890,12 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
                                  ConLoop=false;
+                                 //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
+                                 if AllRemoved {
+                                     kUp=kUp-1;
+                                 }
                                  continue;
-
                             }
-
                             if kUp-kLow>BigKRange {
                                 kMid=kLow+(kUp-kLow)/BigKDividedBy;
                             } else {
@@ -2883,13 +2906,8 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                     kMid=(kUp+kLow)/2;
                                 }
                             }
-
-
-
                             while ((kMid>kLow) && ConLoop) {
                                 ToK=kMid+SmallKDividedBy;
-
-                                //"Try mid=",kMid;
 '''
 	text6="                                var tmpK ="+BatchFunName+"(kMid,"
 	text7='''
@@ -2901,29 +2919,44 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
+                                //writeln("1 After kMid>kLow  tmpK=",tmpK," kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
                                 if (AllRemoved) {
                                     if tmpK>kMid {
-                                          kMid=tmpK;
+                                          kMid=tmpK-1;
                                           kUp=kMid+1;
                                           ConLoop=false;
                                           continue;
                                     }
                                     kUp=kMid;
+                                    if (kUp-kLow)>BigKRange {
+                                        kMid=kLow+(kUp-kLow)/BigKDividedBy;
+                                    } else {
+                                        if (kUp-kLow)>SmallKRange {
+                                            kMid=kLow+(kUp-kLow)/SmallKDividedBy;
+                                        } else {
+                                            kMid=(kUp+kLow)/2;
+                                        }
+                                    }
+
                                     forall i in 0..Ne-1 {
                                         lEdgeDeleted[i]=gEdgeDeleted[i];
                                         aPlTriCount[i].write(aPTriCount[i].read());
                                     }
                                 } else {
-                                    kLow=kMid;
+                                    kLow=tmpK;
+                                    kMid=tmpK;
                                     forall i in 0..Ne-1 {
                                         gEdgeDeleted[i]=lEdgeDeleted[i];
                                         aPTriCount[i].write(aPlTriCount[i].read());
                                     }
                                 }
+                                //writeln("2 After kMid>kLow  tmpK=",tmpK," kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
 
                             }
-                            if kMid==kUp-1 {
+
+                            if kMid>=kUp-1 {
                                     ConLoop=false;
+                                    //writeln("After kMid>kUp kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
                                     kUp=kMid;
                             } 
                     }// end of while
@@ -2932,8 +2965,6 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
-                                ToK=kMid+SmallKDividedBy;
-                                ToK=kMid+SmallKDividedBy;
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
 '''
@@ -3112,7 +3143,7 @@ def GenCompleteTest():
 	print(text31)
 	print(InitialCount)
 	print("                kValue=3;")
-#	GenFunCall(False,"TrussDecoNaiveMergePath")
+	GenFunCall(False,"TrussDecoNaiveMergePath")
 	print(InitialCount)
 	print("                kValue=3;")
 #	GenFunCall(False,"TrussDecoNaiveMinSearch")
@@ -3239,7 +3270,7 @@ module TrussMsg {
       var BigKDividedBy:int=10;
       var SmallKRange:int=16;
       var SmallKDividedBy:int=4;
-      var ToK:int=1000;
+      var ToK:int=100000;
 
       gEdgeDeleted=-1;
       lEdgeDeleted=-1;
