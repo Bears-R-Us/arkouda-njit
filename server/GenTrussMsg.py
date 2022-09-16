@@ -3143,7 +3143,7 @@ def GenCompleteTest():
 	print(text31)
 	print(InitialCount)
 	print("                kValue=3;")
-	GenFunCall(False,"TrussDecoNaiveMergePath")
+#	GenFunCall(False,"TrussDecoNaiveMergePath")
 	print(InitialCount)
 	print("                kValue=3;")
 #	GenFunCall(False,"TrussDecoNaiveMinSearch")

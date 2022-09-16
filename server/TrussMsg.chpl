@@ -12387,22 +12387,6 @@ module TrussMsg {
                 gEdgeDeleted=-1;
 
                 kValue=3;
-                repMsg=TrussDecoNaiveMergePath(kValue,
-
-
-                      toSymEntry(ag.getNEIGHBOR(), int).a,
-                      toSymEntry(ag.getSTART_IDX(), int).a,
-                      toSymEntry(ag.getSRC(), int).a,
-                      toSymEntry(ag.getDST(), int).a,
-                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                      toSymEntry(ag.getSTART_IDX_R(), int).a,
-                      toSymEntry(ag.getSRC_R(), int).a,
-                      toSymEntry(ag.getDST_R(), int).a,
-
-
-                      PTriCount,gEdgeDeleted);
-
-
 
                 PTriCount=0;
                 gEdgeDeleted=-1;
