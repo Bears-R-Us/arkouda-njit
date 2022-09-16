@@ -824,20 +824,20 @@ module CCMsg {
                    if(minindex < f_next[f[u]]) {
                      f_next[f[u]] = minindex;
                      count+=1;
+                     count1+=1;
                    }
                    if(minindex < f_next[f[v]]) {
                      f_next[f[v]] = minindex;
                      count+=1;
+                     count1+=1;
                    }
                    if(minindex < f_next[f[f[u]]]) {
                      f_next[f[f[u]]] = minindex;
                      count+=1;
-                     count1+=1;
                    }
                    if(minindex < f_next[f[f[v]]]) {
                      f_next[f[f[v]]] = minindex;
                      count+=1;
-                     count1+=1;
                    }
               }
               
