@@ -2526,7 +2526,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
@@ -2923,7 +2923,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }

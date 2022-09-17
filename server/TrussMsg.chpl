@@ -4902,7 +4902,7 @@ module TrussMsg {
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
@@ -5516,7 +5516,7 @@ module TrussMsg {
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
@@ -6018,7 +6018,7 @@ module TrussMsg {
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
@@ -6529,7 +6529,7 @@ module TrussMsg {
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
@@ -7040,7 +7040,7 @@ module TrussMsg {
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
@@ -7553,7 +7553,7 @@ module TrussMsg {
                                 if (AllRemoved) {
                                     if tmpK>kMid {
                                           kMid=tmpK-1;
-                                          kUp=kMid+1;
+                                          kUp=kMid;
                                           ConLoop=false;
                                           continue;
                                     }
