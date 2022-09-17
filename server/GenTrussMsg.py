@@ -2496,6 +2496,8 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                 } else {
+                                     kUp=tmpkUp;
                                  }
                                  continue;
                             }
@@ -2892,7 +2894,9 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                  ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
-                                     kUp=kUp-1;
+                                     kUp=tmpkUp-1;
+                                 } else {
+                                     kUp=tmpkUp;
                                  }
                                  continue;
                             }
