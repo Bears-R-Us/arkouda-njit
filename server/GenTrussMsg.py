@@ -2473,13 +2473,14 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
                     while ( ConLoop)  {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange)||FirstEntry) {
                                 // for small kUp, we directly get the answer
 '''          
 	text4="                                 var tmpkUp="+BatchFunName+"(kLow+1,"
@@ -2499,6 +2500,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
@@ -2871,6 +2873,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
 
@@ -2878,7 +2881,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 // for small kUp, we directly get the answer
 '''          
 	text4="                                 var tmpkUp="+BatchFunName+"(kLow+1,"
@@ -2898,6 +2901,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {

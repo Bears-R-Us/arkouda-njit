@@ -4849,13 +4849,14 @@ module TrussMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
                     while ( ConLoop)  {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange)||FirstEntry) {
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussNaiveMergePath(kLow+1,
@@ -4875,6 +4876,7 @@ module TrussMsg {
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
@@ -5464,6 +5466,7 @@ module TrussMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
 
@@ -5471,7 +5474,7 @@ module TrussMsg {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussMergePath(kLow+1,
@@ -5491,6 +5494,7 @@ module TrussMsg {
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
@@ -5968,6 +5972,7 @@ module TrussMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
 
@@ -5975,7 +5980,7 @@ module TrussMsg {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussNonMinSearch(kLow+1,
@@ -5995,6 +6000,7 @@ module TrussMsg {
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
@@ -6481,6 +6487,7 @@ module TrussMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
 
@@ -6488,7 +6495,7 @@ module TrussMsg {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussSeqMinSearch(kLow+1,
@@ -6508,6 +6515,7 @@ module TrussMsg {
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
@@ -6994,6 +7002,7 @@ module TrussMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
 
@@ -7001,7 +7010,7 @@ module TrussMsg {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussMinSearch(kLow+1,
@@ -7021,6 +7030,7 @@ module TrussMsg {
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
@@ -7509,6 +7519,7 @@ module TrussMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
+                    var FirstEntry:bool=true;
 
 
 
@@ -7516,7 +7527,7 @@ module TrussMsg {
                             ToK=kUp-1;
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
-                            if (kUp-kLow<SmallKRange) {
+                            if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussMix(kLow+1,
@@ -7536,6 +7547,7 @@ module TrussMsg {
                                  } else {
                                      kUp=tmpkUp;
                                  }
+                                 FirstEntry=false;
                                  continue;
                             }
                             if kUp-kLow>BigKRange {
