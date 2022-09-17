@@ -2481,6 +2481,9 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange)||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 '''          
 	text4="                                 var tmpkUp="+BatchFunName+"(kLow+1,"
@@ -2498,7 +2501,11 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -2882,6 +2889,9 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 '''          
 	text4="                                 var tmpkUp="+BatchFunName+"(kLow+1,"
@@ -2899,7 +2909,11 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
