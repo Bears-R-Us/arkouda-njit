@@ -3266,10 +3266,10 @@ module TrussMsg {
       var gEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
       var AllRemoved:bool;
-      var BigKRange:int=200;
-      var BigKDividedBy:int=8;
+      var BigKRange:int=100;
+      var BigKDividedBy:int=10;
       var SmallKRange:int=32;
-      var SmallKDividedBy:int=4;
+      var SmallKDividedBy:int=5;
       var ToK:int=100000;
 
       gEdgeDeleted=-1;
