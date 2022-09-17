@@ -4857,6 +4857,9 @@ module TrussMsg {
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange)||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussNaiveMergePath(kLow+1,
@@ -4874,7 +4877,11 @@ module TrussMsg {
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -5475,6 +5482,9 @@ module TrussMsg {
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussMergePath(kLow+1,
@@ -5492,7 +5502,11 @@ module TrussMsg {
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -5981,6 +5995,9 @@ module TrussMsg {
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussNonMinSearch(kLow+1,
@@ -5998,7 +6015,11 @@ module TrussMsg {
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -6496,6 +6517,9 @@ module TrussMsg {
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussSeqMinSearch(kLow+1,
@@ -6513,7 +6537,11 @@ module TrussMsg {
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -7011,6 +7039,9 @@ module TrussMsg {
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussMinSearch(kLow+1,
@@ -7028,7 +7059,11 @@ module TrussMsg {
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -7528,6 +7563,9 @@ module TrussMsg {
                             // we only check k to ToK
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
+                                if (FirstEntry) {
+                                    ToK=kLow+SmallKRange;
+                                }
                                 // for small kUp, we directly get the answer
 
                                  var tmpkUp=BatchMaxTrussMix(kLow+1,
@@ -7545,7 +7583,11 @@ module TrussMsg {
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
                                  } else {
-                                     kUp=tmpkUp;
+                                     if (!FirstEntry) {
+                                          kUp=tmpkUp;
+                                     } else {
+                                          kLow=tmpkUp;
+                                     }
                                  }
                                  FirstEntry=false;
                                  continue;
