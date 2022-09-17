@@ -4858,7 +4858,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange)||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -5483,7 +5483,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -5996,7 +5996,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -6518,7 +6518,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -7040,7 +7040,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -7564,7 +7564,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 
