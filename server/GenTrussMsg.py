@@ -2482,7 +2482,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange)||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 '''          
@@ -2890,7 +2890,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKRange;
+                                    ToK=kLow+SmallKDividedBy;
                                 }
                                 // for small kUp, we directly get the answer
 '''          
