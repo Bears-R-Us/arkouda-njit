@@ -760,6 +760,7 @@ module CCMsg {
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, int); 
       var gf = makeDistArray(Nv, int);
+      var gf_next = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
       var diff = makeDistArray(Nv, int);
 
@@ -788,6 +789,15 @@ module CCMsg {
           }
         }
       }
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+               gf[i]=f[f[i]];
+          }
+        }
+      }
 
       var converged:bool = false;
       var itera = 1;
@@ -806,12 +816,13 @@ module CCMsg {
 
               //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               var minindex:int;
-              if ((numLocales ==1) || (itera %JumpSteps==0) ) {
+              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
+                     //minindex=min(f[u],f[v],gf[u],gf[v]);
+                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
                      minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               } else {
                      minindex=min(f[u],f[v]);
               }
-              //we may include more f[f[f[u]]] and f[f[f[v]]] to accelerate the convergence speed
               if(minindex < f_next[u]) {
                 f_next[u] = minindex;
                 count+=1;
@@ -848,8 +859,8 @@ module CCMsg {
 
         f = f_next; 
 
-
         if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        //if( (count==0) ) {
           converged = true;
         }
         else {
@@ -864,11 +875,310 @@ module CCMsg {
     }
 
 
+
+
+    // FastSpread: a  propogation based connected components algorithm
+    proc cc_fs_aligned0(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, 
+                    start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        a_nei:[?D21] DomArray, a_start_i:[?D22] DomArray,
+                        a_neiR:[?D31] DomArray, a_start_iR:[?D32] DomArray,
+                        a_srcR:[?D41] DomArray, a_dstR:[?D42] DomArray
+                     ) throws {
+
+
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_next = makeDistArray(Nv, int); 
+      var f1:[D21] DomArray;
+      var f1_next:[D21] DomArray;
+
+      var gf = makeDistArray(Nv, int);
+      var gf_next = makeDistArray(Nv, int);
+      var dup = makeDistArray(Nv, int);
+      var diff = makeDistArray(Nv, int);
+
+      writeln("D21=",D21," D41=",D41);
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = a_nei[here.id].DO.lowBound;
+          var vertexEnd = a_nei[here.id].DO.highBound;
+          writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
+          forall i in vertexBegin..vertexEnd {
+            f1[here.id].A[i] = i;
+            f1_next[here.id].A[i] = i;
+            if (a_nei[here.id].A[i] >0) {
+                var tmpv=dst[a_start_i[here.id].A[i]];
+                if ( tmpv <i ) {
+                     f1[here.id].A[i]=tmpv;
+                     f1_next[here.id].A[i]=tmpv;
+                }
+            }
+            if (a_neiR[here.id].A[i] >0) {
+                var tmpv=dstR[a_start_iR[here.id].A[i]];
+                if ( tmpv <f1[here.id].A[i] ) {
+                     f1[here.id].A[i]=tmpv;
+                     f1_next[here.id].A[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+              var fu,fv,ffu,ffv,fffu,fffv:int;
+              var locu1,locv1,locu2,locv2:int;
+
+              //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+              var minindex:int;
+              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
+                     //minindex=min(f[u],f[v],gf[u],gf[v]);
+                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
+                     proc VertexToLocale(low:int,high:int,v:int):int {
+                          var mid=(low+high)/2;
+                          if ( (a_nei[mid].DO.lowBound <=v ) && (a_nei[mid].DO.highBound >=v) ) {
+                                return mid;
+                          } else {
+                               if (a_nei[mid].DO.lowBound > v) {
+                                   return VertexToLocale(low,mid-1,v);
+                               } else {
+                                   return VertexToLocale(mid+1,high,v);
+                               }
+                          }
+                     }
+
+                     fu=f1[here.id].A[u];
+                     fv=f1[here.id].A[v];
+
+                     locu1=VertexToLocale(0,numLocales-1,fu);
+                     locv1=VertexToLocale(0,numLocales-1,fv);
+
+                     ffu=f1[locu1].A[fu];
+                     ffv=f1[locv1].A[fv];
+
+                     locu2=VertexToLocale(0,numLocales-1,ffu);
+                     locv2=VertexToLocale(0,numLocales-1,ffv);
+
+                     fffu=f1[locu2].A[ffu];
+                     fffv=f1[locv2].A[ffv];
+
+                     minindex=min(fu,fv,ffu,ffv,fffu,fffv);
+              } else {
+                     minindex=min(fu,fv);
+              }
+              if(minindex < f1_next[here.id].A[u]) {
+                  f1_next[here.id].A[u] = minindex;
+                  count+=1;
+              }
+              if(minindex < f1_next[here.id].A[v]) {
+                  f1_next[here.id].A[v] = minindex;
+                  count+=1;
+              }
+              if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
+                   
+                   if(minindex < f1_next[locu1].A[fu]) {
+                       f1_next[locu1].A[fu] = minindex;
+                       count+=1;
+                       count1+=1;
+                   }
+                   if(minindex < f1_next[locv1].A[fv]) {
+                       f1_next[locv1].A[fv] = minindex;
+                       count+=1;
+                       count1+=1;
+                   }
+                   if(minindex < f1_next[locu2].A[ffu]) {
+                       f1_next[locu2].A[ffu] = minindex;
+                       count+=1;
+                   }
+                   if(minindex < f1_next[locv2].A[ffv]) {
+                       f1_next[locv2].A[ffv] = minindex;
+                       count+=1;
+                   }
+              }
+              
+              var vertexBegin = a_nei[here.id].DO.lowBound;
+              var vertexEnd = a_nei[here.id].DO.highBound;
+              forall i in vertexBegin..vertexEnd {
+                   f1[here.id].A[i]=f1_next[here.id].A[i];
+              }
+
+            }//end of loc
+          }//end of coforall
+        }
+
+
+        if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        //if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
+
+
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = a_nei[here.id].DO.lowBound;
+          var vertexEnd = a_nei[here.id].DO.highBound;
+          forall i in vertexBegin..vertexEnd {
+               f[i]=f1[here.id].A[i];
+          }
+       }
+     }
+
+
+      return f;
+    }
+
+
+    // FastSpread: a  propogation based connected components algorithm
+    proc cc_fs_aligned1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, 
+                    start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                        a_nei:[?D21] DomArray, a_start_i:[?D22] DomArray,
+                        a_neiR:[?D31] DomArray, a_start_iR:[?D32] DomArray,
+                        a_srcR:[?D41] DomArray, a_dstR:[?D42] DomArray 
+                     ) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_next = makeDistArray(Nv, int); 
+      var f1:[D21] DomArray;
+      var f1_next:[D21] DomArray;
+      var gf = makeDistArray(Nv, int);
+      var gf_next = makeDistArray(Nv, int);
+      var dup = makeDistArray(Nv, int);
+      var diff = makeDistArray(Nv, int);
+
+      writeln("D21=",D21," D41=",D41);
+      // Initialize f and f_next in distributed memory.
+      coforall loc in Locales {
+            on loc {
+                var vertexBegin = a_nei[here.id].DO.lowBound;
+                var vertexEnd = a_nei[here.id].DO.highBound;
+                writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
+                forall i in vertexBegin..vertexEnd {
+                    f1[here.id].A[i] = i;
+                    f1_next[here.id].A[i] = i;
+                    if (a_nei[here.id].A[i] >0) {
+                        var tmpv=dst[a_start_i[here.id].A[i]];
+                        if ( tmpv <i ) {
+                             f1[here.id].A[i]=tmpv;
+                             f1_next[here.id].A[i]=tmpv;
+                        }
+                    }
+                    if (a_neiR[here.id].A[i] >0) {
+                        var tmpv=dstR[a_start_iR[here.id].A[i]];
+                        if ( tmpv <f1[here.id].A[i] ) {
+                             f1[here.id].A[i]=tmpv;
+                             f1_next[here.id].A[i]=tmpv;
+                        }
+                    }
+                }
+            }//end of loc
+      }//end of coforall
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+
+            var vertexBegin = a_nei[here.id].DO.lowBound;
+            var vertexEnd = a_nei[here.id].DO.highBound;
+
+            forall x in vertexBegin..vertexEnd  with ( + reduce count,+ reduce count1)  {
+              var minval:int;
+              if (a_nei[here.id].A[x] >0) { 
+                  var edgeBegin = a_start_i[here.id].A[x];
+                  var edgeEnd = edgeBegin+a_nei[here.id].A[x]-1;
+                  minval=f1_next[here.id].A[x] ;
+                  for i in edgeBegin..edgeEnd  {
+                        var tmp2=f1[here.id].A[dst[i]];
+                        if minval>tmp2 {
+                             minval=tmp2;  
+                             count+=1;
+                        }
+                  }
+                  f1_next[here.id].A[x]=minval;
+              }
+              if (a_neiR[here.id].A[x] >0) { 
+                  var edgeBegin = a_start_iR[here.id].A[x];
+                  var edgeEnd = edgeBegin+a_neiR[here.id].A[x]-1;
+                  minval=f1_next[here.id].A[x] ;
+                  for i in edgeBegin..edgeEnd   {
+                        var tmp2=f1[here.id].A[a_dstR[here.id].A[i]];
+                        if minval>tmp2 {
+                             minval=tmp2;  
+                             count+=1;
+                        }
+                  }
+                  f1_next[here.id].A[x]=minval;
+              }
+            }//end of forall
+
+              vertexBegin = a_nei[here.id].DO.lowBound;
+              vertexEnd = a_nei[here.id].DO.highBound;
+              forall i in vertexBegin..vertexEnd {
+                   f1[here.id].A[i]=f1_next[here.id].A[i];
+              }
+
+         }//end of loc
+        }//end of coforall
+
+
+
+        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
+
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = a_nei[here.id].DO.lowBound;
+          var vertexEnd = a_nei[here.id].DO.highBound;
+          forall i in vertexBegin..vertexEnd {
+               f[i]=f1[here.id].A[i];
+          }
+       }
+     }
+      return f;
+    }
+
+
+
+
     var timer:Timer;
     // We only care for undirected graphs, they can be weighted or unweighted. 
     var f1 = makeDistArray(Nv, int);
     var f2 = makeDistArray(Nv, int);
     var f3 = makeDistArray(Nv, int);
+    var f4 = makeDistArray(Nv, int);
+    var f5 = makeDistArray(Nv, int);
     if (Weighted == 0)  {
       if (Directed == 0) {
         (srcN, dstN, startN, neighbourN, srcRN, dstRN, startRN, neighbourRN) = restpart.splitMsgToTuple(8);
@@ -914,15 +1224,63 @@ module CCMsg {
         outMsg = "Time elapsed for simple fs cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        f4=f1;
+        f5=f1;
+
+        if (ag.hasA_START_IDX()) {
+                       timer.clear();
+                       timer.start();
+                       f4=cc_fs_aligned0(
+                           toSymEntry(ag.getNEIGHBOR(), int).a,
+                           toSymEntry(ag.getSTART_IDX(), int).a,
+                           toSymEntry(ag.getSRC(), int).a,
+                           toSymEntry(ag.getDST(), int).a,
+                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                           toSymEntry(ag.getSRC_R(), int).a,
+                           toSymEntry(ag.getDST_R(), int).a,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                       timer.stop();
+                       outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
+                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                       timer.clear();
+                       timer.start();
+                       f5=cc_fs_aligned1(
+                           toSymEntry(ag.getNEIGHBOR(), int).a,
+                           toSymEntry(ag.getSTART_IDX(), int).a,
+                           toSymEntry(ag.getSRC(), int).a,
+                           toSymEntry(ag.getDST(), int).a,
+                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                           toSymEntry(ag.getSRC_R(), int).a,
+                           toSymEntry(ag.getDST_R(), int).a,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                       timer.stop();
+                       outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
+                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        }
+
+
         coforall loc in Locales {
           on loc {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              if ((f1[i] != f3[i]) || (f2[i]!=f3[i])) {
+              if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
                 var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                exit(0);
               }
             }
           }
@@ -972,35 +1330,7 @@ module CCMsg {
                                     toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
         outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f2 = cc_fast_sv(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fast sv cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for simple fs cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         coforall loc in Locales {
           on loc {
@@ -1010,7 +1340,6 @@ module CCMsg {
               if ((f1[i] != f3[i]) || (f2[i]!=f3[i])) {
                 var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                exit(0);
               }
             }
           }
