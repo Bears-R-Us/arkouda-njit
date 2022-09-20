@@ -902,18 +902,21 @@ module CCMsg {
         on loc {
             f1[here.id].new_dom(a_nei[here.id].DO);
             f1_next[here.id].new_dom(a_nei[here.id].DO);
+            //initialize the array
+
             forall i in a_nei[here.id].DO {
                  f1[here.id].A[i]=i;
                  f1_next[here.id].A[i]=i;
             }
+
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
             var vertexBegin = src[edgeBegin];
             var vertexEnd = src[edgeEnd];
-            //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
+            writeln("ID=",here.id, " domain=",a_nei[here.id].DO);
+            writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
             forall i in vertexBegin..vertexEnd {
-                //writeln("ID=",here.id, " before check value f1[here.id].A[i] and f1_next[here.id].A[i]");
-                //writeln("ID=",here.id, " after check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
+                //writeln("ID=",here.id, " before check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
                 if (a_nei[here.id].A[i] >0) {
                     var tmpv=dst[a_start_i[here.id].A[i]];
                     if ( tmpv <i ) {
@@ -928,10 +931,13 @@ module CCMsg {
                          f1_next[here.id].A[i]=tmpv;
                     }
                 }
+                //writeln("ID=",here.id, " after check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
                 //writeln("ID=",here.id, " after update");
             }
+
+            // here we update the neighbor area with the same vertex ID
             if (here.id>0) {
-                 if (a_nei[here.id-1].DO.highBound >=vertexBegin) {
+                 if ( (a_nei[here.id-1].DO.highBound >=vertexBegin) && (a_nei[here.id-1].DO.lowBound <=vertexBegin)) {
                       if (f1[here.id-1].A[vertexBegin]>f1[here.id].A[vertexBegin]) {
                             f1[here.id-1].A[vertexBegin]=f1[here.id].A[vertexBegin];
                             f1_next[here.id-1].A[vertexBegin]=f1_next[here.id].A[vertexBegin];
@@ -939,7 +945,7 @@ module CCMsg {
                  }
             }
             if (here.id<numLocales-1) {
-                 if (a_nei[here.id+1].DO.lowBound <=vertexEnd) {
+                 if ( (a_nei[here.id+1].DO.lowBound <=vertexEnd) && (a_nei[here.id+1].DO.highBound >=vertexEnd) ) {
                       if (f1[here.id+1].A[vertexEnd]>f1[here.id].A[vertexEnd]) {
                             f1[here.id+1].A[vertexEnd]=f1[here.id].A[vertexEnd];
                             f1_next[here.id+1].A[vertexEnd]=f1_next[here.id].A[vertexEnd];
@@ -958,17 +964,20 @@ module CCMsg {
         var count1:int=0;
         coforall loc in Locales with ( + reduce count, + reduce count1) {
           on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
+              var edgeBegin = src.localSubdomain().lowBound;
+              var edgeEnd = src.localSubdomain().highBound;
 
-            //writeln("ID=",here.id, " edgeBegin=",edgeBegin," edgeEnd=",edgeEnd);
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-              var fu,fv,ffu,ffv,fffu,fffv:int;
-              var locu1,locv1,locu2,locv2,vid:int;
+              //writeln("ID=",here.id, " edgeBegin=",edgeBegin," edgeEnd=",edgeEnd);
+              forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  var fu,fv,ffu,ffv,fffu,fffv:int;
+                  var locu1,locv1,locu2,locv2,vid:int;
 
-              proc VertexToLocale(low:int,high:int,v:int):int {
+                  proc VertexToLocale(low:int,high:int,v:int):int {
+                          if high<low {
+                               return -1;
+                          }
                           var mid=(low+high)/2;
                           if ( (a_nei[mid].DO.lowBound <=v ) && (a_nei[mid].DO.highBound >=v) ) {
                                 return mid;
@@ -979,101 +988,121 @@ module CCMsg {
                                    return VertexToLocale(mid+1,high,v);
                                }
                           }
-              }
-              proc SearchVertexValue(v:int) :int {
+                  }
+                  proc SearchVertexValue(v:int) :int {
                            if v<0 {
                                  return -1;
                            }
-                           var id=0;
-                           while f1[id].DO.highBound<v {
-                                 id+=1;
+                           var curval:int;
+                           var id=VertexToLocale(0,numLocales-1,v);
+                           if (id!=-1) {
+                                  curval=f1[id].A[v];
                            }
-                           var curval=f1[id].A[v];
-                           id+=1;
-                           while f1[id].DO.lowBound<v {
-                                 if curval>f1[id].A[v] {
-                                       curval=f1[id].A[v];
-                                 }
-                                 id+=1;
+                           if (id>0) {
+                                id=VertexToLocale(id-1,id-1,v);
+                                if (id!=-1) {
+                                    if (curval>f1[id].A[v] ) {
+                                         curval=f1[id].A[v];
+                                    }        
+                                }
+                           } else {
+                               if (id <numLocales-1) {
+                                    id=VertexToLocale(id+1,id+1,v);
+                                    if (id!=-1) {
+                                          if (curval>f1[id].A[v]) {
+                                              curval=f1[id].A[v];
+                                          }
+                                    }
+
+                               }
                            }
                            return curval;
  
-              }
-              proc UpdateValue(minval:int,v:int):bool {
+                  }
+                  proc UpdateValue(minval:int,v:int):bool {
                            var UpdateFlag:bool=false;
                            if v<0 {
                                  return UpdateFlag;
                            }
-                           var id=0;
-                           while f1[id].DO.highBound<v {
-                                 id+=1;
-                           }
-                           var curval=f1_next[id].A[v];
-                           if curval>minval {
+                           var curval:int;
+                           var id=VertexToLocale(0,numLocales-1,v);
+                           if (id!=-1) {
+                               if (minval<f1_next[id].A[v] ) {
                                   f1_next[id].A[v]=minval;
                                   UpdateFlag=true;
+                               }
                            }
-                           id+=1;
-                           while f1[id].DO.lowBound<v {
-                                 if minval<f1_next[id].A[v] {
-                                       f1_next[id].A[v]=minval;
-                                       UpdateFlag=true;
-                                 }
-                                 id+=1;
+
+                           if (id>0) {
+                                id=VertexToLocale(id-1,id-1,v);
+                                if (id!=-1) {
+                                    if (minval<f1_next[id].A[v] ) {
+                                         f1_next[id].A[v]=minval;
+                                         UpdateFlag=true;
+                                    }
+                                }
+                           } else {
+                               if (id <numLocales-1) {
+                                    id=VertexToLocale(id+1,id+1,v);
+                                    if (id!=-1) {
+                                          if (minval<f1_next[id].A[v]) {
+                                              f1_next[id].A[v]=minval;
+                                              UpdateFlag=true;
+                                          }
+                                    }
+
+                               }
                            }
+
                            return UpdateFlag;
-                          
-              }
+                  }
 
-              //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
-              var minindex:int;
-              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
-                     //minindex=min(f[u],f[v],gf[u],gf[v]);
-                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
+                  //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+                  var minindex:int;
+                  fu=f1[here.id].A[u];
+                  fv=SearchVertexValue(v);
+                  if ((numLocales ==1) || (itera % JumpSteps==0) ) {
+                       //minindex=min(f[u],f[v],gf[u],gf[v]);
+                       //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
 
+                       ffu=SearchVertexValue(fu);
+                       ffv=SearchVertexValue(fv);
 
+                       fffu=SearchVertexValue(ffu);
+                       fffv=SearchVertexValue(ffv);
 
-                     fu=f1[here.id].A[u];
-                     fv=SearchVertexValue(v);
+                       minindex=min(fu,fv,ffu,ffv,fffu,fffv);
+                  } else {
+                         minindex=min(fu,fv);
+                  }
 
-                     ffu=SearchVertexValue(fu);
-                     ffv=SearchVertexValue(fv);
-
-                     fffu=SearchVertexValue(ffu);
-                     fffv=SearchVertexValue(ffv);
-
-                     minindex=min(fu,fv,ffu,ffv,fffu,fffv);
-              } else {
-                     minindex=min(fu,fv);
-              }
-
-              //writeln("ID=",here.id, "fu,fv,ffu,ffv,fffu,fffv=",fu,fv,ffu,ffv,fffu,fffv);
-              //writeln("ID=",here.id, "flocu1,locv1,locu2,locv2=",locu1,locv1,locu2,locv2);
-              if(minindex < f1_next[here.id].A[u]) {
-                  f1_next[here.id].A[u] = minindex;
-                  count+=1;
-              }
-              if(UpdateValue(minindex,v) ) {
-                  count+=1;
-              }
-              if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
+                  //writeln("ID=",here.id, "fu,fv,ffu,ffv,fffu,fffv=",fu,fv,ffu,ffv,fffu,fffv);
+                  //writeln("ID=",here.id, "flocu1,locv1,locu2,locv2=",locu1,locv1,locu2,locv2);
+                  if(minindex < f1_next[here.id].A[u]) {
+                      f1_next[here.id].A[u] = minindex;
+                      count+=1;
+                  }
+                  if(UpdateValue(minindex,v) ) {
+                      count+=1;
+                  }
+                  if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
                    
-                   if(UpdateValue(minindex,fu) ) {
-                       count+=1;
-                       count1+=1;
-                   }
-                   if(UpdateValue(minindex,fv)) {
-                       count+=1;
-                       count1+=1;
-                   }
-                   if( UpdateValue(minindex,ffu) ){
-                       count+=1;
-                   }
-                   if( UpdateValue(minindex,ffv) ){
-                       count+=1;
-                   }
-              }
-              
+                       if(UpdateValue(minindex,fu) ) {
+                           count+=1;
+                           count1+=1;
+                       }
+                       if(UpdateValue(minindex,fv)) {
+                           count+=1;
+                           count1+=1;
+                       }
+                       if( UpdateValue(minindex,ffu) ){
+                           count+=1;
+                       }
+                       if( UpdateValue(minindex,ffv) ){
+                           count+=1;
+                       }
+                  }
+              }// end forall     
               var vertexBegin = a_nei[here.id].DO.lowBound;
               var vertexEnd = a_nei[here.id].DO.highBound;
 
@@ -1084,17 +1113,16 @@ module CCMsg {
 
             }//end of loc
           }//end of coforall
-        }
 
 
-        if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
-        //if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
+          //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+          if( (count==0) ) {
+              converged = true;
+          }
+          else {
+              converged = false;
+          }
+          itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
