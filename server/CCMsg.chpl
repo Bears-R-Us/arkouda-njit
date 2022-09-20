@@ -900,32 +900,36 @@ module CCMsg {
       //writeln("D21=",D21," D41=",D41);
       coforall loc in Locales {
         on loc {
-          f1[here.id].new_dom(a_nei[here.id].DO);
-          f1_next[here.id].new_dom(a_nei[here.id].DO);
-          var vertexBegin = a_nei[here.id].DO.lowBound;
-          var vertexEnd = a_nei[here.id].DO.highBound;
-          //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
-          forall i in vertexBegin..vertexEnd {
-            //writeln("ID=",here.id, " before check value f1[here.id].A[i] and f1_next[here.id].A[i]");
-            f1[here.id].A[i] = i;
-            f1_next[here.id].A[i] = i;
-            //writeln("ID=",here.id, " after check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
-            if (a_nei[here.id].A[i] >0) {
-                var tmpv=dst[a_start_i[here.id].A[i]];
-                if ( tmpv <i ) {
-                     f1[here.id].A[i]=tmpv;
-                     f1_next[here.id].A[i]=tmpv;
-                }
+            f1[here.id].new_dom(a_nei[here.id].DO);
+            f1_next[here.id].new_dom(a_nei[here.id].DO);
+            forall i in a_nei[here.id].DO {
+                 f1[here.id].A[i]=i;
+                 f1_next[here.id].A[i]=i;
             }
-            if (a_neiR[here.id].A[i] >0) {
-                var tmpv=dstR[a_start_iR[here.id].A[i]];
-                if ( tmpv <f1[here.id].A[i] ) {
-                     f1[here.id].A[i]=tmpv;
-                     f1_next[here.id].A[i]=tmpv;
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+            var vertexBegin = src[edgeBegin];
+            var vertexEnd = src[edgeEnd];
+            //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
+            forall i in vertexBegin..vertexEnd {
+                //writeln("ID=",here.id, " before check value f1[here.id].A[i] and f1_next[here.id].A[i]");
+                //writeln("ID=",here.id, " after check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
+                if (a_nei[here.id].A[i] >0) {
+                    var tmpv=dst[a_start_i[here.id].A[i]];
+                    if ( tmpv <i ) {
+                         f1[here.id].A[i]=tmpv;
+                         f1_next[here.id].A[i]=tmpv;
+                    }
                 }
+                if (a_neiR[here.id].A[i] >0) {
+                    var tmpv=dstR[a_start_iR[here.id].A[i]];
+                    if ( tmpv <f1[here.id].A[i] ) {
+                         f1[here.id].A[i]=tmpv;
+                         f1_next[here.id].A[i]=tmpv;
+                    }
+                }
+                //writeln("ID=",here.id, " after update");
             }
-            //writeln("ID=",here.id, " after update");
-          }
         }
       }
 
@@ -946,7 +950,7 @@ module CCMsg {
               var u = src[x];
               var v = dst[x];
               var fu,fv,ffu,ffv,fffu,fffv:int;
-              var locu1,locv1,locu2,locv2:int;
+              var locu1,locv1,locu2,locv2,vid:int;
 
               //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               var minindex:int;
@@ -967,7 +971,8 @@ module CCMsg {
                      }
 
                      fu=f1[here.id].A[u];
-                     fv=f1[here.id].A[v];
+                     vid=VertexToLocale(0,numLocales-1,v);
+                     fv=f1[vid].A[v];
 
                      locu1=VertexToLocale(0,numLocales-1,fu);
                      locv1=VertexToLocale(0,numLocales-1,fv);
@@ -992,8 +997,8 @@ module CCMsg {
                   f1_next[here.id].A[u] = minindex;
                   count+=1;
               }
-              if(minindex < f1_next[here.id].A[v]) {
-                  f1_next[here.id].A[v] = minindex;
+              if(minindex < f1_next[vid].A[v]) {
+                  f1_next[vid].A[v] = minindex;
                   count+=1;
               }
               if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
@@ -1078,16 +1083,36 @@ module CCMsg {
 
       //writeln("D21=",D21," D41=",D41);
       // Initialize f and f_next in distributed memory.
+
+     proc VertexToLocale(low:int,high:int,v:int):int {
+                          var mid=(low+high)/2;
+                          if ( (a_nei[mid].DO.lowBound <=v ) && (a_nei[mid].DO.highBound >=v) ) {
+                                return mid;
+                          } else {
+                               if (a_nei[mid].DO.lowBound > v) {
+                                   return VertexToLocale(low,mid-1,v);
+                               } else {
+                                   return VertexToLocale(mid+1,high,v);
+                               }
+                          }
+     }
+
+
       coforall loc in Locales {
             on loc {
                 f1[here.id].new_dom(a_nei[here.id].DO);
                 f1_next[here.id].new_dom(a_nei[here.id].DO);
-                var vertexBegin = a_nei[here.id].DO.lowBound;
-                var vertexEnd = a_nei[here.id].DO.highBound;
+                forall i in a_nei[here.id].DO {
+                     f1[here.id].A[i]=i;
+                     f1_next[here.id].A[i]=i;
+                }
+
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+                var vertexBegin = src[edgeBegin];
+                var vertexEnd = src[edgeEnd];
                 //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
                 forall i in vertexBegin..vertexEnd {
-                    f1[here.id].A[i] = i;
-                    f1_next[here.id].A[i] = i;
                     if (a_nei[here.id].A[i] >0) {
                         var tmpv=dst[a_start_i[here.id].A[i]];
                         if ( tmpv <i ) {
@@ -1114,44 +1139,48 @@ module CCMsg {
         coforall loc in Locales with ( + reduce count, + reduce count1) {
           on loc {
 
-            var vertexBegin = a_nei[here.id].DO.lowBound;
-            var vertexEnd = a_nei[here.id].DO.highBound;
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+                var vertexBegin = src[edgeBegin];
+                var vertexEnd = src[edgeEnd];
 
-            forall x in vertexBegin..vertexEnd  with ( + reduce count,+ reduce count1)  {
-              var minval:int;
-              if (a_nei[here.id].A[x] >0) { 
-                  var edgeBegin = a_start_i[here.id].A[x];
-                  var edgeEnd = edgeBegin+a_nei[here.id].A[x]-1;
-                  minval=f1_next[here.id].A[x] ;
-                  for i in edgeBegin..edgeEnd  {
-                        var tmp2=f1[here.id].A[dst[i]];
-                        if minval>tmp2 {
-                             minval=tmp2;  
-                             count+=1;
-                        }
+                forall x in vertexBegin..vertexEnd  with ( + reduce count,+ reduce count1)  {
+                  var minval:int;
+                  if (a_nei[here.id].A[x] >0) { 
+                      var edgeBegin = a_start_i[here.id].A[x];
+                      var edgeEnd = edgeBegin+a_nei[here.id].A[x]-1;
+                      minval=f1_next[here.id].A[x] ;
+                      for i in edgeBegin..edgeEnd  {
+                            var did=VertexToLocale(0,numLocales-1,dst[i]);
+                            var tmp2=f1[did].A[dst[i]];
+                            if minval>tmp2 {
+                                 minval=tmp2;  
+                                 count+=1;
+                            }
+                      }
+                      f1_next[here.id].A[x]=minval;
                   }
-                  f1_next[here.id].A[x]=minval;
-              }
-              if (a_neiR[here.id].A[x] >0) { 
-                  var edgeBegin = a_start_iR[here.id].A[x];
-                  var edgeEnd = edgeBegin+a_neiR[here.id].A[x]-1;
-                  minval=f1_next[here.id].A[x] ;
-                  for i in edgeBegin..edgeEnd   {
-                        var tmp2=f1[here.id].A[a_dstR[here.id].A[i]];
-                        if minval>tmp2 {
-                             minval=tmp2;  
-                             count+=1;
-                        }
+                  if (a_neiR[here.id].A[x] >0) { 
+                      var edgeBegin = a_start_iR[here.id].A[x];
+                      var edgeEnd = edgeBegin+a_neiR[here.id].A[x]-1;
+                      minval=f1_next[here.id].A[x] ;
+                      for i in edgeBegin..edgeEnd   {
+                            var rdid=VertexToLocale(0,numLocales-1,a_dstR[here.id].A[i]);
+                            var tmp2=f1[rdid].A[a_dstR[here.id].A[i]];
+                            if minval>tmp2 {
+                                 minval=tmp2;  
+                                 count+=1;
+                            }
+                      }
+                      f1_next[here.id].A[x]=minval;
                   }
-                  f1_next[here.id].A[x]=minval;
-              }
-            }//end of forall
+                }//end of forall
 
-              vertexBegin = a_nei[here.id].DO.lowBound;
-              vertexEnd = a_nei[here.id].DO.highBound;
-              forall i in vertexBegin..vertexEnd {
+                vertexBegin = a_nei[here.id].DO.lowBound;
+                vertexEnd = a_nei[here.id].DO.highBound;
+                forall i in vertexBegin..vertexEnd {
                    f1[here.id].A[i]=f1_next[here.id].A[i];
-              }
+                }
 
          }//end of loc
         }//end of coforall
