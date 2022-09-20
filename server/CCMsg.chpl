@@ -1163,7 +1163,10 @@ module CCMsg {
       //writeln("D21=",D21," D41=",D41);
       // Initialize f and f_next in distributed memory.
 
-     proc VertexToLocale(low:int,high:int,v:int):int {
+      proc VertexToLocale(low:int,high:int,v:int):int {
+                          if high<low {
+                               return -1;
+                          }
                           var mid=(low+high)/2;
                           if ( (a_nei[mid].DO.lowBound <=v ) && (a_nei[mid].DO.highBound >=v) ) {
                                 return mid;
@@ -1174,41 +1177,71 @@ module CCMsg {
                                    return VertexToLocale(mid+1,high,v);
                                }
                           }
-     }
+      }
+
+
+
 
 
       coforall loc in Locales {
-            on loc {
-                f1[here.id].new_dom(a_nei[here.id].DO);
-                f1_next[here.id].new_dom(a_nei[here.id].DO);
-                forall i in a_nei[here.id].DO {
-                     f1[here.id].A[i]=i;
-                     f1_next[here.id].A[i]=i;
-                }
+        on loc {
+            f1[here.id].new_dom(a_nei[here.id].DO);
+            f1_next[here.id].new_dom(a_nei[here.id].DO);
+            //initialize the array
 
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-                var vertexBegin = src[edgeBegin];
-                var vertexEnd = src[edgeEnd];
-                //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
-                forall i in vertexBegin..vertexEnd {
-                    if (a_nei[here.id].A[i] >0) {
-                        var tmpv=dst[a_start_i[here.id].A[i]];
-                        if ( tmpv <i ) {
-                             f1[here.id].A[i]=tmpv;
-                             f1_next[here.id].A[i]=tmpv;
-                        }
-                    }
-                    if (a_neiR[here.id].A[i] >0) {
-                        var tmpv=dstR[a_start_iR[here.id].A[i]];
-                        if ( tmpv <f1[here.id].A[i] ) {
-                             f1[here.id].A[i]=tmpv;
-                             f1_next[here.id].A[i]=tmpv;
-                        }
+            forall i in a_nei[here.id].DO {
+                 f1[here.id].A[i]=i;
+                 f1_next[here.id].A[i]=i;
+            }
+
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+            var vertexBegin = src[edgeBegin];
+            var vertexEnd = src[edgeEnd];
+            writeln("ID=",here.id, " domain=",a_nei[here.id].DO);
+            writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
+            forall i in vertexBegin..vertexEnd {
+                //writeln("ID=",here.id, " before check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
+                if (a_nei[here.id].A[i] >0) {
+                    var tmpv=dst[a_start_i[here.id].A[i]];
+                    if ( tmpv <i ) {
+                         f1[here.id].A[i]=tmpv;
+                         f1_next[here.id].A[i]=tmpv;
                     }
                 }
-            }//end of loc
-      }//end of coforall
+                if (a_neiR[here.id].A[i] >0) {
+                    var tmpv=dstR[a_start_iR[here.id].A[i]];
+                    if ( tmpv <f1[here.id].A[i] ) {
+                         f1[here.id].A[i]=tmpv;
+                         f1_next[here.id].A[i]=tmpv;
+                    }
+                }
+                //writeln("ID=",here.id, " after check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
+                //writeln("ID=",here.id, " after update");
+            }
+
+            // here we update the neighbor area with the same vertex ID
+            if (here.id>0) {
+                 if ( (a_nei[here.id-1].DO.highBound >=vertexBegin) && (a_nei[here.id-1].DO.lowBound <=vertexBegin)) {
+                      if (f1[here.id-1].A[vertexBegin]>f1[here.id].A[vertexBegin]) {
+                            f1[here.id-1].A[vertexBegin]=f1[here.id].A[vertexBegin];
+                            f1_next[here.id-1].A[vertexBegin]=f1_next[here.id].A[vertexBegin];
+                      }
+                 }
+            }
+            if (here.id<numLocales-1) {
+                 if ( (a_nei[here.id+1].DO.lowBound <=vertexEnd) && (a_nei[here.id+1].DO.highBound >=vertexEnd) ) {
+                      if (f1[here.id+1].A[vertexEnd]>f1[here.id].A[vertexEnd]) {
+                            f1[here.id+1].A[vertexEnd]=f1[here.id].A[vertexEnd];
+                            f1_next[here.id+1].A[vertexEnd]=f1_next[here.id].A[vertexEnd];
+                      }
+                 }
+            }
+        }
+      }
+
+
+
 
       var converged:bool = false;
       var itera = 1;
@@ -1344,8 +1377,8 @@ module CCMsg {
         outMsg = "Time elapsed for simple fs cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        f4=f1;
-        f5=f1;
+        f4=f2;
+        f5=f2;
 
         if (ag.hasA_START_IDX()) {
                        timer.clear();
@@ -1368,7 +1401,7 @@ module CCMsg {
                        timer.stop();
                        outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                       /*
+
                        timer.clear();
                        timer.start();
                        f5=cc_fs_aligned1(
@@ -1389,7 +1422,6 @@ module CCMsg {
                        timer.stop();
                        outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                       */
 
         }
 
@@ -1406,6 +1438,10 @@ module CCMsg {
               }
               if ( (f1[i]!=f4[i]) ) {
                 var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f5[i]) ) {
+                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
             }
