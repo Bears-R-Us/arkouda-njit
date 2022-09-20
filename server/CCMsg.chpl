@@ -878,8 +878,8 @@ module CCMsg {
 
 
     // FastSpread: a  propogation based connected components algorithm
-    proc cc_fs_aligned0(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, 
-                    start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+    proc cc_fs_aligned0(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, 
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         a_nei:[?D21] DomArray, a_start_i:[?D22] DomArray,
                         a_neiR:[?D31] DomArray, a_start_iR:[?D32] DomArray,
                         a_srcR:[?D41] DomArray, a_dstR:[?D42] DomArray
@@ -889,23 +889,27 @@ module CCMsg {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, int); 
-      var f1:[D21] DomArray;
-      var f1_next:[D21] DomArray;
+      var f1=makeDistArray(numLocales,DomArray);
+      var f1_next=makeDistArray(numLocales,DomArray);
 
       var gf = makeDistArray(Nv, int);
       var gf_next = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
       var diff = makeDistArray(Nv, int);
 
-      writeln("D21=",D21," D41=",D41);
+      //writeln("D21=",D21," D41=",D41);
       coforall loc in Locales {
         on loc {
+          f1[here.id].new_dom(a_nei[here.id].DO);
+          f1_next[here.id].new_dom(a_nei[here.id].DO);
           var vertexBegin = a_nei[here.id].DO.lowBound;
           var vertexEnd = a_nei[here.id].DO.highBound;
-          writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
+          //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
           forall i in vertexBegin..vertexEnd {
+            //writeln("ID=",here.id, " before check value f1[here.id].A[i] and f1_next[here.id].A[i]");
             f1[here.id].A[i] = i;
             f1_next[here.id].A[i] = i;
+            //writeln("ID=",here.id, " after check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
             if (a_nei[here.id].A[i] >0) {
                 var tmpv=dst[a_start_i[here.id].A[i]];
                 if ( tmpv <i ) {
@@ -920,6 +924,7 @@ module CCMsg {
                      f1_next[here.id].A[i]=tmpv;
                 }
             }
+            //writeln("ID=",here.id, " after update");
           }
         }
       }
@@ -936,6 +941,7 @@ module CCMsg {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
+            //writeln("ID=",here.id, " edgeBegin=",edgeBegin," edgeEnd=",edgeEnd);
             forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
               var u = src[x];
               var v = dst[x];
@@ -979,6 +985,9 @@ module CCMsg {
               } else {
                      minindex=min(fu,fv);
               }
+
+              //writeln("ID=",here.id, "fu,fv,ffu,ffv,fffu,fffv=",fu,fv,ffu,ffv,fffu,fffv);
+              //writeln("ID=",here.id, "flocu1,locv1,locu2,locv2=",locu1,locv1,locu2,locv2);
               if(minindex < f1_next[here.id].A[u]) {
                   f1_next[here.id].A[u] = minindex;
                   count+=1;
@@ -1011,6 +1020,8 @@ module CCMsg {
               
               var vertexBegin = a_nei[here.id].DO.lowBound;
               var vertexEnd = a_nei[here.id].DO.highBound;
+
+              //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
               forall i in vertexBegin..vertexEnd {
                    f1[here.id].A[i]=f1_next[here.id].A[i];
               }
@@ -1058,20 +1069,22 @@ module CCMsg {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, int); 
-      var f1:[D21] DomArray;
-      var f1_next:[D21] DomArray;
+      var f1=makeDistArray(numLocales,DomArray);
+      var f1_next=makeDistArray(numLocales,DomArray);
       var gf = makeDistArray(Nv, int);
       var gf_next = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
       var diff = makeDistArray(Nv, int);
 
-      writeln("D21=",D21," D41=",D41);
+      //writeln("D21=",D21," D41=",D41);
       // Initialize f and f_next in distributed memory.
       coforall loc in Locales {
             on loc {
+                f1[here.id].new_dom(a_nei[here.id].DO);
+                f1_next[here.id].new_dom(a_nei[here.id].DO);
                 var vertexBegin = a_nei[here.id].DO.lowBound;
                 var vertexEnd = a_nei[here.id].DO.highBound;
-                writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
+                //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd",vertexEnd);
                 forall i in vertexBegin..vertexEnd {
                     f1[here.id].A[i] = i;
                     f1_next[here.id].A[i] = i;
