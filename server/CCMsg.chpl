@@ -930,6 +930,22 @@ module CCMsg {
                 }
                 //writeln("ID=",here.id, " after update");
             }
+            if (here.id>0) {
+                 if (a_nei[here.id-1].DO.highBound >=vertexBegin) {
+                      if (f1[here.id-1].A[vertexBegin]>f1[here.id].A[vertexBegin]) {
+                            f1[here.id-1].A[vertexBegin]=f1[here.id].A[vertexBegin];
+                            f1_next[here.id-1].A[vertexBegin]=f1_next[here.id].A[vertexBegin];
+                      }
+                 }
+            }
+            if (here.id<numLocales-1) {
+                 if (a_nei[here.id+1].DO.lowBound <=vertexEnd) {
+                      if (f1[here.id+1].A[vertexEnd]>f1[here.id].A[vertexEnd]) {
+                            f1[here.id+1].A[vertexEnd]=f1[here.id].A[vertexEnd];
+                            f1_next[here.id+1].A[vertexEnd]=f1_next[here.id].A[vertexEnd];
+                      }
+                 }
+            }
         }
       }
 
@@ -952,12 +968,7 @@ module CCMsg {
               var fu,fv,ffu,ffv,fffu,fffv:int;
               var locu1,locv1,locu2,locv2,vid:int;
 
-              //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
-              var minindex:int;
-              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
-                     //minindex=min(f[u],f[v],gf[u],gf[v]);
-                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
-                     proc VertexToLocale(low:int,high:int,v:int):int {
+              proc VertexToLocale(low:int,high:int,v:int):int {
                           var mid=(low+high)/2;
                           if ( (a_nei[mid].DO.lowBound <=v ) && (a_nei[mid].DO.highBound >=v) ) {
                                 return mid;
@@ -968,23 +979,68 @@ module CCMsg {
                                    return VertexToLocale(mid+1,high,v);
                                }
                           }
-                     }
+              }
+              proc SearchVertexValue(v:int) :int {
+                           if v<0 {
+                                 return -1;
+                           }
+                           var id=0;
+                           while f1[id].DO.highBound<v {
+                                 id+=1;
+                           }
+                           var curval=f1[id].A[v];
+                           id+=1;
+                           while f1[id].DO.lowBound<v {
+                                 if curval>f1[id].A[v] {
+                                       curval=f1[id].A[v];
+                                 }
+                                 id+=1;
+                           }
+                           return curval;
+ 
+              }
+              proc UpdateValue(minval:int,v:int):bool {
+                           var UpdateFlag:bool=false;
+                           if v<0 {
+                                 return UpdateFlag;
+                           }
+                           var id=0;
+                           while f1[id].DO.highBound<v {
+                                 id+=1;
+                           }
+                           var curval=f1_next[id].A[v];
+                           if curval>minval {
+                                  f1_next[id].A[v]=minval;
+                                  UpdateFlag=true;
+                           }
+                           id+=1;
+                           while f1[id].DO.lowBound<v {
+                                 if minval<f1_next[id].A[v] {
+                                       f1_next[id].A[v]=minval;
+                                       UpdateFlag=true;
+                                 }
+                                 id+=1;
+                           }
+                           return UpdateFlag;
+                          
+              }
+
+              //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+              var minindex:int;
+              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
+                     //minindex=min(f[u],f[v],gf[u],gf[v]);
+                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
+
+
 
                      fu=f1[here.id].A[u];
-                     vid=VertexToLocale(0,numLocales-1,v);
-                     fv=f1[vid].A[v];
+                     fv=SearchVertexValue(v);
 
-                     locu1=VertexToLocale(0,numLocales-1,fu);
-                     locv1=VertexToLocale(0,numLocales-1,fv);
+                     ffu=SearchVertexValue(fu);
+                     ffv=SearchVertexValue(fv);
 
-                     ffu=f1[locu1].A[fu];
-                     ffv=f1[locv1].A[fv];
-
-                     locu2=VertexToLocale(0,numLocales-1,ffu);
-                     locv2=VertexToLocale(0,numLocales-1,ffv);
-
-                     fffu=f1[locu2].A[ffu];
-                     fffv=f1[locv2].A[ffv];
+                     fffu=SearchVertexValue(ffu);
+                     fffv=SearchVertexValue(ffv);
 
                      minindex=min(fu,fv,ffu,ffv,fffu,fffv);
               } else {
@@ -997,28 +1053,23 @@ module CCMsg {
                   f1_next[here.id].A[u] = minindex;
                   count+=1;
               }
-              if(minindex < f1_next[vid].A[v]) {
-                  f1_next[vid].A[v] = minindex;
+              if(UpdateValue(minindex,v) ) {
                   count+=1;
               }
               if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
                    
-                   if(minindex < f1_next[locu1].A[fu]) {
-                       f1_next[locu1].A[fu] = minindex;
+                   if(UpdateValue(minindex,fu) ) {
                        count+=1;
                        count1+=1;
                    }
-                   if(minindex < f1_next[locv1].A[fv]) {
-                       f1_next[locv1].A[fv] = minindex;
+                   if(UpdateValue(minindex,fv)) {
                        count+=1;
                        count1+=1;
                    }
-                   if(minindex < f1_next[locu2].A[ffu]) {
-                       f1_next[locu2].A[ffu] = minindex;
+                   if( UpdateValue(minindex,ffu) ){
                        count+=1;
                    }
-                   if(minindex < f1_next[locv2].A[ffv]) {
-                       f1_next[locv2].A[ffv] = minindex;
+                   if( UpdateValue(minindex,ffv) ){
                        count+=1;
                    }
               }
@@ -1289,7 +1340,7 @@ module CCMsg {
                        timer.stop();
                        outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
+                       /*
                        timer.clear();
                        timer.start();
                        f5=cc_fs_aligned1(
@@ -1310,6 +1361,7 @@ module CCMsg {
                        timer.stop();
                        outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                       */
 
         }
 
@@ -1319,8 +1371,13 @@ module CCMsg {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
-                var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
+              //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
+              if ((f1[i] != f3[i]) ) {
+                var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f4[i]) ) {
+                var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
             }
