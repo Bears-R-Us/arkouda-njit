@@ -1192,8 +1192,7 @@ module CCMsg {
     var f3 = makeDistArray(Nv, int);
     var f4 = makeDistArray(Nv, int);
     var f5 = makeDistArray(Nv, int);
-    if (Weighted == 0)  {
-      if (Directed == 0) {
+    if (Directed == 0) {
         (srcN, dstN, startN, neighbourN, srcRN, dstRN, startRN, neighbourRN) = restpart.splitMsgToTuple(8);
         timer.clear();
         timer.start(); 
@@ -1326,66 +1325,6 @@ module CCMsg {
         // timer.stop(); 
         // outMsg = "Time elapsed for serial cc: " + timer.elapsed():string;
         // smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      }
-    }
-    else {
-      if (Directed == 0) {
-        (srcN, dstN, startN, neighbourN, srcRN, dstRN, startRN, neighbourRN, vweightN, eweightN) = restpart.splitMsgToTuple(10);
-        timer.clear();
-        timer.start();
-        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
-                                    toSymEntry(ag.getSTART_IDX(), int).a, 
-                                    toSymEntry(ag.getSRC(), int).a, 
-                                    toSymEntry(ag.getDST(), int).a, 
-                                    toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                                    toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                                    toSymEntry(ag.getSRC_R(), int).a, 
-                                    toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
-        timer.stop(); 
-
-        coforall loc in Locales {
-          on loc {
-            var vertexStart = f1.localSubdomain().lowBound;
-            var vertexEnd = f1.localSubdomain().highBound;
-            forall i in vertexStart..vertexEnd {
-              if ((f1[i] != f3[i]) || (f2[i]!=f3[i])) {
-                var outMsg = "!!!!!CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-            }
-          }
-        } 
-
-        // timer.clear();
-        // timer.start(); 
-        // temp = cc_kernel_und_1( toSymEntry(ag.getNEIGHBOR(), int).a, 
-        //                         toSymEntry(ag.getSTART_IDX(), int).a, 
-        //                         toSymEntry(ag.getSRC(), int).a, 
-        //                         toSymEntry(ag.getDST(), int).a, 
-        //                         toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-        //                         toSymEntry(ag.getSTART_IDX_R(), int).a, 
-        //                         toSymEntry(ag.getSRC_R(), int).a, 
-        //                         toSymEntry(ag.getDST_R(), int).a);
-        // timer.stop(); 
-        // outMsg = "Time elapsed for du cc: " + timer.elapsed():string;
-        // smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        // timer.clear();
-        // timer.start(); 
-        // var temp = cc_kernel_und(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-        //                     toSymEntry(ag.getSTART_IDX(), int).a, 
-        //                     toSymEntry(ag.getSRC(), int).a, 
-        //                     toSymEntry(ag.getDST(), int).a, 
-        //                     toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-        //                     toSymEntry(ag.getSTART_IDX_R(), int).a, 
-        //                     toSymEntry(ag.getSRC_R(), int).a, 
-        //                     toSymEntry(ag.getDST_R(), int).a);
-        // timer.stop(); 
-        // outMsg = "Time elapsed for serial cc: " + timer.elapsed():string;
-        // smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      }
     }
     
     // The message that is sent back to the Python front-end. 
