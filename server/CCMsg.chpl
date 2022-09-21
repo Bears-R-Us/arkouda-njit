@@ -878,7 +878,7 @@ module CCMsg {
     }
 
 
-    // the atomic method is slower than the non atomic method, no matter for one locale or multiple locales
+    // the atomic method is slower than the non atomic method. However, for large graphs, it seems the atomic method is good.
     proc cc_fs_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
@@ -935,7 +935,7 @@ module CCMsg {
               if ((itera % (JumpSteps*3) ==0) ) {
                      minindex=min(minindex,f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               } else {
-                  if ((numLocales ==1) ) {
+                  if ((numLocales ==1) || (itera % JumpSteps ==0)) {
                      minindex=min(minindex,f[f[u]],f[f[v]]);
                   } 
               }
@@ -947,7 +947,7 @@ module CCMsg {
                 f_next[v].write(minindex);
                 count+=1;
               }
-              if ( (numLocales==1) ) {
+              if ( (numLocales==1) || (itera % JumpSteps ==0) ) {
                    if(minindex < f_next[f[u]].read()) {
                      f_next[f[u]].write(minindex);
                      count+=1;
@@ -1350,15 +1350,17 @@ module CCMsg {
                            }
 
                            if (id>0) {
-                                id=VertexToLocale(id-1,id-1,v);
-                                if (id!=-1) {
-                                    if (minval<f1_next[id].A[v] ) {
-                                         f1_next[id].A[v]=minval;
-                                         UpdateFlag=true;
+                                while (id>0) {
+                                    id=VertexToLocale(id-1,id-1,v);
+                                    if (id!=-1) {
+                                        if (minval<f1_next[id].A[v] ) {
+                                             f1_next[id].A[v]=minval;
+                                             UpdateFlag=true;
+                                        }
                                     }
                                 }
                            } else {
-                               if (id <numLocales-1) {
+                               while ( (id <numLocales-1) && (id!=-1))  {
                                     id=VertexToLocale(id+1,id+1,v);
                                     if (id!=-1) {
                                           if (minval<f1_next[id].A[v]) {
@@ -1459,7 +1461,7 @@ module CCMsg {
     }
 
 
-    // FastSpread: a  propogation based connected components algorithm
+    // there are unknow bugs in this version
     proc cc_fs_aligned1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, 
                     start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         a_nei:[?D21] DomArray, a_start_i:[?D22] DomArray,
@@ -1546,15 +1548,17 @@ module CCMsg {
                            }
 
                            if (id>0) {
-                                id=VertexToLocale(id-1,id-1,v);
-                                if (id!=-1) {
-                                    if (minval<f1_next[id].A[v] ) {
-                                         f1_next[id].A[v]=minval;
-                                         UpdateFlag=true;
-                                    }
+                                while (id>0) {
+                                     id=VertexToLocale(id-1,id-1,v);
+                                     if (id!=-1) {
+                                         if (minval<f1_next[id].A[v] ) {
+                                              f1_next[id].A[v]=minval;
+                                              UpdateFlag=true;
+                                         }
+                                     }
                                 }
                            } else {
-                               if (id <numLocales-1) {
+                               while ((id <numLocales-1) && (id!=-1)) {
                                     id=VertexToLocale(id+1,id+1,v);
                                     if (id!=-1) {
                                           if (minval<f1_next[id].A[v]) {
@@ -1584,8 +1588,8 @@ module CCMsg {
             var edgeEnd = src.localSubdomain().highBound;
             var vertexBegin = src[edgeBegin];
             var vertexEnd = src[edgeEnd];
-            writeln("ID=",here.id, " domain=",a_nei[here.id].DO);
-            writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
+            //writeln("ID=",here.id, " domain=",a_nei[here.id].DO);
+            //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
             forall i in vertexBegin..vertexEnd {
                 //writeln("ID=",here.id, " before check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
                 if (a_nei[here.id].A[i] >0) {
@@ -1650,7 +1654,7 @@ module CCMsg {
                       minval=f1_next[here.id].A[x] ;
                       for i in edgeBegin..edgeEnd  {
                             var tmp2=SearchVertexValue(dst[i]);
-                            if minval>tmp2 {
+                            if ((minval>tmp2)&&(tmp2!=-1)) {
                                  minval=tmp2;  
                             }
                       }
@@ -1675,7 +1679,7 @@ module CCMsg {
                 }//end of forall
 
 
-
+                /*
                 // here we update the neighbor area with the same vertex ID
                 if (here.id>0) {
                  if ( (a_nei[here.id-1].DO.highBound >=vertexBegin) && (a_nei[here.id-1].DO.lowBound <=vertexBegin)) {
@@ -1691,6 +1695,7 @@ module CCMsg {
                       }
                  }
                 }
+                */
 
 
 
@@ -1798,6 +1803,7 @@ module CCMsg {
         timer.stop(); 
         outMsg = "Time elapsed for simple fs atomic cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
         f5=f1;
         f6=f1;
 
@@ -1845,7 +1851,6 @@ module CCMsg {
                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         }
-
 
         coforall loc in Locales {
           on loc {
