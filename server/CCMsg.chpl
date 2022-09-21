@@ -895,7 +895,7 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
-            f_next[i] = i;
+            f_next[i].write(i);
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
