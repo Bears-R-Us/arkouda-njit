@@ -36,7 +36,7 @@ module CCMsg {
   config const start_min_degree = 1000000;
   var tmpmindegree=start_min_degree;
 
-  var JumpSteps:int=10;
+  var JumpSteps:int=6;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -820,7 +820,7 @@ module CCMsg {
               if ((itera % (JumpSteps*3) ==0) ) {
                      minindex=min(minindex,f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               } else {
-                  if ((numLocales ==1) ) {
+                  if ((numLocales ==1) || (itera % JumpSteps ==0) ) {
                      minindex=min(minindex,f[f[u]],f[f[v]]);
                   } 
               }
@@ -832,7 +832,7 @@ module CCMsg {
                 f_next[v] = minindex;
                 count+=1;
               }
-              if ( (numLocales==1) ) {
+              if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
                    if(minindex < f_next[f[u]]) {
                      f_next[f[u]] = minindex;
                      count+=1;
