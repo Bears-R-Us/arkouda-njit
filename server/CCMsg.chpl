@@ -1587,7 +1587,8 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        //f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1596,7 +1597,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for simple fs cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for simple fs cc 2: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
