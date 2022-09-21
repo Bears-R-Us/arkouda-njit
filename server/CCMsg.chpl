@@ -1374,10 +1374,12 @@ module CCMsg {
                             var tmp2=f1[did].A[dst[i]];
                             if minval>tmp2 {
                                  minval=tmp2;  
-                                 count+=1;
                             }
                       }
-                      f1_next[here.id].A[x]=minval;
+                      if (minval<f1_next[here.id].A[x]) {
+                               f1_next[here.id].A[x]=minval;
+                               count+=1;
+                      }
                   }
                   if (a_neiR[here.id].A[x] >0) { 
                       var edgeBegin = a_start_iR[here.id].A[x];
@@ -1388,12 +1390,35 @@ module CCMsg {
                             var tmp2=f1[rdid].A[a_dstR[here.id].A[i]];
                             if minval>tmp2 {
                                  minval=tmp2;  
-                                 count+=1;
                             }
                       }
-                      f1_next[here.id].A[x]=minval;
+                      if (minval<f1_next[here.id].A[x]) {
+                                 f1_next[here.id].A[x]=minval;
+                                 count+=1;
+                      }
                   }
                 }//end of forall
+
+
+
+                // here we update the neighbor area with the same vertex ID
+                if (here.id>0) {
+                 if ( (a_nei[here.id-1].DO.highBound >=vertexBegin) && (a_nei[here.id-1].DO.lowBound <=vertexBegin)) {
+                      if (f1_next[here.id-1].A[vertexBegin]>f1_next[here.id].A[vertexBegin]) {
+                            f1_next[here.id-1].A[vertexBegin]=f1_next[here.id].A[vertexBegin];
+                      }
+                 }
+                }
+                if (here.id<numLocales-1) {
+                 if ( (a_nei[here.id+1].DO.lowBound <=vertexEnd) && (a_nei[here.id+1].DO.highBound >=vertexEnd) ) {
+                      if (f1_next[here.id+1].A[vertexEnd]>f1_next[here.id].A[vertexEnd]) {
+                            f1_next[here.id+1].A[vertexEnd]=f1_next[here.id].A[vertexEnd];
+                      }
+                 }
+                }
+
+
+
 
                 vertexBegin = a_nei[here.id].DO.lowBound;
                 vertexEnd = a_nei[here.id].DO.highBound;
