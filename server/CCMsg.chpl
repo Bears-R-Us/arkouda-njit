@@ -878,7 +878,7 @@ module CCMsg {
     }
 
 
-    // FastSpread: a  propogation based connected components algorithm
+    // the atomic method is slower than the non atomic method, no matter for one locale or multiple locales
     proc cc_fs_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
@@ -1229,8 +1229,8 @@ module CCMsg {
             var edgeEnd = src.localSubdomain().highBound;
             var vertexBegin = src[edgeBegin];
             var vertexEnd = src[edgeEnd];
-            writeln("ID=",here.id, " domain=",a_nei[here.id].DO);
-            writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
+            //writeln("ID=",here.id, " domain=",a_nei[here.id].DO);
+            //writeln("ID=",here.id, " vertexBegin=",vertexBegin," vertexEnd=",vertexEnd);
             forall i in vertexBegin..vertexEnd {
                 //writeln("ID=",here.id, " before check value f1[",here.id,"].A[",i,"]=",f1[here.id].A[i], " and f1_next[",here.id,"].A[",i,"]=",f1_next[here.id].A[i]);
                 if (a_nei[here.id].A[i] >0) {
@@ -1529,6 +1529,46 @@ module CCMsg {
 
 
 
+
+
+      proc UpdateValue(minval:int,v:int):bool {
+                           var UpdateFlag:bool=false;
+                           if v<0 {
+                                 return UpdateFlag;
+                           }
+                           var curval:int;
+                           var id=VertexToLocale(0,numLocales-1,v);
+                           if (id!=-1) {
+                               if (minval<f1_next[id].A[v] ) {
+                                  f1_next[id].A[v]=minval;
+                                  UpdateFlag=true;
+                               }
+                           }
+
+                           if (id>0) {
+                                id=VertexToLocale(id-1,id-1,v);
+                                if (id!=-1) {
+                                    if (minval<f1_next[id].A[v] ) {
+                                         f1_next[id].A[v]=minval;
+                                         UpdateFlag=true;
+                                    }
+                                }
+                           } else {
+                               if (id <numLocales-1) {
+                                    id=VertexToLocale(id+1,id+1,v);
+                                    if (id!=-1) {
+                                          if (minval<f1_next[id].A[v]) {
+                                              f1_next[id].A[v]=minval;
+                                              UpdateFlag=true;
+                                          }
+                                    }
+
+                               }
+                           }
+
+                           return UpdateFlag;
+      }
+
       coforall loc in Locales {
         on loc {
             f1[here.id].new_dom(a_nei[here.id].DO);
@@ -1614,8 +1654,7 @@ module CCMsg {
                                  minval=tmp2;  
                             }
                       }
-                      if (minval<f1_next[here.id].A[x]) {
-                               f1_next[here.id].A[x]=minval;
+                      if ( UpdateValue(minval,x)) {
                                count+=1;
                       }
                   }
@@ -1629,9 +1668,8 @@ module CCMsg {
                                  minval=tmp2;  
                             }
                       }
-                      if (minval<f1_next[here.id].A[x]) {
-                                 f1_next[here.id].A[x]=minval;
-                                 count+=1;
+                      if ( UpdateValue(minval,x)) {
+                               count+=1;
                       }
                   }
                 }//end of forall
