@@ -816,12 +816,13 @@ module CCMsg {
 
               //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               var minindex:int;
-              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
-                     //minindex=min(f[u],f[v],gf[u],gf[v]);
-                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
-                     minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+              minindex=min(f[u],f[v]);
+              if ((itera % (JumpSteps*3) ==0) ) {
+                     minindex=min(minindex,f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               } else {
-                     minindex=min(f[u],f[v]);
+                  if ((numLocales ==1) ) {
+                     minindex=min(minindex,f[f[u]],f[f[v]]);
+                  } 
               }
               if(minindex < f_next[u]) {
                 f_next[u] = minindex;
@@ -831,7 +832,7 @@ module CCMsg {
                 f_next[v] = minindex;
                 count+=1;
               }
-              if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
+              if ( (numLocales==1) ) {
                    if(minindex < f_next[f[u]]) {
                      f_next[f[u]] = minindex;
                      count+=1;
@@ -842,6 +843,8 @@ module CCMsg {
                      count+=1;
                      count1+=1;
                    }
+              }
+              if (  (itera % (3*JumpSteps) == 0) ) {
                    if(minindex < f_next[f[f[u]]]) {
                      f_next[f[f[u]]] = minindex;
                      count+=1;
@@ -852,7 +855,7 @@ module CCMsg {
                    }
               }
               
-            }
+            }//end of forall
           }
         }
 
@@ -875,13 +878,11 @@ module CCMsg {
     }
 
 
-
-
     // FastSpread: a  propogation based connected components algorithm
-    proc cc_fs_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_fs_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var f_next = makeDistArray(Nv, int); 
+      var f_next = makeDistArray(Nv, atomic int); 
       var gf = makeDistArray(Nv, int);
       var gf_next = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
@@ -899,14 +900,14 @@ module CCMsg {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
                      f[i]=tmpv;
-                     f_next[i]=tmpv;
+                     f_next[i].write(tmpv);
                 }
             }
             if (neiR[i] >0) {
                 var tmpv=dstR[start_iR[i]];
                 if ( tmpv <f[i] ) {
                      f[i]=tmpv;
-                     f_next[i]=tmpv;
+                     f_next[i].write(tmpv);
                 }
             }
           }
@@ -930,30 +931,61 @@ module CCMsg {
 
               //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               var minindex:int;
-              if ((numLocales ==1) || (itera % JumpSteps==0) ) {
-                     //minindex=min(f[u],f[v],gf[u],gf[v]);
-                     //minindex=min(f[u],f[v],gf[u],gf[v],gf[gf[u]],gf[gf[v]]);
-                     minindex=min(f[u],f[v]);
+              minindex=min(f[u],f[v]);
+              if ((itera % (JumpSteps*3) ==0) ) {
+                     minindex=min(minindex,f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               } else {
-                     minindex=min(f[u],f[v]);
+                  if ((numLocales ==1) ) {
+                     minindex=min(minindex,f[f[u]],f[f[v]]);
+                  } 
               }
-              if(minindex < f_next[u]) {
-                f_next[u] = minindex;
+              if(minindex < f_next[u].read()) {
+                f_next[u].write(minindex);
                 count+=1;
               }
-              if(minindex < f_next[v]) {
-                f_next[v] = minindex;
+              if(minindex < f_next[v].read()) {
+                f_next[v].write(minindex);
                 count+=1;
               }
-            }
+              if ( (numLocales==1) ) {
+                   if(minindex < f_next[f[u]].read()) {
+                     f_next[f[u]].write(minindex);
+                     count+=1;
+                     count1+=1;
+                   }
+                   if(minindex < f_next[f[v]].read()) {
+                     f_next[f[v]].write(minindex);
+                     count+=1;
+                     count1+=1;
+                   }
+              }
+              if (  (itera % (3*JumpSteps) == 0) ) {
+                   if(minindex < f_next[f[f[u]]].read()) {
+                     f_next[f[f[u]]].write(minindex);
+                     count+=1;
+                   }
+                   if(minindex < f_next[f[f[v]]].read()) {
+                     f_next[f[f[v]]].write(minindex);
+                     count+=1;
+                   }
+              }
+              
+            }//end of forall
           }
         }
 
 
-        f = f_next; 
+        coforall loc in Locales {
+            on loc {
+                var vertexBegin = f.localSubdomain().lowBound;
+                var vertexEnd = f.localSubdomain().highBound;
+                forall i in vertexBegin..vertexEnd {
+                     f[i] = f_next[i].read(); 
+                }
+            }
+        }
 
-        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
-        if( (count==0) ) {
+        if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
           converged = true;
         }
         else {
@@ -962,13 +994,101 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("cc 1 Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
 
       return f;
     }
 
 
-    // FastSpread: a  propogation based connected components algorithm
+    //distance 1 iteration is good for multiple locales.
+    proc cc_fs_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_next = makeDistArray(Nv, atomic int); 
+      var gf = makeDistArray(Nv, int);
+      var gf_next = makeDistArray(Nv, int);
+      var dup = makeDistArray(Nv, int);
+      var diff = makeDistArray(Nv, int);
+
+      // Initialize f and f_next in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            f_next[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                     f_next[i].write(tmpv);
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                     f_next[i].write(tmpv);
+                }
+            }
+          }
+        }
+      }
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+
+              var minindex:int;
+              minindex=min(f[u],f[v]);
+              if(minindex < f_next[u].read()) {
+                f_next[u].write(minindex);
+                count+=1;
+              }
+              if(minindex < f_next[v].read()) {
+                f_next[v].write( minindex);
+                count+=1;
+              }
+            }
+          }
+        }
+
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+              var vertexBegin = f.localSubdomain().lowBound;
+              var vertexEnd = f.localSubdomain().highBound;
+              forall i in vertexBegin..vertexEnd {
+                     f[i]=f_next[i].read();
+              }
+          }
+        }
+
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      writeln("cc distance=1 Number of iterations = ", itera);
+
+      return f;
+    }
+
+
+    // distance 2 iteration is good for one locale 
     proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
@@ -1376,6 +1496,36 @@ module CCMsg {
       }
 
 
+      proc SearchVertexValue(v:int) :int {
+                           if v<0 {
+                                 return -1;
+                           }
+                           var curval:int;
+                           var id=VertexToLocale(0,numLocales-1,v);
+                           if (id!=-1) {
+                                  curval=f1[id].A[v];
+                           }
+                           if (id>0) {
+                                id=VertexToLocale(id-1,id-1,v);
+                                if (id!=-1) {
+                                    if (curval>f1[id].A[v] ) {
+                                         curval=f1[id].A[v];
+                                    }        
+                                }
+                           } else {
+                               if (id <numLocales-1) {
+                                    id=VertexToLocale(id+1,id+1,v);
+                                    if (id!=-1) {
+                                          if (curval>f1[id].A[v]) {
+                                              curval=f1[id].A[v];
+                                          }
+                                    }
+
+                               }
+                           }
+                           return curval;
+ 
+      }
 
 
 
@@ -1459,8 +1609,7 @@ module CCMsg {
                       var edgeEnd = edgeBegin+a_nei[here.id].A[x]-1;
                       minval=f1_next[here.id].A[x] ;
                       for i in edgeBegin..edgeEnd  {
-                            var did=VertexToLocale(0,numLocales-1,dst[i]);
-                            var tmp2=f1[did].A[dst[i]];
+                            var tmp2=SearchVertexValue(dst[i]);
                             if minval>tmp2 {
                                  minval=tmp2;  
                             }
@@ -1475,8 +1624,7 @@ module CCMsg {
                       var edgeEnd = edgeBegin+a_neiR[here.id].A[x]-1;
                       minval=f1_next[here.id].A[x] ;
                       for i in edgeBegin..edgeEnd   {
-                            var rdid=VertexToLocale(0,numLocales-1,a_dstR[here.id].A[i]);
-                            var tmp2=f1[rdid].A[a_dstR[here.id].A[i]];
+                            var tmp2=SearchVertexValue(a_dstR[here.id].A[i]);
                             if minval>tmp2 {
                                  minval=tmp2;  
                             }
@@ -1587,8 +1735,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        //f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-        f3 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1597,12 +1744,12 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for simple fs cc 2: " + timer.elapsed():string;
+        outMsg = "Time elapsed for simple fs cc : " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
         timer.start();
-        f4 = cc_fs_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f4 = cc_fs_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1611,7 +1758,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for simple fs 1 cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for simple fs atomic cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         f5=f1;
         f6=f1;
@@ -1681,40 +1828,13 @@ module CCMsg {
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
               if ( (f1[i]!=f6[i]) ) {
-                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
+                var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
             }
           }
         } 
 
-        // timer.clear();
-        // timer.start(); 
-        // temp = cc_kernel_und_1( toSymEntry(ag.getNEIGHBOR(), int).a, 
-        //                         toSymEntry(ag.getSTART_IDX(), int).a, 
-        //                         toSymEntry(ag.getSRC(), int).a, 
-        //                         toSymEntry(ag.getDST(), int).a, 
-        //                         toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-        //                         toSymEntry(ag.getSTART_IDX_R(), int).a, 
-        //                         toSymEntry(ag.getSRC_R(), int).a, 
-        //                         toSymEntry(ag.getDST_R(), int).a);
-        // timer.stop(); 
-        // outMsg = "Time elapsed for du cc: " + timer.elapsed():string;
-        // smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        // timer.clear();
-        // timer.start(); 
-        // var temp = cc_kernel_und(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-        //                     toSymEntry(ag.getSTART_IDX(), int).a, 
-        //                     toSymEntry(ag.getSRC(), int).a, 
-        //                     toSymEntry(ag.getDST(), int).a, 
-        //                     toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-        //                     toSymEntry(ag.getSTART_IDX_R(), int).a, 
-        //                     toSymEntry(ag.getSRC_R(), int).a, 
-        //                     toSymEntry(ag.getDST_R(), int).a);
-        // timer.stop(); 
-        // outMsg = "Time elapsed for serial cc: " + timer.elapsed():string;
-        // smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     }
     
     // The message that is sent back to the Python front-end. 
