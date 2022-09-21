@@ -1804,6 +1804,7 @@ module CCMsg {
         outMsg = "Time elapsed for simple fs atomic cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        /*
         f5=f1;
         f6=f1;
 
@@ -1851,7 +1852,7 @@ module CCMsg {
                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         }
-
+        */
         coforall loc in Locales {
           on loc {
             var vertexStart = f1.localSubdomain().lowBound;
@@ -1866,6 +1867,7 @@ module CCMsg {
                 var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
+              /*
               if ( (f1[i]!=f5[i]) ) {
                 var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -1874,6 +1876,7 @@ module CCMsg {
                 var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
+              */
             }
           }
         } 
