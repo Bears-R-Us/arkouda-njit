@@ -868,7 +868,7 @@ module CCMsg {
 
 
     // the atomic method is slower than the non atomic method. However, for large graphs, it seems the atomic method is good.
-    proc cc_fs_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_fs_atomic_old(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, atomic int); 
@@ -974,7 +974,8 @@ module CCMsg {
             }
         }
 
-        if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        if( (count==0) ) {
           converged = true;
         }
         else {
@@ -993,14 +994,10 @@ module CCMsg {
 
 
     // the atomic method is slower than the non atomic method. However, for large graphs, it seems the atomic method is good.
-    proc cc_fs_atomic2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_fs_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_next = makeDistArray(Nv, atomic int); 
-      var gf = makeDistArray(Nv, int);
-      var gf_next = makeDistArray(Nv, int);
-      var dup = makeDistArray(Nv, int);
-      var diff = makeDistArray(Nv, int);
 
       // Initialize f and f_next in distributed memory.
       coforall loc in Locales {
@@ -1008,19 +1005,16 @@ module CCMsg {
           var vertexBegin = f.localSubdomain().lowBound;
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
-            f[i] = i;
             f_next[i].write(i);
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
-                     f[i]=tmpv;
                      f_next[i].write(tmpv);
                 }
             }
             if (neiR[i] >0) {
                 var tmpv=dstR[start_iR[i]];
                 if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
                      f_next[i].write(tmpv);
                 }
             }
@@ -1043,9 +1037,8 @@ module CCMsg {
               var v = dst[x];
 
 
-              //var minindex=min(f[u],f[v],f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
               var minindex:int;
-              minindex=min(f[u],f[v]);
+              minindex=min(f_next[u].read(),f_next[v].read());
               if ((itera % (JumpSteps*3) ==0) ) {
                      minindex=min(minindex,f_next[f_next[u].read()].read(),f_next[f_next[v].read()].read(),f_next[f_next[f_next[u].read()].read()].read(),f_next[f_next[f_next[v].read()].read()].read());
               } else {
@@ -1074,12 +1067,12 @@ module CCMsg {
                    }
               }
               if (  (itera % (3*JumpSteps) == 0) ) {
-                   if(minindex < f_next[f[f[u]]].read()) {
-                     f_next[f[f[u]]].write(minindex);
+                   if(minindex < f_next[f_next[f_next[u].read()].read()].read()) {
+                     f_next[f_next[f_next[u].read()].read()].write(minindex);
                      count+=1;
                    }
-                   if(minindex < f_next[f[f[v]]].read()) {
-                     f_next[f[f[v]]].write(minindex);
+                   if(minindex < f_next[f_next[f_next[v].read()].read()].read()) {
+                     f_next[f_next[f_next[v].read()].read()].write(minindex);
                      count+=1;
                    }
               }
@@ -1089,7 +1082,8 @@ module CCMsg {
         }
 
 
-        if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        if(  (count==0) ) {
           converged = true;
         }
         else {
@@ -1099,6 +1093,15 @@ module CCMsg {
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = f_next[i].read();
+          }
+        }
+      }
 
       return f;
     }
@@ -1881,7 +1884,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f3 = cc_fs_atomic2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1890,7 +1893,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for cc atomic 2 : " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs dist cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
@@ -1904,7 +1907,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for simple fs atomic cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for simple atomic fs  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         /*
