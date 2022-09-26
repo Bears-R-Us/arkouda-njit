@@ -1734,6 +1734,564 @@ module GraphMsg {
 
 
 
+
+  // directly build a graph from two edge arrays
+  proc segAryToGraphMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+      //var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(11);
+
+      var (srcS,dstS,DirectedS,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(8);
+
+      var srcEntry = st.lookup(srcS): borrowed SymEntry(int);
+      var dstEntry = st.lookup(dstS): borrowed SymEntry(int);
+      var orisrc=toSymEntry(srcEntry,int).a;
+      var oridst=toSymEntry(dstEntry,int).a;
+      var FileName=srcS+dstS;
+      var Ne =orisrc.size;
+      var Nv:int =0;
+     
+      forall i in 0..Ne-1 with (ref Nv) {
+            if orisrc[i]>Nv {
+                Nv=orisrc[i];
+            }
+            if oridst[i]>Nv {
+                Nv=oridst[i];
+            }
+      }
+      Nv+=1;
+     
+      var NumCol=2:int;
+      var DirectedFlag:bool=false;
+      var WeightedFlag:bool=false;
+
+      var timer: Timer;
+      var RCMFlag:bool=false;
+      var DegreeSortFlag:bool=false;
+      var RemapVertexFlag:bool=false;
+      var WriteFlag:bool=false;
+      var AlignedArray:int=(AlignedArrayS:int);
+
+      proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+                       //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
+                       //    return -1;
+                       //}
+                       if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
+                            return -1;
+                       }
+                       if (ary[l]==key){
+                            return l;
+                       }
+                       if (ary[h]==key){
+                            return h;
+                       }
+                       var m= (l+h)/2:int;
+                       if ((m==l) ) {
+                            return -1;
+                       }
+                       if (ary[m]==key ){
+                            return m;
+                       } else {
+                            if (ary[m]<key) {
+                              return binSearchE(ary,m+1,h,key);
+                            }
+                            else {
+                                    return binSearchE(ary,l,m-1,key);
+                            }
+                       }
+      }// end of proc
+
+
+      timer.start();
+    
+      var NewNe,NewNv:int;
+
+
+      if (DirectedS:int)==1 {
+          DirectedFlag=true;
+      }
+      if NumCol>2 {
+           WeightedFlag=true;
+      }
+      if (RemapVertexS:int)==1 {
+          RemapVertexFlag=true;
+      }
+      if (DegreeSortS:int)==1 {
+          DegreeSortFlag=true;
+      }
+      if (RCMS:int)==1 {
+          RCMFlag=true;
+      }
+      if (RwriteS:int)==1 {
+          WriteFlag=true;
+      }
+      var src=makeDistArray(Ne,int);
+      var edgeD=src.domain;
+
+
+      var neighbour=makeDistArray(Nv,int);
+      var vertexD=neighbour.domain;
+
+
+      var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
+      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+
+      var linenum:int=0;
+      var repMsg: string;
+
+      var tmpmindegree:int =start_min_degree;
+
+
+      // Make a composable SegGraph object that we can store in a GraphSymEntry later
+      var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+
+
+      proc readLinebyLine() throws {
+           coforall loc in Locales  {
+              on loc {
+                  var line:string;
+                  var a,b:int;
+                  var curline=0:int;
+                  var srclocal=src.localSubdomain();
+                  var ewlocal=e_weight.localSubdomain();
+
+                  while curline<Ne {
+                      a=orisrc[curline];
+                      b=oridst[curline];
+                      if a==b {
+                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                "self cycle "+ (a:string) +"->"+(b:string));
+                      }
+                      if srclocal.contains(curline) {
+                               src[curline]=(a:int);
+                               dst[curline]=(b:int);
+                      }
+                      curline+=1;
+                      if curline>srclocal.highBound {
+                          break;
+                      }
+                  } 
+                  if (curline<=srclocal.highBound) {
+                     var myoutMsg="The original array does not give enough edges for locale " + here.id:string +" current line="+curline:string;
+                     smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
+                  }
+               }// end on loc
+           }//end coforall
+      }//end readLinebyLine
+      
+      // readLinebyLine sets ups src, dst, start_i, neightbor.  e_weights will also be set if it is an edge weighted graph
+      // currently we ignore the weight.
+      readLinebyLine(); 
+      NewNv=vertex_remap(src,dst,Nv);
+      Nv=NewNv;
+      
+      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
+      } catch {
+             try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+      }
+
+      set_neighbour(src,start_i,neighbour);
+
+
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "Handle self loop and duplicated edges");
+      var cur=0;
+      var tmpsrc=src;
+      var tmpdst=dst;
+      for i in 0..Ne-1 {
+          if src[i]==dst[i] {
+              continue;
+              //self loop
+          }
+          if (cur==0) {
+             tmpsrc[cur]=src[i];
+             tmpdst[cur]=dst[i]; 
+             cur+=1;
+             continue;
+          }
+          if (tmpsrc[cur-1]==src[i]) && (tmpdst[cur-1]==dst[i]) {
+              //duplicated edges
+              continue;
+          } else {
+               if (src[i]>dst[i]) {
+
+                    var u=src[i]:int;
+                    var v=dst[i]:int;
+                    var lu=start_i[u]:int;
+                    var nu=neighbour[u]:int;
+                    var lv=start_i[v]:int;
+                    var nv=neighbour[v]:int;
+                    var DupE:int;
+                    DupE=binSearchE(dst,lv,lv+nv-1,u);
+                    if DupE!=-1 {
+                         //find v->u 
+                         continue;
+                    }
+               }
+
+               tmpsrc[cur]=src[i];
+               tmpdst[cur]=dst[i]; 
+               cur+=1;
+          }
+      }
+      NewNe=cur;    
+
+
+      if (NewNe<Ne ) {
+      
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "removed "+(Ne-NewNe):string +" edges");
+
+          var mysrc=makeDistArray(NewNe,int);
+          var myedgeD=mysrc.domain;
+
+          var myneighbour=makeDistArray(NewNv,int);
+          var myvertexD=myneighbour.domain;
+
+          var mydst,mye_weight,mysrcR,mydstR, myiv: [myedgeD] int ;
+          var mystart_i,myneighbourR, mystart_iR,mydepth, myv_weight: [myvertexD] int;
+
+
+
+          forall i in 0..NewNe-1 {
+             mysrc[i]=tmpsrc[i];
+             mydst[i]=tmpdst[i];
+          }
+          try  { combine_sort(mysrc, mydst,mye_weight,WeightedFlag, false);
+          } catch {
+                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+          }
+
+          set_neighbour(mysrc,mystart_i,myneighbour);
+
+
+          if (!DirectedFlag) { //undirected graph
+              coforall loc in Locales  {
+                  on loc {
+                       forall i in mysrcR.localSubdomain(){
+                            mysrcR[i]=mydst[i];
+                            mydstR[i]=mysrc[i];
+                       }
+                  }
+              }
+              try  { combine_sort(mysrcR, mydstR,mye_weight,WeightedFlag, false);
+              } catch {
+                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          "combine sort error");
+              }
+              set_neighbour(mysrcR,mystart_iR,myneighbourR);
+              if (DegreeSortFlag) {
+                    degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,mye_weight,WeightedFlag);
+              }
+
+
+              graph.withSRC(new shared SymEntry(mysrc):GenSymEntry)
+                   .withDST(new shared SymEntry(mydst):GenSymEntry)
+                   .withSTART_IDX(new shared SymEntry(mystart_i):GenSymEntry)
+                   .withNEIGHBOR(new shared SymEntry(myneighbour):GenSymEntry);
+
+              graph.withSRC_R(new shared SymEntry(mysrcR):GenSymEntry)
+                   .withDST_R(new shared SymEntry(mydstR):GenSymEntry)
+                   .withSTART_IDX_R(new shared SymEntry(mystart_iR):GenSymEntry)
+                   .withNEIGHBOR_R(new shared SymEntry(myneighbourR):GenSymEntry);
+
+
+              if (AlignedArray==1) {
+
+                  var aligned_nei=makeDistArray(numLocales,DomArray);
+                  var aligned_neiR=makeDistArray(numLocales,DomArray);
+                  var aligned_start_i=makeDistArray(numLocales,DomArray);
+                  var aligned_start_iR=makeDistArray(numLocales,DomArray);
+                  var aligned_srcR=makeDistArray(numLocales,DomArray);
+                  var aligned_dstR=makeDistArray(numLocales,DomArray);
+
+                  var DVertex : [rcDomain] domain(1);
+                  var DEdge : [rcDomain] domain(1);
+
+                  coforall loc in Locales with (ref DVertex, ref DEdge) {
+                       on loc {
+                           var Lver=mysrc[mysrc.localSubdomain().lowBound];
+                           var Ledg=start_iR[Lver];
+                           if (Ledg==-1) {
+                                var i=Lver-1;
+                                while (i>=0) {
+                                     if (mystart_iR[i]!=-1){
+                                          Ledg=mystart_iR[i];
+                                          break;
+                                     }
+                                     i=i-1;
+                                }
+                                if (Ledg==-1) {
+                                    Ledg=0;
+                                }
+                           }
+                           var Hver=mysrc[mysrc.localSubdomain().highBound];
+                           var Hedg=mystart_iR[Hver];
+                           if (Hedg==-1) {
+                                var j=Hver+1;
+                                while (j<NewNv) {
+                                      if (mystart_iR[j]!=-1){
+                                          Hedg=mystart_iR[j];
+                                          break;
+                                     }
+                                     j=j+1;
+                                }
+                                if (Hedg==-1) {
+                                    Hedg=NewNe-1;
+                                }
+                           }
+                           if (here.id==0) {
+                                 Lver=0;
+                                 Ledg=0;
+                           }
+                           if (here.id==numLocales-1) {
+                                 Hver=NewNv-1;
+                                 Hedg=NewNe-1;
+                           }
+                           DVertex[1] = {Lver..Hver};
+                           DEdge[1] = {Ledg..Hedg};
+
+                           aligned_nei[here.id].new_dom(DVertex[1]);
+                           aligned_neiR[here.id].new_dom(DVertex[1]);
+
+                           aligned_start_i[here.id].new_dom(DVertex[1]);
+                           aligned_start_iR[here.id].new_dom(DVertex[1]);
+                           aligned_srcR[here.id].new_dom(DEdge[1]);
+                           aligned_dstR[here.id].new_dom(DEdge[1]);
+                       }
+                  }
+                  coforall loc in Locales {
+                      on loc {
+                          forall i in aligned_nei[here.id].DO {
+                              aligned_nei[here.id].A[i] = myneighbour[i];
+                          }
+                          forall i in aligned_neiR[here.id].DO {
+                              aligned_neiR[here.id].A[i] = myneighbourR[i];
+                          }
+                          forall i in aligned_start_i[here.id].DO {
+                              aligned_start_i[here.id].A[i] = mystart_i[i];
+                          }
+                          forall i in aligned_start_iR[here.id].DO {
+                              aligned_start_iR[here.id].A[i] = mystart_iR[i];
+                          }
+                          forall i in aligned_srcR[here.id].DO {
+                              aligned_srcR[here.id].A[i] = mysrcR[i];
+                          }
+                          forall i in aligned_dstR[here.id].DO {
+                              aligned_dstR[here.id].A[i] = mydstR[i];
+                          }
+                      }
+                  }
+
+
+                  graph.withA_START_IDX_R(new shared DomArraySymEntry(aligned_start_iR):CompositeSymEntry)
+                       .withA_NEIGHBOR_R(new shared DomArraySymEntry(aligned_neiR):CompositeSymEntry)
+                       .withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
+                       .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry)
+                       .withA_SRC_R(new shared DomArraySymEntry(aligned_srcR):CompositeSymEntry)
+                       .withA_DST_R(new shared DomArraySymEntry(aligned_dstR):CompositeSymEntry);
+
+              }
+              if (WriteFlag) {
+                  var wf = open(FileName+".pr", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+                  for i in 0..NewNe-1 {
+                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
+                  }
+                  mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
+                  mw.close();
+                  wf.close();
+              }
+
+          }//end of undirected
+
+      } else {
+          NewNe=Ne;
+          NewNv=Nv;
+
+          if (!DirectedFlag) { //undirected graph
+              smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "Handle undirected graph");
+              coforall loc in Locales  {
+                  on loc {
+                      forall i in srcR.localSubdomain(){
+                            srcR[i]=dst[i];
+                            dstR[i]=src[i];
+                       }
+                  }
+              }
+              try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
+              } catch {
+                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          "combine sort error");
+              }
+              set_neighbour(srcR,start_iR,neighbourR);
+
+              if (DegreeSortFlag) {
+                        degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+              }
+              if (RCMFlag) {
+                 RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,e_weight,WeightedFlag);
+              }
+
+
+
+              graph.withSRC(new shared SymEntry(src):GenSymEntry)
+                   .withDST(new shared SymEntry(dst):GenSymEntry)
+                   .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
+                   .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+
+              graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
+                   .withDST_R(new shared SymEntry(dstR):GenSymEntry)
+                   .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
+                   .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+
+
+
+              if (AlignedArray==1) {
+                  var aligned_nei=makeDistArray(numLocales,DomArray);
+                  var aligned_neiR=makeDistArray(numLocales,DomArray);
+                  var aligned_start_i=makeDistArray(numLocales,DomArray);
+                  var aligned_start_iR=makeDistArray(numLocales,DomArray);
+                  var aligned_srcR=makeDistArray(numLocales,DomArray);
+                  var aligned_dstR=makeDistArray(numLocales,DomArray);
+
+                  var DVertex : [rcDomain] domain(1);
+                  var DEdge : [rcDomain] domain(1);
+
+                  coforall loc in Locales with (ref DVertex, ref DEdge) {
+                       on loc {
+                           var Lver=src[src.localSubdomain().lowBound];
+                           var Ledg=start_iR[Lver];
+                           if (Ledg==-1) {
+                                var i=Lver-1;
+                                while (i>=0) {
+                                     if (start_iR[i]!=-1){
+                                          Ledg=start_iR[i];
+                                          break;
+                                     }
+                                     i=i-1;
+                                }
+                                if (Ledg==-1) {
+                                    Ledg=0;
+                                }
+                           }
+                           var Hver=src[src.localSubdomain().highBound];
+                           var Hedg=start_iR[Hver];
+                           if (Hedg==-1) {
+                                var j=Hver+1;
+                                while (j<Nv) {
+                                     if (start_iR[j]!=-1){
+                                          Hedg=start_iR[j];
+                                          break;
+                                     }
+                                     j=j+1;
+                                }
+                                if (Hedg==-1) {
+                                    Hedg=Ne-1;
+                                }
+                           }
+                           if (here.id==0) {
+                                 Lver=0;
+                                 Ledg=0;
+                           }
+                           if (here.id==numLocales-1) {
+                                 Hver=Nv-1;
+                                 Hedg=Ne-1;
+                           }
+                           DVertex[1] = {Lver..Hver};
+                           DEdge[1] = {Ledg..Hedg};
+
+                           aligned_nei[here.id].new_dom(DVertex[1]);
+                           aligned_neiR[here.id].new_dom(DVertex[1]);
+   
+                           aligned_start_i[here.id].new_dom(DVertex[1]);
+                           aligned_start_iR[here.id].new_dom(DVertex[1]);
+                           aligned_srcR[here.id].new_dom(DEdge[1]);
+                           aligned_dstR[here.id].new_dom(DEdge[1]);
+                       }
+                  }
+                  coforall loc in Locales {
+                      on loc {
+                          forall i in aligned_nei[here.id].DO {
+                              aligned_nei[here.id].A[i] = neighbour[i];
+                          }
+                          forall i in aligned_neiR[here.id].DO {
+                              aligned_neiR[here.id].A[i] = neighbourR[i];
+                          }
+                          forall i in aligned_start_i[here.id].DO {
+                              aligned_start_i[here.id].A[i] = start_i[i];
+                          }
+                          forall i in aligned_start_iR[here.id].DO {
+                              aligned_start_iR[here.id].A[i] = start_iR[i];
+                          }
+                          forall i in aligned_srcR[here.id].DO {
+                              aligned_srcR[here.id].A[i] = srcR[i];
+                          }
+                          forall i in aligned_dstR[here.id].DO {
+                              aligned_dstR[here.id].A[i] = dstR[i];
+                          }
+                      }
+                  }
+
+
+                  graph.withA_START_IDX_R(new shared DomArraySymEntry(aligned_start_iR):CompositeSymEntry)
+                       .withA_NEIGHBOR_R(new shared DomArraySymEntry(aligned_neiR):CompositeSymEntry)
+                       .withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
+                       .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry)
+                       .withA_SRC_R(new shared DomArraySymEntry(aligned_srcR):CompositeSymEntry)
+                       .withA_DST_R(new shared DomArraySymEntry(aligned_dstR):CompositeSymEntry);
+
+
+              }
+              if (WriteFlag) {
+                  var wf = open(FileName+".pr", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+                  for i in 0..Ne-1 {
+                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
+                  }
+                  mw.writeln("Num Edge=%i  Num Vertex=%i".format(Ne, Nv));
+                  mw.close();
+                  wf.close();
+              }
+
+
+          }//end of undirected
+      }
+
+
+
+      var sNv=NewNv:string;
+      var sNe=NewNe:string;
+      var sDirected:string;
+      var sWeighted:string;
+      if (DirectedFlag) {
+           sDirected="1";
+      } else {
+           sDirected="0";
+      }
+
+      if (WeightedFlag) {
+           sWeighted="1";
+      } else {
+           sWeighted="0";
+      }
+      var graphEntryName = st.nextName();
+      var graphSymEntry = new shared GraphSymEntry(graph);
+      st.addEntry(graphEntryName, graphSymEntry);
+      repMsg =  sNv + '+ ' + sNe + '+ ' + sDirected + '+ ' + sWeighted + '+' +  graphEntryName; 
+      timer.stop();
+      outMsg="Graph building from array takes "+ timer.elapsed():string;
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      return new MsgTuple(repMsg, MsgType.NORMAL);
+  }
+
+
+
+
+
+
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphFileMtxMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
       var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(10);
@@ -2504,6 +3062,7 @@ module GraphMsg {
 
     use CommandMap;
     registerFunction("segmentedGraphFile", segGraphFileMsg);
+    registerFunction("segmentedGraphArray", segAryToGraphMsg);
     registerFunction("segmentedGraphPreProcessing", segGraphPreProcessingMsg);
     registerFunction("segmentedGraphFileMtx", segGraphFileMtxMsg);
     registerFunction("segmentedRMAT", segrmatgenMsg);
