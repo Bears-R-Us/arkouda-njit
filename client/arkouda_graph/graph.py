@@ -147,7 +147,7 @@ def graph_query(graph: Graph, component: str) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def graph_edgearray(src:str, dst:str, directed: int, \
+def graph_edgearray(src:str, dst:str, directed: int=0, \
                     RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1, BuildAlignedArray:int=0) -> Graph:
     """
         This function is used for building a graph from two edge arrays 
