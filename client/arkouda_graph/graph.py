@@ -399,7 +399,7 @@ def rmat_gen(lgNv: int, Ne_per_v: int, p: float, directed: int, weighted: int) -
     RCMFlag = 1
     #args = "{} {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted, RCMFlag)
     args = {"LogNumOfVertices":lgNv, "NumOfEdgesPerV":Ne_per_v,"SP":p,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":directed,"Weighted": weighted,\
             "RCMFlag":RCMFlag}
     #msg = "segmentedRMAT {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted)
     repMsg = generic_msg(cmd=cmd, args=args)
@@ -433,7 +433,7 @@ def graph_bfs(graph: Graph, root: int, rcm_flag:int) -> pdarray:
     #    rcm_flag, graph.n_vertices, graph.n_edges,
     #    graph.directed, graph.weighted, graph.name, root, DefaultRatio)
     args = {"RCMFlag":RCMFlag,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":directed,"Weighted": weighted,\
              "GraphName":graph.name,"Root":root,"Ratio":DefaultRatio}
 
     repMsg = generic_msg(cmd=cmd, args=args)
@@ -462,7 +462,7 @@ def graph_cc(graph: Graph) -> pdarray:
     #args = "{} {} {} {} {}".format( graph.n_vertices, graph.n_edges, graph.directed, graph.weighted,
     #    graph.name)
     args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":graph.directed,"Weighted":graph.weighted,\
              "GraphName":graph.name}
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
@@ -532,7 +532,7 @@ def graph_triangle (graph: Graph) -> pdarray:
         #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
         #         graph.directed,graph.weighted, graph.name)
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":directed,"Weighted": weighted,\
              "GraphName":graph.name}
 
         repMsg = generic_msg(cmd=cmd,args=args)
@@ -563,7 +563,7 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         #         graph.directed,graph.weighted,\
         #         graph.name)
         args = {"KValue":kTrussValue,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":directed,"Weighted": weighted,\
              "GraphName":graph.name}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -576,7 +576,7 @@ def stream_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         cmd = "segmentedStreamTri"
         #args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
         args = { "NumOfEdges":graph.n_edges, "NumOfVertices":graph.n_vertices,\
-                 "NumOfColumns":Ncol, "Directed":directed, "FileName": filename,\ 
+                 "NumOfColumns":Ncol, "Directed":directed, "FileName": filename,\
                  "Factor":factor}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -617,7 +617,7 @@ def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         cmd = "segmentedPLStreamTri"
         #args="{} {} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor,case);
         args = { "NumOfEdges":Ne, "NumOfVertices":Nv,\
-                 "NumOfColumns":Ncol, "Directed":directed, "FileName": filename,\ 
+                 "NumOfColumns":Ncol, "Directed":directed, "FileName": filename,\
                  "Factor":factor,"Case":case}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -645,7 +645,7 @@ def graph_tri_ctr (graph: Graph) -> pdarray:
         #         graph.directed,graph.weighted, graph.name)
 
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":directed,"Weighted": weighted,\
              "GraphName":graph.name}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -672,7 +672,7 @@ def graph_jaccard_coefficient(graph: Graph) -> pdarray:
         #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
         #         graph.directed,graph.weighted, graph.name)
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\ 
+             "Directed":directed,"Weighted": weighted,\
              "GraphName":graph.name}
 
         repMsg = generic_msg(cmd=cmd,args=args)
