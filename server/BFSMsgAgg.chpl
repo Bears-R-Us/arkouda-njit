@@ -34,9 +34,16 @@ module BFSMsgAgg {
     }
 
     // visit a graph using BFS method
-    proc segBFSMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+    proc segBFSMsg(cmd: string, payload: string, argSize: int,st: borrowed SymTab): MsgTuple throws {
+        var msgArgs = parseMessageArgs(payload, argSize);
         var repMsg : string;
-        var (RCMs, n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart) = payload.splitMsgToTuple(7);
+        //var (RCMs, n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart) = payload.splitMsgToTuple(7);
+        var RCMs = msgArgs.getValueOf("RCMFlag");
+        var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+        var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+        var directedN=msgArgs.getValueOf("Directed");
+        var weightedN=msgArgs.getValueOf("Weighted");
+        var graphEntryName=msgArgs.getValueOf("GraphName");
         var Nv = n_verticesN : int;
         var Ne = n_edgesN : int;
         var Directed = directedN : int;
@@ -897,8 +904,10 @@ module BFSMsgAgg {
         if (Directed != 0) {
             // Weighted graphs.
             if (Weighted != 0) {
-                var ratios : string;
-                (rootN, ratios) = restpart.splitMsgToTuple(2);
+                //var ratios : string;
+                //(rootN, ratios) = restpart.splitMsgToTuple(2);
+                var rootN=msgArgs.getValueOf("Root");
+                var ratios=msgArgs.getValueOf("Ratio");
                 root = rootN : int;
                 var GivenRatio = ratios:real;
                 if (RCMFlag > 0) {
@@ -915,8 +924,10 @@ module BFSMsgAgg {
                 repMsg=return_depth(depth);
             // Unweighted graphs.
             } else {
-                var ratios : string;
-                (rootN, ratios) = restpart.splitMsgToTuple(2);
+                //var ratios : string;
+                //(rootN, ratios) = restpart.splitMsgToTuple(2);
+                var rootN=msgArgs.getValueOf("Root");
+                var ratios=msgArgs.getValueOf("Ratio");
                 root = rootN : int;
                 var GivenRatio = ratios : real;
                 if (RCMFlag>0) {
@@ -936,8 +947,10 @@ module BFSMsgAgg {
         } else {
             // Weighted graphs.
             if (Weighted != 0) {
-                var ratios : string;
-                (rootN, ratios) = restpart.splitMsgToTuple(2);
+                //var ratios : string;
+                //(rootN, ratios) = restpart.splitMsgToTuple(2);
+                var rootN=msgArgs.getValueOf("Root");
+                var ratios=msgArgs.getValueOf("Ratio");
                 root = rootN : int;
                 if (RCMFlag>0) {
                     root = 0;
@@ -979,8 +992,10 @@ module BFSMsgAgg {
                 } // end of batch test
             // Unweighted graphs.
             } else {
-                var ratios : string;
-                (rootN, ratios) = restpart.splitMsgToTuple(2);
+                //var ratios : string;
+                //(rootN, ratios) = restpart.splitMsgToTuple(2);
+                var rootN=msgArgs.getValueOf("Root");
+                var ratios=msgArgs.getValueOf("Ratio");
                 root = rootN : int;
                 if (RCMFlag>0) {
                     root = 0;

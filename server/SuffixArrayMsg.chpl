@@ -48,10 +48,18 @@ module SuffixArrayMsg {
       return array;
   }
 
-  proc segmentLengthsIntMsg(cmd: string, payload: string, 
+  proc segmentLengthsIntMsg(cmd: string, payload: string, argSize:int,
                                           st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
-    var (objtype, segName, valName) = payload.splitMsgToTuple(3);
+    //var (objtype, segName, valName) = payload.splitMsgToTuple(3);
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var objtype=msgArgs.getValueOf("ObjType");
+      var segName=msgArgs.getValueOf("SegName");
+      var valName=msgArgs.getValueOf("ValName");
+
+
 
     // check to make sure symbols defined
     st.checkTable(segName);
@@ -91,16 +99,30 @@ module SuffixArrayMsg {
    * 2. sliceIndex : segSliceIndex
    * 3. pdarrayIndex : segPdarrayIndex
   */ 
-  proc segmentedIntIndexMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segmentedIntIndexMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
     // 'subcmd' is the type of indexing to perform
     // 'objtype' is the type of segmented array
-    var (subcmd, objtype, rest) = payload.splitMsgToTuple(3);
-    var fields = rest.split();
-    var args: [1..#fields.size] string = fields; // parsed by subroutines
+    //var (subcmd, objtype, rest) = payload.splitMsgToTuple(3);
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var subcmd=msgArgs.getValueOf("Command");
+      var objtype=msgArgs.getValueOf("ObjType");
+
+
+    var tmpstr=msgArgs.vals();
+    var args: [1..argSize-2] string;
+    for i in 1..argSize-2 {
+        args[i]=tmpstr[i+1];
+    }
+
+
+    //var fields = rest.split();
+    //var args: [1..#fields.size] string = fields; // parsed by subroutines
     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
-                            "subcmd: %s objtype: %s rest: %s".format(subcmd,objtype,rest));
+                            "subcmd: %s objtype".format(subcmd,objtype));
     try {
         select subcmd {
             when "intIndex" {
@@ -294,15 +316,32 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segBinopvvIntMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segBinopvvIntMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
-    var (op,
+    //var (op,
          // Type and attrib names of left segmented array
-         ltype, lsegName, lvalName,
+   //      ltype, lsegName, lvalName,
          // Type and attrib names of right segmented array
-         rtype, rsegName, rvalName, leftStr, jsonStr)
-           = payload.splitMsgToTuple(9);
+   //      rtype, rsegName, rvalName, leftStr, jsonStr)
+   //        = payload.splitMsgToTuple(9);
+
+
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var op=msgArgs.getValueOf("Operation");
+      var ltype=msgArgs.getValueOf("LType");
+      var lsegName=msgArgs.getValueOf("LSegName");
+      var lvalName=msgArgs.getValueOf("LValName");
+      var rtype=msgArgs.getValueOf("RType");
+      var rsegName=msgArgs.getValueOf("RSegName");
+      var rvalName=msgArgs.getValueOf("RValName");
+      var jsonStr=msgArgs.getValueOf("JSON");
+
+
+
+
 
     // check to make sure symbols defined
     st.checkTable(lsegName);
@@ -344,10 +383,19 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segBinopvsIntMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segBinopvsIntMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
-    var (op, objtype, segName, valName, valtype, encodedVal)  = payload.splitMsgToTuple(6);
+    //var (op, objtype, segName, valName, valtype, encodedVal)  = payload.splitMsgToTuple(6);
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var op=msgArgs.getValueOf("Operation");
+      var objtype=msgArgs.getValueOf("ObjType");
+      var segName=msgArgs.getValueOf("SegName");
+      var valName=msgArgs.getValueOf("ValName");
+      var valtype=msgArgs.getValueOf("ValType");
+      var encodedVal=msgArgs.getValueOf("EncodedVal");
+
 
     // check to make sure symbols defined
     st.checkTable(segName);
@@ -387,11 +435,24 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segIn1dIntMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segIn1dIntMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
-    var (mainObjtype, mainSegName, mainValName, testObjtype, testSegName,
-         testValName, invertStr) = payload.splitMsgToTuple(7);
+    //var (mainObjtype, mainSegName, mainValName, testObjtype, testSegName,
+    //     testValName, invertStr) = payload.splitMsgToTuple(7);
+
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var mainObjtype=msgArgs.getValueOf("MainObjType");
+      var mainSegName=msgArgs.getValueOf("MainSegName");
+      var mainValName=msgArgs.getValueOf("MainValName");
+
+      var testObjtype=msgArgs.getValueOf("TestObjType");
+      var testSegName=msgArgs.getValueOf("TestSegName");
+      var testValName=msgArgs.getValueOf("TestValName");
+      var invertStr=msgArgs.getValueOf("InvertStr");
+
 
     // check to make sure symbols defined
     st.checkTable(mainSegName);
@@ -430,10 +491,16 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segSuffixArrayMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segSuffixArrayMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
       var pn = Reflection.getRoutineName();
-      var (objtype, entryName) = payload.splitMsgToTuple(2);
+      //var (objtype, entryName) = payload.splitMsgToTuple(2);
       var repMsg: string;
+
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var objtype=msgArgs.getValueOf("ObjType");
+      var entryName=msgArgs.getValueOf("EntryName");
 
       //var strings = new owned SegString(segName, valName, st);
       var strings = getSegString(entryName, st);
@@ -497,10 +564,18 @@ module SuffixArrayMsg {
       }
   }
 
-  proc segLCPMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segLCPMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
       var pn = Reflection.getRoutineName();
-      var (objtype, segName, valName, entryName) = payload.splitMsgToTuple(4);
+      //var (objtype, segName, valName, entryName) = payload.splitMsgToTuple(4);
       var repMsg: string;
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var objtype=msgArgs.getValueOf("ObjType");
+      var segName=msgArgs.getValueOf("SegName");
+      var valName=msgArgs.getValueOf("ValName");
+      var entryName=msgArgs.getValueOf("EntryName");
+
 
       // check to make sure symbols defined
       st.checkTable(segName);
@@ -574,10 +649,15 @@ module SuffixArrayMsg {
 
   }
 
-  proc segSAFileMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segSAFileMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
       // directly read a string from given file and generate its suffix array
       var pn = Reflection.getRoutineName();
-      var FileName = payload;
+      //var FileName = payload;
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var FileName=msgArgs.getValueOf("FileName");
+
       var repMsg: string;
 
       var filesize:int;

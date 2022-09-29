@@ -50,10 +50,18 @@ module BFSMsg {
 
 
   // visit a graph using BFS method
-  proc segBFSMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segBFSMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
-      var (RCMs, n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
-          = payload.splitMsgToTuple(7);
+      //var (RCMs, n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
+      //    = payload.splitMsgToTuple(7);
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var RCMs = msgArgs.getValueOf("RCMFlag");
+      var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+      var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+      var directedN=msgArgs.getValueOf("Directed");
+      var weightedN=msgArgs.getValueOf("Weighted");
+      var graphEntryName=msgArgs.getValueOf("GraphName");
+
       var Nv=n_verticesN:int;
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
@@ -2021,8 +2029,12 @@ module BFSMsg {
 
       if (Directed!=0) {
               var ratios:string;
-               (rootN,ratios)=
-                   restpart.splitMsgToTuple(2);
+              // (rootN,ratios)=
+              //     restpart.splitMsgToTuple(2);
+           
+              rootN=msgArgs.getValueOf("Root");
+              ratios=msgArgs.getValueOf("Ratio");
+
               root=rootN:int;
               var GivenRatio=ratios:real;
               if (RCMFlag>0) {
@@ -2046,8 +2058,10 @@ module BFSMsg {
       }
       else {
               var ratios:string;
-              (rootN, ratios)=
-                   restpart.splitMsgToTuple(2);
+              //(rootN, ratios)=
+              //     restpart.splitMsgToTuple(2);
+              rootN=msgArgs.getValueOf("Root");
+              ratios=msgArgs.getValueOf("Ratio");
               root=rootN:int;
               if (RCMFlag>0) {
                   root=0;
@@ -2285,7 +2299,7 @@ module BFSMsg {
     }
 
     use CommandMap;
-    registerFunction("segmentedGraphBFS", segBFSMsg);
+    registerFunction("segmentedGraphBFS", segBFSMsg,getModuleName());
  }
 
 

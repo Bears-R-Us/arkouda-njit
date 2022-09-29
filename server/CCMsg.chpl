@@ -46,10 +46,18 @@ module CCMsg {
     return !xlocal(x, low, high);
   }
 
-  proc segCCMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+  proc segCCMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
     // Get the values passeed to Python and now, Chapel. 
-    var (n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart) = payload.splitMsgToTuple(6);
+    //var (n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart) = payload.splitMsgToTuple(6);
     
+    var msgArgs = parseMessageArgs(payload, argSize);
+    var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+    var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+    var directedN=msgArgs.getValueOf("Directed");
+    var weightedN=msgArgs.getValueOf("Weighted");
+    var graphEntryName=msgArgs.getValueOf("GraphName");
+
+
     // Initialize the variables with graph data. 
     var Nv = n_verticesN:int; 
     var Ne = n_edgesN:int; 
@@ -2005,7 +2013,9 @@ module CCMsg {
     var f6 = makeDistArray(Nv, int);
     var f7 = makeDistArray(Nv, int);
     if (Directed == 0) {
-        (srcN, dstN, startN, neighbourN, srcRN, dstRN, startRN, neighbourRN) = restpart.splitMsgToTuple(8);
+
+
+
         timer.clear();
         timer.start(); 
         f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
@@ -2214,5 +2224,5 @@ module CCMsg {
   }
 
   use CommandMap;
-  registerFunction("segmentedGraphCC", segCCMsg);
+  registerFunction("segmentedGraphCC", segCCMsg,getModuleName());
 }
