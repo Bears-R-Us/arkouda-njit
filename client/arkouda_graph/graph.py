@@ -8,6 +8,7 @@ from arkouda.dtypes import int64 as akint
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
+           "graph_edgearray", 
            "graph_file_preprocessing",
            "graph_file_tonde",
            "graph_file_read_mtx",
@@ -146,6 +147,41 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
     return create_pdarray(repMsg)
 
+@typechecked
+def graph_edgearray(src:str, dst:str, directed: int=0, \
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1, BuildAlignedArray:int=0) -> Graph:
+    """
+        This function is used for building a graph from two edge arrays 
+        srcS : the source array of an edge
+        dstS : the destination array of an edge
+        directed: 0 means undirected graph and 1 means directed graph
+        RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
+        DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
+        RCMFlag: we will remap the vertex ID based on the RCM algorithm
+        WriteFlag: we will output the final edge list src->dst array as a new input file.
+        BuildAlignedArray: using the Edge-Vertex-Locale aligned mapping instead of the default distribution
+        Returns
+        -------
+        Graph
+            The Graph class to represent the data
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphArray"
+    args = "{} {} {} {} {} {} {} {}".format(src, dst, directed,  \
+            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    # currently we will not handle the BuildAlignedArray flag except in the read procedure
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return Graph(*(cast(str, repMsg).split('+')))
+
 
 @typechecked
 def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
@@ -181,7 +217,7 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
         RuntimeError
         """
     cmd = "segmentedGraphPreProcessing"
-    args = "{} {} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
+    args = "{} {} {} {} {} {} {} {}".format(srcS, dstS,directed, \
             RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
     # currently we will not handle the BuildAlignedArray flag except in the read procedure
     repMsg = generic_msg(cmd=cmd, args=args)
