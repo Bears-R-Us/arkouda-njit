@@ -3241,12 +3241,26 @@ module TrussMsg {
 
 
 
- proc segTrussMsg(cmd: string, payload: string, st: borrowed SymTab): MsgTuple throws {
+ proc segTrussMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
   //In this procedure, we implement different Truss analysis methods, including k-truss, max truss and truss decomposition
   
       var repMsg: string;
-      var (kTrussN,n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
-          = payload.splitMsgToTuple(7);
+      //var (kTrussN,n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
+      //    = payload.splitMsgToTuple(7);
+
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var kTrussN=msgArgs.getValueOf("KValue");
+      var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+      var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+      var directedN=msgArgs.getValueOf("Directed");
+      var weightedN=msgArgs.getValueOf("Weighted");
+      var graphEntryName=msgArgs.getValueOf("GraphName");
+
+
+
+
       var kValue=kTrussN:int;
       var Nv=n_verticesN:int;
       var Ne=n_edgesN:int;

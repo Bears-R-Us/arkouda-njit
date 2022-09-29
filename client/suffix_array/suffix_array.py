@@ -270,25 +270,16 @@ class SArrays:
                     "SArrays: size mismatch {} {}".format(self.size, other.size)
                 )
             cmd = "segmentedBinopvvInt"
-            args = "{} {} {} {} {} {} {}".format(
-                op,
-                self.objtype,
-                self.offsets.name,
-                self.bytes.name,
-                other.objtype,
-                other.offsets.name,
-                other.bytes.name,
-            )
+            #args = "{} {} {} {} {} {} {}".format( op, self.objtype, self.offsets.name,\
+            #    self.bytes.name, other.objtype, other.offsets.name, other.bytes.name)
+            args ={"Operation":op,"ObjType":self.objtype,"SegName":self.offsets.name,"ValName":self.bytes.name,\
+                   "OtherObjType":other.objtype,"OtherSegName":other.offsets.name,"OtherValName":other.bytes.name }
         elif resolve_scalar_dtype(other) == "int":
             cmd = "segmentedBinopvsInt"
-            args = "{} {} {} {} {} {}".format(
-                op,
-                self.objtype,
-                self.offsets.name,
-                self.bytes.name,
-                self.objtype,
-                json.dumps([other]),
-            )
+            #args = "{} {} {} {} {} {}".format( op, self.objtype, self.offsets.name, self.bytes.name,
+            #    self.objtype, json.dumps([other]))
+            args ={"Operation":op,"ObjType":self.objtype,"SegName":self.offsets.name,"ValName":self.bytes.name,\
+                   "OtherObjType":other.objtype,"JSON":json.dumps([other]) }
         else:
             raise ValueError(
                 "SArrays: {} not supported between SArrays and {}".format(
@@ -312,9 +303,10 @@ class SArrays:
                 key += self.size
             if key >= 0 and key < self.size:
                 cmd = "segmentedIntIndex"
-                args = "{} {} {} {} {}".format(
-                    "intIndex", self.objtype, self.offsets.name, self.bytes.name, key
-                )
+                #args = "{} {} {} {} {}".format(
+                #    "intIndex", self.objtype, self.offsets.name, self.bytes.name, key)
+                args ={"IntIndex":intIndex,"ObjType":self.objtype,"SegName":self.offsets.name,"ValName":self.bytes.name,\
+                   "Key":key}
                 repMsg = generic_msg(cmd=cmd, args=args)
                 _, value = repMsg.split(maxsplit=1)
                 return _parse_single_int_array_value(value)
@@ -328,15 +320,10 @@ class SArrays:
                 "start: {}; stop: {}; stride: {}".format(start, stop, stride)
             )
             cmd = "segmentedIntIndex"
-            args = "{} {} {} {} {} {} {}".format(
-                "sliceIndex",
-                self.objtype,
-                self.offsets.name,
-                self.bytes.name,
-                start,
-                stop,
-                stride,
-            )
+            #args = "{} {} {} {} {} {} {}".format( "sliceIndex", self.objtype, self.offsets.name,\
+            #    self.bytes.name, start, stop, stride)
+            args ={"SliceIndex":sliceIndex,"ObjType":self.objtype,"SegName":self.offsets.name,"ValName":self.bytes.name,\
+                   "Start":start,"Stop":stop,"Stride":stride}
             repMsg = generic_msg(cmd=cmd, args=args)
             offsets, values = repMsg.split("+")
             return SArrays(offsets, values)
@@ -347,13 +334,10 @@ class SArrays:
             if kind == "int" and self.size != key.size:
                 raise ValueError("size mismatch {} {}".format(self.size, key.size))
             cmd = "segmentedIntIndex"
-            args = "{} {} {} {} {}".format(
-                "pdarrayIndex",
-                self.objtype,
-                self.offsets.name,
-                self.bytes.name,
-                key.name,
-            )
+            #args = "{} {} {} {} {}".format( "pdarrayIndex", self.objtype, self.offsets.name, self.bytes.name,\
+            #    key.name)
+            args ={"PdaIndex":"pdarrayIndex","ObjType":self.objtype,"SegName":self.offsets.name,"ValName":self.bytes.name,\
+                   "Key": key.name }
             repMsg = generic_msg(cmd=cmd, args=args)
             offsets, values = repMsg.split("+")
             return SArrays(offsets, values)
@@ -377,7 +361,13 @@ class SArrays:
             Raised if there is a server-side error thrown
         """
         cmd = "segmentIntLengths"
-        args = "{} {} {}".format(self.objtype, self.offsets.name, self.bytes.name)
+        #args = "{} {} {}".format(self.objtype, self.offsets.name, self.bytes.name)
+
+
+        args ={"ObjType":self.objtype,"SegName":self.offsets.name,"ValName":self.bytes.name }
+
+
+
         repMsg = generic_msg(cmd=cmd, args=args)
         return create_pdarray(cast(str, repMsg))
 
@@ -666,7 +656,8 @@ def suffix_array(strings: Strings) -> SArrays:
             creating the pdarray encapsulating the return message
     """
     cmd = "segmentedSuffixAry"
-    args = "{} {}".format(strings.objtype, strings.entry.name)
+    #args = "{} {}".format(strings.objtype, strings.entry.name)
+    args ={"ObjType":self.objtype,"SegName":self.offsets.name }
     repMsg = generic_msg(cmd=cmd, args=args)
     return SArrays(*(cast(str, repMsg).split("+")))
 
@@ -693,12 +684,10 @@ def lcp_array(suffixarrays: SArrays, strings: Strings) -> SArrays:
             creating the pdarray encapsulating the return message
     """
     cmd = "segmentedLCP"
-    args = "{} {} {} {}".format(
-        suffixarrays.objtype,
-        suffixarrays.offsets.name,
-        suffixarrays.bytes.name,
-        strings.entry.name,
-    )
+    #args = "{} {} {} {}".format( suffixarrays.objtype, suffixarrays.offsets.name,\
+    #    suffixarrays.bytes.name, strings.entry.name)
+    args ={"ObjType":suffixarrays.objtype,"SegName":suffixarrays.offsets.name,\
+           "ValName":suffixarrays.bytes.name,"EntryName":strings.entry.name }
     repMsg = generic_msg(cmd=cmd, args=args)
     return SArrays(*(cast(str, repMsg).split("+")))
 
@@ -745,7 +734,8 @@ def suffix_array_file(filename: str) -> tuple:
             creating the pdarray encapsulating the return message
     """
     cmd = "segmentedSAFile"
-    args = "{}".format(filename)
+    #args = "{}".format(filename)
+    args ={"FileName":filename }
     repMsg = generic_msg(cmd=cmd, args=args)
     tmpmsg = cast(str, repMsg).split("+")
     sastr = tmpmsg[0:2]

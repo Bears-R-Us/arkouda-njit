@@ -141,7 +141,8 @@ def graph_query(graph: Graph, component: str) -> pdarray:
         assert (attr<=4) 
     if attr < 0:
         assert graph.weighted > 0
-    args = "{} {}".format(graph.name,component)
+    #args = "{} {}".format(graph.name,component)
+    args = {"GraphName":graph.name,"Component":component}
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return create_pdarray(repMsg)
@@ -175,8 +176,11 @@ def graph_edgearray(src:str, dst:str, directed: int=0, \
         RuntimeError
         """
     cmd = "segmentedGraphArray"
-    args = "{} {} {} {} {} {} {} {}".format(src, dst, directed,  \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    #args = "{} {} {} {} {} {} {} {}".format(src, dst, directed,  \
+    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    args ={"SRC":src,"DST": dst, "Directed":directed,  \
+            "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag, \
+            "RCMFlag":RCMFlag, "WriteFlag":WriteFlag,"AlignedFlag":BuildAlignedArray}
     # currently we will not handle the BuildAlignedArray flag except in the read procedure
     repMsg = generic_msg(cmd=cmd, args=args)
     return Graph(*(cast(str, repMsg).split('+')))
@@ -216,8 +220,11 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
         RuntimeError
         """
     cmd = "segmentedGraphPreProcessing"
-    args = "{} {} {} {} {} {} {} {}".format(srcS, dstS,directed, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    #args = "{} {} {} {} {} {} {} {}".format(srcS, dstS,directed, \
+    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    args = {"SRC":srcS,"DST": dstS,"Directed":directed, "FileName":filename,"SkipLines":skipline, \
+            "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
+            "RCMFlag":RCMFlag, "WriteFlag":WriteFlag,"AlignedFlag":BuildAlignedArray}
     # currently we will not handle the BuildAlignedArray flag except in the read procedure
     repMsg = generic_msg(cmd=cmd, args=args)
     return 
@@ -264,9 +271,12 @@ def graph_file_tonde(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,s
         RuntimeError
         """
     cmd = "segmentedGraphToNDE"
-    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
-    print(args)
+    #args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename,skipline, \
+    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag)
+    args = {"NumOfEdges":Ne, "NumOfVertices":Nv, "NumOfColumns":Ncol,\
+             "Directed":directed, "FileName":filename,"SkipLines":skipline, \
+            "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
+            "RCMFlag":RCMFlag, "WriteFlag":WriteFlag}
     repMsg = generic_msg(cmd=cmd, args=args)
     return 
 
@@ -311,9 +321,12 @@ def graph_file_read(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,\
         RuntimeError
         """
     cmd = "segmentedGraphFile"
-    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
-    print(args)
+    #args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    args = {"NumOfEdges":Ne, "NumOfVertices":Nv, "NumOfColumns":Ncol,\
+             "Directed":directed, "FileName":filename, \
+            "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
+            "RCMFlag":RCMFlag, "WriteFlag":WriteFlag,"AlignedFlag":BuildAlignedArray}
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return Graph(*(cast(str, repMsg).split('+')))
@@ -352,9 +365,12 @@ def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: st
         RuntimeError
         """
     cmd = "segmentedGraphFileMtx"
-    args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
-            RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
-    print(args)
+    #args = "{} {} {} {} {} {} {} {} {} {}".format(Ne, Nv, Ncol, directed, filename, \
+    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
+    args = {"NumOfEdges":Ne, "NumOfVertices":Nv, "NumOfColumns":Ncol,\
+             "Directed":directed, "FileName":filename, \
+            "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
+            "RCMFlag":RCMFlag, "WriteFlag":WriteFlag,"AlignedFlag":BuildAlignedArray}
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return Graph(*(cast(str, repMsg).split('+')))
@@ -381,8 +397,11 @@ def rmat_gen(lgNv: int, Ne_per_v: int, p: float, directed: int, weighted: int) -
         """
     cmd = "segmentedRMAT"
     RCMFlag = 1
-    args = "{} {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted, RCMFlag)
-    msg = "segmentedRMAT {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted)
+    #args = "{} {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted, RCMFlag)
+    args = {"LogNumOfVertices":lgNv, "NumOfEdgesPerV":Ne_per_v,"SP":p,\
+             "Directed":directed,"Weighted": weighted,\ 
+            "RCMFlag":RCMFlag}
+    #msg = "segmentedRMAT {} {} {} {} {}".format(lgNv, Ne_per_v, p, directed, weighted)
     repMsg = generic_msg(cmd=cmd, args=args)
 
     return Graph(*(cast(str, repMsg).split('+')))
@@ -410,12 +429,13 @@ def graph_bfs(graph: Graph, root: int, rcm_flag:int) -> pdarray:
         """
     cmd = "segmentedGraphBFS"
     DefaultRatio = -0.9
-    args = "{} {} {} {} {} {} {} {}".format(
-        rcm_flag,
-        graph.n_vertices, graph.n_edges,
-        graph.directed, graph.weighted,
-        graph.name,
-        root, DefaultRatio)
+    #args = "{} {} {} {} {} {} {} {}".format(
+    #    rcm_flag, graph.n_vertices, graph.n_edges,
+    #    graph.directed, graph.weighted, graph.name, root, DefaultRatio)
+    args = {"RCMFlag":RCMFlag,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":directed,"Weighted": weighted,\ 
+             "GraphName":graph.name,"Root":root,"Ratio":DefaultRatio}
+
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
@@ -439,10 +459,11 @@ def graph_cc(graph: Graph) -> pdarray:
         RuntimeError
         """
     cmd = "segmentedGraphCC"
-    args = "{} {} {} {} {}".format(
-        graph.n_vertices, graph.n_edges,
-        graph.directed, graph.weighted,
-        graph.name)
+    #args = "{} {} {} {} {}".format( graph.n_vertices, graph.n_edges, graph.directed, graph.weighted,
+    #    graph.name)
+    args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":directed,"Weighted": weighted,\ 
+             "GraphName":graph.name}
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
@@ -479,7 +500,10 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         RuntimeError
         """
         cmd = "segmentedStreamFile"
-        args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
+        #args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
+        args = { "NumOfEdges":Ne, "NumOfVertices":Nv, \
+                 "NumOfColumns":Ncol, "Directed":directed,\
+                 "FileName":filename,"Factor":factor}
         repMsg = generic_msg(cmd=cmd,args=args)
 
         return Graph(*(cast(str,repMsg).split('+')))
@@ -505,10 +529,11 @@ def graph_triangle (graph: Graph) -> pdarray:
         RuntimeError
         """
         cmd="segmentedGraphTri"
-        args = "{} {} {} {} {}".format(
-                 graph.n_vertices,graph.n_edges,\
-                 graph.directed,graph.weighted,\
-                 graph.name)
+        #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
+        #         graph.directed,graph.weighted, graph.name)
+        args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":directed,"Weighted": weighted,\ 
+             "GraphName":graph.name}
 
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -533,11 +558,13 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         RuntimeError
         """
         cmd="segmentedTruss"
-        args = "{} {} {} {} {} {}".format(
-                 kTrussValue,\
-                 graph.n_vertices,graph.n_edges,\
-                 graph.directed,graph.weighted,\
-                 graph.name)
+        #args = "{} {} {} {} {} {}".format( kTrussValue,\
+        #         graph.n_vertices,graph.n_edges,\
+        #         graph.directed,graph.weighted,\
+        #         graph.name)
+        args = {"KValue":kTrussValue,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":directed,"Weighted": weighted,\ 
+             "GraphName":graph.name}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
 
@@ -547,7 +574,10 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
 def stream_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
                      factor:int)  -> pdarray:
         cmd = "segmentedStreamTri"
-        args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
+        #args="{} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor);
+        args = { "NumOfEdges":graph.n_edges, "NumOfVertices":graph.n_vertices,\
+                 "NumOfColumns":Ncol, "Directed":directed, "FileName": filename,\ 
+                 "Factor":factor}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
 
@@ -585,7 +615,10 @@ def streamPL_tri_cnt(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
         RuntimeError
         """
         cmd = "segmentedPLStreamTri"
-        args="{} {} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor,case);
+        #args="{} {} {} {} {} {} {}".format(Ne, Nv, Ncol,directed, filename,factor,case);
+        args = { "NumOfEdges":Ne, "NumOfVertices":Nv,\
+                 "NumOfColumns":Ncol, "Directed":directed, "FileName": filename,\ 
+                 "Factor":factor,"Case":case}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
 
@@ -608,11 +641,12 @@ def graph_tri_ctr (graph: Graph) -> pdarray:
         RuntimeError
         """
         cmd="segmentedGraphTriCtr"
-        args = "{} {} {} {} {}".format(
-                 graph.n_vertices,graph.n_edges,\
-                 graph.directed,graph.weighted,\
-                 graph.name)
+        #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
+        #         graph.directed,graph.weighted, graph.name)
 
+        args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":directed,"Weighted": weighted,\ 
+             "GraphName":graph.name}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
 
@@ -635,10 +669,11 @@ def graph_jaccard_coefficient(graph: Graph) -> pdarray:
         RuntimeError
         """
         cmd="segmentedGraphJaccard"
-        args = "{} {} {} {} {}".format(
-                 graph.n_vertices,graph.n_edges,\
-                 graph.directed,graph.weighted,\
-                 graph.name)
+        #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
+        #         graph.directed,graph.weighted, graph.name)
+        args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":directed,"Weighted": weighted,\ 
+             "GraphName":graph.name}
 
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
