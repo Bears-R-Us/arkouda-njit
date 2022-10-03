@@ -822,33 +822,33 @@ module CCMsg {
                      TmpMin=min(TmpMin,f[f[u]],f[f[v]]);
                   } 
               }
-              if(TmpMin < f_low[u]) {
-                f_low[u] = TmpMin;
+              if(TmpMin < f[u]) {
+                f[u] = TmpMin;
                 count+=1;
               }
-              if(TmpMin < f_low[v]) {
-                f_low[v] = TmpMin;
+              if(TmpMin < f[v]) {
+                f[v] = TmpMin;
                 count+=1;
               }
               if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
-                   if(TmpMin < f_low[f[u]]) {
-                     f_low[f[u]] = TmpMin;
+                   if(TmpMin < f[f[u]]) {
+                     f[f[u]] = TmpMin;
                      count+=1;
                      count1+=1;
                    }
-                   if(TmpMin < f_low[f[v]]) {
-                     f_low[f[v]] = TmpMin;
+                   if(TmpMin < f[f[v]]) {
+                     f[f[v]] = TmpMin;
                      count+=1;
                      count1+=1;
                    }
               }
               if (  (itera % (3*JumpSteps) == 0) ) {
-                   if(TmpMin < f_low[f[f[u]]]) {
-                     f_low[f[f[u]]] = TmpMin;
+                   if(TmpMin < f[f[f[u]]]) {
+                     f[f[f[u]]] = TmpMin;
                      count+=1;
                    }
-                   if(TmpMin < f_low[f[f[v]]]) {
-                     f_low[f[f[v]]] = TmpMin;
+                   if(TmpMin < f[f[f[v]]]) {
+                     f[f[f[v]]] = TmpMin;
                      count+=1;
                    }
               }
@@ -858,7 +858,6 @@ module CCMsg {
         }
 
 
-        f = f_low; 
 
         //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
         if( (count==0) ) {
