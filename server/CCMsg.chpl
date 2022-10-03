@@ -812,6 +812,7 @@ module CCMsg {
               var u = src[x];
               var v = dst[x];
 
+              if ((u!=0) || (v!=0)) {
               var TmpMin:int;
               TmpMin=min(f[u],f[v]);
               if ((itera % (JumpSteps*3) ==0) ) {
@@ -851,7 +852,7 @@ module CCMsg {
                      count+=1;
                    }
               }
-              
+              }//end of if     
             }//end of forall
           }
         }
@@ -926,7 +927,7 @@ module CCMsg {
             forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
               var u = src[x];
               var v = dst[x];
-
+              if ((u!=0) || (v!=0)) {
               var TmpMin:int;
               TmpMin=min(f[u],f[v]);
               if(TmpMin < f_low[u]) {
@@ -937,7 +938,7 @@ module CCMsg {
                 f_low[v] = TmpMin;
                 count+=1;
               }
-              
+              }//end if       
             }//end of forall
           }
         }
@@ -1015,6 +1016,7 @@ module CCMsg {
               var u = src[x];
               var v = dst[x];
 
+              if (u!=0) || (v!=0) {
               var TmpMin:int;
               TmpMin=min(f[u],f[v]);
               TmpMin=min(TmpMin,f[f[u]],f[f[v]]);
@@ -1040,7 +1042,7 @@ module CCMsg {
                      count+=1;
                      count1+=1;
                    }
-              
+              }//end if 
             }//end of forall
           }
         }
@@ -1144,6 +1146,7 @@ module CCMsg {
               var v = dst[x];
 
 
+              if ((u!=0) || (v!=0)) {
               var TmpMin,TmpMax,upval1,lowval1,upval:int;
               TmpMin=min(f_low[u].read(),f_low[v].read());
               TmpMax=max(f_up[u].read(),f_up[v].read(),u,v);
@@ -1261,7 +1264,7 @@ module CCMsg {
                      }
                    }
               }
-              
+              }//end if 
             }//end of forall
 
           }
@@ -1297,9 +1300,9 @@ module CCMsg {
           converged = false;
         }
         itera += 1;
+      }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
-      }
 
       coforall loc in Locales {
         on loc {
@@ -1371,6 +1374,7 @@ module CCMsg {
               var v = dst[x];
 
 
+              if ((u!=0) || (v!=0)) {
               var TmpMin:int;
               TmpMin=min(f_low[u].read(),f_low[v].read());
               if ((itera % (JumpSteps*3) ==0) ) {
@@ -1410,26 +1414,16 @@ module CCMsg {
                      count+=1;
                    }
               }
-              
+              }//end if   
             }//end of forall
 
 
 
-
+           
 
           }
         }
 
-        coforall loc in Locales {
-            on loc {
-
-                var vertexBegin = f.localSubdomain().lowBound;
-                var vertexEnd = f.localSubdomain().highBound;
-                forall i in vertexBegin..vertexEnd {
-                    f[i] = f_low[i].read();
-                }
-            }
-        }
         //writeln("After iteration ", itera," f=",f);
         
         //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
@@ -2118,7 +2112,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for simple atomic test fs  cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for double direction  atomic fs  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         /*
