@@ -814,12 +814,12 @@ module CCMsg {
 
               if ((u!=0) || (v!=0)) {
               var TmpMin:int;
-              TmpMin=min(f[u],f[v]);
+              //TmpMin=min(f[u],f[v]);
               if ((itera % (JumpSteps*3) ==0) ) {
-                     TmpMin=min(TmpMin,f[f[u]],f[f[v]],f[f[f[u]]],f[f[f[v]]]);
+                     TmpMin=min(f[f[f[u]]],f[f[f[v]]]);
               } else {
                   if ((numLocales ==1) || (itera % JumpSteps ==0) ) {
-                     TmpMin=min(TmpMin,f[f[u]],f[f[v]]);
+                     TmpMin=min(f[f[u]],f[f[v]]);
                   } 
               }
               if(TmpMin < f[u]) {
@@ -1017,8 +1017,7 @@ module CCMsg {
 
               if (u!=0) || (v!=0) {
               var TmpMin:int;
-              TmpMin=min(f[u],f[v]);
-              TmpMin=min(TmpMin,f[f[u]],f[f[v]]);
+              TmpMin=min(f[f[u]],f[f[v]]);
               if(TmpMin < f_low[u]) {
                 //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",u,"]=",f_low[u]," with ", TmpMin);
                 f_low[u] = TmpMin;
@@ -1151,12 +1150,12 @@ module CCMsg {
               TmpMax=max(f_up[u].read(),f_up[v].read(),u,v);
               
               if ((itera % (JumpSteps*5) ==0) ) {
-                     TmpMin=min(TmpMin,f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read(),f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                     TmpMax=max(TmpMax,f_up[f_up[u].read()].read(),f_up[f_up[v].read()].read(),f_up[f_up[f_up[u].read()].read()].read(),f_up[f_up[f_up[v].read()].read()].read());
+                     TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
+                     TmpMax=max(f_up[f_up[f_up[u].read()].read()].read(),f_up[f_up[f_up[v].read()].read()].read());
               } else {
                   if ((numLocales==1)|| (itera % JumpSteps ==0)) {
-                     TmpMin=min(TmpMin,f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
-                     TmpMax=max(TmpMax,f_up[f_up[u].read()].read(),f_up[f_up[v].read()].read());
+                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
+                     TmpMax=max(f_up[f_up[u].read()].read(),f_up[f_up[v].read()].read());
                   } 
               }
               if(TmpMin < f_low[u].read()) {
@@ -1375,12 +1374,12 @@ module CCMsg {
 
               if ((u!=0) || (v!=0)) {
               var TmpMin:int;
-              TmpMin=min(f_low[u].read(),f_low[v].read());
+              //TmpMin=min(f_low[u].read(),f_low[v].read());
               if ((itera % (JumpSteps*3) ==0) ) {
-                     TmpMin=min(TmpMin,f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read(),f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
+                     TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
               } else {
                   if ((numLocales ==1) || (itera % JumpSteps ==0)) {
-                     TmpMin=min(TmpMin,f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
+                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
                   } 
               }
               if(TmpMin < f_low[u].read()) {
@@ -1416,9 +1415,6 @@ module CCMsg {
               }//end if   
             }//end of forall
 
-
-
-           
 
           }
         }
