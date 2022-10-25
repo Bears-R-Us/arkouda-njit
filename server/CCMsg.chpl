@@ -877,6 +877,123 @@ module CCMsg {
 
 
 
+
+
+    // FastSpread: a  propogation based connected components algorithm
+    proc cc_fs_syn(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_low = makeDistArray(Nv, int); 
+      var gf = makeDistArray(Nv, int);
+      var gf_low = makeDistArray(Nv, int);
+      var dup = makeDistArray(Nv, int);
+      var diff = makeDistArray(Nv, int);
+
+      // Initialize f and f_low in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            f_low[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                     f_low[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                     f_low[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+              if ((u!=0) || (v!=0)) {
+              var TmpMin:int;
+              //TmpMin=min(f[u],f[v]);
+              if ((itera % (JumpSteps*3) ==0) ) {
+                     TmpMin=min(f[f[f[u]]],f[f[f[v]]]);
+              } else {
+                  if ((numLocales ==1) || (itera % JumpSteps ==0) ) {
+                     TmpMin=min(f[f[u]],f[f[v]]);
+                  } 
+              }
+              if(TmpMin < f_low[u]) {
+                f_low[u] = TmpMin;
+                count+=1;
+              }
+              if(TmpMin < f_low[v]) {
+                f_low[v] = TmpMin;
+                count+=1;
+              }
+              if ( (numLocales==1) || (itera % JumpSteps == 0) ) {
+                   if(TmpMin < f_low[f[u]]) {
+                     f_low[f[u]] = TmpMin;
+                     count+=1;
+                     count1+=1;
+                   }
+                   if(TmpMin < f_low[f[v]]) {
+                     f_low[f[v]] = TmpMin;
+                     count+=1;
+                     count1+=1;
+                   }
+              }
+              if (  (itera % (3*JumpSteps) == 0) ) {
+                   if(TmpMin < f_low[f[f[u]]]) {
+                     f_low[f[f[u]]] = TmpMin;
+                     count+=1;
+                   }
+                   if(TmpMin < f_low[f[f[v]]]) {
+                     f_low[f[f[v]]] = TmpMin;
+                     count+=1;
+                   }
+              }
+              }//end of if     
+            }//end of forall
+          }
+        }
+        f=f_low;
+
+
+        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
+
+      return f;
+    }
+
+
+
+
     // distance=1;
     proc cc_fs_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
@@ -1346,6 +1463,8 @@ module CCMsg {
           }
         }
       }
+
+      /*
       coforall loc in Locales {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
@@ -1356,6 +1475,7 @@ module CCMsg {
         }
       }
       //writeln("After initial step.  f=",f);
+      */
 
       var converged:bool = false;
       var itera = 1;
@@ -1396,8 +1516,8 @@ module CCMsg {
                      count+=1;
                      count1+=1;
                    }
-                   if(TmpMin < f_low[f[v]].read()) {
-                     f_low[f[v]].write(TmpMin);
+                   if(TmpMin < f_low[f_low[v].read()].read()) {
+                     f_low[f_low[v].read()].write(TmpMin);
                      count+=1;
                      count1+=1;
                    }
@@ -1445,6 +1565,199 @@ module CCMsg {
       return f;
     }
 
+
+
+
+    // the atomic method is slower than the non atomic method. However, for large graphs, it seems the atomic method is good.
+    proc cc_fs_cas(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_low = makeDistArray(Nv, atomic int); 
+
+      // Initialize f and f_low in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f_low[i].write(i);
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f_low[i].write(tmpv);
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f_low[i].write(tmpv);
+                }
+            }
+          }
+        }
+      }
+      /*
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = f_low[i].read();
+          }
+        }
+      }
+      //writeln("After initial step.  f=",f);
+      */
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+
+              if ((u!=0) || (v!=0)) {
+              var TmpMin:int;
+              //TmpMin=min(f_low[u].read(),f_low[v].read());
+              if ((itera % (JumpSteps*3) ==0) ) {
+                     TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
+              } else {
+                  if ((numLocales ==1) || (itera % JumpSteps ==0)) {
+                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
+                  } 
+              }
+              var oldval=f_low[u].read();
+              while (oldval>TmpMin) {
+                    if (f_low[u].compareAndSwap(oldval, TmpMin)) {
+                         count+=1;
+                    } else {
+                         oldval=f_low[u].read();
+                    }
+              }
+              /*
+              if(TmpMin < f_low[u].read()) {
+                f_low[u].write(TmpMin);
+                count+=1;
+              }
+              */
+              oldval=f_low[v].read();
+              while (oldval>TmpMin) {
+                    if (f_low[v].compareAndSwap(oldval, TmpMin)) {
+                         count+=1;
+                    } else {
+                         oldval=f_low[v].read();
+                    }
+              }
+              /*
+              if(TmpMin < f_low[v].read()) {
+                f_low[v].write(TmpMin);
+                count+=1;
+              }
+              */
+              if ( (numLocales==1) || (itera % JumpSteps ==0) ) {
+                  oldval=f_low[f_low[u].read()].read();
+                  while (oldval>TmpMin) {
+                        if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
+                             count+=1;
+                             count1+=1;
+                        } else {
+                             oldval=f_low[f_low[u].read()].read();
+                        }
+                  }
+                  /*
+                   if(TmpMin < f_low[f[u]].read()) {
+                     f_low[f[u]].write(TmpMin);
+                     count+=1;
+                     count1+=1;
+                   }
+                  */
+                  oldval=f_low[f_low[v].read()].read();
+                  while (oldval>TmpMin) {
+                        if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
+                             count+=1;
+                             count1+=1;
+                        } else {
+                             oldval=f_low[f_low[v].read()].read();
+                        }
+                  }
+                  /*
+                   if(TmpMin < f_low[f[v]].read()) {
+                     f_low[f[v]].write(TmpMin);
+                     count+=1;
+                     count1+=1;
+                   }
+                   */
+              }
+              if (  (itera % (3*JumpSteps) == 0) ) {
+                   oldval=f_low[f_low[f_low[u].read()].read()].read();
+                   while (oldval>TmpMin) {
+                        if (f_low[f_low[f_low[u].read()].read()].compareAndSwap(oldval, TmpMin)) {
+                             count+=1;
+                        } else {
+                             oldval=f_low[f_low[f_low[u].read()].read()].read();
+                        }
+                   }
+                   /*
+                   if(TmpMin < f_low[f_low[f_low[u].read()].read()].read()) {
+                     f_low[f_low[f_low[u].read()].read()].write(TmpMin);
+                     count+=1;
+                   }
+                   */
+                   oldval=f_low[f_low[f_low[v].read()].read()].read();
+                   while (oldval>TmpMin) {
+                        if (f_low[f_low[f_low[v].read()].read()].compareAndSwap(oldval, TmpMin)) {
+                             count+=1;
+                        } else {
+                             oldval=f_low[f_low[f_low[v].read()].read()].read();
+                        }
+                   }
+                   /*
+                   if(TmpMin < f_low[f_low[f_low[v].read()].read()].read()) {
+                     f_low[f_low[f_low[v].read()].read()].write(TmpMin);
+                     count+=1;
+                   }
+                   */
+              }
+              }//end if   
+            }//end of forall
+
+
+          }
+        }
+
+        //writeln("After iteration ", itera," f=",f);
+        
+        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
+        if(  (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera);
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = f_low[i].read();
+          }
+        }
+      }
+
+      return f;
+    }
 
 
     // FastSpread: a  propogation based connected components algorithm
@@ -2001,6 +2314,7 @@ module CCMsg {
     var f5 = makeDistArray(Nv, int);
     var f6 = makeDistArray(Nv, int);
     var f7 = makeDistArray(Nv, int);
+    var f8 = makeDistArray(Nv, int);
     if (Directed == 0) {
 
 
@@ -2048,10 +2362,23 @@ module CCMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
+        timer.clear();
+        timer.start();
+        f4 = cc_fs_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs syn dist cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
         timer.start();
-        f4 = cc_fs_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f5 = cc_fs_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -2067,7 +2394,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f5 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f6 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -2084,7 +2411,7 @@ module CCMsg {
 
 
 
-        f6 = cc_fs_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f7 = cc_fs_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -2098,7 +2425,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f7 = cc_fs_atomic_bidirection(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f8 = cc_fs_cas(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -2107,7 +2434,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for double direction  atomic fs  cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for   cas fs  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         /*
@@ -2183,6 +2510,10 @@ module CCMsg {
               }
               if ( (f1[i]!=f7[i]) ) {
                 var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f8[i]) ) {
+                var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
             }
