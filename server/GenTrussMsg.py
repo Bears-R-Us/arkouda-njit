@@ -2482,7 +2482,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange)||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 '''          
@@ -2496,16 +2496,12 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -2521,7 +2517,7 @@ def GenMaxTrussFun(FunName1,CallFunName,BodyCode):
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 '''
 	text6="                                var tmpK ="+BatchFunName+"(kMid,"
 	text7='''
@@ -2890,7 +2886,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 '''          
@@ -2904,16 +2900,12 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -2929,7 +2921,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 '''
 	text6="                                var tmpK ="+BatchFunName+"(kMid,"
 	text7='''
