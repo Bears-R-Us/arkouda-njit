@@ -4872,7 +4872,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange)||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -4886,16 +4886,12 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, PlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -4911,7 +4907,7 @@ module TrussMsg {
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 
                                 var tmpK =BatchMaxTrussNaiveMergePath(kMid,
 
@@ -5497,7 +5493,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -5511,16 +5507,12 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -5536,7 +5528,7 @@ module TrussMsg {
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 
                                 var tmpK =BatchMaxTrussMergePath(kMid,
 
@@ -6010,7 +6002,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -6024,16 +6016,12 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -6049,7 +6037,7 @@ module TrussMsg {
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 
                                 var tmpK =BatchMaxTrussNonMinSearch(kMid,
 
@@ -6532,7 +6520,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -6546,16 +6534,12 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -6571,7 +6555,7 @@ module TrussMsg {
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 
                                 var tmpK =BatchMaxTrussSeqMinSearch(kMid,
 
@@ -7054,7 +7038,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -7068,16 +7052,12 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -7093,7 +7073,7 @@ module TrussMsg {
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 
                                 var tmpK =BatchMaxTrussMinSearch(kMid,
 
@@ -7578,7 +7558,7 @@ module TrussMsg {
                             //writeln("After ConLoop ToK=",ToK);
                             if ((kUp-kLow<SmallKRange) ||FirstEntry) {
                                 if (FirstEntry) {
-                                    ToK=kLow+SmallKDividedBy;
+                                    ToK=min(kLow+SmallKRange,kUp-1);
                                 }
                                 // for small kUp, we directly get the answer
 
@@ -7592,16 +7572,12 @@ module TrussMsg {
                                      toSymEntry(ag.getSTART_IDX_R(), int).a,
                                      toSymEntry(ag.getSRC_R(), int).a,
                                      toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                                 ConLoop=false;
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
+                                     ConLoop=false;
                                  } else {
-                                     if (!FirstEntry) {
-                                          kUp=tmpkUp;
-                                     } else {
-                                          kLow=tmpkUp;
-                                     }
+                                     kLow=tmpkUp;
                                  }
                                  FirstEntry=false;
                                  continue;
@@ -7617,7 +7593,7 @@ module TrussMsg {
                                 }
                             }
                             while ((kMid>kLow) && ConLoop) {
-                                ToK=kMid+SmallKDividedBy;
+                                ToK=min(kMid+SmallKDividedBy,kUp-1);
 
                                 var tmpK =BatchMaxTrussMix(kMid,
 

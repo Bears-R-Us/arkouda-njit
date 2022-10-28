@@ -434,7 +434,7 @@ def graph_bfs(graph: Graph, root: int, rcm_flag:int) -> pdarray:
     #    rcm_flag, graph.n_vertices, graph.n_edges,
     #    graph.directed, graph.weighted, graph.name, root, DefaultRatio)
     args = {"RCMFlag":RCMFlag,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\
+             "Directed":graph.directed,"Weighted": graph.weighted,\
              "GraphName":graph.name,"Root":root,"Ratio":DefaultRatio}
 
     repMsg = generic_msg(cmd=cmd, args=args)
@@ -533,7 +533,7 @@ def graph_triangle (graph: Graph) -> pdarray:
         #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
         #         graph.directed,graph.weighted, graph.name)
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\
+             "Directed":graph.directed,"Weighted": graph.weighted,\
              "GraphName":graph.name}
 
         repMsg = generic_msg(cmd=cmd,args=args)
@@ -564,7 +564,7 @@ def graph_ktruss(graph: Graph,kTrussValue:int) -> pdarray:
         #         graph.directed,graph.weighted,\
         #         graph.name)
         args = {"KValue":kTrussValue,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\
+             "Directed":graph.directed,"Weighted": graph.weighted,\
              "GraphName":graph.name}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -646,7 +646,7 @@ def graph_tri_ctr (graph: Graph) -> pdarray:
         #         graph.directed,graph.weighted, graph.name)
 
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\
+             "Directed":graph.directed,"Weighted": graph.weighted,\
              "GraphName":graph.name}
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
@@ -673,7 +673,7 @@ def graph_jaccard_coefficient(graph: Graph) -> pdarray:
         #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
         #         graph.directed,graph.weighted, graph.name)
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
-             "Directed":directed,"Weighted": weighted,\
+             "Directed":graph.directed,"Weighted": graph.weighted,\
              "GraphName":graph.name}
 
         repMsg = generic_msg(cmd=cmd,args=args)
