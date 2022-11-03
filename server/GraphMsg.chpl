@@ -948,6 +948,28 @@ module GraphMsg {
               if (AlignedArray==1) {
               }
 
+                  var wf = open(FileName+".deg", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+                  var tmp,low, up, ave:int;
+                  low=1000000;
+                  up=0;
+                  ave=0;
+                  for i in 0..NewNv-1 {
+                      tmp=myneighbour[i]+myneighbourR[i];
+                      if (tmp<low) {
+                           low=tmp;
+                      }
+                      if (tmp>up) {
+                           up=tmp;
+                      }
+                      ave=ave+tmp;
+                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                  }
+                  mw.writeln("%-15i    %-15i    %-15y".format(low,up, (ave/NewNv):int));
+                  mw.close();
+                  wf.close();
+
+
           }//end of undirected
           else {
               if (DegreeSortFlag) {
@@ -956,16 +978,39 @@ module GraphMsg {
               }  
               if (AlignedArray==1) {
               }
-          }  
-          if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
+                  var wf = open(FileName+".deg", iomode.cw);
                   var mw = wf.writer(kind=ionative);
-                  for i in 0..NewNe-1 {
-                      mw.writeln("%-15i    %-15i".format(mysrc[i],mydst[i]));
+                  var tmp,low, up, ave:int;
+                  low=1000000;
+                  up=0;
+                  ave=0;
+                  for i in 0..NewNv-1 {
+                      tmp=myneighbour[i];
+                      if (tmp<low) {
+                           low=tmp;
+                      }
+                      if (tmp>up) {
+                           up=tmp;
+                      }
+                      ave=ave+tmp;
+                      mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
+                  mw.writeln("%-15i    %-15i    %-15y".format(low,up, (ave/NewNv):int));
                   mw.close();
                   wf.close();
+          }  
+          if (WriteFlag) {
+
+                  var wf = open(FileName+".pr", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+
+                  for i in 0..NewNe-1 {
+                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
+                  }
+                  mw.close();
+                  wf.close();
+
+
           }
       } else {
     
@@ -978,6 +1023,8 @@ module GraphMsg {
                   mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
                   wf.close();
+
+
           }
       }
       timer.stop();
