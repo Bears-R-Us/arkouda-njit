@@ -963,12 +963,17 @@ module GraphMsg {
 
                   var wf = open(FileName+".deg", iomode.cw);
                   var mw = wf.writer(kind=ionative);
-                  var tmp,low, up, ave:int;
+                  var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
                   ave=0;
+                  point=0;
                   for i in 0..NewNv-1 {
                       tmp=myneighbour[i]+myneighbourR[i];
+                      if tmp==0 {
+                           point=point+1;
+                           continue;
+                      }
                       if (tmp<low) {
                            low=tmp;
                       }
@@ -978,7 +983,7 @@ module GraphMsg {
                       ave=ave+tmp;
                       mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/NewNv):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
 
@@ -993,12 +998,17 @@ module GraphMsg {
               }
                   var wf = open(FileName+".deg", iomode.cw);
                   var mw = wf.writer(kind=ionative);
-                  var tmp,low, up, ave:int;
+                  var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
                   ave=0;
+                  point=0;
                   for i in 0..NewNv-1 {
                       tmp=myneighbour[i];
+                      if tmp==0 {
+                           point=point+1;
+                           continue;
+                      }
                       if (tmp<low) {
                            low=tmp;
                       }
@@ -1008,7 +1018,7 @@ module GraphMsg {
                       ave=ave+tmp;
                       mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/NewNv):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
@@ -1039,15 +1049,20 @@ module GraphMsg {
           }
                   var wf = open(FileName+".deg", iomode.cw);
                   var mw = wf.writer(kind=ionative);
-                  var tmp,low, up, ave:int;
+                  var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
                   ave=0;
+                  point=0;
                   for i in 0..Nv-1 {
                       if (!DirectedFlag) { //undirected graph
                               tmp=neighbour[i]+neighbourR[i];
                       } else {
                               tmp=neighbour[i];
+                      }
+                      if tmp==0 {
+                           point=point+1;
+                           continue;
                       }
                       if (tmp<low) {
                            low=tmp;
@@ -1058,7 +1073,7 @@ module GraphMsg {
                       ave=ave+tmp;
                       mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/Nv):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
       }
