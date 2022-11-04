@@ -150,7 +150,8 @@ def graph_query(graph: Graph, component: str) -> pdarray:
 
 @typechecked
 def graph_edgearray(src:str, dst:str, directed: int=0, \
-                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1, BuildAlignedArray:int=0) -> Graph:
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, \
+                    WriteFlag:int=1, BuildAlignedArray:int=0) -> Graph:
     """
         This function is used for building a graph from two edge arrays 
         srcS : the source array of an edge
@@ -188,8 +189,10 @@ def graph_edgearray(src:str, dst:str, directed: int=0, \
 
 
 @typechecked
-def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,skipline:int=0,\
-                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, WriteFlag:int=1, BuildAlignedArray:int=0) -> None:
+def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, \
+                    filename: str,skipline:int=0,\
+                    RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, \
+                    WriteFlag:int=1, BuildAlignedArray:int=0) -> None:
     """
         This function is used for creating a preprocessed graph file (mapping vertices, 
                 remove duplicated edges and self loop ) from a given file.
@@ -198,8 +201,8 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
         Ncol: how many column of the file. Ncol=2 means just edges (so no weight and weighted=0) 
               and Ncol=3 means there is weight for each edge (so weighted=1). 
         directed: 0 means undirected graph and 1 means directed graph
-        skipline: 0 means how many lines should be skiped
         filename: the file that has the edge list
+        skipline: 0 means how many lines should be skiped
         RemapFlag: if the vertex ID is larger than the total number of vertices, we will relabel the vertex ID
         DegreeSortFlag: we will let small vertex ID be the vertex whose degree is small
         RCMFlag: we will remap the vertex ID based on the RCM algorithm
@@ -221,13 +224,12 @@ def graph_file_preprocessing(Ne: int, Nv: int, Ncol: int, directed: int, filenam
         RuntimeError
         """
     cmd = "segmentedGraphPreProcessing"
-    #args = "{} {} {} {} {} {} {} {}".format(srcS, dstS,directed, \
-    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
-    args = {"SRC":srcS,"DST": dstS,"Directed":directed, "FileName":filename,"SkipLines":skipline, \
+    args = {"NumOfEdges":Ne,"NumOfVertices":Nv,"NumOfColumns":Ncol,\
+            "Directed":directed, "FileName":filename,"SkipLines":skipline, \
             "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
             "RCMFlag":RCMFlag, "WriteFlag":WriteFlag,"AlignedFlag":BuildAlignedArray}
-    # currently we will not handle the BuildAlignedArray flag except in the read procedure
     repMsg = generic_msg(cmd=cmd, args=args)
+    print(repMsg)
     return 
 
 
