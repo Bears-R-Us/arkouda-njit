@@ -1037,8 +1037,8 @@ module GraphMsg {
                   mw.close();
                   wf.close();
           }
-                  wf = open(FileName+".deg", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
                   var tmp,low, up, ave:int;
                   low=1000000;
                   up=0;
