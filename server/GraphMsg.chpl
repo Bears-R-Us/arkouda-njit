@@ -121,7 +121,7 @@ module GraphMsg {
           var vertexAry=VertexSet.toArray();
           if vertexAry.size!=numV {
                smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
-                         "number of vertices is not equal to the given number`");
+                         "number of vertices is not equal to the given number");
           }
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                          "Total Vertices="+vertexAry.size:string+" ? Nv="+numV:string);
@@ -665,6 +665,19 @@ module GraphMsg {
       var RwriteS=msgArgs.getValueOf("WriteFlag");
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
 
+      /*
+      writeln("NumOfEdges=",NeS);
+      writeln("NumOfVertices=",NvS);
+      writeln("NumOfColumns=",ColS);
+      writeln("Directed=",DirectedS);
+      writeln("FileName=",FileName);
+      writeln("SkipLines=",SkipLineS);
+      writeln("RemapFlag=",RemapVertexS);
+      writeln("DegreeSortFlag=",DegreeSortS);
+      writeln("RCMFlag=",RCMS);
+      writeln("WriteFlag=",RwriteS);
+      writeln("AlignedFlag=",AlignedArrayS);
+      */
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
@@ -965,7 +978,7 @@ module GraphMsg {
                       ave=ave+tmp;
                       mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15y".format(low,up, (ave/NewNv):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/NewNv):int));
                   mw.close();
                   wf.close();
 
@@ -995,7 +1008,7 @@ module GraphMsg {
                       ave=ave+tmp;
                       mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15y".format(low,up, (ave/NewNv):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/NewNv):int));
                   mw.close();
                   wf.close();
           }  
@@ -1023,9 +1036,31 @@ module GraphMsg {
                   mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
                   wf.close();
-
-
           }
+                  wf = open(FileName+".deg", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  var tmp,low, up, ave:int;
+                  low=1000000;
+                  up=0;
+                  ave=0;
+                  for i in 0..Nv-1 {
+                      if (!DirectedFlag) { //undirected graph
+                              tmp=neighbour[i]+neighbourR[i];
+                      } else {
+                              tmp=neighbour[i];
+                      }
+                      if (tmp<low) {
+                           low=tmp;
+                      }
+                      if (tmp>up) {
+                           up=tmp;
+                      }
+                      ave=ave+tmp;
+                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                  }
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/Nv):int));
+                  mw.close();
+                  wf.close();
       }
       timer.stop();
       outMsg="PreProcessing  File takes " + timer.elapsed():string;
