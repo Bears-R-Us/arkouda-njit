@@ -151,8 +151,8 @@ module GraphArray {
         var domary =makeDistArray(numLocales,DomArray);
 
         proc init(disArray :[?aD] DomArray) {
-            //super.init(etype,0);
-            super.init(DomArray,0);
+            super.init(0);
+            //super.init(DomArray,0);
             this.entryType = SymbolEntryType.CompositeSymEntry;
             assignableTypes.add(this.entryType);
             this.domary = disArray;
@@ -171,8 +171,8 @@ module GraphArray {
         var graph: shared SegGraph;
 
         proc init(segGraph: shared SegGraph) {
-            //super.init(etype,0);
-            super.init(SegGraph,0);
+            super.init(0);
+            //super.init(SegGraph,0);
             this.entryType = SymbolEntryType.CompositeSymEntry;
             assignableTypes.add(this.entryType);
             this.graph = segGraph;
