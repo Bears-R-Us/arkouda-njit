@@ -1634,6 +1634,7 @@ module CCMsg {
                      TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
                   } 
               }
+              var oldval:int;
               if (  (itera % (3*JumpSteps) == 0) ) {
                    oldval=f_low[f_low[f_low[u].read()].read()].read();
                    while (oldval>TmpMin) {
@@ -1698,7 +1699,7 @@ module CCMsg {
                    }
                    */
               }
-              var oldval=f_low[u].read();
+              oldval=f_low[u].read();
               while (oldval>TmpMin) {
                     if (f_low[u].compareAndSwap(oldval, TmpMin)) {
                          count+=1;
