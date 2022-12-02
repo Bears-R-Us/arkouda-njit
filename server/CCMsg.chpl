@@ -2493,6 +2493,10 @@ module CCMsg {
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
               //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
+              if ((f1[i] != f2[i]) ) {
+                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
               if ((f1[i] != f3[i]) ) {
                 var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);

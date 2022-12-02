@@ -435,7 +435,7 @@ def graph_bfs(graph: Graph, root: int, rcm_flag:int) -> pdarray:
     #args = "{} {} {} {} {} {} {} {}".format(
     #    rcm_flag, graph.n_vertices, graph.n_edges,
     #    graph.directed, graph.weighted, graph.name, root, DefaultRatio)
-    args = {"RCMFlag":RCMFlag,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+    args = {"RCMFlag":rcm_flag,"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
              "Directed":graph.directed,"Weighted": graph.weighted,\
              "GraphName":graph.name,"Root":root,"Ratio":DefaultRatio}
 
