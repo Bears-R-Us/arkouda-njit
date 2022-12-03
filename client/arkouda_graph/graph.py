@@ -20,7 +20,8 @@ __all__ = ["Graph","graph_query",
            "stream_tri_cnt",
            "streamPL_tri_cnt",
            "graph_ktruss",
-           "graph_jaccard_coefficient" ]
+           "graph_jaccard_coefficient", 
+           "graph_jaccard_hash" ]
 
 class Graph:
     """
@@ -680,3 +681,34 @@ def graph_jaccard_coefficient(graph: Graph) -> pdarray:
 
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)
+
+
+@typechecked
+def graph_jaccard_hash(graph: Graph) -> pdarray:
+        """
+        This function will return the jaccard coefficient of each vertex in a static graph.
+        Returns
+        -------
+        pdarray
+            The jaccard coefficient value of each vertex.
+        See Also
+        --------
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+        cmd="segmentedGraphJaccardHash"
+        #args = "{} {} {} {} {}".format( graph.n_vertices,graph.n_edges,\
+        #         graph.directed,graph.weighted, graph.name)
+        args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":graph.directed,"Weighted": graph.weighted,\
+             "GraphName":graph.name}
+
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return create_pdarray(repMsg)
+
+
+

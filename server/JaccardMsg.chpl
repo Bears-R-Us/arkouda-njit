@@ -36,6 +36,16 @@ module JaccardMsg {
 
   
 
+    pragma "default intent is ref"
+    record DomRealArray {
+         var DO = {0..0};
+         var A : [DO] real;
+         proc new_dom(new_d : domain(1)) {
+             this.DO = new_d;
+         }
+    }
+
+
   // calculate Jaccard coefficient
   proc segJaccardMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
@@ -561,6 +571,256 @@ module JaccardMsg {
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
+
+
+
+  // calculate Jaccard coefficient
+  proc segHashJaccardMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+      var repMsg: string;
+
+
+      var msgArgs = parseMessageArgs(payload, argSize);
+      var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+      var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+      var directedN=msgArgs.getValueOf("Directed");
+      var weightedN=msgArgs.getValueOf("Weighted");
+      var graphEntryName=msgArgs.getValueOf("GraphName");
+
+
+
+
+      var Nv=n_verticesN:int;
+      var Ne=n_edgesN:int;
+      var Directed=directedN:int;
+      var Weighted=weightedN:int;
+      var timer:Timer;
+
+
+      var uvNames: domain(string);
+      var indexName : [uvNames] int;
+
+      var HashJaccGamma=makeDistArray(numLocales,DomArray);
+      var JaccCoeff=makeDistArray(numLocales,DomRealArray);
+      var HashNum=makeDistArray(numLocales,int);
+
+      HashNum=0;
+
+      var root:int;
+      var srcN, dstN, startN, neighbourN,vweightN,eweightN, rootN :string;
+      var srcRN, dstRN, startRN, neighbourRN:string;
+      var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
+      // the graph must be relabeled based on degree of each vertex
+      var ag = gEntry.graph;
+ 
+
+      timer.start();
+      proc jaccard_coefficient_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
+
+          var edgeBeginG=makeDistArray(numLocales,int);//each locale's starting edge ID
+          var edgeEndG=makeDistArray(numLocales,int);//each locales'ending edge ID
+
+          var vertexBeginG=makeDistArray(numLocales,int);//each locale's beginning vertex ID in src
+          var vertexEndG=makeDistArray(numLocales,int);// each locales' ending vertex ID in src
+
+
+          coforall loc in Locales   {
+              on loc {
+                 edgeBeginG[here.id]=src.localSubdomain().lowBound;
+                 edgeEndG[here.id]=src.localSubdomain().highBound;
+
+                 vertexBeginG[here.id]=src[edgeBeginG[here.id]];
+                 vertexEndG[here.id]=src[edgeEndG[here.id]];
+              }
+          }
+          coforall loc in Locales   {
+              on loc {
+                 if (here.id>0) {
+                   vertexBeginG[here.id]=vertexEndG[here.id-1]+1;
+                 } else {
+                   vertexBeginG[here.id]=0;
+                 }
+
+              }
+          }
+          coforall loc in Locales   {
+              on loc {
+                 if (here.id<numLocales-1) {
+                   vertexEndG[here.id]=vertexBeginG[here.id+1]-1;
+                 } else {
+                   vertexEndG[here.id]=nei.size-1;
+                 }
+
+              }
+          }
+          coforall loc in Locales  with (ref uvNames)  {
+              on loc {
+
+                       var vertexBegin=vertexBeginG[here.id];
+                       var vertexEnd=vertexEndG[here.id];
+                       var HashSize:int=0;
+                       for  i in vertexBegin..vertexEnd {
+                              var    numNF=nei[i];
+                              var    edgeId=start_i[i];
+                              var nextStart=edgeId;
+                              var nextEnd=edgeId+numNF-1;
+                              HashSize+=(nextEnd-nextStart-1)*(nextEnd-nextStart-1);
+
+                              numNF=neiR[i];
+                              edgeId=start_iR[i];
+                              nextStart=edgeId;
+                              nextEnd=edgeId+numNF-1;
+                              HashSize+=(nextEnd-nextStart-1)*(nextEnd-nextStart-1);
+                              var    numNF2=nei[i];
+                              var    edgeId2=start_i[i];
+                              var nextStart2=edgeId2;
+                              var nextEnd2=edgeId2+numNF2-1;
+                              HashSize+=(nextEnd-nextStart)*(nextEnd2-nextStart2);
+                       }
+
+                       HashJaccGamma[here.id].new_dom({0..HashSize});
+                       JaccCoeff[here.id].new_dom({0..HashSize});
+
+
+                       forall  i in vertexBegin..vertexEnd with (ref uvNames) {
+                              var    numNF=nei[i];
+                              var    edgeId=start_i[i];
+                              var nextStart=edgeId;
+                              var nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1 with (ref uvNames)  {
+                                   var u=dst[e1];
+                                   forall e2 in e1+1..nextEnd  with (ref uvNames){
+                                       var v=dst[e2];
+                                       if u<v {
+                                           var namestr=(u:string)+(v:string);
+                                           if ( uvNames.contains(namestr)) then {
+                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                           } else {
+                                                HashNum[here.id]+=1;
+                                                //uvNames.add(namestr);
+                                                uvNames+=namestr;
+                                                indexName[namestr]=HashNum[here.id]-1;
+                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                           }
+                                       }
+                                   }
+                              } 
+                              numNF=neiR[i];
+                              edgeId=start_iR[i];
+                              nextStart=edgeId;
+                              nextEnd=edgeId+numNF-1;
+                              forall e1 in nextStart..nextEnd-1  with (ref uvNames){
+                                   var u=dstR[e1];
+                                   forall e2 in e1+1..nextEnd  with (ref uvNames){
+                                       var v=dstR[e2];
+                                       if u<v {
+                                           var namestr=(u:string)+(v:string);
+                                           if ( uvNames.contains(namestr)) then {
+                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                           } else {
+                                                HashNum[here.id]+=1;
+                                                //uvNames.add(namestr);
+                                                uvNames+=namestr;
+                                                indexName[namestr]=HashNum[here.id]-1;
+                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                           }
+                                       }
+                                   }
+                              }
+
+
+
+                              forall e1 in nextStart..nextEnd  with (ref uvNames){
+                                   var u=dstR[e1];
+
+                                   var    numNF2=nei[i];
+                                   var    edgeId2=start_i[i];
+                                   var nextStart2=edgeId2;
+                                   var nextEnd2=edgeId2+numNF2-1;
+                                   forall e2 in nextStart2..nextEnd2  with (ref uvNames){
+                                       var v=dst[e2];
+                                       if u<v {
+                                           var namestr=(u:string)+(v:string);
+                                           if ( uvNames.contains(namestr)) then {
+                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                           } else {
+                                                HashNum[here.id]+=1;
+                                                //uvNames.add(namestr);
+                                                uvNames+=namestr;
+                                                indexName[namestr]=HashNum[here.id]-1;
+                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                           }
+                                       } else {
+                                          if v<u {
+                                           var namestr=(v:string)+(u:string);
+                                           if ( uvNames.contains(namestr)) then {
+                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                           } else {
+                                                HashNum[here.id]+=1;
+                                                //uvNames.add(namestr);
+                                                uvNames+=namestr;
+                                                indexName[namestr]=HashNum[here.id]-1;
+                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                           }
+                                          }
+                                       }
+                                   }
+                              }
+
+
+                       }
+              }
+          }//end coforall loc
+
+          forall u in 0..Nv-2 {
+             forall v in u+1..Nv-1 {
+                  var tmpjac:real;
+                  var namestr=(u:string)+(v:string);
+                 
+                  if ((u<v) && ( uvNames.contains(namestr) )) {
+                      tmpjac= HashJaccGamma[here.id].A[indexName[namestr]]:real;
+                      JaccCoeff[here.id].A[indexName[namestr]]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
+                  }
+             }
+          }
+
+          var JaccName = st.nextName();
+          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
+          st.addEntry(JaccName, JaccEntry);
+
+          var jacMsg =  'created ' + st.attrib(JaccName);
+          return jacMsg;
+
+      }//end of 
+
+
+      if (!Directed) {
+                  repMsg=jaccard_coefficient_u(
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a
+                  );
+
+                  timer.stop();
+                  var outMsg= "graph Jaccard takes "+timer.elapsed():string;
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+ 
+      }
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
+
     use CommandMap;
     registerFunction("segmentedGraphJaccard", segJaccardMsg,getModuleName());
+    registerFunction("segmentedGraphJaccardHash", segHashJaccardMsg,getModuleName());
  }
+
+
+
+
