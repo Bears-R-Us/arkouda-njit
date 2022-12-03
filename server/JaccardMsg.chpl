@@ -47,13 +47,13 @@ module JaccardMsg {
 
 
   // calculate Jaccard coefficient
-  proc segJaccardMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segJaccardMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       //var (n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
       //    = payload.splitMsgToTuple(6);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var n_verticesN=msgArgs.getValueOf("NumOfVertices");
       var n_edgesN=msgArgs.getValueOf("NumOfEdges");
       var directedN=msgArgs.getValueOf("Directed");
@@ -200,6 +200,17 @@ module JaccardMsg {
                   }
              }
           }
+          var wf = open("Jaccard-Original"+graphEntryName+".dat", iomode.cw);
+          var mw = wf.writer(kind=ionative);
+          for i in 0..(Nv-2) {
+              for j in (i+1)..(Nv-1) {
+                 if JaccCoeff[i*Nv+j]>0.0 {
+                      mw.writeln("%7.3dr".format(JaccCoeff[i*Nv+j]));
+                 }
+              }
+          }
+          mw.close();
+          wf.close();
           /*
           coforall loc in Locales   {
               on loc {
@@ -575,11 +586,11 @@ module JaccardMsg {
 
 
   // calculate Jaccard coefficient
-  proc segHashJaccardMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segHashJaccardMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var n_verticesN=msgArgs.getValueOf("NumOfVertices");
       var n_edgesN=msgArgs.getValueOf("NumOfEdges");
       var directedN=msgArgs.getValueOf("Directed");
@@ -772,8 +783,8 @@ module JaccardMsg {
               }
           }//end coforall loc
 
-          forall u in 0..Nv-2 {
-             forall v in u+1..Nv-1 {
+          forall u in 0..(Nv-2) {
+             forall v in (u+1)..(Nv-1) {
                   var tmpjac:real;
                   var namestr=(u:string)+(v:string);
                  
@@ -783,9 +794,27 @@ module JaccardMsg {
                   }
              }
           }
-
+          var wf = open("Jaccard-Hash"+graphEntryName+".dat", iomode.cw);
+          var mw = wf.writer(kind=ionative);
+          var namestr:string;
+          for i in 0..(Nv-2) {
+             for j in (i+1)..(Nv-1) {
+                 namestr=(i:string)+(j:string);
+                 if ( uvNames.contains(namestr) ) {
+                     for k in 0..(numLocales-1) {
+                         if JaccCoeff[k].A[indexName[namestr]] >0.0 {
+                            mw.writeln("%7.3dr".format(JaccCoeff[k].A[indexName[namestr]]));
+                            break;
+                         }
+                     }
+                 }
+             }
+          }
+          mw.close();
+          wf.close();
+         
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
+          var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -820,7 +849,4 @@ module JaccardMsg {
     registerFunction("segmentedGraphJaccard", segJaccardMsg,getModuleName());
     registerFunction("segmentedGraphJaccardHash", segHashJaccardMsg,getModuleName());
  }
-
-
-
 

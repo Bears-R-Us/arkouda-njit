@@ -50,11 +50,11 @@ module BFSMsg {
 
 
   // visit a graph using BFS method
-  proc segBFSMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segBFSMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       //var (RCMs, n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
       //    = payload.splitMsgToTuple(7);
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var RCMs = msgArgs.getValueOf("RCMFlag");
       var n_verticesN=msgArgs.getValueOf("NumOfVertices");
       var n_edgesN=msgArgs.getValueOf("NumOfEdges");

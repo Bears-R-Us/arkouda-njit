@@ -3233,7 +3233,7 @@ module TrussMsg {
 
 
 
- proc segTrussMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+ proc segTrussMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
   //In this procedure, we implement different Truss analysis methods, including k-truss, max truss and truss decomposition
   
       var repMsg: string;
@@ -3242,7 +3242,7 @@ module TrussMsg {
 
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var kTrussN=msgArgs.getValueOf("KValue");
       var n_verticesN=msgArgs.getValueOf("NumOfVertices");
       var n_edgesN=msgArgs.getValueOf("NumOfEdges");

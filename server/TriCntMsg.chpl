@@ -54,13 +54,13 @@ module TriCntMsg {
 
 
   // directly read a stream from given file and build a  Graph  sketch in memory
-  proc segStreamFileMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segStreamFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS, FileName,FactorS) = payload.splitMsgToTuple(6);
       //writeln("======================Graph Reading=====================");
       //writeln(NeS,NvS,ColS,DirectedS, FileName);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -422,13 +422,13 @@ module TriCntMsg {
 
 
   //Given a graph, calculate its number of triangles
-  proc segTriCntMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segTriCntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       //var (n_verticesN,n_edgesN,directedN,weightedN,graphEntryName,restpart )
       //    = payload.splitMsgToTuple(6);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var n_verticesN=msgArgs.getValueOf("NumOfVertices");
       var n_edgesN=msgArgs.getValueOf("NumOfEdges");
       var directedN=msgArgs.getValueOf("Directed");
@@ -1180,13 +1180,13 @@ module TriCntMsg {
 
 
 // directly read a stream from given file and build the SegGraph class in memory
-  proc segStreamTriCntMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segStreamTriCntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS, FileName,FactorS) = payload.splitMsgToTuple(6);
       //writeln("======================Graph Reading=====================");
       //writeln(NeS,NvS,ColS,DirectedS, FileName);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -1888,12 +1888,12 @@ module TriCntMsg {
 
 
 // directly read a stream from given file and build the Graph class in memory
-  proc segStreamPLTriCntMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segStreamPLTriCntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS, FileName,FactorS, CaseS) = payload.splitMsgToTuple(7);
       //writeln("======================Graph Reading=====================");
       //writeln(NeS,NvS,ColS,DirectedS, FileName);
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
