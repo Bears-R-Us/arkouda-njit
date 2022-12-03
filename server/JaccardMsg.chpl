@@ -625,7 +625,7 @@ module JaccardMsg {
  
 
       timer.start();
-      proc jaccard_coefficient_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc jaccard_hash_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
 
           var edgeBeginG=makeDistArray(numLocales,int);//each locale's starting edge ID
@@ -824,7 +824,7 @@ module JaccardMsg {
 
 
       if (!Directed) {
-                  repMsg=jaccard_coefficient_u(
+                  repMsg=jaccard_hash_u(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
                       toSymEntry(ag.getSRC(), int).a,
