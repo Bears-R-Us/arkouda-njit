@@ -48,13 +48,13 @@ module SuffixArrayMsg {
       return array;
   }
 
-  proc segmentLengthsIntMsg(cmd: string, payload: string, argSize:int,
+  proc segmentLengthsIntMsg(cmd: string, msgArgs: borrowed MessageArgs,
                                           st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     //var (objtype, segName, valName) = payload.splitMsgToTuple(3);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var objtype=msgArgs.getValueOf("ObjType");
       var segName=msgArgs.getValueOf("SegName");
       var valName=msgArgs.getValueOf("ValName");
@@ -99,7 +99,7 @@ module SuffixArrayMsg {
    * 2. sliceIndex : segSliceIndex
    * 3. pdarrayIndex : segPdarrayIndex
   */ 
-  proc segmentedIntIndexMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segmentedIntIndexMsg(cmd: string,msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
     // 'subcmd' is the type of indexing to perform
@@ -107,17 +107,18 @@ module SuffixArrayMsg {
     //var (subcmd, objtype, rest) = payload.splitMsgToTuple(3);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var subcmd=msgArgs.getValueOf("Command");
       var objtype=msgArgs.getValueOf("ObjType");
 
 
+    /*
     var tmpstr=msgArgs.vals();
     var args: [1..argSize-2] string;
     for i in 1..argSize-2 {
         args[i]=tmpstr[i+1];
     }
-
+    */
 
     //var fields = rest.split();
     //var args: [1..#fields.size] string = fields; // parsed by subroutines
@@ -126,13 +127,18 @@ module SuffixArrayMsg {
     try {
         select subcmd {
             when "intIndex" {
-                return segIntIndex(objtype, args, st);
+                //return segIntIndex(objtype, args, st);
+                //return segIntIndex(objtype, msgArgs.getValueOf("key"), st);
             }
             when "sliceIndex" {
-                return segSliceIndex(objtype, args, st);
+                //return segSliceIndex(objtype, args, st);
+                //var slice = msgArgs.get("key").getList(3);
+                //return segSliceIndex(objtype, msgArgs.getValueOf("key"), st);
+
             }
             when "pdarrayIndex" {
-                return segPdarrayIndex(objtype, args, st);
+                //return segPdarrayIndex(objtype, args, st);
+                //return segPdarrayIndex(objtype,msgArgs.getValueOf("key"), st);
             }
             otherwise {
                 var errorMsg = "Error in %s, unknown subcommand %s".format(pn, subcmd);
@@ -316,7 +322,7 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segBinopvvIntMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segBinopvvIntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
     //var (op,
@@ -329,7 +335,7 @@ module SuffixArrayMsg {
 
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var op=msgArgs.getValueOf("Operation");
       var ltype=msgArgs.getValueOf("LType");
       var lsegName=msgArgs.getValueOf("LSegName");
@@ -383,12 +389,12 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segBinopvsIntMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segBinopvsIntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
     //var (op, objtype, segName, valName, valtype, encodedVal)  = payload.splitMsgToTuple(6);
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var op=msgArgs.getValueOf("Operation");
       var objtype=msgArgs.getValueOf("ObjType");
       var segName=msgArgs.getValueOf("SegName");
@@ -409,12 +415,12 @@ module SuffixArrayMsg {
         select op {
           when "==" {
             var e = st.addEntry(rname, sarrays.size, bool);
-            var tmp=sarrays[sarrays.offsets.aD.lowBound]:int;
+            var tmp=sarrays[sarrays.offsets.a.domain.lowBound]:int;
             e.a = (tmp == value);
           }
           when "!=" {
             var e = st.addEntry(rname, sarrays.size, bool);
-            var tmp=sarrays[sarrays.offsets.aD.lowBound]:int;
+            var tmp=sarrays[sarrays.offsets.a.domain.lowBound]:int;
             e.a = (tmp != value);
           }
           otherwise {
@@ -435,7 +441,7 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segIn1dIntMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segIn1dIntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     var pn = Reflection.getRoutineName();
     var repMsg: string;
     //var (mainObjtype, mainSegName, mainValName, testObjtype, testSegName,
@@ -443,7 +449,7 @@ module SuffixArrayMsg {
 
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var mainObjtype=msgArgs.getValueOf("MainObjType");
       var mainSegName=msgArgs.getValueOf("MainSegName");
       var mainValName=msgArgs.getValueOf("MainValName");
@@ -491,14 +497,14 @@ module SuffixArrayMsg {
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 
-  proc segSuffixArrayMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segSuffixArrayMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var pn = Reflection.getRoutineName();
       //var (objtype, entryName) = payload.splitMsgToTuple(2);
       var repMsg: string;
 
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var objtype=msgArgs.getValueOf("ObjType");
       var entryName=msgArgs.getValueOf("EntryName");
 
@@ -564,13 +570,13 @@ module SuffixArrayMsg {
       }
   }
 
-  proc segLCPMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segLCPMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var pn = Reflection.getRoutineName();
       //var (objtype, segName, valName, entryName) = payload.splitMsgToTuple(4);
       var repMsg: string;
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var objtype=msgArgs.getValueOf("ObjType");
       var segName=msgArgs.getValueOf("SegName");
       var valName=msgArgs.getValueOf("ValName");
@@ -649,13 +655,13 @@ module SuffixArrayMsg {
 
   }
 
-  proc segSAFileMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segSAFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       // directly read a string from given file and generate its suffix array
       var pn = Reflection.getRoutineName();
       //var FileName = payload;
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var FileName=msgArgs.getValueOf("FileName");
 
       var repMsg: string;

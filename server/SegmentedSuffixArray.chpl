@@ -119,7 +119,7 @@ module SegmentedSuffixArray {
 
     /* Retrieve one string from the array */
     proc this(idx: int): string throws {
-      if (idx < offsets.aD.low) || (idx > offsets.aD.high) {
+      if (idx < offsets.a.domain.low) || (idx > offsets.a.domain.high) {
         throw new owned OutOfBoundsError();
       }
       // Start index of the string
@@ -146,7 +146,7 @@ module SegmentedSuffixArray {
        Chapel range, i.e. low..high by stride, not a Python slice.
        Returns arrays for the segment offsets and bytes of the slice.*/
     proc this(const slice: range(stridable=true)) throws {
-      if (slice.lowBound < offsets.aD.low) || (slice.highBound > offsets.aD.high) {
+      if (slice.lowBound < offsets.a.domain.low) || (slice.highBound > offsets.a.domain.high) {
           saLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
           "Array is out of bounds");
           throw new owned OutOfBoundsError();
@@ -159,9 +159,9 @@ module SegmentedSuffixArray {
       var start = offsets.a[slice.lowBound];
       // End of bytearray slice
       var end: int;
-      if (slice.highBound == offsets.aD.highBound) {
+      if (slice.highBound == offsets.a.domain.highBound) {
         // if slice includes the last string, go to the end of values
-        end = values.aD.highBound;
+        end = values.a.domain.highBound;
       } else {
         end = offsets.a[slice.highBound+1] - 1;
       }
@@ -201,7 +201,7 @@ module SegmentedSuffixArray {
                                               "Computing lengths and offsets");
       var t1 = getCurrentTime();
       ref oa = offsets.a;
-      const low = offsets.aD.low, high = offsets.aD.high;
+      const low = offsets.a.domain.low, high = offsets.a.domain.high;
       // Gather the right and left boundaries of the indexed strings
       // NOTE: cannot compute lengths inside forall because agg.copy will
       // experience race condition with loop-private variable
@@ -276,7 +276,7 @@ module SegmentedSuffixArray {
     /* Logical indexing (compress) of strings. */
     proc this(iv: [?D] bool) throws {
       // Index vector must be same domain as array
-      if (D != offsets.aD) {
+      if (D != offsets.a.domain) {
           saLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
                                                            "Array out of bounds");
           throw new owned OutOfBoundsError();
@@ -285,7 +285,7 @@ module SegmentedSuffixArray {
                                                  "Computing lengths and offsets");
       var t1 = getCurrentTime();
       ref oa = offsets.a;
-      const low = offsets.aD.low, high = offsets.aD.high;
+      const low = offsets.a.domain.low, high = offsets.a.domain.high;
       // Calculate the destination indices
       var steps = + scan iv;
       var newSize = steps[high];
@@ -307,7 +307,7 @@ module SegmentedSuffixArray {
        and set membership. The hash used is SipHash128.*/
     proc siphash() throws {
       // 128-bit hash values represented as 2-tuples of uint(64)
-      var hashes: [offsets.aD] 2*uint(64);
+      var hashes: [offsets.a.domain] 2*uint(64);
       // Early exit for zero-length result
       if (size == 0) {
         return hashes;
@@ -368,14 +368,18 @@ module SegmentedSuffixArray {
 
     /* Return lengths of all strings, including null terminator. */
     proc getLengths() {
-      var lengths: [offsets.aD] int;
+      //var lengths: [offsets.aD] int;
+      var lengths: [offsets.a.domain] int;
       if (size == 0) {
         return lengths;
       }
       ref oa = offsets.a;
-      const low = offsets.aD.low;
-      const high = offsets.aD.high;
-      forall (i, o, l) in zip(offsets.aD, oa, lengths) {
+      //const low = offsets.aD.low;
+      const low = offsets.a.domain.low;
+      //const high = offsets.aD.high;
+      const high = offsets.a.domain.high;
+      //forall (i, o, l) in zip(offsets.aD, oa, lengths) {
+      forall (i, o, l) in zip(offsets.a.domain, oa, lengths) {
         if (i == high) {
           l = values.size - o;
         } else {
@@ -390,15 +394,17 @@ module SegmentedSuffixArray {
      * line to solve the problem
      * dummy chpldoc description for ediff()
      */
-    proc ediff():[offsets.aD] int {
-      var diff: [offsets.aD] int;
+    //proc ediff():[offsets.aD] int {
+    proc ediff():[offsets.a.domain] int {
+      //var diff: [offsets.aD] int;
+      var diff: [offsets.a.domain] int;
       if (size < 2) {
         return diff;
       }
       ref oa = offsets.a;
       ref va = values.a;
-      const high = offsets.aD.high;
-      forall (i, a) in zip(offsets.aD, diff) {
+      const high = offsets.a.domain.high;
+      forall (i, a) in zip(offsets.a.domain, diff) {
         if (i < high) {
           var asc: bool;
           const left = oa[i]..oa[i+1]-1;
@@ -406,7 +412,7 @@ module SegmentedSuffixArray {
             const right = oa[i+1]..oa[i+2]-1;
             a = -memcmp(va, left, va, right);
           } else { // i == high - 1
-            const right = oa[i+1]..values.aD.high;
+            const right = oa[i+1]..values.a.domain.high;
             a = -memcmp(va, left, va, right);
           }
         } else { // i == high
@@ -423,8 +429,8 @@ module SegmentedSuffixArray {
       return (&& reduce (ediff() >= 0));
     }
 
-    proc argsort(checkSorted:bool=false): [offsets.aD] int throws {
-      const ref D = offsets.aD;
+    proc argsort(checkSorted:bool=false): [offsets.a.domain] int throws {
+      const ref D = offsets.a.domain;
       const ref va = values.a;
       if checkSorted && isSorted() {
           saLogger.warn(getModuleName(),getRoutineName(),getLineNumber(),
@@ -443,7 +449,7 @@ module SegmentedSuffixArray {
   /* Test array of strings for membership in another array (set) of strings. Returns
      a boolean vector the same size as the first array. */
   proc in1d_Int(mainSar: SegSuffixArray, testSar: SegSuffixArray, invert=false) throws where useHash {
-    var truth: [mainSar.offsets.aD] bool;
+    var truth: [mainSar.offsets.a.domain] bool;
     // Early exit for zero-length result
     if (mainSar.size == 0) {
       return truth;
@@ -496,7 +502,7 @@ module SegmentedSuffixArray {
 
 
   proc in1d_Int(mainSar: SegSuffixArray, testSar: SegSuffixArray, invert=false) throws where !useHash {
-    var truth: [mainSar.offsets.aD] bool;
+    var truth: [mainSar.offsets.a.domain] bool;
     // Early exit for zero-length result
     if (mainSar.size == 0) {
       return truth;
@@ -540,7 +546,7 @@ module SegmentedSuffixArray {
             const right = saro[i+1]..saro[i+2]-1;
             eq = (memcmp(sarv, left, sarv, right) == 0);
           } else {
-            const ref right = saro[i+1]..sar.values.aD.high;
+            const ref right = saro[i+1]..sar.values.a.domain.high;
             eq = (memcmp(sarv, left, sarv, right) == 0);
           }
           if eq {
@@ -564,7 +570,7 @@ module SegmentedSuffixArray {
                                                 "Ret pop: %t".format(+ reduce ret));
       }
       // Broadcast back to original (pre-unique) order
-      var truth: [mainSar.offsets.aD] bool;
+      var truth: [mainSar.offsets.a.domain] bool;
       forall (t, i) in zip(truth, revIdx) with (var agg = newSrcAggregator(bool)) {
         agg.copy(t, ret[i]);
       }

@@ -46,11 +46,11 @@ module CCMsg {
     return !xlocal(x, low, high);
   }
 
-  proc segCCMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segCCMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     // Get the values passeed to Python and now, Chapel. 
     //var (n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart) = payload.splitMsgToTuple(6);
     
-    var msgArgs = parseMessageArgs(payload, argSize);
+    //var msgArgs = parseMessageArgs(payload, argSize);
     var n_verticesN=msgArgs.getValueOf("NumOfVertices");
     var n_edgesN=msgArgs.getValueOf("NumOfEdges");
     var directedN=msgArgs.getValueOf("Directed");

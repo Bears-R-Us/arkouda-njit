@@ -646,13 +646,12 @@ module GraphMsg {
 
 
 
-
   // directly read a graph from given file and build the SegGraph class in memory
-  proc segGraphPreProcessingMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segGraphPreProcessingMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(11);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -1089,11 +1088,11 @@ module GraphMsg {
 
 
   // directly read a graph from given file and build the SegGraph class in memory
-  proc segGraphNDEMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segGraphNDEMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(10);
 
 
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -1429,11 +1428,10 @@ module GraphMsg {
 
 
 
-
   // directly read a graph from given file and build the SegGraph class in memory
-  proc segGraphFileMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segGraphFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(10);
-      var msgArgs = parseMessageArgs(payload, argSize);
+      //var msgArgs = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -1873,7 +1871,7 @@ module GraphMsg {
 
 
   // directly build a graph from two edge arrays
-  proc segAryToGraphMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segAryToGraphMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(11);
 
       //var (srcS,dstS,DirectedS,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(8);
@@ -1881,7 +1879,7 @@ module GraphMsg {
 
 
 
-      var msgArgs  = parseMessageArgs(payload, argSize);
+      //var msgArgs  = parseMessageArgs(payload, argSize);
       var srcS=msgArgs.getValueOf("SRC");
       var dstS=msgArgs.getValueOf("DST");
       var DirectedS=msgArgs.getValueOf("Directed");
@@ -2445,11 +2443,11 @@ module GraphMsg {
 
 
   // directly read a graph from given file and build the SegGraph class in memory
-  proc segGraphFileMtxMsg(cmd: string, payload: string, argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segGraphFileMtxMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       //var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(10);
 
 
-      var msgArgs  = parseMessageArgs(payload, argSize);
+      //var msgArgs  = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -2869,12 +2867,12 @@ module GraphMsg {
 
 
   //generate a graph using RMAT method.
-  proc segrmatgenMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segrmatgenMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       //var (slgNv, sNe_per_v, sp, sdire,swei,RCMs )
       //    = payload.splitMsgToTuple(6);
 
-      var msgArgs  = parseMessageArgs(payload, argSize);
+      //var msgArgs  = parseMessageArgs(payload, argSize);
       var slgNv=msgArgs.getValueOf("LogNumOfVertices");
       var sNe_per_v=msgArgs.getValueOf("NumOfEdgesPerV");
       var sp=msgArgs.getValueOf("SP");
@@ -3129,13 +3127,13 @@ module GraphMsg {
 
 
   // visit a graph using BFS method
-  proc segGraphQueMsg(cmd: string, payload: string,argSize:int, st: borrowed SymTab): MsgTuple throws {
+  proc segGraphQueMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       //var (graphEntryName, queID)
       //    = payload.splitMsgToTuple(2);
 
 
-      var msgArgs  = parseMessageArgs(payload, argSize);
+      //var msgArgs  = parseMessageArgs(payload, argSize);
       var graphEntryName=msgArgs.getValueOf("GraphName");
       var queID=msgArgs.getValueOf("Component");
 
