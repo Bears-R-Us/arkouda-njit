@@ -130,16 +130,22 @@ module SuffixArrayMsg {
             when "intIndex" {
                 //return segIntIndex(objtype, args, st);
                 //return segIntIndex(objtype, msgArgs.getValueOf("key"), st);
+                var errorMsg = "Error";
+                return new MsgTuple(errorMsg, MsgType.ERROR);
             }
             when "sliceIndex" {
                 //return segSliceIndex(objtype, args, st);
                 //var slice = msgArgs.get("key").getList(3);
                 //return segSliceIndex(objtype, msgArgs.getValueOf("key"), st);
+                var errorMsg = "Error";
+                return new MsgTuple(errorMsg, MsgType.ERROR);
 
             }
             when "pdarrayIndex" {
                 //return segPdarrayIndex(objtype, args, st);
                 //return segPdarrayIndex(objtype,msgArgs.getValueOf("key"), st);
+                var errorMsg = "Error";
+                return new MsgTuple(errorMsg, MsgType.ERROR);
             }
             otherwise {
                 var errorMsg = "Error in %s, unknown subcommand %s".format(pn, subcmd);

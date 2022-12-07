@@ -157,6 +157,11 @@ module GraphArray {
             assignableTypes.add(this.entryType);
             this.domary = disArray;
         }
+
+        override proc getSizeEstimate(): int {
+            return 1;
+        }
+
     }
 
 
@@ -177,6 +182,12 @@ module GraphArray {
             assignableTypes.add(this.entryType);
             this.graph = segGraph;
         }
+
+        override proc getSizeEstimate(): int {
+            return 1;
+        }
+
+
     }
 
     /**
@@ -191,6 +202,20 @@ module GraphArray {
             throw new Error(errorMsg);
         }
         return (abstractEntry: borrowed GraphSymEntry);
+    }
+
+    /**
+     * Convenience proc to retrieve DomArraySymEntry from SymTab
+     * Performs conversion from AbstractySymEntry to DomArraySymEntry
+     */
+    proc getDomArraySymEntry(name:string, st: borrowed SymTab): borrowed DomArraySymEntry throws {
+        var abstractEntry:borrowed AbstractSymEntry = st.lookup(name);
+        if ! abstractEntry.isAssignableTo(SymbolEntryType.CompositeSymEntry) {
+            var errorMsg = "Error: SymbolEntryType %s is not assignable to CompositeSymEntry".format(abstractEntry.entryType);
+            graphLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);
+            throw new Error(errorMsg);
+        }
+        return (abstractEntry: borrowed DomArraySymEntry);
     }
 
     /**
