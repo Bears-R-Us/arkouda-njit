@@ -814,7 +814,8 @@ module JaccardMsg {
           wf.close();
          
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
+          //var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
+          var JaccEntry = new shared SymEntry(HashNum);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
