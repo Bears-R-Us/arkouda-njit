@@ -37,9 +37,17 @@ module JaccardMsg {
   
 
     pragma "default intent is ref"
-    record DomRealArray {
+    record AtoDomRealArray {
          var DO = {0..0};
-         var A : [DO] real;
+         var A : [DO] atomic real;
+         proc new_dom(new_d : domain(1)) {
+             this.DO = new_d;
+         }
+    }
+    pragma "default intent is ref"
+    record AtoDomArray {
+         var DO = {0..0};
+         var A : [DO] atomic int;
          proc new_dom(new_d : domain(1)) {
              this.DO = new_d;
          }
@@ -135,17 +143,17 @@ module JaccardMsg {
 
                        var vertexBegin=vertexBeginG[here.id];
                        var vertexEnd=vertexEndG[here.id];
-
                        forall  i in vertexBegin..vertexEnd {
                               var    numNF=nei[i];
                               var    edgeId=start_i[i];
                               var nextStart=edgeId;
                               var nextEnd=edgeId+numNF-1;
+                              //check the combinations of all out edges from the same vertex
                               forall e1 in nextStart..nextEnd-1 {
                                    var u=dst[e1];
                                    forall e2 in e1+1..nextEnd {
                                        var v=dst[e2];
-                                       if u<v {
+                                       {
                                            JaccGamma[u*Nv+v].add(1);
                                        }
                                    }
@@ -154,11 +162,12 @@ module JaccardMsg {
                               edgeId=start_iR[i];
                               nextStart=edgeId;
                               nextEnd=edgeId+numNF-1;
+                              //check the combinations of all in edges to the same vertex
                               forall e1 in nextStart..nextEnd-1 {
                                    var u=dstR[e1];
                                    forall e2 in e1+1..nextEnd {
                                        var v=dstR[e2];
-                                       if u<v {
+                                       {
                                            JaccGamma[u*Nv+v].add(1);
                                        }
                                    }
@@ -166,6 +175,7 @@ module JaccardMsg {
 
 
 
+                              //check the combinations of each out edge with each in edge connected to the same vertex
                               forall e1 in nextStart..nextEnd {
                                    var u=dstR[e1];
 
@@ -598,8 +608,6 @@ module JaccardMsg {
       var graphEntryName=msgArgs.getValueOf("GraphName");
 
 
-
-
       var Nv=n_verticesN:int;
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
@@ -607,14 +615,18 @@ module JaccardMsg {
       var timer:Timer;
 
 
-      var uvNames: domain(string);
+      var uvNames: domain(int);
       var indexName : [uvNames] int;
 
-      var HashJaccGamma=makeDistArray(numLocales,DomArray);
-      var JaccCoeff=makeDistArray(numLocales,DomRealArray);
-      var HashNum=makeDistArray(numLocales,int);
+      var HashJaccGamma=makeDistArray(numLocales,AtoDomArray);
+      var JaccCoeff=makeDistArray(numLocales,AtoDomRealArray);
+      //var HashNum=makeDistArray(numLocales,int);
+      var retresult=makeDistArray(numLocales,int);
+      var HashNum: atomic int;
+      HashNum.write(0);
+      var HashSize:int;
 
-      HashNum=0;
+      HashSize=((Nv*Nv/2)/numLocales):int;
 
       var root:int;
       var srcN, dstN, startN, neighbourN,vweightN,eweightN, rootN :string;
@@ -669,28 +681,13 @@ module JaccardMsg {
 
                        var vertexBegin=vertexBeginG[here.id];
                        var vertexEnd=vertexEndG[here.id];
-                       var HashSize:int=0;
-                       for  i in vertexBegin..vertexEnd {
-                              var    numNF=nei[i];
-                              var    edgeId=start_i[i];
-                              var nextStart=edgeId;
-                              var nextEnd=edgeId+numNF-1;
-                              HashSize+=(nextEnd-nextStart-1)*(nextEnd-nextStart-1);
-
-                              numNF=neiR[i];
-                              edgeId=start_iR[i];
-                              nextStart=edgeId;
-                              nextEnd=edgeId+numNF-1;
-                              HashSize+=(nextEnd-nextStart-1)*(nextEnd-nextStart-1);
-                              var    numNF2=nei[i];
-                              var    edgeId2=start_i[i];
-                              var nextStart2=edgeId2;
-                              var nextEnd2=edgeId2+numNF2-1;
-                              HashSize+=(nextEnd-nextStart)*(nextEnd2-nextStart2);
+                       if (here.id==0) {
+                                HashJaccGamma[here.id].new_dom({0..HashSize-1});
+                                JaccCoeff[here.id].new_dom({0..HashSize-1});
+                       } else {
+                                HashJaccGamma[here.id].new_dom({0+here.id*HashSize..(here.id+1)*HashSize-1});
+                                JaccCoeff[here.id].new_dom({here.id*HashSize..(here.id+1)*HashSize-1});
                        }
-
-                       HashJaccGamma[here.id].new_dom({0..HashSize});
-                       JaccCoeff[here.id].new_dom({0..HashSize});
 
 
                        forall  i in vertexBegin..vertexEnd with (ref uvNames) {
@@ -702,16 +699,30 @@ module JaccardMsg {
                                    var u=dst[e1];
                                    forall e2 in e1+1..nextEnd  with (ref uvNames){
                                        var v=dst[e2];
-                                       if u<v {
-                                           var namestr=(u:string)+(v:string);
+                                       {
+                                           var namestr:int =u*Nv+v;
                                            if ( uvNames.contains(namestr)) then {
-                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                                 var myindex:int;
+                                                 myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
                                            } else {
-                                                HashNum[here.id]+=1;
-                                                //uvNames.add(namestr);
-                                                uvNames+=namestr;
-                                                indexName[namestr]=HashNum[here.id]-1;
-                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                                while (!uvNames.contains(namestr)) {
+                                                    var myindex:int;
+                                                    myindex=HashNum.read();
+                                                    if (HashNum.compareExchange(myindex,myindex+1)) {
+                                                        uvNames+=namestr;
+                                                        { 
+                                                             indexName[namestr]=myindex;
+                                                             HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                                        }
+                                                    } else {
+                                                        if ( uvNames.contains(namestr)) then {
+                                                              myindex=indexName[namestr];
+                                                              HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                                              break;
+                                                        }
+                                                    }
+                                                }
                                            }
                                        }
                                    }
@@ -724,17 +735,45 @@ module JaccardMsg {
                                    var u=dstR[e1];
                                    forall e2 in e1+1..nextEnd  with (ref uvNames){
                                        var v=dstR[e2];
-                                       if u<v {
-                                           var namestr=(u:string)+(v:string);
+                                       {
+                                           var namestr:int =u*Nv+v;
                                            if ( uvNames.contains(namestr)) then {
-                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                                 var myindex:int;
+                                                 myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
                                            } else {
-                                                HashNum[here.id]+=1;
-                                                //uvNames.add(namestr);
-                                                uvNames+=namestr;
-                                                indexName[namestr]=HashNum[here.id]-1;
-                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                                while (!uvNames.contains(namestr)) {
+                                                    var myindex:int;
+                                                    myindex=HashNum.read();
+                                                    if (HashNum.compareExchange(myindex,myindex+1)) {
+                                                        uvNames+=namestr;
+                                                        { 
+                                                             indexName[namestr]=myindex;
+                                                             HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                                        }
+                                                    } else {
+                                                        if ( uvNames.contains(namestr)) then {
+                                                              myindex=indexName[namestr];
+                                                              HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                                              break;
+                                                        }
+                                                    }
+                                                }
                                            }
+                                           /*
+                                           var namestr:int=u*Nv+v;
+                                           if ( uvNames.contains(namestr)) then {
+                                                 var myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                           } else {
+                                                var myindex:int;
+                                                do { myindex=HashNum.read();}
+                                                while !(HashNum.compareExchange(myindex,myindex+1));
+                                                uvNames+=namestr;
+                                                indexName[namestr]=myindex;
+                                                HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                           }
+                                           */
                                        }
                                    }
                               }
@@ -751,28 +790,84 @@ module JaccardMsg {
                                    forall e2 in nextStart2..nextEnd2  with (ref uvNames){
                                        var v=dst[e2];
                                        if u<v {
-                                           var namestr=(u:string)+(v:string);
+                                           var namestr:int =u*Nv+v;
                                            if ( uvNames.contains(namestr)) then {
-                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                                 var myindex:int;
+                                                 myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
                                            } else {
-                                                HashNum[here.id]+=1;
-                                                //uvNames.add(namestr);
-                                                uvNames+=namestr;
-                                                indexName[namestr]=HashNum[here.id]-1;
-                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                                while (!uvNames.contains(namestr)) {
+                                                    var myindex:int;
+                                                    myindex=HashNum.read();
+                                                    if (HashNum.compareExchange(myindex,myindex+1)) {
+                                                        uvNames+=namestr;
+                                                        { 
+                                                             indexName[namestr]=myindex;
+                                                             HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                                        }
+                                                    } else {
+                                                        if ( uvNames.contains(namestr)) then {
+                                                              myindex=indexName[namestr];
+                                                              HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                                              break;
+                                                        }
+                                                    }
+                                                }
                                            }
+                                           /*
+                                           var namestr:int =u*Nv+v;
+                                           if ( uvNames.contains(namestr)) then {
+                                                 var myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                           } else {
+                                                var myindex:int;
+                                                do { myindex=HashNum.read();}
+                                                while !(HashNum.compareExchange(myindex,myindex+1));
+                                                uvNames+=namestr;
+                                                indexName[namestr]=myindex;
+                                                HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                           }
+                                           */
                                        } else {
                                           if v<u {
-                                           var namestr=(v:string)+(u:string);
+                                           var namestr:int =v*Nv+u;
                                            if ( uvNames.contains(namestr)) then {
-                                                 HashJaccGamma[here.id].A[indexName[namestr]]+=1;
+                                                 var myindex:int;
+                                                 myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
                                            } else {
-                                                HashNum[here.id]+=1;
-                                                //uvNames.add(namestr);
-                                                uvNames+=namestr;
-                                                indexName[namestr]=HashNum[here.id]-1;
-                                                HashJaccGamma[here.id].A[HashNum[here.id]-1]=1;
+                                                while (!uvNames.contains(namestr)) {
+                                                    var myindex:int;
+                                                    myindex=HashNum.read();
+                                                    if (HashNum.compareExchange(myindex,myindex+1)) {
+                                                        uvNames+=namestr;
+                                                        { 
+                                                             indexName[namestr]=myindex;
+                                                             HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                                        }
+                                                    } else {
+                                                        if ( uvNames.contains(namestr)) then {
+                                                              myindex=indexName[namestr];
+                                                              HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                                              break;
+                                                        }
+                                                    }
+                                                }
                                            }
+                                           /*
+                                           var namestr:int=v*Nv+u;
+                                           if ( uvNames.contains(namestr)) then {
+                                                 var myindex=indexName[namestr];
+                                                 HashJaccGamma[myindex/HashSize].A[myindex].add(1);
+                                           } else {
+                                                var myindex:int;
+                                                do { myindex=HashNum.read();}
+                                                while !(HashNum.compareExchange(myindex,myindex+1));
+                                                uvNames+=namestr;
+                                                indexName[namestr]=myindex;
+                                                HashJaccGamma[myindex/HashSize].A[myindex].write(1);
+                                           }
+                                           */
                                           }
                                        }
                                    }
@@ -786,27 +881,25 @@ module JaccardMsg {
           forall u in 0..(Nv-2) {
              forall v in (u+1)..(Nv-1) {
                   var tmpjac:real;
-                  var namestr=(u:string)+(v:string);
-                 
-                  if ((u<v) && ( uvNames.contains(namestr) )) {
-                      tmpjac= HashJaccGamma[here.id].A[indexName[namestr]]:real;
-                      JaccCoeff[here.id].A[indexName[namestr]]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
+                  var namestr:int =u*Nv+v;
+                  if ( ( uvNames.contains(namestr) )) {
+                      var myindex=indexName[namestr];
+                      tmpjac= HashJaccGamma[myindex/HashSize].A[myindex].read():real;
+                      JaccCoeff[myindex/HashSize].A[myindex].write(tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac));
                   }
              }
           }
           var wf = open("Jaccard-Hash"+graphEntryName+".dat", iomode.cw);
           var mw = wf.writer(kind=ionative);
-          var namestr:string;
+          var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
-                 namestr=(i:string)+(j:string);
+                 namestr=i*Nv+j;
                  if ( uvNames.contains(namestr) ) {
-                     for k in 0..(numLocales-1) {
-                         if JaccCoeff[k].A[indexName[namestr]] >0.0 {
-                            mw.writeln("%7.3dr".format(JaccCoeff[k].A[indexName[namestr]]));
-                            break;
+                         var myindex=indexName[namestr];
+                         if JaccCoeff[myindex/HashSize].A[myindex].read() >0.0 {
+                            mw.writeln("%7.3dr".format(JaccCoeff[myindex/HashSize].A[myindex].read()));
                          }
-                     }
                  }
              }
           }
@@ -815,7 +908,7 @@ module JaccardMsg {
          
           var JaccName = st.nextName();
           //var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
-          var JaccEntry = new shared SymEntry(HashNum);
+          var JaccEntry = new shared SymEntry(retresult);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
