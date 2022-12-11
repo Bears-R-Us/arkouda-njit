@@ -865,6 +865,9 @@ module JaccardMsg {
                          if JaccCoeff[myindex/HashSize].A[myindex].read() >0.0 {
                             mw.writeln("u=%i,v=%i,%7.3dr".format(i,j,JaccCoeff[myindex/HashSize].A[myindex].read()));
                          }
+                         if (JaccCoeff[myindex/HashSize].A[myindex].read() >1.0 || JaccCoeff[myindex/HashSize].A[myindex].read() <0.0 ) {
+                               writeln("Error u=%i,v=%i,%7.3dr".format(i,j,JaccCoeff[myindex/HashSize].A[myindex].read()));
+                         }
                  }
              }
           }
