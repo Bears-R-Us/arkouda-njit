@@ -173,7 +173,11 @@ module GraphMsg {
              }
 
              try {
-                      iv = mergedArgsort(2);
+                      if (totalDigits <=2) {
+                           iv = mergedArgsort(2);
+                      } else {
+                           iv = mergedArgsort(4);
+                      }
 
              } catch  {
                   try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
@@ -854,10 +858,14 @@ module GraphMsg {
                  try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
           }
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "after combine sort for srcR, dstR");
           set_neighbour(srcR,start_iR,neighbourR);
 
           if (DegreeSortFlag) {
                     degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                      "after degree sort");
           }
 
 

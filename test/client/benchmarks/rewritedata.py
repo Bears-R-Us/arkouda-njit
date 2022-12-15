@@ -21,13 +21,19 @@ def time_ak_write():
     Test1=[ \
             [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr"],\
             [51971,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.gr"],\
+            [88234,4039,2,0,HomeDir+"Adata/SNAP/facebook_combined.txt"],\
+            [103689,8277,2,0,HomeDir+"Adata/SNAP/wiki"],\
             [106762,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.gr"],\
             [186936,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.gr"],\
             [237010,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.gr"],\
             [367662,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.gr"],\
             [396160,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.gr"],\
+            [428156,58228,2,0,HomeDir+"Adata/SNAP/loc-brightkite_edges.txt"],\
+            [508837,75879,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.txt.gr"],\
+            [1049866,317080,2,0,HomeDir+"Adata/SNAP/com-dblp.ungraph.txt.gr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"],\
             [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
+            [68993773,537377,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
              ]
     TestMtx=[ \
             [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
@@ -45,6 +51,10 @@ def time_ak_write():
             [12582869,4194304,2,0,HomeDir+"Adata/Delaunay/delaunay_n22/delaunay_n22.mtx"],\
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx"],\
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx"],\
+            [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
+            [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
+            [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
+            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
               ]
     TestRGG=[ \
             [14487995,2097152,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_21_s0/rgg_n_2_21_s0.mtx"],\
@@ -68,7 +78,8 @@ def time_ak_write():
         Directed=i[3]
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,1)
+        njit.graph_file_preprocessing(Edges,Vertices,Columns,Directed,str(FileName),0,1,1,0,1,0)
+        #Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,1)
     for i in TestMtx:
         Edges=i[0]
         Vertices=i[1]
@@ -76,7 +87,8 @@ def time_ak_write():
         Directed=i[3]
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,1)
+        njit.graph_file_preprocessing(Edges,Vertices,Columns,Directed,str(FileName),1,1,1,0,1,0)
+        #Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,1)
     end = time.time()
     print("----------------------")
     return
