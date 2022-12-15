@@ -26,7 +26,7 @@ def time_ak_write():
             [237010,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.gr"],\
             [367662,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.gr"],\
             [396160,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.gr"],\
-            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"]\
+            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"],\
             [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
              ]
     TestMtx=[ \
