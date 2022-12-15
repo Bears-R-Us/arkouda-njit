@@ -1027,8 +1027,9 @@ module GraphMsg {
                   var mw = wf.writer(kind=ionative);
 
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
+                      mw.writeln("%-15i    %-15i".format(mysrc[i],mydst[i]));
                   }
+                  mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
                   wf.close();
 
