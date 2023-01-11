@@ -28,7 +28,7 @@ module GraphMsg {
 
 
   use List; 
-  use LockFreeStack;
+  //use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
   use AryUtil;

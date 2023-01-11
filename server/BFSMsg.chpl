@@ -26,7 +26,7 @@ module BFSMsg {
   use DistributedDeque;
 
 
-  use LockFreeStack;
+  //use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
