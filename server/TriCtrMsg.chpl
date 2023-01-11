@@ -28,7 +28,7 @@ module TriCtrMsg {
 
 
   use List; 
-  use LockFreeStack;
+  //use LockFreeStack;
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
