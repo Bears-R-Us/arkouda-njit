@@ -2085,7 +2085,7 @@ module BFSMsg {
                   );
                   
                   timer.stop();
-                  var outMsg= "graph BFS takes "+timer.elapsed():string+" for fo_bag_bfs_kernel_u version";
+                  var outMsg= "graph BFS time= "+timer.elapsed():string+" for fo_bag_bfs_kernel_u version";
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
                 //   depth=-1;
@@ -2103,7 +2103,7 @@ module BFSMsg {
                 //       toDomArraySymEntry(ag.getA_DST_R()).domary,
                 //       1, GivenRatio
                 //   );
-                //   outMsg= "graph BFS takes "+timer.elapsed():string+" for aligned_fo_bag version";
+                //   outMsg= "graph BFS time= "+timer.elapsed():string+" for aligned_fo_bag version";
                 //   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                   repMsg=return_depth();
  
@@ -2126,7 +2126,7 @@ module BFSMsg {
                       GivenRatio
                   );
                   timer.stop();
-                  var outMsg= "graph BFS takes "+timer.elapsed():string+ " for Co D Hybrid version";
+                  var outMsg= "graph BFS time= "+timer.elapsed():string+ " for Co D Hybrid version";
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
                   /*
@@ -2138,7 +2138,7 @@ module BFSMsg {
                   co_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,2.0);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co D TopDown version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co D TopDown version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2149,7 +2149,7 @@ module BFSMsg {
                   co_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Bag L version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co Bag L version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2159,7 +2159,7 @@ module BFSMsg {
                   co_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Bag G version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co Bag G version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2170,7 +2170,7 @@ module BFSMsg {
                   co_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Set L version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co Set L version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2180,7 +2180,7 @@ module BFSMsg {
                   co_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Set G version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co Set G version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2191,7 +2191,7 @@ module BFSMsg {
                   co_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Domain L version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co Domain L version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2201,7 +2201,7 @@ module BFSMsg {
                   co_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Co Domain G version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Co Domain G version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2211,7 +2211,7 @@ module BFSMsg {
                   fo_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for D Hybrid version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for D Hybrid version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2220,7 +2220,7 @@ module BFSMsg {
                   fo_d1_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,2.0);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for D TopDown version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for D TopDown version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2231,7 +2231,7 @@ module BFSMsg {
                   fo_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Bag L version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Bag L version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2241,7 +2241,7 @@ module BFSMsg {
                   fo_bag_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Bag G version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Bag G version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2252,7 +2252,7 @@ module BFSMsg {
                   fo_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Set L version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Set L version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2262,7 +2262,7 @@ module BFSMsg {
                   fo_set_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Set G version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Set G version $$$$$$$$$$$$$$$$$$");
 
 
                   depth=-1;
@@ -2273,7 +2273,7 @@ module BFSMsg {
                   fo_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Domain L version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Domain L version $$$$$$$$$$$$$$$$$$");
 
                   depth=-1;
                   depth[root]=0;
@@ -2283,7 +2283,7 @@ module BFSMsg {
                   fo_domain_bfs_kernel_u(ag.neighbour.a, ag.start_i.a,ag.src.a,ag.dst.a,
                            ag.neighbourR.a, ag.start_iR.a,ag.srcR.a,ag.dstR.a,Flag,GivenRatio);
                   timer.stop();
-                  writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), " for Domain G version $$$$$$$$$$$$$$$$$$");
+                  writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Domain G version $$$$$$$$$$$$$$$$$$");
                   */
 
                   repMsg=return_depth();
@@ -2291,9 +2291,9 @@ module BFSMsg {
 
       }
       //timer.stop();
-      //writeln("$$$$$$$$$$$$$$$$$ graph BFS takes ",timer.elapsed(), "$$$$$$$$$$$$$$$$$$");
-      var outMsg= "graph BFS takes "+timer.elapsed():string;
-      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      //writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), "$$$$$$$$$$$$$$$$$$");
+      //var outMsg= "graph BFS time= "+timer.elapsed():string;
+      //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
