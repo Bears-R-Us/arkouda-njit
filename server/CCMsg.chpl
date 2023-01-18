@@ -801,7 +801,6 @@ module CCMsg {
 
 
 
-
       var converged:bool = false;
       var itera = 1;
       while(!converged) {
@@ -816,7 +815,6 @@ module CCMsg {
               var u = src[x];
               var v = dst[x];
 
-              {
                   var TmpMin:int;
                   if ((itera % (JumpSteps*3) ==0) ) {
                        TmpMin=min(f[f[f[u]]],f[f[f[v]]]);
@@ -875,7 +873,6 @@ module CCMsg {
                          }
                       } 
                   }
-              }//end of if     
             }//end of forall
           }
         }
@@ -954,7 +951,6 @@ module CCMsg {
               var u = src[x];
               var v = dst[x];
 
-              if ((u!=0) || (v!=0)) {
               var TmpMin:int;
               //TmpMin=min(f[u],f[v]);
               if ((itera % (JumpSteps*3) ==0) ) {
@@ -1116,6 +1112,7 @@ module CCMsg {
     proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var f_low = makeDistArray(Nv, int); 
 
       // Initialize f and f_low in distributed memory.
 
@@ -1502,7 +1499,6 @@ module CCMsg {
 
 
               var TmpMin:int;
-              //TmpMin=min(f_low[u].read(),f_low[v].read());
               if ((itera % (JumpSteps*3) ==0) ) {
                    TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
                    if(TmpMin < f_low[f_low[f_low[u].read()].read()].read()) {
@@ -1558,12 +1554,9 @@ module CCMsg {
                        f_low[v].write(TmpMin);
                        count+=1;
                      }
-
                   } 
               }
             }//end of forall
-
-
           }
         }
 
