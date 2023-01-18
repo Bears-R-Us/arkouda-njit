@@ -1073,11 +1073,6 @@ module CCMsg {
     proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, int); 
-      var gf = makeDistArray(Nv, int);
-      var gf_low = makeDistArray(Nv, int);
-      var dup = makeDistArray(Nv, int);
-      var diff = makeDistArray(Nv, int);
 
       // Initialize f and f_low in distributed memory.
       coforall loc in Locales {
@@ -1086,21 +1081,6 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
-            f_low[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                     f_low[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                     f_low[i]=tmpv;
-                }
-            }
           }
         }
       }
@@ -1112,42 +1092,37 @@ module CCMsg {
       var itera = 1;
       while(!converged) {
         var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+        coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
               var u = src[x];
               var v = dst[x];
 
-              if (u!=0) || (v!=0) {
               var TmpMin:int;
               TmpMin=min(f[f[u]],f[f[v]]);
               if(TmpMin < f[f[u]]) {
                      //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",f[u],"]=",f_low[f[u]]," with ", TmpMin);
                      f[f[u]] = TmpMin;
                      count+=1;
-                     count1+=1;
               }
               if(TmpMin < f[f[v]]) {
                      //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",f[v],"]=",f_low[f[v]]," with ", TmpMin);
                      f[f[v]] = TmpMin;
                      count+=1;
-                     count1+=1;
               }
-              if(TmpMin < f_low[u]) {
+              if(TmpMin < f[u]) {
                 //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",u,"]=",f_low[u]," with ", TmpMin);
-                f_low[u] = TmpMin;
+                f[u] = TmpMin;
                 count+=1;
               }
-              if(TmpMin < f_low[v]) {
+              if(TmpMin < f[v]) {
                 //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",v,"]=",f_low[v]," with ", TmpMin);
-                f_low[v] = TmpMin;
+                f[v] = TmpMin;
                 count+=1;
               }
-              }//end if 
             }//end of forall
           }
         }
@@ -1156,8 +1131,6 @@ module CCMsg {
         //writeln("After iteration ", itera, " f=",f);
         //writeln("After iteration ", itera, " f_low=",f_low);
 
-
-        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
         if( (count==0) ) {
           converged = true;
         }
