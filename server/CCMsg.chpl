@@ -803,6 +803,53 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
+      //while( (!converged) && (itera<JumpSteps) ) {
+      for t in 0..JumpSteps {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+                  var TmpMin:int;
+                         TmpMin=min(f[f[u]],f[f[v]]);
+                         if(TmpMin < f[f[u]]) {
+                             f[f[u]] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[f[v]]) {
+                             f[f[v]] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count+=1;
+                         }
+                  
+            }//end of forall
+          }
+        }
+
+
+        if( (count==0) ) {
+          converged = true;
+          break;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      /*
       while(!converged) {
         var count:int=0;
         var count1:int=0;
@@ -816,7 +863,37 @@ module CCMsg {
               var v = dst[x];
 
                   var TmpMin:int;
-                  if ((itera % (JumpSteps*3) ==0) ) {
+                  if ((numLocales ==1) || (itera % JumpSteps ==0)  ) {
+                         TmpMin=min(f[f[u]],f[f[v]]);
+                         if(TmpMin < f[f[u]]) {
+                             f[f[u]] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[f[v]]) {
+                             f[f[v]] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count+=1;
+                         }
+                  } else {
+                    if ((itera % (JumpSteps*3) !=0) ) {
+                         TmpMin=min(f[u],f[v]);
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count+=1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count+=1;
+                         }
+                    } else { 
+                       //if ((itera % (JumpSteps*3) ==0) ) {
                        TmpMin=min(f[f[f[u]]],f[f[f[v]]]);
                        if(TmpMin < f[f[f[u]]]) {
                            f[f[f[u]]] = TmpMin;
@@ -842,41 +919,12 @@ module CCMsg {
                              f[v] = TmpMin;
                              count+=1;
                        }
-                  } else {
-                      if ((numLocales ==1) || (itera % JumpSteps ==0) ) {
-                         TmpMin=min(f[f[u]],f[f[v]]);
-                         if(TmpMin < f[f[u]]) {
-                             f[f[u]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[f[v]]) {
-                             f[f[v]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                         }
-                      } else {
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                         }
-                      } 
+                    } 
                   }
+                  
             }//end of forall
           }
         }
-
 
 
         if( (count==0) ) {
@@ -887,6 +935,10 @@ module CCMsg {
         }
         itera += 1;
       }
+      */
+
+
+
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
 
@@ -980,7 +1032,7 @@ module CCMsg {
                        count+=1;
                      }
               } else {
-                  if ((numLocales ==1) || (itera % JumpSteps ==0) ) {
+                  if ((numLocales ==1) || (itera % JumpSteps ==0) || (itera < JumpSteps ) ) {
                      TmpMin=min(f[f[u]],f[f[v]]);
                      if(TmpMin < f_low[f[u]]) {
                          f_low[f[u]] = TmpMin;
@@ -1326,7 +1378,7 @@ module CCMsg {
                     }
                 }
               }
-              if ( (numLocales==1) || (itera % JumpSteps ==0) ) {
+              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
                    if(TmpMin < f_low[f_low[u].read()].read()) {
                      f_low[f_low[u].read()].write(TmpMin);
                      count+=1;
@@ -1499,34 +1551,7 @@ module CCMsg {
 
 
               var TmpMin:int;
-              if ((itera % (JumpSteps*3) ==0) ) {
-                   TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                   if(TmpMin < f_low[f_low[f_low[u].read()].read()].read()) {
-                     f_low[f_low[f_low[u].read()].read()].write(TmpMin);
-                     count+=1;
-                   }
-                   if(TmpMin < f_low[f_low[f_low[v].read()].read()].read()) {
-                     f_low[f_low[f_low[v].read()].read()].write(TmpMin);
-                     count+=1;
-                   }
-                   if(TmpMin < f_low[f_low[u].read()].read()) {
-                     f_low[f_low[u].read()].write(TmpMin);
-                     count+=1;
-                   }
-                   if(TmpMin < f_low[f_low[v].read()].read()) {
-                     f_low[f_low[v].read()].write(TmpMin);
-                     count+=1;
-                   }
-                   if(TmpMin < f_low[u].read()) {
-                     f_low[u].write(TmpMin);
-                     count+=1;
-                   }
-                   if(TmpMin < f_low[v].read()) {
-                     f_low[v].write(TmpMin);
-                     count+=1;
-                   }
-              } else {
-                  if ((numLocales ==1) || (itera % JumpSteps ==0)) {
+              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
                      TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
                      if(TmpMin < f_low[f_low[u].read()].read()) {
                        f_low[f_low[u].read()].write(TmpMin);
@@ -1544,7 +1569,8 @@ module CCMsg {
                        f_low[v].write(TmpMin);
                        count+=1;
                      }
-                  } else {
+              } else {
+                  if ((itera % (JumpSteps*3) !=0) ) {
                      TmpMin=min(f_low[u].read(),f_low[v].read());
                      if(TmpMin < f_low[u].read()) {
                        f_low[u].write(TmpMin);
@@ -1554,7 +1580,34 @@ module CCMsg {
                        f_low[v].write(TmpMin);
                        count+=1;
                      }
-                  } 
+                  } else {
+                       //if ((itera % (JumpSteps*3) ==0) ) {
+                       TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
+                       if(TmpMin < f_low[f_low[f_low[u].read()].read()].read()) {
+                         f_low[f_low[f_low[u].read()].read()].write(TmpMin);
+                         count+=1;
+                       }
+                       if(TmpMin < f_low[f_low[f_low[v].read()].read()].read()) {
+                         f_low[f_low[f_low[v].read()].read()].write(TmpMin);
+                         count+=1;
+                       }
+                       if(TmpMin < f_low[f_low[u].read()].read()) {
+                         f_low[f_low[u].read()].write(TmpMin);
+                         count+=1;
+                       }
+                       if(TmpMin < f_low[f_low[v].read()].read()) {
+                         f_low[f_low[v].read()].write(TmpMin);
+                         count+=1;
+                       }
+                       if(TmpMin < f_low[u].read()) {
+                         f_low[u].write(TmpMin);
+                         count+=1;
+                       }
+                       if(TmpMin < f_low[v].read()) {
+                         f_low[v].write(TmpMin);
+                         count+=1;
+                       }
+                  }
               }
             }//end of forall
           }
@@ -1635,58 +1688,7 @@ module CCMsg {
 
               var TmpMin:int;
               var oldval:int;
-              if ((itera % (JumpSteps*3) ==0) ) {
-                   TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                   oldval=f_low[f_low[f_low[u].read()].read()].read();
-                   while (oldval>TmpMin) {
-                        if (f_low[f_low[f_low[u].read()].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[f_low[u].read()].read()].read();
-                        }
-                   }
-                   oldval=f_low[f_low[f_low[v].read()].read()].read();
-                   while (oldval>TmpMin) {
-                        if (f_low[f_low[f_low[v].read()].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[f_low[v].read()].read()].read();
-                        }
-                   }
-                   oldval=f_low[f_low[u].read()].read();
-                   while (oldval>TmpMin) {
-                        if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[u].read()].read();
-                        }
-                   }
-                   oldval=f_low[f_low[v].read()].read();
-                   while (oldval>TmpMin) {
-                        if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[v].read()].read();
-                        }
-                   }
-                   oldval=f_low[u].read();
-                   while (oldval>TmpMin) {
-                        if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[u].read();
-                        }
-                   }
-                   oldval=f_low[v].read();
-                   while (oldval>TmpMin) {
-                        if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[v].read();
-                        }
-                   }
-              } else {
-                  if ((numLocales ==1) || (itera % JumpSteps ==0)) {
+              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
                      TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
                      oldval=f_low[f_low[u].read()].read();
                      while (oldval>TmpMin) {
@@ -1720,7 +1722,8 @@ module CCMsg {
                              oldval=f_low[v].read();
                         }
                      }
-                  } else {
+              } else {
+                  if ((itera % (JumpSteps*3) !=0) ) {
                      TmpMin=min(f_low[u].read(),f_low[v].read());
                      oldval=f_low[u].read();
                      while (oldval>TmpMin) {
@@ -1738,6 +1741,58 @@ module CCMsg {
                              oldval=f_low[v].read();
                         }
                      }
+
+                  } else { 
+                      //if ((itera % (JumpSteps*3) ==0) ) {
+                       TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
+                       oldval=f_low[f_low[f_low[u].read()].read()].read();
+                       while (oldval>TmpMin) {
+                            if (f_low[f_low[f_low[u].read()].read()].compareAndSwap(oldval, TmpMin)) {
+                                 count+=1;
+                            } else {
+                                 oldval=f_low[f_low[f_low[u].read()].read()].read();
+                            }
+                       }
+                       oldval=f_low[f_low[f_low[v].read()].read()].read();
+                       while (oldval>TmpMin) {
+                            if (f_low[f_low[f_low[v].read()].read()].compareAndSwap(oldval, TmpMin)) {
+                                 count+=1;
+                            } else {
+                                 oldval=f_low[f_low[f_low[v].read()].read()].read();
+                            }
+                       }
+                       oldval=f_low[f_low[u].read()].read();
+                       while (oldval>TmpMin) {
+                            if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
+                                 count+=1;
+                            } else {
+                                 oldval=f_low[f_low[u].read()].read();
+                            }
+                       }
+                       oldval=f_low[f_low[v].read()].read();
+                       while (oldval>TmpMin) {
+                            if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
+                                 count+=1;
+                            } else {
+                                 oldval=f_low[f_low[v].read()].read();
+                            }
+                       }
+                       oldval=f_low[u].read();
+                       while (oldval>TmpMin) {
+                            if (f_low[u].compareAndSwap(oldval, TmpMin)) {
+                                 count+=1;
+                            } else {
+                                 oldval=f_low[u].read();
+                            }
+                       }
+                       oldval=f_low[v].read();
+                       while (oldval>TmpMin) {
+                            if (f_low[v].compareAndSwap(oldval, TmpMin)) {
+                                 count+=1;
+                            } else {
+                                 oldval=f_low[v].read();
+                            }
+                       }
 
                   } 
               }
