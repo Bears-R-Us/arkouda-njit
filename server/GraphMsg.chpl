@@ -988,7 +988,7 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                      //mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
                   mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
@@ -1023,9 +1023,9 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                      //mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
+                  //mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
@@ -1079,9 +1079,9 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                      //mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
+                  //mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
       }
