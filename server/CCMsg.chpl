@@ -766,11 +766,6 @@ module CCMsg {
     proc cc_fs_dist(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, int); 
-      var gf = makeDistArray(Nv, int);
-      var gf_low = makeDistArray(Nv, int);
-      var dup = makeDistArray(Nv, int);
-      var diff = makeDistArray(Nv, int);
 
       // Initialize f and f_low in distributed memory.
 
@@ -780,19 +775,16 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
-            f_low[i] = i;
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
                      f[i]=tmpv;
-                     f_low[i]=tmpv;
                 }
             }
             if (neiR[i] >0) {
                 var tmpv=dstR[start_iR[i]];
                 if ( tmpv <f[i] ) {
                      f[i]=tmpv;
-                     f_low[i]=tmpv;
                 }
             }
           }
@@ -803,16 +795,18 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
+      /*
       //while( (!converged) && (itera<JumpSteps) ) {
-      for t in 0..JumpSteps {
+      while( (!converged) ) {
+      //for t in 0..JumpSteps {
         var count:int=0;
         var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+        coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
               var u = src[x];
               var v = dst[x];
 
@@ -842,14 +836,14 @@ module CCMsg {
 
         if( (count==0) ) {
           converged = true;
-          break;
+          //break;
         }
         else {
           converged = false;
         }
         itera += 1;
       }
-      /*
+      */
       while(!converged) {
         var count:int=0;
         var count1:int=0;
@@ -935,7 +929,6 @@ module CCMsg {
         }
         itera += 1;
       }
-      */
 
 
 
@@ -955,10 +948,6 @@ module CCMsg {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
-      var gf = makeDistArray(Nv, int);
-      var gf_low = makeDistArray(Nv, int);
-      var dup = makeDistArray(Nv, int);
-      var diff = makeDistArray(Nv, int);
 
       // Initialize f and f_low in distributed memory.
 
@@ -1097,6 +1086,7 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
+            /*
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
@@ -1109,6 +1099,7 @@ module CCMsg {
                      f[i]=tmpv;
                 }
             }
+            */
           }
         }
       }
@@ -1164,7 +1155,6 @@ module CCMsg {
     proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, int); 
 
       // Initialize f and f_low in distributed memory.
 
@@ -1174,21 +1164,20 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
-            f_low[i] = i;
+            /*
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
                      f[i]=tmpv;
-                     f_low[i]=tmpv;
                 }
             }
             if (neiR[i] >0) {
                 var tmpv=dstR[start_iR[i]];
                 if ( tmpv <f[i] ) {
                      f[i]=tmpv;
-                     f_low[i]=tmpv;
                 }
             }
+            */
           }
         }
       }
@@ -2425,8 +2414,12 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs dist cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs 2 cc: " + (timer.elapsed()/10.0):string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
 
 
         timer.clear();
@@ -2459,6 +2452,7 @@ module CCMsg {
 
 
 
+
         timer.clear();
         timer.start();
         f6 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
@@ -2470,14 +2464,12 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs 2 cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs dist cc: " + (timer.elapsed()/10.0):string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
 
         timer.clear();
         timer.start();
-
-
-
         f7 = cc_fs_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
