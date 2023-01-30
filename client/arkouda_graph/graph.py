@@ -5,6 +5,7 @@ from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
+from context import arkouda as ak
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
@@ -95,6 +96,16 @@ class Graph:
 
     def __size__(self) -> int:
         return self.n_vertices
+
+    def nodes(self) ->pdarray:
+        print("We should return the original node array")
+        print("to be implemented")
+        return None
+
+    def edges(self) -> Tuple[pdarray, pdarray]:
+        src=graph_query(self,"src")
+        dst=graph_query(self,"dst")
+        return [src,dst]
 
 
 @typechecked
@@ -514,7 +525,7 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
 
 
 @typechecked
-def graph_triangle (graph: Graph) -> pdarray:
+def graph_triangle (graph: Graph, vertexArray=ak.array([-1])) -> pdarray:
         """
         This function will return the number of triangles in a static graph.
         Returns
@@ -537,7 +548,7 @@ def graph_triangle (graph: Graph) -> pdarray:
         #         graph.directed,graph.weighted, graph.name)
         args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
              "Directed":graph.directed,"Weighted": graph.weighted,\
-             "GraphName":graph.name}
+             "GraphName":graph.name,"VertexArray":vertexArray}
 
         repMsg = generic_msg(cmd=cmd,args=args)
         return create_pdarray(repMsg)

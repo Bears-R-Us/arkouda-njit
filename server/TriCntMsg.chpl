@@ -435,6 +435,13 @@ module TriCntMsg {
       var weightedN=msgArgs.getValueOf("Weighted");
       var graphEntryName=msgArgs.getValueOf("GraphName");
 
+      var vertexArrayName=msgArgs.getValueOf("VertexArray");
+      var gEnt: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexArrayName, st);
+      var e = toSymEntry(gEnt, int);
+      var vertexArray = e.a;
+      var returnary=vertexArray;
+
+
 
 
       var Nv=n_verticesN:int;
@@ -1117,6 +1124,303 @@ module TriCntMsg {
         }//END TRI_CTR_KERNEL_PATH_MERGE
 
 
+
+
+        proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, vertex:int):string throws {
+            var NeiNonTriNum=makeDistArray(Nv,atomic int);
+            var TriNum=makeDistArray(Nv,atomic int);
+            var NeiTriNum=makeDistArray(Nv,atomic int);
+            var NeiAry=makeDistArray(Ne,bool);
+            NeiAry=false;
+            forall i in TriNum {
+                i.write(0);
+            }
+            forall i in NeiTriNum {
+                i.write(0);
+            }
+            forall i in NeiNonTriNum {
+                i.write(0);
+            }           
+
+            TotalCnt=0;
+            subTriSum=0;	
+                            
+            proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+                if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
+                    return -1;
+                }
+                if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
+                    return -1;
+                }
+                if (ary[l]==key){
+                    return l;
+                }
+                if (ary[h]==key){
+                    return h;
+                }
+                var m = (l + h) / 2:int;
+                if ((m==l) ) {
+                    return -1;
+                }
+                if (ary[m]==key ){
+                    return m;
+                } else {
+                    if (ary[m]<key) {
+                        return binSearchE(ary,m+1,h,key);
+                    }
+                    else {
+                        return binSearchE(ary,l,m-1,key);
+                    }
+                 }
+            }// end of binSearch
+
+            // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
+            proc findEdge(u:int,v:int):int {
+                //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+                    return -1;
+                    // we do not accept self-loop
+                }
+                var beginE=start_i[u];
+                var eid=-1:int;
+                if (nei[u]>0) {
+                    if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                        eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                        // search <u,v> in undirect edges
+                    }
+                }
+                if (eid==-1) {// if b
+                    beginE=start_i[v];
+                    if (nei[v]>0) {
+                        if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
+                            eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
+                            // search <v,u> in undirect edges
+                        }
+                    }
+                }// end of if b
+                return eid;
+            }// end of  proc findEdge
+
+            // given vertces u and v, return the edge ID e=<u,v>
+            proc exactEdge(u:int,v:int):int {
+                //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+                    return -1;
+                    // we do not accept self-loop
+                }
+                var beginE=start_i[u];
+                var eid=-1:int;
+                if (nei[u]>0) {
+                    if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                        eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                    }
+                }
+                return eid;
+            }// end of  proc exatEdge(u:int,v:int)
+
+            var timer:Timer;
+            timer.start();
+            var tmptimer:Timer;
+            tmptimer.start();
+            coforall loc in Locales {
+                on loc {
+                    var ld = src.localSubdomain();
+                    var startEdge = ld.lowBound;
+                    var endEdge = ld.highBound;
+                    startEdge=max(startEdge,start_i[vertex]);
+                    endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
+                    var triCount=0:int;
+                    //writeln("Start of CoForall");
+                    // each locale only handles the edges owned by itself
+                    forall i in startEdge..endEdge with (+ reduce triCount) {
+                        var u = src[i];
+                        var v = dst[i];
+                        var beginUf=start_i[u];
+                        var endUf=beginUf+nei[u]-1;
+
+                        var beginUb=start_iR[u];
+                        var endUb=beginUb+neiR[u]-1;
+
+                        var beginVf=start_i[v];
+                        var endVf=beginVf+nei[v]-1;
+
+                        var beginVb=start_iR[v];
+                        var endVb=beginVb+neiR[v]-1;
+
+                        var iu:int;
+                        var jv:int;
+                        var eu:int;
+                        var ev:int;
+                        if ((u!=v) ){
+                        iu=beginUf;
+                        jv=beginVf;
+                        //writeln("Enter while 1 in iteration ",N2 , " and edge=", i);
+                        //writeln("Before First While");
+                        while ( (iu <=endUf) &&   (jv<=endVf))  {
+                            if  ( (dst[iu]==v) ) {
+                                iu+=1;
+                                continue;
+                            }
+                            if ((dst[jv]==u) ) {
+                                jv+=1;
+                                continue;
+                            }
+                            {
+                                if dst[iu]==dst[jv] {
+                                    triCount +=1;
+                                    TriNum[u].add(1);
+                                    TriNum[v].add(1);
+                                    TriNum[dst[jv]].add(1);
+                                    NeiAry[iu] = true;
+                                    NeiAry[jv] = true;
+                                    NeiAry[i] = true;
+                                    //TriCount[i]+=1;
+                                    iu+=1;
+                                    jv+=1;
+                                } else {
+                                    if dst[iu]<dst[jv] {
+                                    iu+=1;
+                                    } else {
+                                    jv+=1;
+                                    }
+                                }
+                            } 
+                        }  
+
+                        iu=beginUf;
+                        jv=beginVb;
+                        //writeln("Enter while 2 in iteration ",N2 , " and edge=", i);
+                        var Count=0;
+                        //writeln("Before Second While");
+                        while ( (iu <=endUf) && (jv<=endVb) && Count < Nv)  {
+                            Count +=1;
+                            if  ( (dst[iu]==v) ) {
+                                iu+=1;
+                                continue;
+                            }
+                            ev=findEdge(dstR[jv],v);
+                            if ( (dstR[jv]==u) ) {
+                                jv+=1;
+                                continue;
+                            }
+                            {
+                                if dst[iu]==dstR[jv] {
+                                    triCount += 1;
+                                    TriNum[u].add(1);
+                                    TriNum[v].add(1);
+                                    TriNum[dst[iu]].add(1);
+                                    NeiAry[iu] = true;
+                                    var tmpe = exactEdge(dstR[jv], srcR[jv]);
+                                    NeiAry[tmpe] = true;
+                                    NeiAry[i] = true;                                     
+                                    //TriCount[i]+=1;
+                                    iu+=1;
+                                    jv+=1;
+                                } else {
+                                    if dst[iu]<dstR[jv] {
+                                    iu+=1;
+                                    } else {
+                                    jv+=1;
+                                    }
+                                }
+                            } 
+                        }
+
+
+                Count = 0;
+                        iu=beginUb;
+                        jv=beginVf;
+                        //writeln("Enter while 3 in iteration ",N2 , " and edge=", i);
+                        //writeln("Before Third While");
+                        while ( (iu <=endUb) &&   (jv<=endVf) && Count < Nv)  {
+                            Count += 1;
+                            //eu=findEdge(dstR[iu],u);
+                            if  ( (dstR[iu]==v) ) {
+                                iu+=1;
+                                continue;
+                            }
+                            if ( (dst[jv]==u) ) {
+                                jv+=1;
+                                continue;
+                            }
+                            {
+                                if dstR[iu]==dst[jv] {
+                                    triCount += 1;
+                                    TriNum[u].add(1);
+                                    TriNum[v].add(1);
+                                    TriNum[dst[jv]].add(1);
+                                    var tmpe = exactEdge(dstR[iu], srcR[iu]);
+                                    NeiAry[tmpe] = true;
+                                    NeiAry[jv] = true;
+                                    NeiAry[i] = true;                                     
+                                    //TriCount[i]+=1;
+                                    iu+=1;
+                                    jv+=1;
+                                } else {
+                                    if dstR[iu]<dst[jv] {
+                                    iu+=1;
+                                    } else {
+                                    jv+=1;
+                                    }
+                                }
+                            } 
+                        }
+
+
+                        iu=beginUb;
+                        jv=beginVb;
+                        Count = 0;
+                        //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
+                        //writeln("Before Fourth While");
+                        while ( (iu <=endUb) &&   (jv<=endVb) && Count < Nv)  {
+                            Count += 1;
+                            //eu=findEdge(dstR[iu],u);
+                            //ev=findEdge(dstR[jv],v);
+                            if  ( (dstR[iu]==v) ) {
+                                iu+=1;
+                                continue;
+                            }
+                            if ( (dstR[jv]==u) ) {
+                                jv+=1;
+                                continue;
+                            }
+                            {
+                                if dstR[iu]==dstR[jv] {
+                                    triCount +=1;
+                                    TriNum[u].add(1);
+                                    TriNum[v].add(1);
+                                    TriNum[dstR[jv]].add(1);
+                                    //FindEdge
+                                    var tmpe1 = exactEdge(dstR[iu], srcR[iu]);
+                                    var tmpe2 = exactEdge(dstR[jv], srcR[jv]);
+                                    NeiAry[tmpe1] = true;
+                                    NeiAry[tmpe2] = true;
+                                    NeiAry[i] = true;                                 
+                                    //TriCount[i]+=1;
+                                    iu+=1;
+                                    jv+=1;
+                                } else {
+                                    if dstR[iu]<dstR[jv] {
+                                    iu+=1;
+                                    } else {
+                                    jv+=1;
+                                    }
+                                }
+                            } 
+                        }
+            
+                        }//end of if
+                    }// end of forall. We get the number of triangles for each edge
+                    subTriSum[here.id]=triCount;
+                }// end of  on loc 
+
+            } // end of coforall loc in Locales 
+            //writeln("Elapsed time for triangle Counting path merge ="+(tmptimer.elapsed()):string);
+            return "success";
+        }//END TRI_CTR_KERNEL_PATH_MERGE
+
+
+
       proc return_tri_count(): string throws{
           for i in subTriSum {
              TotalCnt[0]+=i;
@@ -1142,8 +1446,33 @@ module TriCntMsg {
 
       }
 
+      proc return_tri_count_array(): string throws{
+          var countName = st.nextName();
+          var countEntry = new shared SymEntry(returnary);
+          st.addEntry(countName, countEntry);
+
+          var cntMsg =  'created ' + st.attrib(countName);
+          return cntMsg;
+
+      }
 
 
+      proc return_count(): int {
+          for i in subTriSum {
+             TotalCnt[0]+=i;
+          }
+          var totalRemote=0:int;
+          var totalLocal=0:int;
+          for i in RemoteAccessTimes {
+              totalRemote+=i;
+          }
+          for i in LocalAccessTimes {
+              totalLocal+=i;
+          }
+          TotalCnt[0]/=3;
+          return TotalCnt[0];
+
+      }
 
       /*
       if (Weighted) {
@@ -1161,6 +1490,7 @@ module TriCntMsg {
       }
       else {
 
+              if (vertexArray[0]==-1) { 
               triCtr_kernelPathMerge(
                       toSymEntry(ag.getNEIGHBOR(), int).a,
                       toSymEntry(ag.getSTART_IDX(), int).a,
@@ -1170,9 +1500,27 @@ module TriCntMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a);
+              returnary[0]=return_count();
+               } else {
+                  for i in 0..returnary.size-1 {
+                       triCtr_vertex(
+                      toSymEntry(ag.getNEIGHBOR(), int).a,
+                      toSymEntry(ag.getSTART_IDX(), int).a,
+                      toSymEntry(ag.getSRC(), int).a,
+                      toSymEntry(ag.getDST(), int).a,
+                      toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                      toSymEntry(ag.getSTART_IDX_R(), int).a,
+                      toSymEntry(ag.getSRC_R(), int).a,
+                      toSymEntry(ag.getDST_R(), int).a,
+                      vertexArray[i]);
+                       returnary[i]=return_count();
+
+                  }
+               }
 
       }
-      repMsg = return_tri_count();
+      //repMsg = return_tri_count();
+      repMsg = return_tri_count_array();
       timer.stop();
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
