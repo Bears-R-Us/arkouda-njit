@@ -5,7 +5,6 @@ from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
-from context import arkouda as ak
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
