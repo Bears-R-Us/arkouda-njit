@@ -5,6 +5,7 @@ from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
+import arkouda as ak
 
 __all__ = ["Graph","graph_query",
            "rmat_gen", "graph_file_read",
@@ -524,7 +525,8 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
 
 
 @typechecked
-def graph_triangle (graph: Graph, vertexArray=ak.array([-1])) -> pdarray:
+#def graph_triangle (graph: Graph, vertexArray=ak.array([-1])) -> pdarray:
+def graph_triangle (graph: Graph, vertexArray:str ="") -> pdarray:
         """
         This function will return the number of triangles in a static graph.
         Returns
