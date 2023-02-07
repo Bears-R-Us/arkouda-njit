@@ -525,10 +525,12 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
 
 
 @typechecked
-#def graph_triangle (graph: Graph, vertexArray=ak.array([-1])) -> pdarray:
-def graph_triangle (graph: Graph, vertexArray:str ="") -> pdarray:
+def graph_triangle (graph: Graph, vertexArray:str ) -> pdarray:
         """
-        This function will return the number of triangles in a static graph.
+        This function will return the number of triangles in a static graph if the vertexArray is [-1], 
+        otherwise, it will return the number of triangles of containing the given vertex. If the input vertexArray is 
+        [0,10,40] and return array is [3,20,5], it means that there are 3 triangles contain vertex 0; 20 triangles 
+        contains vertex 10; 5 triangles contain vertex 40
         Returns
         -------
         pdarray
