@@ -3252,14 +3252,9 @@ module GraphMsg {
 
   // directly build a graph from two edge arrays
   proc segAryToGraphMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-      //var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(11);
-
-      //var (srcS,dstS,DirectedS,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(8);
 
 
 
-
-      //var msgArgs  = parseMessageArgs(payload, argSize);
       var srcS=msgArgs.getValueOf("SRC");
       var dstS=msgArgs.getValueOf("DST");
       var DirectedS=msgArgs.getValueOf("Directed");
@@ -3270,6 +3265,11 @@ module GraphMsg {
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
 
 
+      type EweightType;
+      type VweightType;
+
+      EweightType=int;
+      VweightType=int;
 
       var srcEntry = st.lookup(srcS): borrowed SymEntry(int);
       var dstEntry = st.lookup(dstS): borrowed SymEntry(int);
@@ -3362,7 +3362,7 @@ module GraphMsg {
 
 
       var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
-      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+      var start_i,neighbourR, start_iR,depth, v_weight,OriVertexAry: [vertexD] int;
 
       var linenum:int=0;
       var repMsg: string;
@@ -3410,10 +3410,10 @@ module GraphMsg {
       // readLinebyLine sets ups src, dst, start_i, neightbor.  e_weights will also be set if it is an edge weighted graph
       // currently we ignore the weight.
       readLinebyLine(); 
-      NewNv=vertex_remap(src,dst,Nv);
+      NewNv=vertex_remap(src,dst,Nv,OriVertexAry);
       Nv=NewNv;
       
-      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
+      try  { combine_sort(src, dst);
       } catch {
              try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -3478,7 +3478,7 @@ module GraphMsg {
           var myvertexD=myneighbour.domain;
 
           var mydst,mye_weight,mysrcR,mydstR, myiv: [myedgeD] int ;
-          var mystart_i,myneighbourR, mystart_iR,mydepth, myv_weight: [myvertexD] int;
+          var mystart_i,myneighbourR, mystart_iR,mydepth, myv_weight,myOriVertexAry: [myvertexD] int;
 
 
 
@@ -3486,7 +3486,7 @@ module GraphMsg {
              mysrc[i]=tmpsrc[i];
              mydst[i]=tmpdst[i];
           }
-          try  { combine_sort(mysrc, mydst,mye_weight,WeightedFlag, false);
+          try  { combine_sort(mysrc, mydst);
           } catch {
                  try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -3504,21 +3504,22 @@ module GraphMsg {
                        }
                   }
               }
-              try  { combine_sort(mysrcR, mydstR,mye_weight,WeightedFlag, false);
+              try  { combine_sort(mysrcR, mydstR);
               } catch {
                      try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                           "combine sort error");
               }
               set_neighbour(mysrcR,mystart_iR,myneighbourR);
               if (DegreeSortFlag) {
-                    degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,mye_weight,WeightedFlag);
+                    degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,myOriVertexAry);
               }
 
 
               graph.withSRC(new shared SymEntry(mysrc):GenSymEntry)
                    .withDST(new shared SymEntry(mydst):GenSymEntry)
                    .withSTART_IDX(new shared SymEntry(mystart_i):GenSymEntry)
-                   .withNEIGHBOR(new shared SymEntry(myneighbour):GenSymEntry);
+                   .withNEIGHBOR(new shared SymEntry(myneighbour):GenSymEntry)
+                   .withVTrack(new shared SymEntry(myOriVertexAry):GenSymEntry);
 
               graph.withSRC_R(new shared SymEntry(mysrcR):GenSymEntry)
                    .withDST_R(new shared SymEntry(mydstR):GenSymEntry)
@@ -3650,7 +3651,7 @@ module GraphMsg {
                        }
                   }
               }
-              try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
+              try  { combine_sort(srcR, dstR);
               } catch {
                      try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                           "combine sort error");
@@ -3658,10 +3659,10 @@ module GraphMsg {
               set_neighbour(srcR,start_iR,neighbourR);
 
               if (DegreeSortFlag) {
-                        degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+                        degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,OriVertexAry);
               }
               if (RCMFlag) {
-                 RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,e_weight,WeightedFlag);
+                 RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,OriVertexAry);
               }
 
 
@@ -3669,7 +3670,8 @@ module GraphMsg {
               graph.withSRC(new shared SymEntry(src):GenSymEntry)
                    .withDST(new shared SymEntry(dst):GenSymEntry)
                    .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-                   .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+                   .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry)
+                   .withVTrack(new shared SymEntry(OriVertexAry):GenSymEntry);
 
               graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
                    .withDST_R(new shared SymEntry(dstR):GenSymEntry)
@@ -4707,6 +4709,12 @@ module GraphMsg {
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
+           when "VTrack" {
+              var retE=toSymEntry(ag.getVTrack(), int).a;
+              var attrEntry = new shared SymEntry(retE);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
            when "VP1" {
               var retE=toSymEntry(ag.getVP1(), int).a;
               var attrEntry = new shared SymEntry(retE);
@@ -4746,7 +4754,8 @@ module GraphMsg {
       var repMsg: string;
 
       var graphEntryName=msgArgs.getValueOf("GraphName");
-      var PropertyID=msgArgs.getValueOf("Property");
+      var PropertyName=msgArgs.getValueOf("Property");
+
 
 
 
@@ -4757,23 +4766,29 @@ module GraphMsg {
       var ag = gEntry.graph;
 
       var retMsg:string="success";
-      /*
        
-      select PropertyID {
+      select PropertyName {
            when "VP1" {
-              ag.withVP1(new shared SymEntry(VP1):GenSymEntry);
+              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
+              var ProAry=toSymEntry(ProEntry,int).a;
+              ag.withVP1(new shared SymEntry(ProAry):GenSymEntry);
            }
            when "VP2" {
-              ag.withVP2(new shared SymEntry(VP2):GenSymEntry);
-           }
-           when "EP2" {
-              ag.withEP2(new shared SymEntry(EP2):GenSymEntry);
+              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
+              var ProAry=toSymEntry(ProEntry,int).a;
+              ag.withVP2(new shared SymEntry(ProAry):GenSymEntry);
            }
            when "EP1" {
-              ag.withEP1(new shared SymEntry(EP1):GenSymEntry);
+              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
+              var ProAry=toSymEntry(ProEntry,int).a;
+              ag.withEP1(new shared SymEntry(ProAry):GenSymEntry);
+           }
+           when "EP2" {
+              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
+              var ProAry=toSymEntry(ProEntry,int).a;
+              ag.withEP2(new shared SymEntry(ProAry):GenSymEntry);
            }
       }
-      */
       timer.stop();
       outMsg= "graph property add  takes "+timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
