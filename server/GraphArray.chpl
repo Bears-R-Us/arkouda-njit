@@ -73,6 +73,9 @@ module GraphArray {
         /* The graph is directed (True) or undirected (False)*/
         var directed : bool;
 
+        /* The graph is weighted (True) or unweighted (False)*/
+        //var weighted : bool;
+
         /**
         * Init the basic graph object, we'll compose the pieces in
         * using the withCOMPONENT methods.

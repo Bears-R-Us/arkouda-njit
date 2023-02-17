@@ -9,6 +9,7 @@ import arkouda as ak
 
 __all__ = ["Graph","DiGraph", "graph_query",
            "rmat_gen", "graph_file_read",
+           "graph_add_property",
            "graph_edgearray", 
            "graph_file_preprocessing",
            "graph_file_tonde",
@@ -381,7 +382,7 @@ def graph_file_tonde(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,s
             "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
             "RCMFlag":RCMFlag, "WriteFlag":WriteFlag}
     repMsg = generic_msg(cmd=cmd, args=args)
-    return 
+    ed eturn 
 
 
 
@@ -813,4 +814,11 @@ def graph_jaccard_hash(graph: Graph) -> pdarray:
         return create_pdarray(repMsg)
 
 
+
+@typechecked
+def graph_add_property(graph:Graph, property:str) -> Graph:
+        cmd="segmentedGraphProperty"
+        args = {"Property":property, "GraphName":graph.name}
+        repMsg = generic_msg(cmd=cmd,args=args)
+        return Graph(*(cast(str, repMsg).split('+')))
 
