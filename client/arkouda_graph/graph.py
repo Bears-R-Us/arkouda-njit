@@ -7,7 +7,7 @@ from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
 import arkouda as ak
 
-__all__ = ["Graph","graph_query",
+__all__ = ["Graph","DiGraph", "graph_query",
            "rmat_gen", "graph_file_read",
            "graph_edgearray", 
            "graph_file_preprocessing",
@@ -78,13 +78,18 @@ class Graph:
         """
         try:
             if len(args) < 5:
-                raise ValueError
-            self.n_vertices = int (cast(int, args[0]))
-            self.n_edges = int(cast(int, args[1]))
-            self.directed = int(cast(int, args[2]))
-            self.weighted = int(cast(int, args[3]))
-            oriname=cast(str, args[4])
-            self.name = oriname.strip()
+                self.n_vertices = 0
+                self.n_edges = 0
+                self.weighted = None
+                self.directed = 0
+                self.name = None
+            else:
+                self.n_vertices = int (cast(int, args[0]))
+                self.n_edges = int(cast(int, args[1]))
+                self.directed = int(cast(int, args[2]))
+                self.weighted = int(cast(int, args[3]))
+                oriname=cast(str, args[4])
+                self.name = oriname.strip()
         except Exception as e:
             raise RuntimeError(e)
 
@@ -106,6 +111,89 @@ class Graph:
         src=graph_query(self,"src")
         dst=graph_query(self,"dst")
         return [src,dst]
+
+class DiGraph(Graph):
+    """Base class for directed graphs. Inherits from Graph.
+    This is the double index graph data structure based graph representation. The graph data resides 
+    on the arkouda server. The user should not call this class directly; rather its instances are 
+    created by other arachne functions.
+    Graphs hold undirected edges. Self loops and multiple edges are not allowed.
+    Nodes currently are only allowed to be integers. They may contain optional key/value attributes.
+    Edges are represented as directed links between nodes. They may contain optional key/value 
+    attributes. 
+    Parameters
+    ----------
+    None
+    Attributes
+    ----------
+    n_vertices : int
+        The number of vertices in the graph. 
+    n_edges : int
+        The number of edges in the graph.
+    directed : int
+        The graph is directed (True) or undirected (False).
+    weighted : int
+        The graph is weighted (True) or unweighted (False).
+    name : string
+        The name of the graph in the backend Chapel server. 
+    logger : ArkoudaLogger
+        Used for all logging operations.
+    See Also
+    --------
+    Graph
+        
+    Notes
+    -----
+    """
+
+    def __init__(self, *args) -> None:
+        """Initializes the Graph instance by setting all instance
+        attributes, some of which are derived from the array parameters.
+        
+        Parameters
+        ----------
+        n_vertices
+            Must be provided in args[0].
+        n_edges
+            Must be provided in args[1].
+        weighted
+            Must be provided in args[3].
+        name
+            Must be provided in args[4].
+        directed
+            Defaults to 1 since DiGraph is inherently directed. If needed,
+            should be found in args[2].
+         
+        Returns
+        -------
+        None
+        
+        Raises
+        ------
+        RuntimeError
+            Raised if there's an error from the server to create a graph.   
+        ValueError
+            Raised if not enough arguments are passed to generate the graph. 
+        """
+        try:
+            if len(args) < 5:
+                self.n_vertices = 0
+                self.n_edges = 0
+                self.weighted = None
+                self.directed = 1
+                self.name = None
+            else:
+                self.n_vertices = int (cast(int, args[0]))
+                self.n_edges = int(cast(int, args[1]))
+                self.weighted = int(cast(int, args[3]))
+                oriname = cast(str, args[4])
+                self.name = oriname.strip()
+                self.directed = 1
+        except Exception as e:
+            raise RuntimeError(e)
+
+        self.dtype = akint
+        self.logger = getArkoudaLogger(name=__class__.__name__)
 
 
 @typechecked
