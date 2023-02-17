@@ -4363,6 +4363,9 @@ module GraphMsg {
       var DegreeSortFlag=false:bool;
       var tmpmindegree=start_min_degree;
 
+      type EweightType=int;
+      type VweightType=int;
+
       if (sdire: int)==1 {
          DirectedFlag=true;
       }
@@ -4397,6 +4400,7 @@ module GraphMsg {
       var start_i=makeDistArray(Nv,int);
       var neighbourR=makeDistArray(Nv,int);
       var start_iR=makeDistArray(Nv,int);
+      var OriVertexAry=makeDistArray(Nv,int);
       var depth=makeDistArray(Nv,int);
       var v_weight=makeDistArray(Nv,int);
 
@@ -4499,6 +4503,7 @@ module GraphMsg {
       
 
 
+
       rmat_gen();
       timer.stop();
       outMsg="RMAT generate the graph takes "+timer.elapsed():string;
@@ -4508,13 +4513,16 @@ module GraphMsg {
 
 
  
-      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
+      try  { combine_sort(src, dst);
               } catch {
              try!      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
       }
       set_neighbour(src,start_i,neighbour);
 
+      forall i in 0..Nv-1 {
+              OriVertexAry[i]=src[start_i[i]];
+      }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(Ne, Nv,DirectedFlag);
       graph.withSRC(new shared SymEntry(src):GenSymEntry)
@@ -4531,7 +4539,7 @@ module GraphMsg {
                        }
                   }
               }
-              try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
+              try  { combine_sort(srcR, dstR);
               } catch {
                   try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -4539,10 +4547,10 @@ module GraphMsg {
               set_neighbour(srcR,start_iR,neighbourR);
 
               if (DegreeSortFlag) {
-                 degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+                 degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,OriVertexAry);
               }
               if (RCMFlag) {
-                 RCM_u( src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,e_weight,WeightedFlag);
+                 RCM_u( src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,OriVertexAry);
               }   
 
               graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
@@ -4551,11 +4559,11 @@ module GraphMsg {
                    .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
       }//end of undirected
       else {
-            //if (DegreeSortFlag) {
-            //     degree_sort(src, dst, start_i, neighbour,e_weight,neighbourR,WeightedFlag);
-            //}
+            if (DegreeSortFlag) {
+                 degree_sort(src, dst, start_i, neighbour,e_weight,neighbourR,OriVertexAry);
+            }
             if (RCMFlag) {
-                 RCM( src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
+                 RCM( src, dst, start_i, neighbour, depth,OriVertexAry);
             }
 
       }//end of 
