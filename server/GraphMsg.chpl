@@ -2541,8 +2541,8 @@ module GraphMsg {
       var DegreeSortS=msgArgs.getValueOf("DegreeSortFlag");
       var RCMS=msgArgs.getValueOf("RCMFlag");
       var RwriteS=msgArgs.getValueOf("WriteFlag");
-      var EweightTypeS=msgArgs.getValueOf("EweightType");
-      var VweightTypeS=msgArgs.getValueOf("VweightType");
+      //var EweightTypeS=msgArgs.getValueOf("EweightType");
+      //var VweightTypeS=msgArgs.getValueOf("VweightType");
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
 
 
