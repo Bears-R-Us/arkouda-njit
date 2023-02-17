@@ -4559,12 +4559,24 @@ module GraphMsg {
                    .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
       }//end of undirected
       else {
-            if (DegreeSortFlag) {
-                 degree_sort(src, dst, start_i, neighbour,e_weight,neighbourR,OriVertexAry);
-            }
-            if (RCMFlag) {
-                 RCM( src, dst, start_i, neighbour, depth,OriVertexAry);
-            }
+
+        if (DegreeSortFlag) {
+               var tmpn=neighbour;
+               tmpn=0;
+               if (WeightedFlag) {
+                    part_degree_sort(src, dst, start_i, neighbour, int, e_weight,tmpn,OriVertexAry);
+               } else {
+                    part_degree_sort(src, dst, start_i, neighbour,tmpn,OriVertexAry);
+               }
+        }
+        if (RCMFlag) {
+               if (WeightedFlag) {
+                   RCM(src, dst, start_i, neighbour, depth,int, e_weight,OriVertexAry);
+               } else {
+                   RCM(src, dst, start_i, neighbour, depth, OriVertexAry);
+               }
+       }
+
 
       }//end of 
       if (WeightedFlag) {
@@ -4798,6 +4810,38 @@ module GraphMsg {
            }
       }
       timer.stop();
+
+
+
+
+        /* Total number of vertices */
+        var n_vertices : int;
+
+        /* Total number of edges */
+        var n_edges : int;
+
+        /* The graph is directed (True) or undirected (False)*/
+        var directed : bool;
+      var sNv=(ag.n_vertices):string;
+      var sNe=(ag.n_edges):string;
+      var sDirected:string;
+      var sWeighted:string;
+      if ag.directed {
+          sDirected="1";
+      } else {
+          sDirected="0";
+      } 
+
+      if ag.hasEDGE_WEIGHT() {
+          sWeighted="1";
+      } else {
+          sWeighted="0";
+      }
+
+      repMsg =  sNv + '+ ' + sNe + '+ ' + sDirected + '+ ' + sWeighted + '+' +  graphEntryName;
+
+
+
       outMsg= "graph property add  takes "+timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),retMsg);
