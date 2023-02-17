@@ -30,7 +30,12 @@ module GraphArray {
         A_SRC_R,        // Reverse of SRC, aligned array based on srcR
         A_DST_R,        // Reverse of DST, aligned array based on dstR
         EDGE_WEIGHT,  // Edge weight
-        VERTEX_WEIGHT // Vertex weight
+        VERTEX_WEIGHT, // Vertex weight
+        VTrack,        // track the vertex ID from the normalized ID to the original ID
+        VP1,        // The first vertex property
+        VP2,        // The second vertex property
+        EP1,        // The first edge property
+        EP2         // The second edge property
     }
 
     pragma "default intent is ref"
@@ -103,7 +108,6 @@ module GraphArray {
         proc withA_NEIGHBOR(a:shared CompositeSymEntry):SegGraph { acomponents.add(Component.A_NEIGHBOR, a); return this; }
         proc withA_NEIGHBOR_R(a:shared CompositeSymEntry):SegGraph {acomponents.add(Component.A_NEIGHBOR_R, a);return this;}
 
-
         proc hasSRC():bool { return components.contains(Component.SRC); }
         proc hasSRC_R():bool { return components.contains(Component.SRC_R); }
         proc hasDST():bool { return components.contains(Component.DST); }
@@ -139,6 +143,23 @@ module GraphArray {
         proc getA_NEIGHBOR() { return acomponents.getBorrowed(Component.A_NEIGHBOR); }
         proc getA_NEIGHBOR_R() { return acomponents.getBorrowed(Component.A_NEIGHBOR_R); }
 
+        proc withVP1(a:shared GenSymEntry):SegGraph { components.add(Component.VP1, a); return this; }
+        proc withVP2(a:shared GenSymEntry):SegGraph { components.add(Component.VP2, a); return this; }
+        proc withEP1(a:shared GenSymEntry):SegGraph { components.add(Component.EP1, a); return this; }
+        proc withEP2(a:shared GenSymEntry):SegGraph { components.add(Component.EP2, a); return this; }
+        proc hasVP1():bool { return components.contains(Component.VP1); }
+        proc hasVP2():bool { return components.contains(Component.VP2); }
+        proc hasEP1():bool { return components.contains(Component.EP1); }
+        proc hasEP2():bool { return components.contains(Component.EP2); }
+        proc getVP1() { return components.getBorrowed(Component.VP1); }
+        proc getVP2() { return components.getBorrowed(Component.VP2); }
+        proc getEP1() { return components.getBorrowed(Component.EP1); }
+        proc getEP2() { return components.getBorrowed(Component.EP2); }
+
+
+        proc withVTrack(a:shared GenSymEntry):SegGraph { components.add(Component.VTrack, a); return this; }
+        proc hasVTrack():bool { return components.contains(Component.VTrack); }
+        proc getVTrack() { return components.getBorrowed(Component.VTrack); }
     }
 
     /**

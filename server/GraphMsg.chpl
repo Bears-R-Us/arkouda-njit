@@ -42,6 +42,7 @@ module GraphMsg {
   private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
   var outMsg:string;
+  type WeightType=int;
   
 
 
@@ -106,7 +107,9 @@ module GraphMsg {
                        }
   }// end of proc
 
-  // map vertex ID from a large range to 0..Nv-1
+
+
+  // map vertex ID from a large range to 0..Nv-1. To be removed because we will add vertex tracking array
   private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, numV:int) :int throws {
 
           var numE=lsrc.size;
@@ -132,11 +135,103 @@ module GraphMsg {
                lsrc[i]=binSearchV(vertexAry,0,vertexAry.size-1,lsrc[i]);
                ldst[i]=binSearchV(vertexAry,0,vertexAry.size-1,ldst[i]);
           }
+          return vertexAry.size;
+
+  }
+
+  // map vertex ID from a large range to 0..Nv-1. In this version, we track the vertex ID.
+  private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, numV:int, OriVertexAry:[?D3] int) :int throws {
+
+          var numE=lsrc.size;
+          var tmpe:[D1] int;
+          var VertexMapping:[0..numV-1] int;
+
+          var VertexSet= new set(int,parSafe = true);
+          forall (i,j) in zip (lsrc,ldst) with (ref VertexSet) {
+                VertexSet.add(i);
+                VertexSet.add(j);
+          }
+          var vertexAry=VertexSet.toArray();
+          if vertexAry.size!=numV {
+               smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                         "number of vertices is not equal to the given number");
+          }
+          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+                         "Total Vertices="+vertexAry.size:string+" ? Nv="+numV:string);
+
+
+          sort(vertexAry);
+          forall i in 0..vertexAry.size-1 {
+              OriVertexAry[i]=vertexAry[i];
+          }
+          forall i in 0..numE-1 {
+               lsrc[i]=binSearchV(vertexAry,0,vertexAry.size-1,lsrc[i]);
+               ldst[i]=binSearchV(vertexAry,0,vertexAry.size-1,ldst[i]);
+          }
           return vertexAry.size; 
 
   }
       /* 
        * we sort the combined array [src dst] here
+       */
+  private proc combine_sort( lsrc:[?D1] int, ldst:[?D2] int )   {
+             param bitsPerDigit = RSLSD_bitsPerDigit;
+             var bitWidths: [0..1] int;
+             var negs: [0..1] bool;
+             var totalDigits: int;
+             var size=D1.size;
+             var iv:[D1] int;
+
+
+
+             for (bitWidth, ary, neg) in zip(bitWidths, [lsrc,ldst], negs) {
+                       (bitWidth, neg) = getBitWidth(ary);
+                       totalDigits += (bitWidth + (bitsPerDigit-1)) / bitsPerDigit;
+             }
+             proc mergedArgsort(param halfDig):[D1] int throws {
+                    param numBuckets = 1 << bitsPerDigit; // these need to be const for comms/performance reasons
+                    param maskDigit = numBuckets-1;
+                    var merged = makeDistArray(size, halfDig*2*uint(bitsPerDigit));
+                    for jj in 0..size-1 {
+                    //for (m,s,d ) in zip(merged, lsrc,ldst) {
+                          forall i in 0..halfDig-1 {
+                              // here we assume the vertex ID>=0
+                              //m[i]=(  ((s:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              //m[i+halfDig]=( ((d:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              merged[jj][i]=(  ((lsrc[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              merged[jj][i+halfDig]=( ((ldst[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                          }
+                          //    writeln("[src[",jj,"],dst[",jj,"]=",lsrc[jj],",",ldst[jj]);
+                          //    writeln("merged[",jj,"]=",merged[jj]);
+                    }
+                    var tmpiv = argsortDefault(merged);
+                    return tmpiv;
+             }
+
+             try {
+                      if (totalDigits <=2) {
+                           iv = mergedArgsort(2);
+                      } else {
+                           iv = mergedArgsort(4);
+                      }
+
+             } catch  {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "merge array error" );
+             }
+
+             var tmpedges=lsrc[iv];
+             lsrc=tmpedges;
+             tmpedges=ldst[iv];
+             ldst=tmpedges;
+
+  }//end combine_sort
+
+
+
+
+      /* 
+       * we sort the combined array [src dst] here. This version will be removed soon.
        */
   private proc combine_sort( lsrc:[?D1] int, ldst:[?D2] int, le_weight:[?D3] int,  lWeightedFlag: bool, sortw=false: bool )   {
              param bitsPerDigit = RSLSD_bitsPerDigit;
@@ -195,7 +290,232 @@ module GraphMsg {
 
   }//end combine_sort
 
+
+      /* 
+       * we sort the combined array [src dst] here. For this version, we also update the edge weight array too.
+       */
+  private proc combine_sort( lsrc:[?D1] int, ldst:[?D2] int, type WeightType, le_weight:[?D3] WeightType )   {
+             param bitsPerDigit = RSLSD_bitsPerDigit;
+             var bitWidths: [0..1] int;
+             var negs: [0..1] bool;
+             var totalDigits: int;
+             var size=D1.size;
+             var iv:[D1] int;
+
+
+
+             for (bitWidth, ary, neg) in zip(bitWidths, [lsrc,ldst], negs) {
+                       (bitWidth, neg) = getBitWidth(ary);
+                       totalDigits += (bitWidth + (bitsPerDigit-1)) / bitsPerDigit;
+             }
+             proc mergedArgsort(param halfDig):[D1] int throws {
+                    param numBuckets = 1 << bitsPerDigit; // these need to be const for comms/performance reasons
+                    param maskDigit = numBuckets-1;
+                    var merged = makeDistArray(size, halfDig*2*uint(bitsPerDigit));
+                    for jj in 0..size-1 {
+                    //for (m,s,d ) in zip(merged, lsrc,ldst) {
+                          forall i in 0..halfDig-1 {
+                              // here we assume the vertex ID>=0
+                              //m[i]=(  ((s:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              //m[i+halfDig]=( ((d:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              merged[jj][i]=(  ((lsrc[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                              merged[jj][i+halfDig]=( ((ldst[jj]:uint) >> ((halfDig-i-1)*bitsPerDigit)) & (maskDigit:uint) ):uint(bitsPerDigit);
+                          }
+                          //    writeln("[src[",jj,"],dst[",jj,"]=",lsrc[jj],",",ldst[jj]);
+                          //    writeln("merged[",jj,"]=",merged[jj]);
+                    }
+                    var tmpiv = argsortDefault(merged);
+                    return tmpiv;
+             }
+
+             try {
+                      if (totalDigits <=2) {
+                           iv = mergedArgsort(2);
+                      } else {
+                           iv = mergedArgsort(4);
+                      }
+
+             } catch  {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "merge array error" );
+             }
+
+             var tmpedges=lsrc[iv];
+             lsrc=tmpedges;
+             tmpedges=ldst[iv];
+             ldst=tmpedges;
+             var tmpweight=le_weight[iv];
+             le_weight=tmpweight;
+
+  }//end combine_sort
+
+
   /*
+   * here we preprocess the graph using reverse Cuthill.McKee algorithm to improve the locality.
+   * the basic idea of RCM is relabeling the vertex based on their BFS visiting order
+   */
+  private proc RCM( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, ldepth:[?D5] int,OriVertexAry: [?D6] int )  {
+          var Ne=D1.size;
+          var Nv=D3.size;            
+          var cmary: [0..Nv-1] int;
+          // visiting order vertex array
+          var indexary:[0..Nv-1] int;
+          var iv:[D1] int;
+          ldepth=-1;
+          proc smallVertex() :int {
+                var minindex:int;
+                var tmpmindegree:int=9999999;
+                for i in 0..Nv-1 {
+                   if (lneighbour[i]<tmpmindegree) && (lneighbour[i]>0) {
+                      //here we did not consider the reverse neighbours
+                      tmpmindegree=lneighbour[i];
+                      minindex=i;
+                   }
+                }
+                return minindex;
+          }
+
+          var currentindex=0:int;
+          var x=smallVertex();
+          cmary[0]=x;
+          ldepth[x]=0;
+
+          var SetCurF= new set(int,parSafe = true);//use set to keep the current frontier
+          var SetNextF=new set(int,parSafe = true);//use set to keep the next fromtier
+          SetCurF.add(x);
+          var numCurF=1:int;
+          var GivenRatio=0.021:real;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var LF=1:int;
+          var cur_level=0:int;
+          
+          while (numCurF>0) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                //topdown, bottomup are reduce variables
+                   on loc {
+                       ref srcf=lsrc;
+                       ref df=ldst;
+                       ref nf=lneighbour;
+                       ref sf=lstart_i;
+
+                       var edgeBegin=lsrc.localSubdomain().lowBound;
+                       var edgeEnd=lsrc.localSubdomain().highBound;
+                       var vertexBegin=lsrc[edgeBegin];
+                       var vertexEnd=lsrc[edgeEnd];
+
+
+                       var switchratio=(numCurF:real)/nf.size:real;
+                       if (switchratio<GivenRatio) {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (ldepth[j]==-1) {
+                                               ldepth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                           }//end coforall
+                       }else {// bottom up
+                           bottomup+=1;
+                           forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                              if ldepth[i]==-1 {
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (SetCurF.contains(j)) {
+                                               ldepth[i]=cur_level+1;
+                                               SetNextF.add(i);
+                                         }
+                                  }
+
+                              }
+                           }
+                       }
+                   }//end on loc
+                }//end coforall loc
+                cur_level+=1;
+                numCurF=SetNextF.size;
+
+                if (numCurF>0) {
+                    //var tmpary:[0..numCurF-1] int;
+                    var sortary:[0..numCurF-1] int;
+                    var numary:[0..numCurF-1] int;
+                    var tmpa=0:int;
+                    var tmpary=SetNextF.toArray();
+                    //forall (a,b)  in zip (tmpary,SetNextF.toArray()) {
+                    //    a=b;
+                    //}
+                    forall i in 0..numCurF-1 {
+                         numary[i]=lneighbour[tmpary[i]];
+                    }
+                    var tmpiv:[0..numCurF-1]int;
+                    try {
+                        tmpiv =  argsortDefault(numary);
+                    } catch {
+                        try! smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"error");
+                    }    
+                    sortary=tmpary[tmpiv];
+                    cmary[currentindex+1..currentindex+numCurF]=sortary;
+                    currentindex=currentindex+numCurF;
+                }
+
+
+                SetCurF=SetNextF;
+                SetNextF.clear();
+          }//end while  
+
+          if (currentindex+1<Nv) {
+                 forall i in 0..Nv-1 with (+reduce currentindex) {
+                 //unvisited vertices are put to the end of cmary
+                     if ldepth[i]==-1 {
+                       cmary[currentindex+1]=i;
+                       currentindex+=1;  
+                     }
+                 }
+          }
+          //cmary.reverse();
+          forall i in 0..(Nv-1)/2 {
+              var tmp=cmary[i];
+              cmary[i]=cmary[Nv-1-i];
+              cmary[Nv-1-i]=tmp;
+          }
+          forall i in 0..Nv-1{
+              indexary[cmary[i]]=i;
+          }
+
+          var tmpn=OriVertexAry[indexary];
+          OriVertexAry=tmpn;
+
+          var tmpary:[0..Ne-1] int;
+          forall i in 0..Ne-1 {
+                  tmpary[i]=indexary[lsrc[i]];
+          }
+          lsrc=tmpary;
+          forall i in 0..Ne-1 {
+                  tmpary[i]=indexary[ldst[i]];
+          }
+          ldst=tmpary;
+
+          try  { combine_sort(lsrc, ldst);
+              } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+          }
+          set_neighbour(lsrc,lstart_i,lneighbour);
+  }//end RCM
+
+  /* this version will be removed soon.
    * here we preprocess the graph using reverse Cuthill.McKee algorithm to improve the locality.
    * the basic idea of RCM is relabeling the vertex based on their BFS visiting order
    */
@@ -357,7 +677,388 @@ module GraphMsg {
           set_neighbour(lsrc,lstart_i,lneighbour);
   }//end RCM
 
+
+
+
+  /* 
+   * here we preprocess the graph using reverse Cuthill.McKee algorithm to improve the locality.
+   * the basic idea of RCM is relabeling the vertex based on their BFS visiting order
+   * this version we will update the weight and track arrays.
+   * In this version, we will update the weitht array and the track array
+   */
+  private proc RCM( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, ldepth:[?D5] int,type WeightType, le_weight:[?D6] WeightType,OriVertexAry:[?D7] int )  {
+          var Ne=D1.size;
+          var Nv=D3.size;            
+          var cmary: [0..Nv-1] int;
+          // visiting order vertex array
+          var indexary:[0..Nv-1] int;
+          var iv:[D1] int;
+          ldepth=-1;
+          proc smallVertex() :int {
+                var minindex:int;
+                var tmpmindegree:int=9999999;
+                for i in 0..Nv-1 {
+                   if (lneighbour[i]<tmpmindegree) && (lneighbour[i]>0) {
+                      //here we did not consider the reverse neighbours
+                      tmpmindegree=lneighbour[i];
+                      minindex=i;
+                   }
+                }
+                return minindex;
+          }
+
+          var currentindex=0:int;
+          var x=smallVertex();
+          cmary[0]=x;
+          ldepth[x]=0;
+
+          var SetCurF= new set(int,parSafe = true);//use set to keep the current frontier
+          var SetNextF=new set(int,parSafe = true);//use set to keep the next fromtier
+          SetCurF.add(x);
+          var numCurF=1:int;
+          var GivenRatio=0.021:real;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var LF=1:int;
+          var cur_level=0:int;
+          
+          while (numCurF>0) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                //topdown, bottomup are reduce variables
+                   on loc {
+                       ref srcf=lsrc;
+                       ref df=ldst;
+                       ref nf=lneighbour;
+                       ref sf=lstart_i;
+
+                       var edgeBegin=lsrc.localSubdomain().lowBound;
+                       var edgeEnd=lsrc.localSubdomain().highBound;
+                       var vertexBegin=lsrc[edgeBegin];
+                       var vertexEnd=lsrc[edgeEnd];
+
+
+                       var switchratio=(numCurF:real)/nf.size:real;
+                       if (switchratio<GivenRatio) {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (ldepth[j]==-1) {
+                                               ldepth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                           }//end coforall
+                       }else {// bottom up
+                           bottomup+=1;
+                           forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                              if ldepth[i]==-1 {
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (SetCurF.contains(j)) {
+                                               ldepth[i]=cur_level+1;
+                                               SetNextF.add(i);
+                                         }
+                                  }
+
+                              }
+                           }
+                       }
+                   }//end on loc
+                }//end coforall loc
+                cur_level+=1;
+                numCurF=SetNextF.size;
+
+                if (numCurF>0) {
+                    //var tmpary:[0..numCurF-1] int;
+                    var sortary:[0..numCurF-1] int;
+                    var numary:[0..numCurF-1] int;
+                    var tmpa=0:int;
+                    var tmpary=SetNextF.toArray();
+                    //forall (a,b)  in zip (tmpary,SetNextF.toArray()) {
+                    //    a=b;
+                    //}
+                    forall i in 0..numCurF-1 {
+                         numary[i]=lneighbour[tmpary[i]];
+                    }
+                    var tmpiv:[0..numCurF-1]int;
+                    try {
+                        tmpiv =  argsortDefault(numary);
+                    } catch {
+                        try! smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"error");
+                    }    
+                    sortary=tmpary[tmpiv];
+                    cmary[currentindex+1..currentindex+numCurF]=sortary;
+                    currentindex=currentindex+numCurF;
+                }
+
+
+                SetCurF=SetNextF;
+                SetNextF.clear();
+          }//end while  
+
+          if (currentindex+1<Nv) {
+                 forall i in 0..Nv-1 with (+reduce currentindex) {
+                 //unvisited vertices are put to the end of cmary
+                     if ldepth[i]==-1 {
+                       cmary[currentindex+1]=i;
+                       currentindex+=1;  
+                     }
+                 }
+          }
+          //cmary.reverse();
+          forall i in 0..(Nv-1)/2 {
+              var tmp=cmary[i];
+              cmary[i]=cmary[Nv-1-i];
+              cmary[Nv-1-i]=tmp;
+          }
+          forall i in 0..Nv-1{
+              indexary[cmary[i]]=i;
+          }
+
+          var tmpv=OriVertexAry[indexary];
+          OriVertexAry=tmpv;
+
+          var tmpary:[0..Ne-1] int;
+          forall i in 0..Ne-1 {
+                  tmpary[i]=indexary[lsrc[i]];
+          }
+          lsrc=tmpary;
+          forall i in 0..Ne-1 {
+                  tmpary[i]=indexary[ldst[i]];
+          }
+          ldst=tmpary;
+
+          try  { combine_sort(lsrc, ldst, WeightType, le_weight);
+              } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+          }
+          set_neighbour(lsrc,lstart_i,lneighbour);
+  }//end RCM
+
+
+
+
+
   // RCM for undirected graph.
+  private proc RCM_u( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, 
+                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, 
+                      ldepth:[?D9] int, OriVertexAry:[?D10] int )  {
+              var Ne=D1.size;
+              var Nv=D3.size;
+              var cmary: [0..Nv-1] int;
+              var indexary:[0..Nv-1] int;
+              var iv:[D1] int;
+              ldepth=-1;
+              proc smallVertex() :int {
+                    var minindex:int;
+                    var tmpmindegree:int=999999;
+                    for i in 0..Nv-1 {
+                       if (lneighbour[i]+lneighbourR[i]<tmpmindegree) {
+                          tmpmindegree=lneighbour[i]+lneighbourR[i];
+                          minindex=i;
+                       }
+                    }
+                    return minindex;
+              }
+
+              var currentindex=0:int;
+              var x=smallVertex();
+              cmary[0]=x;
+              ldepth[x]=0;
+
+              var SetCurF= new set(int,parSafe = true);//use set to keep the current frontier
+              var SetNextF=new set(int,parSafe = true);//use set to keep the next fromtier
+              SetCurF.add(x);
+              var numCurF=1:int;
+              var GivenRatio=0.25:real;
+              var topdown=0:int;
+              var bottomup=0:int;
+              var LF=1:int;
+              var cur_level=0:int;
+          
+         while (numCurF>0) {
+                    coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                       on loc {
+                           ref srcf=lsrc;
+                           ref df=ldst;
+                           ref nf=lneighbour;
+                           ref sf=lstart_i;
+
+                           ref srcfR=lsrcR;
+                           ref dfR=ldstR;
+                           ref nfR=lneighbourR;
+                           ref sfR=lstart_iR;
+
+                           var edgeBegin=lsrc.localSubdomain().lowBound;
+                           var edgeEnd=lsrc.localSubdomain().highBound;
+                           var vertexBegin=lsrc[edgeBegin];
+                           var vertexEnd=lsrc[edgeEnd];
+                           var vertexBeginR=lsrcR[edgeBegin];
+                           var vertexEndR=lsrcR[edgeEnd];
+
+                           var switchratio=(numCurF:real)/nf.size:real;
+                           if (switchratio<GivenRatio) {//top down
+                               topdown+=1;
+                               forall i in SetCurF with (ref SetNextF) {
+                                  if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                      var    numNF=nf[i];
+                                      var    edgeId=sf[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=df[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF){
+                                             if (ldepth[j]==-1) {
+                                                   ldepth[j]=cur_level+1;
+                                                   SetNextF.add(j);
+                                             }
+                                      }
+                                  } 
+                                  if ((xlocal(i,vertexBeginR,vertexEndR)) )  {
+                                      var    numNF=nfR[i];
+                                      var    edgeId=sfR[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=dfR[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF)  {
+                                             if (ldepth[j]==-1) {
+                                                   ldepth[j]=cur_level+1;
+                                                   SetNextF.add(j);
+                                             }
+                                      }
+                                  }
+                               }//end coforall
+                           }else {// bottom up
+                               bottomup+=1;
+                               forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                                  if ldepth[i]==-1 {
+                                      var    numNF=nf[i];
+                                      var    edgeId=sf[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=df[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF){
+                                             if (SetCurF.contains(j)) {
+                                                   ldepth[i]=cur_level+1;
+                                                   SetNextF.add(i);
+                                             }
+                                      }
+
+                                  }
+                               }
+                               forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
+                                  if ldepth[i]==-1 {
+                                      var    numNF=nfR[i];
+                                      var    edgeId=sfR[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=dfR[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF)  {
+                                             if (SetCurF.contains(j)) {
+                                                   ldepth[i]=cur_level+1;
+                                                   SetNextF.add(i);
+                                             }
+                                      }
+                                  }
+                               }
+                           }
+                       }//end on loc
+                    }//end coforall loc
+                    cur_level+=1;
+                    numCurF=SetNextF.size;
+
+                    if (numCurF>0) {
+                        var sortary:[0..numCurF-1] int;
+                        var numary:[0..numCurF-1] int;
+                        var tmpa=0:int;
+                        var tmpary=SetNextF.toArray();
+                        forall i in 0..numCurF-1 {
+                             numary[i]=lneighbour[tmpary[i]]+lneighbourR[tmpary[i]];
+                        }
+                        var tmpiv:[0..numCurF-1] int;
+                        try {
+                           tmpiv =  argsortDefault(numary);
+                        } catch {
+                             try! smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"error");
+                        }    
+                        sortary=tmpary[tmpiv];
+                        cmary[currentindex+1..currentindex+numCurF]=sortary;
+                        currentindex=currentindex+numCurF;
+                    }
+
+
+                    SetCurF=SetNextF;
+                    SetNextF.clear();
+              }//end while  
+              if (currentindex+1<Nv) {
+                 forall i in 0..Nv-1 with(+reduce currentindex) {
+                 //unvisited vertices are put to the end of cmary
+                     if ldepth[i]==-1 {
+                       cmary[currentindex+1]=i;
+                       currentindex+=1;  
+                     }
+                 }
+              }
+              //cmary.reverse();
+              forall i in 0..(Nv-1)/2 {
+                  var tmp=cmary[i];
+                  cmary[i]=cmary[Nv-1-i];
+                  cmary[Nv-1-i]=tmp;
+              }
+
+              forall i in 0..Nv-1{
+                  indexary[cmary[i]]=i;
+              }
+
+              var tmpv=OriVertexAry[indexary];
+              OriVertexAry=tmpv;
+
+              var tmpary:[0..Ne-1] int;
+              forall i in 0..Ne-1 {
+                      tmpary[i]=indexary[lsrc[i]];
+              }
+              lsrc=tmpary;
+              forall i in 0..Ne-1 {
+                      tmpary[i]=indexary[ldst[i]];
+              }
+              ldst=tmpary;
+ 
+        
+              try  { combine_sort(lsrc, ldst);
+                  } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+              }
+              set_neighbour(lsrc,lstart_i,lneighbour);
+              coforall loc in Locales  {
+                  on loc {
+                      forall i in lsrcR.localSubdomain(){
+                            lsrcR[i]=ldst[i];
+                            ldstR[i]=lsrc[i];
+                       }
+                  }
+               }
+               try  { combine_sort(lsrcR, ldstR);
+                  } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+               }
+               set_neighbour(lsrcR,lstart_iR,lneighbourR);
+               //return true;
+  }//end RCM_u
+
+  // RCM for undirected graph. To be removed
   private proc RCM_u( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, 
                       lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, 
                       ldepth:[?D9] int, le_weight:[?D10] int, lWeightedFlag:bool )  {
@@ -563,7 +1264,284 @@ module GraphMsg {
 
 
 
+
+
+  // RCM for undirected graph. We also update the weight array here.
+  private proc RCM_u( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, 
+                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, 
+                      ldepth:[?D9] int, type WeightType, le_weight:[?D10] WeightType, OriVertexAry: [?D11] int )  {
+              var Ne=D1.size;
+              var Nv=D3.size;
+              var cmary: [0..Nv-1] int;
+              var indexary:[0..Nv-1] int;
+              var iv:[D1] int;
+              ldepth=-1;
+              proc smallVertex() :int {
+                    var minindex:int;
+                    var tmpmindegree:int=999999;
+                    for i in 0..Nv-1 {
+                       if (lneighbour[i]+lneighbourR[i]<tmpmindegree) {
+                          tmpmindegree=lneighbour[i]+lneighbourR[i];
+                          minindex=i;
+                       }
+                    }
+                    return minindex;
+              }
+
+              var currentindex=0:int;
+              var x=smallVertex();
+              cmary[0]=x;
+              ldepth[x]=0;
+
+              var SetCurF= new set(int,parSafe = true);//use set to keep the current frontier
+              var SetNextF=new set(int,parSafe = true);//use set to keep the next fromtier
+              SetCurF.add(x);
+              var numCurF=1:int;
+              var GivenRatio=0.25:real;
+              var topdown=0:int;
+              var bottomup=0:int;
+              var LF=1:int;
+              var cur_level=0:int;
+          
+         while (numCurF>0) {
+                    coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                       on loc {
+                           ref srcf=lsrc;
+                           ref df=ldst;
+                           ref nf=lneighbour;
+                           ref sf=lstart_i;
+
+                           ref srcfR=lsrcR;
+                           ref dfR=ldstR;
+                           ref nfR=lneighbourR;
+                           ref sfR=lstart_iR;
+
+                           var edgeBegin=lsrc.localSubdomain().lowBound;
+                           var edgeEnd=lsrc.localSubdomain().highBound;
+                           var vertexBegin=lsrc[edgeBegin];
+                           var vertexEnd=lsrc[edgeEnd];
+                           var vertexBeginR=lsrcR[edgeBegin];
+                           var vertexEndR=lsrcR[edgeEnd];
+
+                           var switchratio=(numCurF:real)/nf.size:real;
+                           if (switchratio<GivenRatio) {//top down
+                               topdown+=1;
+                               forall i in SetCurF with (ref SetNextF) {
+                                  if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                      var    numNF=nf[i];
+                                      var    edgeId=sf[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=df[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF){
+                                             if (ldepth[j]==-1) {
+                                                   ldepth[j]=cur_level+1;
+                                                   SetNextF.add(j);
+                                             }
+                                      }
+                                  } 
+                                  if ((xlocal(i,vertexBeginR,vertexEndR)) )  {
+                                      var    numNF=nfR[i];
+                                      var    edgeId=sfR[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=dfR[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF)  {
+                                             if (ldepth[j]==-1) {
+                                                   ldepth[j]=cur_level+1;
+                                                   SetNextF.add(j);
+                                             }
+                                      }
+                                  }
+                               }//end coforall
+                           }else {// bottom up
+                               bottomup+=1;
+                               forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                                  if ldepth[i]==-1 {
+                                      var    numNF=nf[i];
+                                      var    edgeId=sf[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=df[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF){
+                                             if (SetCurF.contains(j)) {
+                                                   ldepth[i]=cur_level+1;
+                                                   SetNextF.add(i);
+                                             }
+                                      }
+
+                                  }
+                               }
+                               forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
+                                  if ldepth[i]==-1 {
+                                      var    numNF=nfR[i];
+                                      var    edgeId=sfR[i];
+                                      var nextStart=max(edgeId,edgeBegin);
+                                      var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                      ref NF=dfR[nextStart..nextEnd];
+                                      forall j in NF with (ref SetNextF)  {
+                                             if (SetCurF.contains(j)) {
+                                                   ldepth[i]=cur_level+1;
+                                                   SetNextF.add(i);
+                                             }
+                                      }
+                                  }
+                               }
+                           }
+                       }//end on loc
+                    }//end coforall loc
+                    cur_level+=1;
+                    numCurF=SetNextF.size;
+
+                    if (numCurF>0) {
+                        var sortary:[0..numCurF-1] int;
+                        var numary:[0..numCurF-1] int;
+                        var tmpa=0:int;
+                        var tmpary=SetNextF.toArray();
+                        forall i in 0..numCurF-1 {
+                             numary[i]=lneighbour[tmpary[i]]+lneighbourR[tmpary[i]];
+                        }
+                        var tmpiv:[0..numCurF-1] int;
+                        try {
+                           tmpiv =  argsortDefault(numary);
+                        } catch {
+                             try! smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"error");
+                        }    
+                        sortary=tmpary[tmpiv];
+                        cmary[currentindex+1..currentindex+numCurF]=sortary;
+                        currentindex=currentindex+numCurF;
+                    }
+
+
+                    SetCurF=SetNextF;
+                    SetNextF.clear();
+              }//end while  
+              if (currentindex+1<Nv) {
+                 forall i in 0..Nv-1 with(+reduce currentindex) {
+                 //unvisited vertices are put to the end of cmary
+                     if ldepth[i]==-1 {
+                       cmary[currentindex+1]=i;
+                       currentindex+=1;  
+                     }
+                 }
+              }
+              //cmary.reverse();
+              forall i in 0..(Nv-1)/2 {
+                  var tmp=cmary[i];
+                  cmary[i]=cmary[Nv-1-i];
+                  cmary[Nv-1-i]=tmp;
+              }
+
+              forall i in 0..Nv-1{
+                  indexary[cmary[i]]=i;
+              }
+              var tmpv=OriVertexAry[indexary];
+              OriVertexAry=tmpv;
+    
+              var tmpary:[0..Ne-1] int;
+              forall i in 0..Ne-1 {
+                      tmpary[i]=indexary[lsrc[i]];
+              }
+              lsrc=tmpary;
+              forall i in 0..Ne-1 {
+                      tmpary[i]=indexary[ldst[i]];
+              }
+              ldst=tmpary;
+ 
+        
+              try  { combine_sort(lsrc, ldst,WeightType,le_weight);
+                  } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+              }
+              set_neighbour(lsrc,lstart_i,lneighbour);
+              coforall loc in Locales  {
+                  on loc {
+                      forall i in lsrcR.localSubdomain(){
+                            lsrcR[i]=ldst[i];
+                            ldstR[i]=lsrc[i];
+                       }
+                  }
+               }
+               try  { combine_sort(lsrcR, ldstR);
+                  } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+               }
+               set_neighbour(lsrcR,lstart_iR,lneighbourR);
+               //return true;
+  }//end RCM_u
+
+
+
   //sorting the vertices based on their degrees.
+  private proc part_degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,lneighbourR:[?D6] int, OriVertexAry:[?D7] int) {
+             var DegreeArray, VertexMapping: [D4] int;
+             var tmpedge:[D1] int;
+             var Nv=D4.size;
+             var iv:[D1] int;
+
+             coforall loc in Locales  {
+                on loc {
+                  forall i in lneighbour.localSubdomain(){
+                        DegreeArray[i]=lneighbour[i]+lneighbourR[i];
+                  }
+                }
+             }
+ 
+             var tmpiv:[D4] int;
+             try {
+                 tmpiv =  argsortDefault(DegreeArray);
+                 //get the index based on each vertex's degree
+             } catch {
+                  try! smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"error");
+             }
+             forall i in 0..Nv-1 {
+                 VertexMapping[tmpiv[i]]=i;
+                 // we assume the vertex ID is in 0..Nv-1
+                 //given old vertex ID, map it to the new vertex ID
+             }
+
+             var tmpOriVertexAry=OriVertexAry[tmpiv];
+             OriVertexAry=tmpOriVertexAry;
+
+             coforall loc in Locales  {
+                on loc {
+                  forall i in lsrc.localSubdomain(){
+                        tmpedge[i]=VertexMapping[lsrc[i]];
+                  }
+                }
+             }
+             lsrc=tmpedge;
+             coforall loc in Locales  {
+                on loc {
+                  forall i in ldst.localSubdomain(){
+                        tmpedge[i]=VertexMapping[ldst[i]];
+                  }
+                }
+             }
+             ldst=tmpedge;
+             coforall loc in Locales  {
+                on loc {
+                  forall i in lsrc.localSubdomain(){
+                        if lsrc[i]>ldst[i] {
+                           lsrc[i]<=>ldst[i];
+                        }
+                   }
+                }
+             }
+
+             try  { combine_sort(lsrc, ldst);
+             } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+             }
+             set_neighbour(lsrc,lstart_i,lneighbour);
+  }
+
+
+
+  //sorting the vertices based on their degrees. This version will be removed.
   private proc part_degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,le_weight:[?D5] int,lneighbourR:[?D6] int,lWeightedFlag:bool) {
              var DegreeArray, VertexMapping: [D4] int;
              var tmpedge:[D1] int;
@@ -625,7 +1603,97 @@ module GraphMsg {
              set_neighbour(lsrc,lstart_i,lneighbour);
   }
 
+  //sorting the vertices based on their degrees. This version will track the vertex mapping and support edge weight
+  private proc part_degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,type EweightType, le_weight:[?D5] EweightType,lneighbourR:[?D6] int,OriVertexAry:[?D7] int) {
+             var DegreeArray, VertexMapping: [D4] int;
+             var tmpedge:[D1] int;
+             var tmpweight:[D1] EweightType;
+             var Nv=D4.size;
+             var iv:[D1] int;
+
+             coforall loc in Locales  {
+                on loc {
+                  forall i in lneighbour.localSubdomain(){
+                        DegreeArray[i]=lneighbour[i]+lneighbourR[i];
+                  }
+                }
+             }
+ 
+             var tmpiv:[D4] int;
+             try {
+                 tmpiv =  argsortDefault(DegreeArray);
+                 //get the index based on each vertex's degree
+             } catch {
+                  try! smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"error");
+             }
+             forall i in 0..Nv-1 {
+                 VertexMapping[tmpiv[i]]=i;
+                 // we assume the vertex ID is in 0..Nv-1
+                 //given old vertex ID, map it to the new vertex ID
+             }
+             var tmpOriVertexAry=OriVertexAry[tmpiv];
+             OriVertexAry=tmpOriVertexAry;
+
+             coforall loc in Locales  {
+                on loc {
+                  forall i in lsrc.localSubdomain(){
+                        tmpedge[i]=VertexMapping[lsrc[i]];
+                  }
+                }
+             }
+             lsrc=tmpedge;
+             coforall loc in Locales  {
+                on loc {
+                  forall i in ldst.localSubdomain(){
+                        tmpedge[i]=VertexMapping[ldst[i]];
+                  }
+                }
+             }
+             ldst=tmpedge;
+             coforall loc in Locales  {
+                on loc {
+                  forall i in lsrc.localSubdomain(){
+                        if lsrc[i]>ldst[i] {
+                           lsrc[i]<=>ldst[i];
+                        }
+                   }
+                }
+             }
+
+             try  { combine_sort(lsrc, ldst,WeightType, le_weight);
+             } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+             }
+             set_neighbour(lsrc,lstart_i,lneighbour);
+  }
+
+
+
   //degree sort for an undirected graph.
+  private  proc degree_sort_u(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,
+                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, OriVertexAry: [?D9] int) {
+
+             part_degree_sort(lsrc, ldst, lstart_i, lneighbour,lneighbourR,OriVertexAry);
+             coforall loc in Locales  {
+               on loc {
+                  forall i in lsrcR.localSubdomain(){
+                        lsrcR[i]=ldst[i];
+                        ldstR[i]=lsrc[i];
+                   }
+               }
+             }
+             try  { combine_sort(lsrcR, ldstR);
+             } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+             }
+             set_neighbour(lsrcR,lstart_iR,lneighbourR);
+
+  }
+
+
+  //degree sort for an undirected graph. This version will be removed.
   private  proc degree_sort_u(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,
                       lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int,le_weight:[?D9] int,lWeightedFlag:bool) {
 
@@ -647,6 +1715,29 @@ module GraphMsg {
 
   }
 
+
+
+  //degree sort for an undirected graph. In this version, we will sort weight too.
+  private  proc degree_sort_u(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,
+                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int,type WeightType, le_weight:[?D9] WeightType,OriVertexAry) {
+
+             part_degree_sort(lsrc, ldst, lstart_i, lneighbour,WeightType, le_weight,lneighbourR,OriVertexAry);
+             coforall loc in Locales  {
+               on loc {
+                  forall i in lsrcR.localSubdomain(){
+                        lsrcR[i]=ldst[i];
+                        ldstR[i]=lsrc[i];
+                   }
+               }
+             }
+             try  { combine_sort(lsrcR, ldstR);
+             } catch {
+                  try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      "combine sort error");
+             }
+             set_neighbour(lsrcR,lstart_iR,lneighbourR);
+
+  }
 
 
 
@@ -1450,6 +2541,8 @@ module GraphMsg {
       var DegreeSortS=msgArgs.getValueOf("DegreeSortFlag");
       var RCMS=msgArgs.getValueOf("RCMFlag");
       var RwriteS=msgArgs.getValueOf("WriteFlag");
+      var EweightTypeS=msgArgs.getValueOf("EweightType");
+      var VweightTypeS=msgArgs.getValueOf("VweightType");
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
 
 
@@ -1458,11 +2551,14 @@ module GraphMsg {
       var NumCol=ColS:int;
       var DirectedFlag:bool=false;
       var WeightedFlag:bool=false;
+      type EweightType;
+      type VweightType;
       var timer: Timer;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+
       var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -1476,6 +2572,33 @@ module GraphMsg {
       if NumCol>2 {
            WeightedFlag=true;
       }
+      EweightType=int;
+      VweightType=int;
+      /*
+      select EweightTypeS {
+           when "int"  {
+                EweightType=int;
+           } 
+           when "real"  {
+                EweightType=real;
+           } 
+           when "string"  {
+                EweightType=string;
+           } 
+      }
+      
+      select VweightTypeS {
+           when "int"  {
+                VweightType=int;
+           } 
+           when "real"  {
+                VweightType=real;
+           } 
+           when "string"  {
+                VweightType=string;
+           } 
+      }
+      */
       if (RemapVertexS:int)==1 {
           RemapVertexFlag=true;
       }
@@ -1491,27 +2614,16 @@ module GraphMsg {
       var src=makeDistArray(Ne,int);
       var edgeD=src.domain;
 
-      /*
-      var dst=makeDistArray(Ne,int);
-      var e_weight=makeDistArray(Ne,int);
-      var srcR=makeDistArray(Ne,int);
-      var dstR=makeDistArray(Ne,int);
-      var iv=makeDistArray(Ne,int);
-      */
 
       var neighbour=makeDistArray(Nv,int);
       var vertexD=neighbour.domain;
 
-      /*
-      var start_i=makeDistArray(Nv,int);
-      var neighbourR=makeDistArray(Nv,int);
-      var start_iR=makeDistArray(Nv,int);
-      var depth=makeDistArray(Nv,int);
-      var v_weight=makeDistArray(Nv,int);
-      */
 
-      var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
-      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+      var dst,srcR,dstR, iv: [edgeD] int ;
+      var e_weight: [edgeD] EweightType ;
+      var start_i,neighbourR, start_iR,depth: [vertexD] int;
+      var OriVertexAry : [vertexD] int;
+      var v_weight: [vertexD] VweightType;
 
       var linenum:int=0;
       var repMsg: string;
@@ -1548,9 +2660,9 @@ module GraphMsg {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
                            (a,b,c)=  line.splitMsgToTuple(3);
-                            //if ewlocal.contains(curline){
-                            //    e_weight[curline]=c:int;
-                            //}
+                           if ewlocal.contains(curline){
+                                e_weight[curline]=c:WeightType;
+                           }
                       }
                       if a==b {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
@@ -1587,8 +2699,9 @@ module GraphMsg {
 
       readLinebyLine(); 
       if (RemapVertexFlag) {
-          vertex_remap(src,dst,Nv);
-      }
+          vertex_remap(src,dst,Nv,OriVertexAry);
+      } 
+
       timer.stop();
       
 
@@ -1598,20 +2711,33 @@ module GraphMsg {
 
       timer.clear();
       timer.start();
-      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
+      try  { 
+              if (WeightedFlag) {
+                 combine_sort(src, dst,int, e_weight);
+              } else {
+                 combine_sort(src, dst);
+              }
       } catch {
              try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
       }
 
       set_neighbour(src,start_i,neighbour);
-
+      if (!RemapVertexFlag) {
+          forall i in 0..Nv-1 {
+              OriVertexAry[i]=src[start_i[i]];
+          }
+      }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
       graph.withSRC(new shared SymEntry(src):GenSymEntry)
            .withDST(new shared SymEntry(dst):GenSymEntry)
            .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry)
+           .withVTrack(new shared SymEntry(OriVertexAry):GenSymEntry);
+      if (WeightedFlag) {
+          graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry);
+      }
 
       if (!DirectedFlag) { //undirected graph
           coforall loc in Locales  {
@@ -1622,7 +2748,7 @@ module GraphMsg {
                    }
               }
           }
-          try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
+          try  { combine_sort(srcR, dstR);
           } catch {
                  try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -1630,10 +2756,18 @@ module GraphMsg {
           set_neighbour(srcR,start_iR,neighbourR);
 
           if (DegreeSortFlag) {
-             degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+               if (WeightedFlag) {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,int, e_weight,OriVertexAry);
+               } else {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,OriVertexAry);
+               }
           }
           if (RCMFlag) {
-             RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,e_weight,WeightedFlag);
+               if (WeightedFlag) {
+                   RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,int,e_weight,OriVertexAry);
+               } else {
+                   RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,OriVertexAry);
+               } 
           }   
 
 
@@ -1788,12 +2922,31 @@ module GraphMsg {
 
       }//end of undirected
       else {
+
+
+
         if (DegreeSortFlag) {
-             part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
+               var tmpn=neighbour;
+               tmpn=0;
+               if (WeightedFlag) {
+                    part_degree_sort(src, dst, start_i, neighbour, int, e_weight,tmpn,OriVertexAry);
+               } else {
+                    part_degree_sort(src, dst, start_i, neighbour,tmpn,OriVertexAry);
+               }
         }
         if (RCMFlag) {
-             RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
-        }
+               if (WeightedFlag) {
+                   RCM(src, dst, start_i, neighbour, depth,int, e_weight,OriVertexAry);
+               } else {
+                   RCM(src, dst, start_i, neighbour, depth, OriVertexAry);
+               }
+       } 
+
+
+
+
+
+
 
         if (AlignedArray==1) {
 
@@ -3135,7 +4288,7 @@ module GraphMsg {
 
 
 
-  // visit a graph using BFS method
+  // queue  a graph 
   proc segGraphQueMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
       //var (graphEntryName, queID)
@@ -3246,6 +4399,30 @@ module GraphMsg {
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
+           when "VP1" {
+              var retE=toSymEntry(ag.getVP1(), int).a;
+              var attrEntry = new shared SymEntry(retE);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "VP2" {
+              var retE=toSymEntry(ag.getVP2(), int).a;
+              var attrEntry = new shared SymEntry(retE);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "EP1" {
+              var retE=toSymEntry(ag.getEP1(), int).a;
+              var attrEntry = new shared SymEntry(retE);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
+           when "EP2" {
+              var retE=toSymEntry(ag.getEP2(), int).a;
+              var attrEntry = new shared SymEntry(retE);
+              st.addEntry(attrName, attrEntry);
+              attrMsg =  'created ' + st.attrib(attrName);
+           }
       }
 
       timer.stop();
@@ -3255,6 +4432,52 @@ module GraphMsg {
       return new MsgTuple(attrMsg, MsgType.NORMAL);
     }
 
+
+  // add property to  a graph 
+  proc segGraphAddProperty(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+      var repMsg: string;
+
+      var graphEntryName=msgArgs.getValueOf("GraphName");
+      var PropertyID=msgArgs.getValueOf("Property");
+
+
+
+      var timer:Timer;
+
+      timer.start();
+      var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
+      var ag = gEntry.graph;
+
+      var retMsg:string="success";
+      /*
+       
+      select PropertyID {
+           when "VP1" {
+              ag.withVP1(new shared SymEntry(VP1):GenSymEntry);
+           }
+           when "VP2" {
+              ag.withVP2(new shared SymEntry(VP2):GenSymEntry);
+           }
+           when "EP2" {
+              ag.withEP2(new shared SymEntry(EP2):GenSymEntry);
+           }
+           when "EP1" {
+              ag.withEP1(new shared SymEntry(EP1):GenSymEntry);
+           }
+      }
+      */
+      timer.stop();
+      outMsg= "graph property add  takes "+timer.elapsed():string;
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),retMsg);
+      return new MsgTuple(retMsg, MsgType.NORMAL);
+    }
+
+
+
+
+
+
     use CommandMap;
     registerFunction("segmentedGraphFile",segGraphFileMsg,getModuleName());
     registerFunction("segmentedGraphArray",segAryToGraphMsg,getModuleName());
@@ -3263,6 +4486,7 @@ module GraphMsg {
     registerFunction("segmentedRMAT", segrmatgenMsg,getModuleName());
     registerFunction("segmentedGraphQue", segGraphQueMsg,getModuleName());
     registerFunction("segmentedGraphToNDE", segGraphNDEMsg,getModuleName());
+    registerFunction("segmentedGraphProperty", segGraphAddProperty,getModuleName());
 
  }
 
