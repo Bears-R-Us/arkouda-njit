@@ -1775,6 +1775,41 @@ module GraphMsg {
       var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
+
+      proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+                       //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
+                       //    return -1;
+                       //}
+                       if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
+                            return -1;
+                       }
+                       if (ary[l]==key){
+                            return l;
+                       }
+                       if (ary[h]==key){
+                            return h;
+                       }
+                       var m= (l+h)/2:int;
+                       if ((m==l) ) {
+                            return -1;
+                       }
+                       if (ary[m]==key ){
+                            return m;
+                       } else {
+                            if (ary[m]<key) {
+                              return binSearchE(ary,m+1,h,key);
+                            }
+                            else {
+                                    return binSearchE(ary,l,m-1,key);
+                            }
+                       }
+      }// end of proc
+
+
       timer.start();
 
       var NewNe,NewNv:int;
@@ -2100,9 +2135,9 @@ module GraphMsg {
               set_neighbour(mysrcR,mystart_iR,myneighbourR);
               if (DegreeSortFlag) {
                   if (WeightedFlag) {
-                      degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,int, mye_weight);
+                      degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,int, mye_weight,OriVertexAry);
                   } else {
-                      degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR);
+                      degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,OriVertexAry);
                   }
               }
 
@@ -2139,9 +2174,9 @@ module GraphMsg {
                   var tmpn=myneighbour;
                   tmpn=0;
                   if (WeightedFlag) {
-                      part_degree_sort(mysrc, mydst, mystart_i, myneighbour,int, mye_weight,tmpn);
+                      part_degree_sort(mysrc, mydst, mystart_i, myneighbour,int, mye_weight,tmpn,OriVertexAry);
                   } else{
-                      part_degree_sort(mysrc, mydst, mystart_i, myneighbour,tmpn);
+                      part_degree_sort(mysrc, mydst, mystart_i, myneighbour,tmpn,OriVertexAry);
                   }
 
               }  
@@ -2242,36 +2277,45 @@ module GraphMsg {
 
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphNDEMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-      //var (NeS,NvS,ColS,DirectedS,FileName,SkipLineS, RemapVertexS,DegreeSortS,RCMS,RwriteS) = payload.splitMsgToTuple(10);
 
 
-      //var msgArgs = parseMessageArgs(payload, argSize);
+
+
+
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
       var DirectedS=msgArgs.getValueOf("Directed");
       var FileName=msgArgs.getValueOf("FileName");
-      var SkipLineS=msgArgs.getValueOf("SkipLines");
       var RemapVertexS=msgArgs.getValueOf("RemapFlag");
       var DegreeSortS=msgArgs.getValueOf("DegreeSortFlag");
       var RCMS=msgArgs.getValueOf("RCMFlag");
       var RwriteS=msgArgs.getValueOf("WriteFlag");
+      //var EweightTypeS=msgArgs.getValueOf("EweightType");
+      //var VweightTypeS=msgArgs.getValueOf("VweightType");
+      var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
+
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
-     
       var NumCol=ColS:int;
       var DirectedFlag:bool=false;
       var WeightedFlag:bool=false;
-
-      var SkipLineNum:int=(SkipLineS:int);
+      type EweightType;
+      type VweightType;
       var timer: Timer;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+
+      var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
       smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
 
       proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
                        //if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
@@ -2304,7 +2348,7 @@ module GraphMsg {
 
 
       timer.start();
-    
+
       var NewNe,NewNv:int;
 
 
@@ -2314,6 +2358,33 @@ module GraphMsg {
       if NumCol>2 {
            WeightedFlag=true;
       }
+      EweightType=int;
+      VweightType=int;
+      /*
+      select EweightTypeS {
+           when "int"  {
+                EweightType=int;
+           } 
+           when "real"  {
+                EweightType=real;
+           } 
+           when "string"  {
+                EweightType=string;
+           } 
+      }
+      
+      select VweightTypeS {
+           when "int"  {
+                VweightType=int;
+           } 
+           when "real"  {
+                VweightType=real;
+           } 
+           when "string"  {
+                VweightType=string;
+           } 
+      }
+      */
       if (RemapVertexS:int)==1 {
           RemapVertexFlag=true;
       }
@@ -2334,8 +2405,11 @@ module GraphMsg {
       var vertexD=neighbour.domain;
 
 
-      var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
-      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+      var dst,srcR,dstR, iv: [edgeD] int ;
+      var e_weight: [edgeD] EweightType ;
+      var start_i,neighbourR, start_iR,depth: [vertexD] int;
+      var OriVertexAry : [vertexD] int;
+      var v_weight: [vertexD] VweightType;
 
       var linenum:int=0;
       var repMsg: string;
@@ -2361,31 +2435,35 @@ module GraphMsg {
                   var curline=0:int;
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
-                  var mylinenum=SkipLineNum;
 
                   while r.readLine(line) {
-                      if line[0]=="%" || line[0]=="#" {
-                          continue;
-                      }
-                      if mylinenum>0 {
-                          mylinenum-=1;
+                      if line[0]=="%" {
+                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                                "edge  error");
                           continue;
                       }
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
                            (a,b,c)=  line.splitMsgToTuple(3);
-                            //if ewlocal.contains(curline){
-                            //    e_weight[curline]=c:int;
-                            //}
+                           if ewlocal.contains(curline){
+                                e_weight[curline]=c:WeightType;
+                           }
                       }
                       if a==b {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "self cycle "+ a +"->"+b);
                       }
-                      if srclocal.contains(curline) {
+                      if (RemapVertexFlag) {
+                          if srclocal.contains(curline) {
                                src[curline]=(a:int);
                                dst[curline]=(b:int);
+                          }
+                      } else {
+                          if srclocal.contains(curline) {
+                              src[curline]=(a:int)%Nv;
+                              dst[curline]=(b:int)%Nv;
+                          }
                       }
                       curline+=1;
                       if curline>srclocal.highBound {
@@ -2402,23 +2480,40 @@ module GraphMsg {
            }//end coforall
       }//end readLinebyLine
       
-      // readLinebyLine sets ups src, dst, start_i, neightbor.  e_weights will also be set if it is an edge weighted graph
-      // currently we ignore the weight.
 
       readLinebyLine(); 
-      NewNv=vertex_remap(src,dst,Nv);
+      if (RemapVertexFlag) {
+          NewNv=vertex_remap(src,dst,Nv,OriVertexAry);
+      } 
+
+      timer.stop();
       
-      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
+
+      outMsg="Reading File takes " + timer.elapsed():string;
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+      timer.clear();
+      timer.start();
+      try  { 
+              if (WeightedFlag) {
+                 combine_sort(src, dst,int, e_weight);
+              } else {
+                 combine_sort(src, dst);
+              }
       } catch {
              try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
       }
 
       set_neighbour(src,start_i,neighbour);
+      if (!RemapVertexFlag) {
+          forall i in 0..Nv-1 {
+              OriVertexAry[i]=src[start_i[i]];
+          }
+      }
 
       if (!DirectedFlag) { //undirected graph
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
-                      "Handle undirected graph");
           coforall loc in Locales  {
               on loc {
                   forall i in srcR.localSubdomain(){
@@ -2427,7 +2522,7 @@ module GraphMsg {
                    }
               }
           }
-          try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
+          try  { combine_sort(srcR, dstR);
           } catch {
                  try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -2435,21 +2530,56 @@ module GraphMsg {
           set_neighbour(srcR,start_iR,neighbourR);
 
           if (DegreeSortFlag) {
-                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+               if (WeightedFlag) {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,int, e_weight,OriVertexAry);
+               } else {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,OriVertexAry);
+               }
           }
+          if (RCMFlag) {
+               if (WeightedFlag) {
+                   RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,int,e_weight,OriVertexAry);
+               } else {
+                   RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,OriVertexAry);
+               } 
+          }   
+
 
 
 
       }//end of undirected
       else {
-          //part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
-      }
+
+        if (DegreeSortFlag) {
+               var tmpn=neighbour;
+               tmpn=0;
+               if (WeightedFlag) {
+                    part_degree_sort(src, dst, start_i, neighbour, int, e_weight,tmpn,OriVertexAry);
+               } else {
+                    part_degree_sort(src, dst, start_i, neighbour,tmpn,OriVertexAry);
+               }
+        }
+        if (RCMFlag) {
+               if (WeightedFlag) {
+                   RCM(src, dst, start_i, neighbour, depth,int, e_weight,OriVertexAry);
+               } else {
+                   RCM(src, dst, start_i, neighbour, depth, OriVertexAry);
+               }
+        } 
+      } 
+
+
+
+
+
+
 
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "Handle self loop and duplicated edges");
       var cur=0;
       var tmpsrc=src;
       var tmpdst=dst;
+      var tmpew=e_weight;
       for i in 0..Ne-1 {
           if src[i]==dst[i] {
               continue;
@@ -2507,8 +2637,15 @@ module GraphMsg {
           forall i in 0..NewNe-1 {
              mysrc[i]=tmpsrc[i];
              mydst[i]=tmpdst[i];
+             mye_weight[i]=tmpew[i];
           }
-          try  { combine_sort(mysrc, mydst,mye_weight,WeightedFlag, false);
+          try  { 
+                  if (WeightedFlag) {
+                     combine_sort(mysrc, mydst,int, mye_weight);
+                  } else {
+                     combine_sort(mysrc, mydst);
+                  }
+
           } catch {
                  try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
@@ -2526,24 +2663,21 @@ module GraphMsg {
                        }
                   }
               }
-              try  { combine_sort(mysrcR, mydstR,mye_weight,WeightedFlag, false);
+              try  { 
+                     combine_sort(mysrcR, mydstR);
               } catch {
                      try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                           "combine sort error");
               }
               set_neighbour(mysrcR,mystart_iR,myneighbourR);
               if (DegreeSortFlag) {
-                    degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,mye_weight,WeightedFlag);
+                  if (WeightedFlag) {
+                      degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,int, mye_weight,OriVertexAry);
+                  } else {
+                      degree_sort_u(mysrc, mydst, mystart_i, myneighbour, mysrcR, mydstR, mystart_iR, myneighbourR,OriVertexAry);
+                  }
               }
-
-          }//end of undirected
-          else {
-              if (DegreeSortFlag) {
-                 part_degree_sort(mysrc, mydst, mystart_i, myneighbour,mye_weight,myneighbour,WeightedFlag);
-
-              }  
-          }  
-          if (WriteFlag) {
+              if (WriteFlag) {
                   var wf = open(FileName+".nde", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   mw.writeln("%-15i".format(NewNv));
@@ -2555,9 +2689,40 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-          }
+              }
+
+
+
+          }//end of undirected
+          else {
+              if (DegreeSortFlag) {
+                  var tmpn=myneighbour;
+                  tmpn=0;
+                  if (WeightedFlag) {
+                      part_degree_sort(mysrc, mydst, mystart_i, myneighbour,int, mye_weight,tmpn,OriVertexAry);
+                  } else{
+                      part_degree_sort(mysrc, mydst, mystart_i, myneighbour,tmpn,OriVertexAry);
+                  }
+
+              }  
+              if (WriteFlag) {
+                  var wf = open(FileName+".nde", iomode.cw);
+                  var mw = wf.writer(kind=ionative);
+                  mw.writeln("%-15i".format(NewNv));
+                  for i in 0..NewNv-1 {
+                      mw.writeln("%-15i    %-15i".format(i,myneighbour[i]));
+                  }
+                  for i in 0..NewNe-1 {
+                      mw.writeln("%-15i    %-15i".format(mysrc[i],mydst[i]));
+                  }
+                  mw.close();
+                  wf.close();
+              }
+
+
+          }  
       } else {
-    
+
           if (WriteFlag) {
                   var wf = open(FileName+".nde", iomode.cw);
                   var mw = wf.writer(kind=ionative);
@@ -2571,7 +2736,11 @@ module GraphMsg {
                   mw.close();
                   wf.close();
           }
+
+    
       }
+
+
       timer.stop();
       outMsg="Transfermation  File takes " + timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -3655,10 +3824,8 @@ module GraphMsg {
 
   // directly read a graph from given file and build the SegGraph class in memory
   proc segGraphFileMtxMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-      //var (NeS,NvS,ColS,DirectedS, FileName,RemapVertexS,DegreeSortS,RCMS,RwriteS,AlignedArrayS) = payload.splitMsgToTuple(10);
 
 
-      //var msgArgs  = parseMessageArgs(payload, argSize);
       var NeS=msgArgs.getValueOf("NumOfEdges");
       var NvS=msgArgs.getValueOf("NumOfVertices");
       var ColS=msgArgs.getValueOf("NumOfColumns");
@@ -3668,29 +3835,30 @@ module GraphMsg {
       var DegreeSortS=msgArgs.getValueOf("DegreeSortFlag");
       var RCMS=msgArgs.getValueOf("RCMFlag");
       var RwriteS=msgArgs.getValueOf("WriteFlag");
+      //var EweightTypeS=msgArgs.getValueOf("EweightType");
+      //var VweightTypeS=msgArgs.getValueOf("VweightType");
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
-
-
-
-
 
 
       var Ne:int =(NeS:int);
       var Nv:int =(NvS:int);
-      var NumCol:int =(ColS:int);
+      var NumCol=ColS:int;
       var DirectedFlag:bool=false;
       var WeightedFlag:bool=false;
+      type EweightType;
+      type VweightType;
       var timer: Timer;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+
       var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
-      writeln(outMsg);
-
-      smLogger.info(getModuleName(),getRoutineName(),getLineNumber(), outMsg);
+      smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.start();
+
+
 
       if (DirectedS:int)==1 {
           DirectedFlag=true;
@@ -3698,46 +3866,61 @@ module GraphMsg {
       if NumCol>2 {
            WeightedFlag=true;
       }
+      EweightType=int;
+      VweightType=int;
+      /*
+      select EweightTypeS {
+           when "int"  {
+                EweightType=int;
+           } 
+           when "real"  {
+                EweightType=real;
+           } 
+           when "string"  {
+                EweightType=string;
+           } 
+      }
+      
+      select VweightTypeS {
+           when "int"  {
+                VweightType=int;
+           } 
+           when "real"  {
+                VweightType=real;
+           } 
+           when "string"  {
+                VweightType=string;
+           } 
+      }
+      */
+      if (RemapVertexS:int)==1 {
+          RemapVertexFlag=true;
+      }
       if (DegreeSortS:int)==1 {
           DegreeSortFlag=true;
       }
       if (RCMS:int)==1 {
           RCMFlag=true;
       }
-      if (RemapVertexS:int)==1 {
-          RemapVertexFlag=true;
-      }
       if (RwriteS:int)==1 {
           WriteFlag=true;
       }
       var src=makeDistArray(Ne,int);
       var edgeD=src.domain;
-      /*
-      var dst=makeDistArray(Ne,int);
-      var e_RwRwrght=makeDistArray(Ne,int);
-      RwRwr srcR=makeDistArray(Ne,int);
-      var dstR=makeDistArray(Ne,int);
-      var iv=makeDistArray(Ne,int);
-      */
+
+
       var neighbour=makeDistArray(Nv,int);
       var vertexD=neighbour.domain;
-      /*
-      var start_i=makeDistArray(Nv,int);
-      var neighbourR=makeDistArray(Nv,int);
-      var start_iR=makeDistArray(Nv,int);
-      var depth=makeDistArray(Nv,int);
-      var v_weight=makeDistArray(Nv,int);
-      */
-      var dst,e_weight,srcR,dstR, iv: [edgeD] int ;
-      var start_i,neighbourR, start_iR,depth, v_weight: [vertexD] int;
+
+
+      var dst,srcR,dstR, iv: [edgeD] int ;
+      var e_weight: [edgeD] EweightType ;
+      var start_i,neighbourR, start_iR,depth: [vertexD] int;
+      var OriVertexAry : [vertexD] int;
+      var v_weight: [vertexD] VweightType;
 
       var linenum:int=0;
       var repMsg: string;
-
-      var VminID=makeDistArray(numLocales,int);
-      var VmaxID=makeDistArray(numLocales,int);
-      VminID=100000;
-      VmaxID=0;
 
       var tmpmindegree:int =start_min_degree;
 
@@ -3784,9 +3967,9 @@ module GraphMsg {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
                            (a,b,c)=  line.splitMsgToTuple(3);
-                            //if ewlocal.contains(curline){
-                            //    e_weight[curline]=c:int;
-                            //}
+                            if ewlocal.contains(curline){
+                                e_weight[curline]=c:EweightType;
+                            }
                       }
                       if (a==b) {
                              smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
@@ -3812,25 +3995,18 @@ module GraphMsg {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string;
                      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
-                  //forall i in start_i.localSubdomain()  {
-                  //     start_i[i]=-1;
-                  //}
-                  //forall i in start_iR.localSubdomain()  {
-                  //     start_iR[i]=-1;
-                  //}
                   r.close();
                   f.close();
                }// end on loc
            }//end coforall
       }//end readLinebyLine
-      
-      // readLinebyLine sets ups src, dst, start_i, neightbor.  e_weights will also be set if it is an edge weighted graph
-      // currently we ignore the weight.
+
 
       readLinebyLine(); 
       if (RemapVertexFlag) {
-          vertex_remap(src,dst,Nv);
-      }
+          vertex_remap(src,dst,Nv,OriVertexAry);
+      } 
+
       timer.stop();
       
 
@@ -3840,19 +4016,33 @@ module GraphMsg {
 
       timer.clear();
       timer.start();
-      try  { combine_sort(src, dst,e_weight,WeightedFlag, false);
-          } catch {
-             try!      smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+      try  { 
+              if (WeightedFlag) {
+                 combine_sort(src, dst,int, e_weight);
+              } else {
+                 combine_sort(src, dst);
+              }
+      } catch {
+             try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
       }
-      set_neighbour(src,start_i,neighbour);
 
+      set_neighbour(src,start_i,neighbour);
+      if (!RemapVertexFlag) {
+          forall i in 0..Nv-1 {
+              OriVertexAry[i]=src[start_i[i]];
+          }
+      }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
       graph.withSRC(new shared SymEntry(src):GenSymEntry)
            .withDST(new shared SymEntry(dst):GenSymEntry)
            .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry)
+           .withVTrack(new shared SymEntry(OriVertexAry):GenSymEntry);
+      if (WeightedFlag) {
+          graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry);
+      }
 
       if (!DirectedFlag) { //undirected graph
           coforall loc in Locales  {
@@ -3863,18 +4053,26 @@ module GraphMsg {
                    }
               }
           }
-          try  { combine_sort(srcR, dstR,e_weight,WeightedFlag, false);
-              } catch {
-               try!    smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+          try  { combine_sort(srcR, dstR);
+          } catch {
+                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
           }
           set_neighbour(srcR,start_iR,neighbourR);
 
           if (DegreeSortFlag) {
-             degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,e_weight,WeightedFlag);
+               if (WeightedFlag) {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,int, e_weight,OriVertexAry);
+               } else {
+                    degree_sort_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR,OriVertexAry);
+               }
           }
           if (RCMFlag) {
-             RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,e_weight,WeightedFlag);
+               if (WeightedFlag) {
+                   RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,int,e_weight,OriVertexAry);
+               } else {
+                   RCM_u(src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,OriVertexAry);
+               } 
           }   
 
 
@@ -3882,7 +4080,6 @@ module GraphMsg {
                .withDST_R(new shared SymEntry(dstR):GenSymEntry)
                .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
                .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
-
 
 
           if (AlignedArray==1) {
@@ -3940,7 +4137,6 @@ module GraphMsg {
                        DVertex[1] = {Lver..Hver};
                        DEdge[1] = {Ledg..Hedg};
 
-                       //writeln("Myid=",here.id," Low vertex=",Lver, " High vertex=",Hver," Low edge=", Ledg, " High Edge=",Hedg);
                        aligned_nei[here.id].new_dom(DVertex[1]);
                        aligned_neiR[here.id].new_dom(DVertex[1]);
 
@@ -3981,17 +4177,81 @@ module GraphMsg {
                    .withA_SRC_R(new shared DomArraySymEntry(aligned_srcR):CompositeSymEntry)
                    .withA_DST_R(new shared DomArraySymEntry(aligned_dstR):CompositeSymEntry);
 
-          }// end of if (AlignedArray==1)
+              /* the following is evaluating code
+              var v_aligned_start_i=toDomArraySymEntry(graph.getA_START_IDX()).domary;
+              var v_aligned_start_iR=toDomArraySymEntry(graph.getA_START_IDX_R()).domary;
+              var v_aligned_nei=toDomArraySymEntry(graph.getA_NEIGHBOR()).domary;
+              var v_aligned_neiR= toDomArraySymEntry(graph.getA_NEIGHBOR_R()).domary;
 
+              var v_aligned_srcR=toDomArraySymEntry(graph.getA_SRC_R()).domary;
+              var v_aligned_dstR=toDomArraySymEntry(graph.getA_DST_R()).domary;
+
+              coforall loc in Locales {
+                  on loc {
+                      writeln("myid=",here.id," the vertex domain=",v_aligned_start_i[here.id].DO);
+                      writeln("myid=",here.id," the edge domain=",v_aligned_srcR[here.id].DO);
+                      forall i in v_aligned_start_i[here.id].DO {
+                          if v_aligned_start_i[here.id].A[i]!=start_i[i] {
+                              writeln("myid=",here.id, "v_aligned_start_i[",i,"]=",v_aligned_start_i[here.id].A[i],"!=start_i[",i,"]=",start_i[i]);
+                          }
+                      }
+                      forall i in v_aligned_start_iR[here.id].DO {
+                          if v_aligned_start_iR[here.id].A[i]!=start_iR[i] {
+                              writeln("myid=",here.id, "v_aligned_start_iR[",i,"]=",v_aligned_start_iR[here.id].A[i],"!=start_iR[",i,"]=",start_iR[i]);
+                          }
+                      }
+                      forall i in v_aligned_nei[here.id].DO {
+                          if v_aligned_nei[here.id].A[i]!=neighbour[i] {
+                              writeln("myid=",here.id, "v_aligned_nei[",i,"]=",v_aligned_nei[here.id].A[i],"!=neighbour[",i,"]=",neighbour[i]);
+                          }
+                      }
+                      forall i in v_aligned_neiR[here.id].DO {
+                          if v_aligned_neiR[here.id].A[i]!=neighbourR[i] {
+                              writeln("myid=",here.id, "v_aligned_neiR[",i,"]=",v_aligned_neiR[here.id].A[i],"!=neighbourR[",i,"]=",neighbourR[i]);
+                          }
+                      }
+                      forall i in v_aligned_srcR[here.id].DO {
+                          if v_aligned_srcR[here.id].A[i]!=srcR[i] {
+                              writeln("myid=",here.id, "v_aligned_srcR[",i,"]=",v_aligned_srcR[here.id].A[i],"!=srcR[",i,"]=",srcR[i]);
+                          }
+                      }
+                      forall i in v_aligned_dstR[here.id].DO {
+                          if v_aligned_dstR[here.id].A[i]!=dstR[i] {
+                              writeln("myid=",here.id, "v_aligned_dstR[",i,"]=",v_aligned_dstR[here.id].A[i],"!=dstR[",i,"]=",dstR[i]);
+                          }
+                      }
+                  }
+              }
+              */
+          }
 
       }//end of undirected
       else {
+
+
+
         if (DegreeSortFlag) {
-             part_degree_sort(src, dst, start_i, neighbour,e_weight,neighbour,WeightedFlag);
+               var tmpn=neighbour;
+               tmpn=0;
+               if (WeightedFlag) {
+                    part_degree_sort(src, dst, start_i, neighbour, int, e_weight,tmpn,OriVertexAry);
+               } else {
+                    part_degree_sort(src, dst, start_i, neighbour,tmpn,OriVertexAry);
+               }
         }
         if (RCMFlag) {
-             RCM(src, dst, start_i, neighbour, depth,e_weight,WeightedFlag);
-        }
+               if (WeightedFlag) {
+                   RCM(src, dst, start_i, neighbour, depth,int, e_weight,OriVertexAry);
+               } else {
+                   RCM(src, dst, start_i, neighbour, depth, OriVertexAry);
+               }
+       } 
+
+
+
+
+
+
 
         if (AlignedArray==1) {
 
@@ -4028,7 +4288,6 @@ module GraphMsg {
                   }
               }
 
-
               graph.withA_START_IDX(new shared DomArraySymEntry(aligned_start_i):CompositeSymEntry)
                    .withA_NEIGHBOR(new shared DomArraySymEntry(aligned_nei):CompositeSymEntry);
 
@@ -4037,12 +4296,12 @@ module GraphMsg {
         //     graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
         //          .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
         //}
-      }
+      }//end of else
       if (WriteFlag) {
-                  var wf = open(FileName+".my.pr", iomode.cw);
+                  var wf = open(FileName+".my.gr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   for i in 0..Ne-1 {
-                      mw.writeln("%-12n    %-12n".format(src[i],dst[i]));
+                      mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
                   }
                   mw.close();
                   wf.close();
@@ -4061,7 +4320,6 @@ module GraphMsg {
            sWeighted="1";
       } else {
            sWeighted="0";
-           
       }
       var graphEntryName = st.nextName();
       var graphSymEntry = new shared GraphSymEntry(graph);
@@ -4072,6 +4330,7 @@ module GraphMsg {
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
+
   }
 
 
