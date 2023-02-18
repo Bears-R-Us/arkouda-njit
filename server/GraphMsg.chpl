@@ -4621,11 +4621,6 @@ module GraphMsg {
   // queue  a graph 
   proc segGraphQueMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
-      //var (graphEntryName, queID)
-      //    = payload.splitMsgToTuple(2);
-
-
-      //var msgArgs  = parseMessageArgs(payload, argSize);
       var graphEntryName=msgArgs.getValueOf("GraphName");
       var queID=msgArgs.getValueOf("Component");
 
@@ -4775,6 +4770,7 @@ module GraphMsg {
 
       var graphEntryName=msgArgs.getValueOf("GraphName");
       var PropertyName=msgArgs.getValueOf("Property");
+      var ArrayName=msgArgs.getValueOf("Data");
 
 
 
@@ -4787,41 +4783,25 @@ module GraphMsg {
 
       var retMsg:string="success";
        
+      var ProEntry = st.lookup(ArrayName): borrowed SymEntry(int);
+      var ProAry=toSymEntry(ProEntry,int).a;
       select PropertyName {
            when "VP1" {
-              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
-              var ProAry=toSymEntry(ProEntry,int).a;
               ag.withVP1(new shared SymEntry(ProAry):GenSymEntry);
            }
            when "VP2" {
-              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
-              var ProAry=toSymEntry(ProEntry,int).a;
               ag.withVP2(new shared SymEntry(ProAry):GenSymEntry);
            }
            when "EP1" {
-              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
-              var ProAry=toSymEntry(ProEntry,int).a;
               ag.withEP1(new shared SymEntry(ProAry):GenSymEntry);
            }
            when "EP2" {
-              var ProEntry = st.lookup(PropertyName): borrowed SymEntry(int);
-              var ProAry=toSymEntry(ProEntry,int).a;
               ag.withEP2(new shared SymEntry(ProAry):GenSymEntry);
            }
       }
       timer.stop();
 
 
-
-
-        /* Total number of vertices */
-        var n_vertices : int;
-
-        /* Total number of edges */
-        var n_edges : int;
-
-        /* The graph is directed (True) or undirected (False)*/
-        var directed : bool;
       var sNv=(ag.n_vertices):string;
       var sNe=(ag.n_edges):string;
       var sDirected:string;
