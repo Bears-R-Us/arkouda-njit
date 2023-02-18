@@ -239,10 +239,12 @@ def graph_query(graph: Graph, component: str) -> pdarray:
         attr=-1
     elif component =="e_weight":
         attr=-2
+    '''
     if int(graph.directed) > 0  :
         assert (attr<=4) 
     if attr < 0:
         assert graph.weighted > 0
+'''
     #args = "{} {}".format(graph.name,component)
     args = {"GraphName":graph.name,"Component":component}
     repMsg = generic_msg(cmd=cmd, args=args)
@@ -250,7 +252,7 @@ def graph_query(graph: Graph, component: str) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def graph_edgearray(src:str, dst:str, directed: int=0, \
+def graph_edgearray(src:pdarray, dst:pdarray, directed: int=0, \
                     RemapFlag:int=1, DegreeSortFlag:int=0, RCMFlag:int=0, \
                     WriteFlag:int=1, BuildAlignedArray:int=0) -> Graph:
     """
@@ -279,8 +281,6 @@ def graph_edgearray(src:str, dst:str, directed: int=0, \
         RuntimeError
         """
     cmd = "segmentedGraphArray"
-    #args = "{} {} {} {} {} {} {} {}".format(src, dst, directed,  \
-    #        RemapFlag, DegreeSortFlag, RCMFlag, WriteFlag,BuildAlignedArray)
     args ={"SRC":src,"DST": dst, "Directed":directed,  \
             "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag, \
             "RCMFlag":RCMFlag, "WriteFlag":WriteFlag,"AlignedFlag":BuildAlignedArray}
@@ -382,7 +382,7 @@ def graph_file_tonde(Ne: int, Nv: int, Ncol: int, directed: int, filename: str,s
             "RemapFlag":RemapFlag, "DegreeSortFlag":DegreeSortFlag,\
             "RCMFlag":RCMFlag, "WriteFlag":WriteFlag}
     repMsg = generic_msg(cmd=cmd, args=args)
-    ed eturn 
+    return 
 
 
 
@@ -816,9 +816,10 @@ def graph_jaccard_hash(graph: Graph) -> pdarray:
 
 
 @typechecked
-def graph_add_property(graph:Graph, property:str) -> Graph:
+def graph_add_property(graph:Graph, propertyname:str,array:pdarray) -> None:
         cmd="segmentedGraphProperty"
-        args = {"Property":property, "GraphName":graph.name}
+        args = { "GraphName":graph.name, "Property":propertyname, "Data":array }
         repMsg = generic_msg(cmd=cmd,args=args)
-        return Graph(*(cast(str, repMsg).split('+')))
+        #return Graph(*(cast(str, repMsg).split('+')))
+        return None
 
