@@ -4781,8 +4781,6 @@ module GraphMsg {
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
       var ag = gEntry.graph;
 
-      var retMsg:string="success";
-       
       var ProEntry = st.lookup(ArrayName): borrowed SymEntry(int);
       var ProAry=toSymEntry(ProEntry,int).a;
       select PropertyName {
@@ -4824,8 +4822,8 @@ module GraphMsg {
 
       outMsg= "graph property add  takes "+timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),retMsg);
-      return new MsgTuple(retMsg, MsgType.NORMAL);
+      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
 
