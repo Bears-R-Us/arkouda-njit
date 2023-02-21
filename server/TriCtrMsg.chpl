@@ -772,8 +772,8 @@ module TriCtrMsg {
                      var ld = nei.localSubdomain();
                      var startVer = ld.lowBound;
                      var endVer = ld.highBound;
-                     var curnum=0:int;
-                     forall i in startVer..endVer with (+ reduce curnum){
+                     forall i in startVer..endVer {
+                             var curnum=0:int;
                              var beginTmp=start_i[i];
                              var endTmp=beginTmp+nei[i]-1;
                              forall j in beginTmp..endTmp with (+ reduce curnum) {
@@ -784,7 +784,9 @@ module TriCtrMsg {
                              forall j in beginTmp..endTmp with (+ reduce curnum) {
                                    curnum+=TriNum[dstR[j]].read();
                              }
-                             TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
+                             //TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
+                             TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2.0/3.0+TriNum[i].read()):real/TotalCnt[0]:real;
+                             //TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
                              //writeln("MST Number of Triangles for vertex ", i," =",TriNum[i].read());
                              //writeln("MST Sum of number of Triangles for vertex ", i,"'s neighbour =",NeiTriNum[i].read());
                              //writeln("MST Triangle Centrality of  vertex ", i," =",TriCtr[i]);
@@ -1131,8 +1133,8 @@ module TriCtrMsg {
                      var ld = nei.localSubdomain();
                      var startVer = ld.lowBound;
                      var endVer = ld.highBound;
-                     var curnum=0:int;
-                     forall i in startVer..endVer with (+ reduce curnum){
+                     forall i in startVer..endVer {
+                             var curnum=0:int;
                              var beginTmp=start_i[i];
                              var endTmp=beginTmp+nei[i]-1;
                              forall j in beginTmp..endTmp with (+ reduce curnum) {
@@ -1143,7 +1145,9 @@ module TriCtrMsg {
                              forall j in beginTmp..endTmp with (+ reduce curnum) {
                                    curnum+=TriNum[dstR[j]].read();
                              }
-                             TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
+                             //TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
+                             //TriCtr[i]=(NeiNonTriNum[i].read()+((NeiTriNum[i].read()+TriNum[i].read()):real)*1/3):real/TotalCnt[0]:real;
+                             TriCtr[i]=(curnum-(NeiTriNum[i].read()+TriNum[i].read())*2.0/3.0+TriNum[i].read()):real/TotalCnt[0]:real;
                              //writeln("Path Merge Number of Triangles for vertex ", i," =",TriNum[i].read());
                              //writeln("Path Merge Sum of number of Triangles for vertex ", i,"'s neighbour =",NeiTriNum[i].read());
                              //writeln("Path Merge Triangle Centrality of  vertex ", i," =",TriCtr[i]);
