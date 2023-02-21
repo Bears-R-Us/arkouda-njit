@@ -201,8 +201,4 @@ if __name__ == "__main__":
         print("Error with arguments.")
         sys.exit(0)
 
-<<<<<<< HEAD
     ak.shutdown()
-=======
-    ak.shutdown()
->>>>>>> 330e367f51d99d7e592d9ed24e5ae8919b0fc189
