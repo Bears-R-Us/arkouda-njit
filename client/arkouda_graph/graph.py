@@ -474,7 +474,7 @@ def graph_file_read_mtx(Ne: int, Nv: int, Ncol: int, directed: int, filename: st
 
 
 @typechecked
-def rmat_gen(lgNv: int, Ne_per_v: int, p: float, directed: int, weighted: int) -> Graph:
+def rmat_gen(lgNv: int, Ne_per_v: int, p: float=0.4, directed: int=0, weighted: int=0,RCMFlag:int=0) -> Graph:
     """
         This function is for creating a graph using rmat graph generator
         Returns
@@ -599,7 +599,7 @@ def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
 
 
 @typechecked
-def graph_triangle (graph: Graph, vertexArray:str ) -> pdarray:
+def graph_triangle (graph: Graph, vertexArray:pdarray ) -> pdarray:
         """
         This function will return the number of triangles in a static graph if the vertexArray is [-1], 
         otherwise, it will return the number of triangles of containing the given vertex. If the input vertexArray is 
