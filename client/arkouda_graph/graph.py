@@ -503,7 +503,7 @@ def rmat_gen(lgNv: int, Ne_per_v: int, p: float=0.4, directed: int=0, weighted: 
 
 
 @typechecked
-def graph_bfs(graph: Graph, root: int, rcm_flag:int) -> pdarray:
+def graph_bfs(graph: Graph, root: int=0, rcm_flag:int=0) -> pdarray:
     """
         This function is generating the breadth-first search vertices sequences in given graph
         starting from the given root vertex
