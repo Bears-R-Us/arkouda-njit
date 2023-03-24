@@ -17,10 +17,10 @@ def time_ak_cc():
     print("number of PUs =",cfg["numPUs"])
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
-    HomeDir="/rhome/zhihui/"
+    HomeDir="/home/duzh/"
     Test1=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
             [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
-            [53381,26475,3,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
+            [53381,26475,2,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
             [88234,4039,2,0,HomeDir+"Adata/SNAP/facebook_combined.txt.pr"],\
             [93439,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.pr"],\
             [118489,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.pr"],\
