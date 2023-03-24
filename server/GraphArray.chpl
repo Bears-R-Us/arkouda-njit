@@ -15,10 +15,10 @@ module GraphArray {
 
     // These are the component Key names stored in our components map
     enum Component {
-        SRC="SRC",          // The source of every edge in the graph,array value
-        SRC_R="SRC_R",        // Reverse of SRC
-        DST="DST",          // The destination of every vertex in the graph,array value
-        DST_R="DST_R",        // Reverse of DST
+        SRC=1,          // The source of every edge in the graph,array value
+        SRC_R=2,        // Reverse of SRC
+        DST=3,          // The destination of every vertex in the graph,array value
+        DST_R=4,        // Reverse of DST
         START_IDX,    // The starting index of every vertex in src and dst
         START_IDX_R,  // Reverse of START_IDX
         NEIGHBOR,     // Numer of neighbors for a vertex  
@@ -100,13 +100,13 @@ module GraphArray {
             }
             return this; 
         }
-        proc withATR(a:shared GenSymEntry, atrname:string):SegGraph { 
+        proc withATR(a:shared GenSymEntry, atrname:int):SegGraph { 
             select atrname {
-                 when atrname=="SRC" do
+                 when 1 do
                     components.add(Component.SRC, a); 
-                 when atrname=="SRC_R" do
+                 when 2 do
                     components.add(Component.SRC_R, a); 
-                 when atrname=="DST" do
+                 when 3 do
                     components.add(Component.DST, a); 
             }
             return this; 
