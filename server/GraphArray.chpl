@@ -89,6 +89,17 @@ module GraphArray {
         proc isDirected():bool { return this.directed; }
 
         /* Use the withCOMPONENT methods to compose the graph object */
+        proc withARR(a:shared GenSymEntry, atrname:Component):SegGraph { 
+            select atrname {
+                 when Component.SRC do
+                    components.add(Component.SRC, a); 
+                 when Component.SRC_R do
+                    components.add(Component.SRC_R, a); 
+                 when Component.DST do
+                    components.add(Component.DST, a); 
+            }
+            return this; 
+        }
         proc withATR(a:shared GenSymEntry, atrname:string):SegGraph { 
             select atrname {
                  when atrname=="SRC" do
