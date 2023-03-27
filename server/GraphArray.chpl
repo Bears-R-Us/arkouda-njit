@@ -89,18 +89,12 @@ module GraphArray {
         proc isDirected():bool { return this.directed; }
 
         /* Use the withCOMPONENT methods to compose the graph object */
-        proc withARR(a:shared GenSymEntry, atrname:Component):SegGraph { 
-            select atrname {
-                 when Component.SRC do
-                    components.add(Component.SRC, a); 
-                 when Component.SRC_R do
-                    components.add(Component.SRC_R, a); 
-                 when Component.DST do
-                    components.add(Component.DST, a); 
-            }
-            return this; 
-        }
+        proc withEnumCom(a:shared GenSymEntry, atrname:Component):SegGraph { components.add(atrname, a); return this; }
+        proc hasEnumCom( atrname:Component):bool {return components.contains(atrname); } 
+        proc getEnumCom( atrname:Component){return components.getBorrowed(atrname); } 
         proc withATR(a:shared GenSymEntry, atrname:int):SegGraph { 
+                    components.add(atrname, a); 
+/*
             select atrname {
                  when 1 do
                     components.add(Component.SRC, a); 
@@ -109,6 +103,7 @@ module GraphArray {
                  when 3 do
                     components.add(Component.DST, a); 
             }
+*/
             return this; 
         }
         proc withSRC(a:shared GenSymEntry):SegGraph { components.add(Component.SRC, a); return this; }
@@ -133,6 +128,7 @@ module GraphArray {
         proc withA_NEIGHBOR(a:shared CompositeSymEntry):SegGraph { acomponents.add(Component.A_NEIGHBOR, a); return this; }
         proc withA_NEIGHBOR_R(a:shared CompositeSymEntry):SegGraph {acomponents.add(Component.A_NEIGHBOR_R, a);return this;}
 
+
         proc hasSRC():bool { return components.contains(Component.SRC); }
         proc hasSRC_R():bool { return components.contains(Component.SRC_R); }
         proc hasDST():bool { return components.contains(Component.DST); }
@@ -151,6 +147,7 @@ module GraphArray {
         proc hasA_NEIGHBOR():bool { return acomponents.contains(Component.A_NEIGHBOR); }
         proc hasA_NEIGHBOR_R():bool { return acomponents.contains(Component.A_NEIGHBOR_R); }
         
+
         proc getSRC() { return components.getBorrowed(Component.SRC); }
         proc getSRC_R() { return components.getBorrowed(Component.SRC_R); }
         proc getDST() { return components.getBorrowed(Component.DST); }
