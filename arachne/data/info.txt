@@ -1,0 +1,4 @@
+# filename              directed            weighted
+karate.mtx              0                   0
+zenios.mtx              0                   1
+line.txt                0                   0
