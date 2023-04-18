@@ -28,16 +28,20 @@ pip3 install -e /path/to/arkouda/.
 ```
 
 ## Usage
-Functions currently available can be found in `client/README.md` with a benchmark file that can be used as a sample found in `benchmarks/bfs.py`. Sample executions of benchmark file follow.
+To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne-simple-tests.py` to build a small property graph. The file is executed as follows:
+```
+python3 arachne-simple-tests.py node port
+```
+Where the host name and port number change according to your configuration.
 
-For benchmarking a single graph you can execute: 
+For more involved benchmarking, functions currently available can be found in `arkouda-njit/arachne/client/README.md` with benchmark files that can be used as a sample found in the `arkouda-njit/arachne/benchmarks` folder. For benchmarking a single graph you can execute: 
 ```
 python3 bfs.py node port -f /path/to/arkouda-njit/arachne/data/karate.mtx -t 10
 ```
 
 For benchmarking a directory of graphs you can execute: 
 ```
-python3 bfs.py node01 5554 -d /path/to/arkouda-njit/arachne/data -t 10
+python3 bfs.py node port -d /path/to/arkouda-njit/arachne/data -t 10
 ```
 
 ## Testing
