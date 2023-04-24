@@ -172,20 +172,24 @@ class Graph:
         return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
 
     def degree(self) -> pdarray:
-        """Returns the degree view for the whole graph as a pdarray object. Returns the degree view
-        for an undirected graph and the out-degree view for a directed graph. TODO: return the
-        in-degree view for a directed graph as well. 
+        """Returns the degree view for the whole graph as a tuple of pdarray objects. The format is
+        as follows:
+
+        (out_degree: pdarray, in_degree: pdarray)
+
+        where, for an undirected graph, the in_degree is composed of all 0s.
 
         Returns
         -------
-        degrees: pdarray.
+        (out_degree: pdarray, in_degree: pdarray): tuple.
             The array containing the number of degrees for each node.
         """
         cmd = "degree"
         args = {"GraphName" : self.name}
         repMsg = generic_msg(cmd=cmd, args=args)
+        returned_vals = (cast(str, repMsg).split('+'))
         
-        return create_pdarray(repMsg)
+        return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
 
     def add_edges_from(self, akarray_src: pdarray, akarray_dst: pdarray, 
                        akarray_weight: Union[None, pdarray] = None) -> None:
