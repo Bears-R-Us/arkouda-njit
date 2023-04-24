@@ -21,7 +21,7 @@ The length of the last command is dependent on the number of modules you have li
 
 Next, simply just copy and paste the outputted commands into terminal and your arkouda server should start to build with Arachne added onto it. 
 
-If you run into environment errors, you can run the commands below to ensure both Arachne and Arkouda have been pip installed into your environment. 
+If you run into environment errors, you can run the commands below to ensure both Arachne and Arkouda have been pip installed into your Python environment. This will oftentimes fix errors where Arkouda or Arachne commands are unrecognized by Python.
 ```
 pip3 install -e /path/to/arachne/client/.
 pip3 install -e /path/to/arkouda/.
