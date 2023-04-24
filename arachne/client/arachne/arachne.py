@@ -172,7 +172,9 @@ class Graph:
         return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
 
     def degree(self) -> pdarray:
-        """Returns the degree view for the whole graph as a pdarray object. 
+        """Returns the degree view for the whole graph as a pdarray object. Returns the degree view
+        for an undirected graph and the out-degree view for a directed graph. TODO: return the
+        in-degree view for a directed graph as well. 
 
         Returns
         -------
