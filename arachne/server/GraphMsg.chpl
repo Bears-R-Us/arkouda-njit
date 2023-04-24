@@ -1274,7 +1274,7 @@ module GraphMsg {
 
         // Generate the degree for each vertex of the graph.
         var out_degree: [neighbor.domain] int;
-        var in_degree: [neighbor.domain] atomic int;
+        var in_degree_at: [neighbor.domain] atomic int;
         if (!ag.isDirected()) {
             var neighborR = toSymEntry(ag.getComp("NEIGHBOR_R"), int).a;
             out_degree = neighbor + neighborR;
@@ -1283,20 +1283,28 @@ module GraphMsg {
             out_degree = neighbor;
 
             forall u in dst {
-                in_degree[u].fetchAdd(1);
+                in_degree_at[u].fetchAdd(1);
             }
         }
-        writeln("SRC = ", src);
-        writeln("DST = ", dst);
-        writeln("out_degree = ", out_degree);
-        writeln("in_degree = ", in_degree);
+        
+        // Make final in_degree array regular int instead of atomic int.
+        var in_degree: [neighbor.domain] int;
+        forall i in neighbor.domain {
+            in_degree[i] = in_degree_at[i].read();
+        }
 
         // Add new copies of each to the symbol table.
         var repMsg = "";
-        var attrName = st.nextName();
-        var attrEntry = new shared SymEntry(out_degree); 
-        st.addEntry(attrName, attrEntry);
-        repMsg = "created " + st.attrib(attrName);
+        
+        var attrNameOut = st.nextName();
+        var attrEntryOut = new shared SymEntry(out_degree);
+        st.addEntry(attrNameOut, attrEntryOut);
+
+        var attrNameIn = st.nextName();
+        var attrEntryIn = new shared SymEntry(in_degree);
+        st.addEntry(attrNameIn, attrEntryIn);
+
+        repMsg = "created " + st.attrib(attrNameOut) + "+ created " + st.attrib(attrNameIn);
 
         timer.stop();
         outMsg = "Creating degree view takes " + timer.elapsed():string;
