@@ -1269,15 +1269,32 @@ module GraphMsg {
         var timer:stopwatch;
         timer.start();
         var neighbor = toSymEntry(ag.getComp("NEIGHBOR"), int).a;
-        var neighborR = toSymEntry(ag.getComp("NEIGHBOR_R"), int).a;
+        var src = toSymEntry(ag.getComp("SRC"), int).a;
+        var dst = toSymEntry(ag.getComp("DST"), int).a;
 
         // Generate the degree for each vertex of the graph.
-        var degree = neighbor + neighborR;
+        var out_degree: [neighbor.domain] int;
+        var in_degree: [neighbor.domain] atomic int;
+        if (!ag.isDirected()) {
+            var neighborR = toSymEntry(ag.getComp("NEIGHBOR_R"), int).a;
+            out_degree = neighbor + neighborR;
+        }
+        else {
+            out_degree = neighbor;
+
+            forall u in dst {
+                in_degree[u].fetchAdd(1);
+            }
+        }
+        writeln("SRC = ", src);
+        writeln("DST = ", dst);
+        writeln("out_degree = ", out_degree);
+        writeln("in_degree = ", in_degree);
 
         // Add new copies of each to the symbol table.
         var repMsg = "";
         var attrName = st.nextName();
-        var attrEntry = new shared SymEntry(degree); 
+        var attrEntry = new shared SymEntry(out_degree); 
         st.addEntry(attrName, attrEntry);
         repMsg = "created " + st.attrib(attrName);
 
