@@ -1551,9 +1551,9 @@ module GraphMsg {
         var graph = gEntry.graph;
         
         var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-        var node_props: [node_map.domain] list(string, parSafe=true);
+        var node_props: [node_map.domain] list((string,string), parSafe=true);
         if graph.hasComp("NODE_PROPS") {
-            node_props = toSymEntry(graph.getComp("NODE_PROPS"), list(string, parSafe=true)).a;
+            node_props = toSymEntry(graph.getComp("NODE_PROPS"), list((string,string), parSafe=true)).a;
         }
 
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
@@ -1562,7 +1562,7 @@ module GraphMsg {
         forall i in 1..arrays_list.size - 1 {
             var curr_prop_arr:SegString = getSegString(arrays_list[i], st);
             forall j in nodes_arr.domain {
-                node_props[node_map_r[nodes_arr[j]]].append(cols_list[i] + " : " + curr_prop_arr[j]);
+                node_props[node_map_r[nodes_arr[j]]].append((cols_list[i],curr_prop_arr[j]));
             }   
         }
         // Add the component for the node labels for the graph. 
@@ -1622,9 +1622,9 @@ module GraphMsg {
         var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
 
         // Create array of lists to store edge_props and populate it. 
-        var edge_props: [src_actual.domain] list(string, parSafe=true);
+        var edge_props: [src_actual.domain] list((string,string), parSafe=true);
         if(graph.hasComp("EDGE_PROPS")) {
-            edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), list(string, parSafe=true)).a;
+            edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), list((string,string), parSafe=true)).a;
         }
 
         forall x in 2..arrays_list.size - 1 {
@@ -1639,7 +1639,7 @@ module GraphMsg {
                 var neighborhood = dst_actual[start..end-1];
                 var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
 
-                edge_props[ind].append(cols_list[x] + " : " + curr_prop_arr[i]); // or j
+                edge_props[ind].append((cols_list[x],curr_prop_arr[i])); // or j
             }
         }
         
@@ -1648,6 +1648,8 @@ module GraphMsg {
         timer.stop();
         var repMsg = "edge properties added";
         outMsg = "Adding edge properties to property graph takes " + timer.elapsed():string;
+
+        print_graph_serverside(graph);
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
