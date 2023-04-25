@@ -72,7 +72,5 @@ if __name__ == "__main__":
     graph.add_edge_properties(owns_edge_properties)
     print("Successfully added owns edge properties.")
 
-    print(f"DEGREE VIEW OF GRAPH {graph.degree()}")
-
     ak.shutdown()
 

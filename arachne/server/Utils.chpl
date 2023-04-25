@@ -33,8 +33,12 @@ module Utils {
             var curr_comp = comp:string;
             if G.hasComp(curr_comp) {
                 select curr_comp {
-                    when "RELATIONSHIPS", "NODE_LABELS", "NODE_PROPS", "EDGE_PROPS" {
+                    when "RELATIONSHIPS", "NODE_LABELS" {
                         var X = toSymEntry(G.getComp(comp:string), list(string, parSafe=true)).a;
+                        writeln(comp:string, " = ", X);
+                    }
+                    when "NODE_PROPS", "EDGE_PROPS" {
+                        var X = toSymEntry(G.getComp(comp:string), list((string,string), parSafe=true)).a;
                         writeln(comp:string, " = ", X);
                     }
                     when "EDGE_WEIGHT", "EDGE_WEIGHT_R" {
