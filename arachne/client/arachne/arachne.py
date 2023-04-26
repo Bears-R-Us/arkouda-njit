@@ -578,6 +578,64 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
+@typechecked
+def subgraph_view(graph: Graph, filter_relationships:pdarray = None, filter_labels:pdarray = None, 
+                  filter_node_properties:pdarray = None, 
+                  filter_edge_properties:pdarray = None) -> Graph:
+    """ This function generates a subgraph view (a filtered graph) of a passed Graph. The returned
+    graph is a simple graph where no properties are maintained. TODO: should it actually maintain
+    the properties?
+
+    Format of filter_relationships and filter_labels:
+    ["name1", "name2", ..., "nameX"]
+    where the object is a pdarray composed of the strings of relationships and labels we want to
+    match. 
+
+    Format of filter_node_properties and filter_edge_properties:
+    ["prop_name op value"]
+
+    Returns
+    -------
+    Graph
+        The induced simple graph from filtering labels, edges, and/or properties.
+
+    See Also
+    --------
+
+    Notes
+    -----
+
+    Raises
+    ------
+    RuntimeError
+    """
+    cmd = "subgraphView"
+    args = {"GraphName" : graph.name}
+
+    if filter_relationships is not None:
+        args["FilterRelationshipsName"] = filter_relationships.name
+    else: 
+        args["FilterRelationshipsName"] = "false"
+    
+    if filter_labels is not None:
+        args["FilterLabelsName"] = filter_labels.name
+    else: 
+        args["FilterLabelsName"] = "false"
+    
+    if filter_node_properties is not None:
+        args["FilterNodePropertiesName"] = filter_node_properties.name
+    else:
+        args["FilterNodePropertiesName"] = "false"
+    
+    if filter_edge_properties is not None:
+        args["FilterEdgePropertiesName"] = filter_edge_properties.name
+    else:
+        args["FilterEdgePropertiesName"] = "false"
+        
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return DiGraph(*(cast(str, repMsg).split('+')))
+
+
 ###################################################################################################
 # EVERYTHING BELOW THIS CAN BE IGNORED FOR NOW, CHAPEL CODE STILL NEEDS TO BE SEVERELY CLEANED UP #
 ###################################################################################################
@@ -675,7 +733,7 @@ def triangles(graph: Graph, vertexArray: pdarray) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def k_truss(graph: Graph,kTrussValue:int) -> pdarray:
+def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
     """
     This function returns the number of triangles in a static graph for each edge that satisfies the
     k requirement.
@@ -705,3 +763,5 @@ def k_truss(graph: Graph,kTrussValue:int) -> pdarray:
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
+
+
