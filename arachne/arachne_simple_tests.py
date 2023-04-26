@@ -72,5 +72,8 @@ if __name__ == "__main__":
     graph.add_edge_properties(owns_edge_properties)
     print("Successfully added owns edge properties.")
 
+    # Let us create a subgraph view of a given graph.
+    H = ar.subgraph_view(graph)
+
     ak.shutdown()
 
