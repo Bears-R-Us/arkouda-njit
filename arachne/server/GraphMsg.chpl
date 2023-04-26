@@ -1648,14 +1648,102 @@ module GraphMsg {
         timer.stop();
         var repMsg = "edge properties added";
         outMsg = "Adding edge properties to property graph takes " + timer.elapsed():string;
-
-        print_graph_serverside(graph);
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addEdgePropertiesMsg
+
+    /**
+    * Generates a subgraph from a graph after filtering for specific edge relationships, node
+    * labels, and properties.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc subgraphViewMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var filter_relationships_name = msgArgs.getValueOf("FilterRelationshipsName");
+        var filter_labels_name = msgArgs.getValueOf("FilterLabelsName");
+        var filter_node_properties_name = msgArgs.getValueOf("FilterNodePropertiesName");
+        var filter_edge_properties_name = msgArgs.getValueOf("FilterEdgePropertiesName");
+        
+        // Extract the actual arrays for each of the names above.
+        var filter_relationships_entry: borrowed GenSymEntry;
+        var filter_labels_entry: borrowed GenSymEntry; 
+        var filter_node_properties_entry: borrowed GenSymEntry; 
+        var filter_edge_properties_entry: borrowed GenSymEntry;
+        try {
+            var filter_relationships_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_name, st);
+            var filter_relationships_sym: toSymEntry(filter_relationships_entry, int);
+            var filter_relationships = filter_relationships_sym.a;
+        } catch {
+            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+                                    "No passed FilterRelationshipsName.");
+        }
+        try {
+            var filter_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_labels_name, st);
+            var filter_labels_sym: toSymEntry(filter_labels_entry, int);
+            var filter_labels = filter_labels_sym.a;
+        } catch {
+            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+                                    "No passed FilterLabelsName.");
+        }
+        try {
+            var filter_node_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_node_properties_name, st);
+            var filter_node_properties_sym: toSymEntry(filter_node_properties_entry, int);
+            var filter_node_properties = filter_node_properties_sym.a;
+        } catch {
+            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+                                    "No passed FilterNodePropertiesName.");
+        }
+        try {
+            var filter_edge_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_name, st);
+            var filter_edge_properties_sym: toSymEntry(filter_edge_properties_entry, int);
+            var filter_edge_properties = filter_edge_properties_sym.a;
+        } catch {
+            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+                                    "No passed FilterEdgePropertiesName.");
+        }
+        
+        var timer:stopwatch;
+        timer.start();
+        
+        // Get graph for usage and needed arrays.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var node_map = toSymEntryA(graph.getComp("NODE_MAP")).a;
+        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
+        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
+        var src = toSymEntry(graph.getComp("SRC"), int).a;
+        var dst = toSymEntry(graph.getComp("DST"), int).a;
+        var relationships = toSymEntry(graph.getComp("RELATIONSHIPS"), int).a;
+        var node_labels = toSymEntry(graph.getComp("NODE_LABELS"), int).a;
+        var node_props = toSymEntry(graph.getComp("NODE_PROPS"), int).a;
+        var edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), int).a;
+
+        // Subgraph to be populated and returned back to the user.
+        var H = new shared SegGraph(0, 0, true, false);
+
+        timer.stop();
+        var graphEntryName = st.nextName();
+        var graphSymEntry = new shared GraphSymEntry(H);
+        st.addEntry(graphEntryName, graphSymEntry);
+        var repMsg = H.n_vertices:string + '+ ' + H.n_edges:string + '+ ' + H.isDirected():int:string + '+ ' + H.isWeighted:int:string + '+' + graphEntryName;
+        var repMsg = "subgraph view generated";
+        outMsg = "Generating subgraph view takes " + timer.elapsed():string;
+        
+        // Print out debug information to arkouda server output. 
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of subgraphViewMsg
 
     use CommandMap;
     registerFunction("readKnownEdgelist", readKnownEdgelistMsg, getModuleName());
