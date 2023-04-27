@@ -1672,52 +1672,11 @@ module GraphMsg {
         var filter_labels_name = msgArgs.getValueOf("FilterLabelsName");
         var filter_node_properties_name = msgArgs.getValueOf("FilterNodePropertiesName");
         var filter_edge_properties_name = msgArgs.getValueOf("FilterEdgePropertiesName");
-        
-        // Extract the actual arrays for each of the names above.
-        var filter_relationships_entry: borrowed GenSymEntry;
-        var filter_labels_entry: borrowed GenSymEntry; 
-        var filter_node_properties_entry: borrowed GenSymEntry; 
-        var filter_edge_properties_entry: borrowed GenSymEntry;
-        try {
-            var filter_relationships_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_name, st);
-            var filter_relationships_sym: toSymEntry(filter_relationships_entry, int);
-            var filter_relationships = filter_relationships_sym.a;
-        } catch {
-            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
-                                    "No passed FilterRelationshipsName.");
-        }
-        try {
-            var filter_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_labels_name, st);
-            var filter_labels_sym: toSymEntry(filter_labels_entry, int);
-            var filter_labels = filter_labels_sym.a;
-        } catch {
-            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
-                                    "No passed FilterLabelsName.");
-        }
-        try {
-            var filter_node_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_node_properties_name, st);
-            var filter_node_properties_sym: toSymEntry(filter_node_properties_entry, int);
-            var filter_node_properties = filter_node_properties_sym.a;
-        } catch {
-            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
-                                    "No passed FilterNodePropertiesName.");
-        }
-        try {
-            var filter_edge_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_name, st);
-            var filter_edge_properties_sym: toSymEntry(filter_edge_properties_entry, int);
-            var filter_edge_properties = filter_edge_properties_sym.a;
-        } catch {
-            try! smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
-                                    "No passed FilterEdgePropertiesName.");
-        }
-        
-        var timer:stopwatch;
-        timer.start();
-        
+
         // Get graph for usage and needed arrays.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var node_map = toSymEntryA(graph.getComp("NODE_MAP")).a;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
         var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
         var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
@@ -1731,12 +1690,53 @@ module GraphMsg {
         // Subgraph to be populated and returned back to the user.
         var H = new shared SegGraph(0, 0, true, false);
 
+        var timer:stopwatch;
+        timer.start();
+        // Extract the actual arrays for each of the names above.
+        var filter_relationships_type = msgArgs.get("FilterRelationshipsName").getDType():string;
+        if filter_relationships_type != "int64" {
+            var filter_relationships_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_name, st);
+            var filter_relationships_sym = toSymEntry(filter_relationships_entry, string);
+            var filter_relationships = filter_relationships_sym.a;
+        }
+
+        var filter_labels_type = msgArgs.get("FilterLabelsName").getDType():string;
+        if filter_labels_type != "int64" {
+            var filter_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_labels_name, st);
+            var filter_labels_sym = toSymEntry(filter_labels_entry, string);
+            var filter_labels = filter_labels_sym.a;
+        }
+
+        var filter_node_properties_type = msgArgs.get("FilterNodePropertiesName").getDType():string;
+        if filter_node_properties_type != "int64" {
+            var filter_node_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_node_properties_name, st);
+            var filter_node_properties_sym = toSymEntry(filter_node_properties_entry, string);
+            var filter_node_properties_original = filter_node_properties_sym.a;
+            var filter_node_properties: [filter_node_properties_original.domain] (string, string, string);
+            forall i in filter_node_properties_original.domain {
+                var prop_op_val = filter_node_properties_original[i].split();
+                filter_node_properties[i] = (prop_op_val[0], prop_op_val[1], prop_op_val[2]);
+            }
+            writeln("$$$$$ filter_node_properties = ", filter_node_properties);
+        }
+
+        var filter_edge_properties_type = msgArgs.get("FilterEdgePropertiesName").getDType():string;
+        if filter_node_properties_type != "int64" {
+            var filter_edge_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_name, st);
+            var filter_edge_properties_sym = toSymEntry(filter_edge_properties_entry, string);
+            var filter_edge_properties_original = filter_edge_properties_sym.a;
+            var filter_edge_properties: [filter_edge_properties_original.domain] (string, string, string);
+            forall i in filter_edge_properties_original.domain {
+                var prop_op_val = filter_edge_properties_original[i].split();
+                filter_edge_properties[i] = (prop_op_val[0], prop_op_val[1], prop_op_val[2]);
+            }
+            writeln("$$$$$ filter_edge_properties = ", filter_edge_properties);
+        }
         timer.stop();
-        var graphEntryName = st.nextName();
-        var graphSymEntry = new shared GraphSymEntry(H);
-        st.addEntry(graphEntryName, graphSymEntry);
-        var repMsg = H.n_vertices:string + '+ ' + H.n_edges:string + '+ ' + H.isDirected():int:string + '+ ' + H.isWeighted:int:string + '+' + graphEntryName;
-        var repMsg = "subgraph view generated";
+        var HEntryName = st.nextName();
+        var HSymEntry = new shared GraphSymEntry(H);
+        st.addEntry(HEntryName, HSymEntry);
+        var repMsg = H.n_vertices:string + '+ ' + H.n_edges:string + '+ ' + H.isDirected():int:string + '+ ' + H.isWeighted():int:string + '+' + HEntryName;
         outMsg = "Generating subgraph view takes " + timer.elapsed():string;
         
         // Print out debug information to arkouda server output. 
@@ -1758,4 +1758,5 @@ module GraphMsg {
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
     registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
     registerFunction("addEdgeProperties", addEdgePropertiesMsg, getModuleName());
+    registerFunction("subgraphView", subgraphViewMsg, getModuleName());
 }

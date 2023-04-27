@@ -73,7 +73,17 @@ if __name__ == "__main__":
     print("Successfully added owns edge properties.")
 
     # Let us create a subgraph view of a given graph.
-    H = ar.subgraph_view(graph)
+    # filter_relationships = ak.array(["drives"])
+    # filter_labels = ak.array(["Person, Car"])
+    # filter_node_properties = ak.array(["brand == Tesla"])
+    # filter_edge_properties = ak.array(["born == 12-05-1975"])
+
+    A = ak.arange(0, len(node_label_dataframe), 1)
+    indices = node_label_dataframe["nodeLabels"].contains("Person")
+    idx = A[indices]
+    print(node_label_dataframe[idx]["nodeIDs"])
+
+    # H = ar.subgraph_view(graph)
 
     ak.shutdown()
 
