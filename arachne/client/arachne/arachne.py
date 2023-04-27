@@ -12,6 +12,7 @@ __all__ = ["Graph",
            "read_known_edgelist",
            "read_edgelist",
            "bfs_layers",
+           "subgraph_view",
            "triangles",
            "triangle_centrality",
            "connected_components",
@@ -615,22 +616,22 @@ def subgraph_view(graph: Graph, filter_relationships:pdarray = None, filter_labe
     if filter_relationships is not None:
         args["FilterRelationshipsName"] = filter_relationships.name
     else: 
-        args["FilterRelationshipsName"] = "false"
+        args["FilterRelationshipsName"] = ak.array([0])
     
     if filter_labels is not None:
         args["FilterLabelsName"] = filter_labels.name
     else: 
-        args["FilterLabelsName"] = "false"
+        args["FilterLabelsName"] = ak.array([0])
     
     if filter_node_properties is not None:
         args["FilterNodePropertiesName"] = filter_node_properties.name
     else:
-        args["FilterNodePropertiesName"] = "false"
+        args["FilterNodePropertiesName"] = ak.array([0])
     
     if filter_edge_properties is not None:
         args["FilterEdgePropertiesName"] = filter_edge_properties.name
     else:
-        args["FilterEdgePropertiesName"] = "false"
+        args["FilterEdgePropertiesName"] = ak.array([0])
         
     repMsg = generic_msg(cmd=cmd, args=args)
     return DiGraph(*(cast(str, repMsg).split('+')))
