@@ -12,6 +12,7 @@ __all__ = ["Graph",
            "read_known_edgelist",
            "read_edgelist",
            "bfs_layers",
+           "subgraph_view",
            "triangles",
            "triangle_centrality",
            "connected_components",
@@ -578,9 +579,73 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
-###################################################################################################
-# EVERYTHING BELOW THIS CAN BE IGNORED FOR NOW, CHAPEL CODE STILL NEEDS TO BE SEVERELY CLEANED UP #
-###################################################################################################
+@typechecked
+def subgraph_view(graph: Graph,
+                  filter_labels:pdarray = None,
+                  filter_relationships:ak.DataFrame = None,
+                  filter_node_properties:pdarray = None,
+                  filter_edge_properties:ak.DataFrame = None) -> Graph:
+    """ This function generates a subgraph view (a filtered graph) of a passed Graph. The returned
+    graph is a simple graph where no labels, relationships, or properties are maintained.
+
+    Format of filter_labels and filter_node_properties:
+    [node_1, node_2, ..., node_n]:pdarray
+    where the nodes listed are computed by Arkouda filtering and are to be kept in the generated 
+    subgraph.
+
+    Format of filter_relationships and filter_edge_properties:
+    {
+    "src":[node_1, node_2, ..., node_m]
+    "dst":[node_1, node_2, ..., node_m]
+    }
+    where the nodes listed ar the src and dst of the edges computed by Arkouda filtering and are to
+    be kept in the generated subgraph.
+    
+
+    Returns
+    -------
+    Graph
+        The induced simple graph from filtering labels, edges, and/or properties.
+
+    See Also
+    --------
+
+    Notes
+    -----
+
+    Raises
+    ------
+    RuntimeError
+    """
+    cmd = "subgraphView"
+    args = {"GraphName" : graph.name}
+
+    if filter_labels is not None:
+        args["FilterLabelsExists"] = "true"
+        args["FilterLabelsName"] = filter_labels.name
+    
+    if filter_relationships is not None:
+        args["FilterRelationshipsExists"] = "true"
+        args["FilterRelationshipsSrcName"] = filter_relationships["src"].name
+        args["FilterRelationshipsDstName"] = filter_relationships["dst"].name
+    
+    if filter_node_properties is not None:
+        args["FilterNodePropertiesExists"] = "true"
+        args["FilterNodePropertiesName"] = filter_node_properties.name
+    
+    if filter_edge_properties is not None:
+        args["FilterEdgePropertiesExists"] = "true"
+        args["FilterEdgePropertiesSrcName"] = filter_edge_properties["src"].name
+        args["FilterEdgePropertiesDstName"] = filter_edge_properties["dst"].name
+
+    repMsg = generic_msg(cmd=cmd, args=args)
+    returned_vals = (cast(str, repMsg).split('+'))
+        
+    src = create_pdarray(returned_vals[0])
+    dst = create_pdarray(returned_vals[1])
+    H = DiGraph()
+    H.add_edges_from(src, dst)
+    return H
 
 @typechecked
 def triangle_centrality(graph: Graph) -> pdarray:
@@ -675,7 +740,7 @@ def triangles(graph: Graph, vertexArray: pdarray) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def k_truss(graph: Graph,kTrussValue:int) -> pdarray:
+def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
     """
     This function returns the number of triangles in a static graph for each edge that satisfies the
     k requirement.
@@ -705,3 +770,5 @@ def k_truss(graph: Graph,kTrussValue:int) -> pdarray:
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
+
+

@@ -24,11 +24,11 @@ if __name__ == "__main__":
     wgt = ak.array([98, 12, 13, .4, 23, 12])
     graph = ar.DiGraph()
     graph.add_edges_from(src, dst, wgt)
-    node_map = graph.nodes()
 
-    # Add node labels to the property graph. 
-    node_labels = ak.array(["Person", "Person", "Vehicle Car"])
-    node_label_dataframe = ak.DataFrame({"nodeIDs" : node_map, "nodeLabels" : node_labels})
+    # Add node labels to the property graph.
+    node_ids = ak.array([23, 34, 89, 89])
+    node_labels = ak.array(["Person", "Person", "Vehicle", "Car"])
+    node_label_dataframe = ak.DataFrame({"nodeIDs" : node_ids, "nodeLabels" : node_labels})
     graph.add_node_labels(node_label_dataframe)
     print("Successfully added node labels.")
 
@@ -65,12 +65,45 @@ if __name__ == "__main__":
     owns_dst = ak.array([89])
     owns_property_registered = ak.array(["01-10-2011"])
     # Now, we send each to a dataframe and add them independently to our property graph.
-    drives_edge_properties = ak.DataFrame({"src" : drives_src, "dst" : drives_dst, "since" : drives_property_since}) 
+    drives_edge_properties = ak.DataFrame({"src" : drives_src, "dst" : drives_dst, "since" : drives_property_since})
     owns_edge_properties = ak.DataFrame({"src" : owns_src, "dst" : owns_dst, "registered" : owns_property_registered})
     graph.add_edge_properties(drives_edge_properties)
     print("Successfully added drives edge properties.")
     graph.add_edge_properties(owns_edge_properties)
     print("Successfully added owns edge properties.")
+    print()
+
+    # Now, below let's make filters with Arkouda for labels, relationships, and properties.
+    # First, we make filters for all the node labels that contain the value Person.
+    A = ak.arange(0, len(node_label_dataframe), 1)
+    indices = node_label_dataframe["nodeLabels"] == "Person"
+    node_label_filter = node_label_dataframe[indices]["nodeIDs"]
+    print("Nodes with label Person =", node_label_filter)
+    print()
+
+    # Second, let's make filters for all the edge relationships that contain the value drives.
+    A = ak.arange(0, len(edge_relationship_dataframe), 1)
+    indices = edge_relationship_dataframe["edgeRelationships"] == "drives"
+    edge_relationship_filter = edge_relationship_dataframe[indices]["src","dst"]
+    print("Edges with relationship drives =\n", edge_relationship_filter.__repr__())
+    print()
+
+    # Third, let's make filters for all the nodes born in December.
+    A = ak.arange(0, len(person_node_properties), 1)
+    indices = person_node_properties["born"].contains("12-")
+    node_property_filter = person_node_properties[indices]["nodeIDs"]
+    print("Nodes with property born in December =", node_property_filter)
+    print()
+
+    # Fourth, and lastly, let's make a filter for all the edges with property since starting in 2011.
+    A = ak.arange(0, len(drives_edge_properties), 1)
+    indices = drives_edge_properties["since"].contains("-2011")
+    edge_property_filter = drives_edge_properties[indices]["src", "dst"]
+    print("Edges with property since from 2011 =\n", edge_property_filter.__repr__())
+    print()
+
+    H = ar.subgraph_view(graph, filter_labels=node_label_filter, filter_relationships=edge_relationship_filter, filter_node_properties=node_property_filter, filter_edge_properties=edge_property_filter)
+    print(graph.edges())
+    print(H.edges())
 
     ak.shutdown()
-
