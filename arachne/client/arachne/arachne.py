@@ -580,20 +580,27 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def subgraph_view(graph: Graph, filter_relationships:pdarray = None, filter_labels:pdarray = None, 
-                  filter_node_properties:pdarray = None, 
-                  filter_edge_properties:pdarray = None) -> Graph:
+def subgraph_view(graph: Graph,
+                  filter_labels:pdarray = None,
+                  filter_relationships:ak.DataFrame = None,
+                  filter_node_properties:pdarray = None,
+                  filter_edge_properties:ak.DataFrame = None) -> Graph:
     """ This function generates a subgraph view (a filtered graph) of a passed Graph. The returned
-    graph is a simple graph where no properties are maintained. TODO: should it actually maintain
-    the properties?
+    graph is a simple graph where no labels, relationships, or properties are maintained.
 
-    Format of filter_relationships and filter_labels:
-    ["name1", "name2", ..., "nameX"]
-    where the object is a pdarray composed of the strings of relationships and labels we want to
-    match. 
+    Format of filter_labels and filter_node_properties:
+    [node_1, node_2, ..., node_n]:pdarray
+    where the nodes listed are computed by Arkouda filtering and are to be kept in the generated 
+    subgraph.
 
-    Format of filter_node_properties and filter_edge_properties:
-    ["prop_name op value"]
+    Format of filter_relationships and filter_edge_properties:
+    {
+    "src":[node_1, node_2, ..., node_m]
+    "dst":[node_1, node_2, ..., node_m]
+    }
+    where the nodes listed ar the src and dst of the edges computed by Arkouda filtering and are to
+    be kept in the generated subgraph.
+    
 
     Returns
     -------
@@ -613,33 +620,32 @@ def subgraph_view(graph: Graph, filter_relationships:pdarray = None, filter_labe
     cmd = "subgraphView"
     args = {"GraphName" : graph.name}
 
-    if filter_relationships is not None:
-        args["FilterRelationshipsName"] = filter_relationships.name
-    else: 
-        args["FilterRelationshipsName"] = ak.array([0])
-    
     if filter_labels is not None:
+        args["FilterLabelsExists"] = "true"
         args["FilterLabelsName"] = filter_labels.name
-    else: 
-        args["FilterLabelsName"] = ak.array([0])
+    
+    if filter_relationships is not None:
+        args["FilterRelationshipsExists"] = "true"
+        args["FilterRelationshipsSrcName"] = filter_relationships["src"].name
+        args["FilterRelationshipsDstName"] = filter_relationships["dst"].name
     
     if filter_node_properties is not None:
+        args["FilterNodePropertiesExists"] = "true"
         args["FilterNodePropertiesName"] = filter_node_properties.name
-    else:
-        args["FilterNodePropertiesName"] = ak.array([0])
     
     if filter_edge_properties is not None:
-        args["FilterEdgePropertiesName"] = filter_edge_properties.name
-    else:
-        args["FilterEdgePropertiesName"] = ak.array([0])
-        
+        args["FilterEdgePropertiesExists"] = "true"
+        args["FilterEdgePropertiesSrcName"] = filter_edge_properties["src"].name
+        args["FilterEdgePropertiesDstName"] = filter_edge_properties["dst"].name
+
     repMsg = generic_msg(cmd=cmd, args=args)
-    return DiGraph(*(cast(str, repMsg).split('+')))
-
-
-###################################################################################################
-# EVERYTHING BELOW THIS CAN BE IGNORED FOR NOW, CHAPEL CODE STILL NEEDS TO BE SEVERELY CLEANED UP #
-###################################################################################################
+    returned_vals = (cast(str, repMsg).split('+'))
+        
+    src = create_pdarray(returned_vals[0])
+    dst = create_pdarray(returned_vals[1])
+    H = DiGraph()
+    H.add_edges_from(src, dst)
+    return H
 
 @typechecked
 def triangle_centrality(graph: Graph) -> pdarray:
