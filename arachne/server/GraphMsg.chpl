@@ -1666,14 +1666,8 @@ module GraphMsg {
     * returns: message back to Python.
     */
     proc subgraphViewMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var filter_relationships_name = msgArgs.getValueOf("FilterRelationshipsName");
-        var filter_labels_name = msgArgs.getValueOf("FilterLabelsName");
-        var filter_node_properties_name = msgArgs.getValueOf("FilterNodePropertiesName");
-        var filter_edge_properties_name = msgArgs.getValueOf("FilterEdgePropertiesName");
-
         // Get graph for usage and needed arrays.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
@@ -1682,62 +1676,124 @@ module GraphMsg {
         var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
         var src = toSymEntry(graph.getComp("SRC"), int).a;
         var dst = toSymEntry(graph.getComp("DST"), int).a;
-        var relationships = toSymEntry(graph.getComp("RELATIONSHIPS"), int).a;
-        var node_labels = toSymEntry(graph.getComp("NODE_LABELS"), int).a;
-        var node_props = toSymEntry(graph.getComp("NODE_PROPS"), int).a;
-        var edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), int).a;
+        var relationships = toSymEntry(graph.getComp("RELATIONSHIPS"), list(string, parSafe=true)).a;
+        var node_labels = toSymEntry(graph.getComp("NODE_LABELS"), list(string, parSafe=true)).a;
+        var node_props = toSymEntry(graph.getComp("NODE_PROPS"), list((string, string), parSafe=true)).a;
+        var edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), list((string, string), parSafe=true)).a;
 
-        // Subgraph to be populated and returned back to the user.
-        var H = new shared SegGraph(0, 0, true, false);
+        // Keep track of the edges that will make up the subgraph.
+        var edge_tracker: [src.domain] int;
+        edge_tracker = 0; 
 
         var timer:stopwatch;
         timer.start();
         // Extract the actual arrays for each of the names above.
-        var filter_relationships_type = msgArgs.get("FilterRelationshipsName").getDType():string;
-        if filter_relationships_type != "int64" {
-            var filter_relationships_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_name, st);
-            var filter_relationships_sym = toSymEntry(filter_relationships_entry, string);
-            var filter_relationships = filter_relationships_sym.a;
-        }
-
-        var filter_labels_type = msgArgs.get("FilterLabelsName").getDType():string;
-        if filter_labels_type != "int64" {
+        if msgArgs.contains("FilterLabelsExists"){
+            var filter_labels_name = msgArgs.getValueOf("FilterLabelsName");
             var filter_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_labels_name, st);
-            var filter_labels_sym = toSymEntry(filter_labels_entry, string);
+            var filter_labels_sym = toSymEntry(filter_labels_entry, int);
             var filter_labels = filter_labels_sym.a;
+
+            forall u in filter_labels {
+                var start = start_idx[node_map_r[u]];
+                var end = start + neighbor[node_map_r[u]];
+                forall i in start..end-1 {
+                    edge_tracker[i] = 1;
+                }
+            }
         }
 
-        var filter_node_properties_type = msgArgs.get("FilterNodePropertiesName").getDType():string;
-        if filter_node_properties_type != "int64" {
+        if msgArgs.contains("FilterRelationshipsExists") {
+            var filter_relationships_src_name = msgArgs.getValueOf("FilterRelationshipsSrcName");
+            var filter_relationships_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_src_name, st);
+            var filter_relationships_src_sym = toSymEntry(filter_relationships_src_entry, int);
+            var filter_relationships_src = filter_relationships_src_sym.a;
+
+            var filter_relationships_dst_name = msgArgs.getValueOf("FilterRelationshipsDstName");
+            var filter_relationships_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_dst_name, st);
+            var filter_relationships_dst_sym = toSymEntry(filter_relationships_dst_entry, int);
+            var filter_relationships_dst = filter_relationships_dst_sym.a;
+
+            forall (i,j) in zip(filter_relationships_src.domain, filter_relationships_dst.domain) {
+                var u = node_map_r[filter_relationships_src[i]];
+                var v = node_map_r[filter_relationships_dst[j]];
+
+                var start = start_idx[u];
+                var end = start + neighbor[u];
+
+                var neighborhood = dst[start..end-1];
+                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
+
+                edge_tracker[ind] = 1;
+            }
+        }
+
+        if msgArgs.contains("FilterNodePropertiesExists") {
+            var filter_node_properties_name = msgArgs.getValueOf("FilterNodePropertiesName");
             var filter_node_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_node_properties_name, st);
-            var filter_node_properties_sym = toSymEntry(filter_node_properties_entry, string);
-            var filter_node_properties_original = filter_node_properties_sym.a;
-            var filter_node_properties: [filter_node_properties_original.domain] (string, string, string);
-            forall i in filter_node_properties_original.domain {
-                var prop_op_val = filter_node_properties_original[i].split();
-                filter_node_properties[i] = (prop_op_val[0], prop_op_val[1], prop_op_val[2]);
+            var filter_node_properties_sym = toSymEntry(filter_node_properties_entry, int);
+            var filter_node_properties = filter_node_properties_sym.a;
+
+            forall u in filter_node_properties {
+                var start = start_idx[node_map_r[u]];
+                var end = start + neighbor[node_map_r[u]];
+                forall i in start..end-1 {
+                    edge_tracker[i] = 1;
+                }
             }
-            writeln("$$$$$ filter_node_properties = ", filter_node_properties);
         }
 
-        var filter_edge_properties_type = msgArgs.get("FilterEdgePropertiesName").getDType():string;
-        if filter_node_properties_type != "int64" {
-            var filter_edge_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_name, st);
-            var filter_edge_properties_sym = toSymEntry(filter_edge_properties_entry, string);
-            var filter_edge_properties_original = filter_edge_properties_sym.a;
-            var filter_edge_properties: [filter_edge_properties_original.domain] (string, string, string);
-            forall i in filter_edge_properties_original.domain {
-                var prop_op_val = filter_edge_properties_original[i].split();
-                filter_edge_properties[i] = (prop_op_val[0], prop_op_val[1], prop_op_val[2]);
+        if msgArgs.contains("FilterEdgePropertiesExists") {
+            var filter_edge_properties_src_name = msgArgs.getValueOf("FilterEdgePropertiesSrcName");
+            var filter_edge_properties_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_src_name, st);
+            var filter_edge_properties_src_sym = toSymEntry(filter_edge_properties_src_entry, int);
+            var filter_edge_properties_src = filter_edge_properties_src_sym.a;
+
+            var filter_edge_properties_dst_name = msgArgs.getValueOf("FilterEdgePropertiesDstName");
+            var filter_edge_properties_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_dst_name, st);
+            var filter_edge_properties_dst_sym = toSymEntry(filter_edge_properties_dst_entry, int);
+            var filter_edge_properties_dst = filter_edge_properties_dst_sym.a;
+
+            forall (i,j) in zip(filter_edge_properties_src.domain, filter_edge_properties_dst.domain) {
+                var u = node_map_r[filter_edge_properties_src[i]];
+                var v = node_map_r[filter_edge_properties_dst[j]];
+
+                var start = start_idx[u];
+                var end = start + neighbor[u];
+
+                var neighborhood = dst[start..end-1];
+                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
+
+                edge_tracker[ind] = 1;
             }
-            writeln("$$$$$ filter_edge_properties = ", filter_edge_properties);
+        }
+        var ne = + reduce edge_tracker;
+        var new_src = makeDistArray(ne, int);
+        var new_dst = makeDistArray(ne, int);
+
+        var next_slot = 0;
+        for (i,u) in zip(edge_tracker.domain, edge_tracker) {
+            if(u == 1) {
+                new_src[next_slot] = src[i];
+                new_dst[next_slot] = dst[i];
+                next_slot += 1;
+            }
         }
         timer.stop();
-        var HEntryName = st.nextName();
-        var HSymEntry = new shared GraphSymEntry(H);
-        st.addEntry(HEntryName, HSymEntry);
-        var repMsg = H.n_vertices:string + '+ ' + H.n_edges:string + '+ ' + H.isDirected():int:string + '+ ' + H.isWeighted():int:string + '+' + HEntryName;
-        outMsg = "Generating subgraph view takes " + timer.elapsed():string;
+
+        // Add new copies of each to the symbol table.
+        var repMsg = "";
+        
+        var attrNameNewSrc = st.nextName();
+        var attrEntryNewSrc = new shared SymEntry(new_src);
+        st.addEntry(attrNameNewSrc, attrEntryNewSrc);
+
+        var attrNameNewDst = st.nextName();
+        var attrEntryNewDst = new shared SymEntry(new_dst);
+        st.addEntry(attrNameNewDst, attrEntryNewDst);
+
+        repMsg = "created " + st.attrib(attrNameNewSrc) + "+ created " + st.attrib(attrNameNewDst);
+        outMsg = "Generating edge list for subgraph view takes " + timer.elapsed():string;
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
