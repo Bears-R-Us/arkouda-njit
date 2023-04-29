@@ -1127,96 +1127,14 @@ module TriCntMsg {
 
 
         proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, vertex:int):string throws {
-            var NeiNonTriNum=makeDistArray(Nv,atomic int);
             var TriNum=makeDistArray(Nv,atomic int);
-            var NeiTriNum=makeDistArray(Nv,atomic int);
-            var NeiAry=makeDistArray(Ne,bool);
-            NeiAry=false;
             forall i in TriNum {
                 i.write(0);
             }
-            forall i in NeiTriNum {
-                i.write(0);
-            }
-            forall i in NeiNonTriNum {
-                i.write(0);
-            }           
 
             TotalCnt=0;
             subTriSum=0;	
                             
-            proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
-                    return -1;
-                }
-                if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
-                    return -1;
-                }
-                if (ary[l]==key){
-                    return l;
-                }
-                if (ary[h]==key){
-                    return h;
-                }
-                var m = (l + h) / 2:int;
-                if ((m==l) ) {
-                    return -1;
-                }
-                if (ary[m]==key ){
-                    return m;
-                } else {
-                    if (ary[m]<key) {
-                        return binSearchE(ary,m+1,h,key);
-                    }
-                    else {
-                        return binSearchE(ary,l,m-1,key);
-                    }
-                 }
-            }// end of binSearch
-
-            // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
-            proc findEdge(u:int,v:int):int {
-                //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
-                    return -1;
-                    // we do not accept self-loop
-                }
-                var beginE=start_i[u];
-                var eid=-1:int;
-                if (nei[u]>0) {
-                    if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                        eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                        // search <u,v> in undirect edges
-                    }
-                }
-                if (eid==-1) {// if b
-                    beginE=start_i[v];
-                    if (nei[v]>0) {
-                        if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
-                            eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
-                            // search <v,u> in undirect edges
-                        }
-                    }
-                }// end of if b
-                return eid;
-            }// end of  proc findEdge
-
-            // given vertces u and v, return the edge ID e=<u,v>
-            proc exactEdge(u:int,v:int):int {
-                //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
-                    return -1;
-                    // we do not accept self-loop
-                }
-                var beginE=start_i[u];
-                var eid=-1:int;
-                if (nei[u]>0) {
-                    if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                        eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                    }
-                }
-                return eid;
-            }// end of  proc exatEdge(u:int,v:int)
 
             var timer:Timer;
             timer.start();
@@ -1230,7 +1148,6 @@ module TriCntMsg {
                     startEdge=max(startEdge,start_i[vertex]);
                     endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
                     var triCount=0:int;
-                    //writeln("Start of CoForall");
                     // each locale only handles the edges owned by itself
                     forall i in startEdge..endEdge with (+ reduce triCount) {
                         var u = src[i];
@@ -1268,13 +1185,6 @@ module TriCntMsg {
                             {
                                 if dst[iu]==dst[jv] {
                                     triCount +=1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dst[jv]].add(1);
-                                    NeiAry[iu] = true;
-                                    NeiAry[jv] = true;
-                                    NeiAry[i] = true;
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -1292,7 +1202,7 @@ module TriCntMsg {
                         //writeln("Enter while 2 in iteration ",N2 , " and edge=", i);
                         var Count=0;
                         //writeln("Before Second While");
-                        while ( (iu <=endUf) && (jv<=endVb) && Count < Nv)  {
+                        while ( (iu <=endUf) && (jv<=endVb) )  {
                             Count +=1;
                             if  ( (dst[iu]==v) ) {
                                 iu+=1;
@@ -1306,14 +1216,6 @@ module TriCntMsg {
                             {
                                 if dst[iu]==dstR[jv] {
                                     triCount += 1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dst[iu]].add(1);
-                                    NeiAry[iu] = true;
-                                    var tmpe = exactEdge(dstR[jv], srcR[jv]);
-                                    NeiAry[tmpe] = true;
-                                    NeiAry[i] = true;                                     
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -1327,12 +1229,11 @@ module TriCntMsg {
                         }
 
 
-                Count = 0;
+                        Count = 0;
                         iu=beginUb;
                         jv=beginVf;
-                        //writeln("Enter while 3 in iteration ",N2 , " and edge=", i);
                         //writeln("Before Third While");
-                        while ( (iu <=endUb) &&   (jv<=endVf) && Count < Nv)  {
+                        while ( (iu <=endUb) &&   (jv<=endVf) )  {
                             Count += 1;
                             //eu=findEdge(dstR[iu],u);
                             if  ( (dstR[iu]==v) ) {
@@ -1346,14 +1247,6 @@ module TriCntMsg {
                             {
                                 if dstR[iu]==dst[jv] {
                                     triCount += 1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dst[jv]].add(1);
-                                    var tmpe = exactEdge(dstR[iu], srcR[iu]);
-                                    NeiAry[tmpe] = true;
-                                    NeiAry[jv] = true;
-                                    NeiAry[i] = true;                                     
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -1372,10 +1265,8 @@ module TriCntMsg {
                         Count = 0;
                         //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
                         //writeln("Before Fourth While");
-                        while ( (iu <=endUb) &&   (jv<=endVb) && Count < Nv)  {
+                        while ( (iu <=endUb) &&   (jv<=endVb) )  {
                             Count += 1;
-                            //eu=findEdge(dstR[iu],u);
-                            //ev=findEdge(dstR[jv],v);
                             if  ( (dstR[iu]==v) ) {
                                 iu+=1;
                                 continue;
@@ -1387,16 +1278,6 @@ module TriCntMsg {
                             {
                                 if dstR[iu]==dstR[jv] {
                                     triCount +=1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dstR[jv]].add(1);
-                                    //FindEdge
-                                    var tmpe1 = exactEdge(dstR[iu], srcR[iu]);
-                                    var tmpe2 = exactEdge(dstR[jv], srcR[jv]);
-                                    NeiAry[tmpe1] = true;
-                                    NeiAry[tmpe2] = true;
-                                    NeiAry[i] = true;                                 
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -1469,7 +1350,7 @@ module TriCntMsg {
           for i in LocalAccessTimes {
               totalLocal+=i;
           }
-          TotalCnt[0]/=3;
+          TotalCnt[0]/=2;
           return TotalCnt[0];
 
       }
