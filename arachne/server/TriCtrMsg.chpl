@@ -28,7 +28,6 @@ module TriCtrMsg {
     use Atomics;
     use IO.FormattedIO; 
     use GraphArray;
-    use GraphMsg;
 
     private config const logLevel = ServerConfig.logLevel;
     const smLogger = new Logger(logLevel);

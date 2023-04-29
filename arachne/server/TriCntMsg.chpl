@@ -31,7 +31,6 @@ module TriCntMsg {
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
-  use GraphMsg;
   use Utils;
 
 

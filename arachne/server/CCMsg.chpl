@@ -25,7 +25,6 @@ module CCMsg {
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
-  use GraphMsg;
   use Utils;
 
   use Set;
@@ -33,6 +32,7 @@ module CCMsg {
   // private config const logLevel = ServerConfig.logLevel;
   private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
+  var outMsg:string;
   
   config const start_min_degree = 1000000;
   var tmpmindegree=start_min_degree;
