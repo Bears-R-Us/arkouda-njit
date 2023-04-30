@@ -1283,13 +1283,13 @@ module TriCntMsg {
 
 
 
-                     var ld = srcR.localSubdomain();
-                     var startEdge = ld.lowBound;
-                     var endEdge = ld.highBound;
+                     ld = srcR.localSubdomain();
+                     startEdge = ld.lowBound;
+                     endEdge = ld.highBound;
                      startEdge=max(startEdge,start_iR[vertex]);
                      endEdge=min(endEdge,start_iR[vertex]+neiR[vertex]-1);
 
-                     var triCount=0:int;
+                     triCount=0;
                      forall i in startEdge..endEdge with(+ reduce triCount){
                                   var    v1=srcR[i];
                                   var    v2=dstR[i];
@@ -1561,17 +1561,17 @@ module TriCntMsg {
       }
 
 
-      proc return_count(): int {
+      proc return_all_count(): int {
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
-          var totalRemote=0:int;
-          var totalLocal=0:int;
-          for i in RemoteAccessTimes {
-              totalRemote+=i;
-          }
-          for i in LocalAccessTimes {
-              totalLocal+=i;
+          TotalCnt[0]/=3;
+          return TotalCnt[0];
+
+      }
+      proc return_vertex_count(): int {
+          for i in subTriSum {
+             TotalCnt[0]+=i;
           }
           TotalCnt[0]/=2;
           return TotalCnt[0];
@@ -1604,7 +1604,7 @@ module TriCntMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a);
-              returnary[0]=return_count();
+              returnary[0]=return_all_count();
                } else {
                   for i in 0..returnary.size-1 {
                        triCtr_vertex(
@@ -1617,7 +1617,7 @@ module TriCntMsg {
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a,
                       vertexArray[i]);
-                       returnary[i]=return_count();
+                       returnary[i]=return_vertex_count();
 
                   }
                }
