@@ -81,14 +81,15 @@ class AlgorithmTest(ArkoudaTest):
         nx_file = open(filepath, "rb")
         nx_graph = nx.from_scipy_sparse_array(sp.io.mmread(nx_file))
         nx_tri_full = nx.triangles(nx_graph)
-        nx_tri_partial = nx.triangles(nx_graph, tuple(x for x in range(34)))
+        nx_tri_partial = nx.triangles(nx_graph, (x for x in range(34)))
+
+        ret = [x for x in range(34)]
+        for i in range(34):
+            ret[i] = nx_tri_partial[i]
         
+        partial = self.assertEqual(ret, ar_tri_partial.to_list())
         complete = self.assertEqual(sum(nx_tri_full.values())/3, ar_tri_full[0])
-
-        # TODO: Partial triangle counting returns error. Has to be fixed.
-        partial = self.assertEqual(sum(nx_tri_partial.values())/3, ak.sum(ar_tri_partial))
-
-        return complete
+        return self.assertEqual(partial, complete)
 
     def test_k_truss(self):
         # Process graph with Arachne.

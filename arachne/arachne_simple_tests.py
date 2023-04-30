@@ -102,7 +102,7 @@ if __name__ == "__main__":
     print("Edges with property since from 2011 =\n", edge_property_filter.__repr__())
     print()
 
-    subgraph = ar.subgraph_view(graph, ar.PropGraph(), filter_labels=node_label_filter, filter_relationships=edge_relationship_filter, filter_node_properties=node_property_filter, filter_edge_properties=edge_property_filter)
+    subgraph = ar.subgraph_view(graph, ar.Graph(), filter_labels=node_label_filter, filter_relationships=edge_relationship_filter, filter_node_properties=node_property_filter, filter_edge_properties=edge_property_filter)
     print(graph.edges())
     print(subgraph.edges())
 
