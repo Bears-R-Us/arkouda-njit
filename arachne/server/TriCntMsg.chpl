@@ -756,24 +756,10 @@ module TriCntMsg {
 
 
         proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, vertex:int):string throws {
-            var NeiNonTriNum=makeDistArray(Nv,atomic int);
-            var TriNum=makeDistArray(Nv,atomic int);
-            var NeiTriNum=makeDistArray(Nv,atomic int);
-            var NeiAry=makeDistArray(Ne,bool);
-            NeiAry=false;
-            forall i in TriNum {
-                i.write(0);
-            }
-            forall i in NeiTriNum {
-                i.write(0);
-            }
-            forall i in NeiNonTriNum {
-                i.write(0);
-            }           
 
-            TotalCnt=0;
-            subTriSum=0;	
-                            
+
+
+
             proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
                 if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
                     return -1;
@@ -830,27 +816,108 @@ module TriCntMsg {
                 return eid;
             }// end of  proc findEdge
 
-            // given vertces u and v, return the edge ID e=<u,v>
-            proc exactEdge(u:int,v:int):int {
-                //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
-                    return -1;
-                    // we do not accept self-loop
-                }
-                var beginE=start_i[u];
-                var eid=-1:int;
-                if (nei[u]>0) {
-                    if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                        eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                    }
-                }
-                return eid;
-            }// end of  proc exatEdge(u:int,v:int)
 
-            var timer:stopwatch;
+
+
+
+            var TriNum=makeDistArray(Nv,atomic int);
+            forall i in TriNum {
+                i.write(0);
+            }
+
+            TotalCnt=0;
+            subTriSum=0;	
+                            
+
+            var timer:Timer;
             timer.start();
-            var tmptimer:stopwatch;
+            var tmptimer:Timer;
             tmptimer.start();
+
+
+
+            /* Here is the minimum search method 
+            coforall loc in Locales {
+                  on loc {
+                     var ld = src.localSubdomain();
+                     var startEdge = ld.lowBound;
+                     var endEdge = ld.highBound;
+                     var triCount=0:int;
+                     forall i in startEdge..endEdge with(+ reduce triCount){
+                                  var Count:int;
+                                  Count=0;
+                                  var    v1=src[i];
+                                  var    v2=dst[i];
+                                  var    dv1=nei[v1]+neiR[v1];
+                                  var    dv2=nei[v2]+neiR[v2];
+                                  var    sv1:int;
+                                  var    lv2:int;
+                                  var    sdv1:int;
+                                  var    ldv2:int;
+                                  if (dv1<=dv2) {
+                                        sv1=v1;
+                                        lv2=v2;
+                                        sdv1=dv1;
+                                        ldv2=dv2;
+                                  } else {
+                                        sv1=v2;
+                                        lv2=v1;
+                                        sdv1=dv2;
+                                        ldv2=dv1;
+                                  }
+                                  {
+                                      var nextStart=start_i[sv1];
+                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
+                                      if (nei[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (+ reduce triCount){
+                                             var v3=src[j];//v3==sv1
+                                             var v4=dst[j]; 
+                                             var tmpe:int;
+                                             if ( ( lv2!=v4 ) ) {
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       if (ldv2<dv4) {
+                                                            tmpe=findEdge(lv2,v4);
+                                                       } else {
+                                                            tmpe=findEdge(v4,lv2);
+                                                       }
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                           triCount +=1;
+                                                       }
+                                             }// end of if EdgeDeleted[j]<=-1
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if nei[v1]>1
+    
+                                      nextStart=start_iR[sv1];
+                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
+                                      if (neiR[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (+ reduce triCount ){
+                                             var v3=srcR[j];//sv1==v3
+                                             var v4=dstR[j]; 
+                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
+                                             var tmpe:int;
+                                             if (e1!=-1) {
+                                                if ( ( lv2!=v4 ) ) {
+                                                       // we first check if  the two different vertices can be the third edge
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       if ldv2<dv4 {
+                                                          tmpe=findEdge(lv2,v4);
+                                                       } else {
+                                                          tmpe=findEdge(v4,lv2);
+                                                       }
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                           triCount +=1;
+                                                       }
+                                                }
+                                             }
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if
+                                  }// end of triangle counting
+                     }// end of forall. We get the number of triangles for each edge
+                     subTriSum[here.id]=triCount;
+            } // end of coforall loc in Locales  
+            */
+
+
             coforall loc in Locales {
                 on loc {
                     var ld = src.localSubdomain();
@@ -859,7 +926,6 @@ module TriCntMsg {
                     startEdge=max(startEdge,start_i[vertex]);
                     endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
                     var triCount=0:int;
-                    //writeln("Start of CoForall");
                     // each locale only handles the edges owned by itself
                     forall i in startEdge..endEdge with (+ reduce triCount) {
                         var u = src[i];
@@ -897,13 +963,6 @@ module TriCntMsg {
                             {
                                 if dst[iu]==dst[jv] {
                                     triCount +=1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dst[jv]].add(1);
-                                    NeiAry[iu] = true;
-                                    NeiAry[jv] = true;
-                                    NeiAry[i] = true;
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -921,7 +980,7 @@ module TriCntMsg {
                         //writeln("Enter while 2 in iteration ",N2 , " and edge=", i);
                         var Count=0;
                         //writeln("Before Second While");
-                        while ( (iu <=endUf) && (jv<=endVb) && Count < Nv)  {
+                        while ( (iu <=endUf) && (jv<=endVb) )  {
                             Count +=1;
                             if  ( (dst[iu]==v) ) {
                                 iu+=1;
@@ -935,14 +994,6 @@ module TriCntMsg {
                             {
                                 if dst[iu]==dstR[jv] {
                                     triCount += 1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dst[iu]].add(1);
-                                    NeiAry[iu] = true;
-                                    var tmpe = exactEdge(dstR[jv], srcR[jv]);
-                                    NeiAry[tmpe] = true;
-                                    NeiAry[i] = true;                                     
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -956,12 +1007,11 @@ module TriCntMsg {
                         }
 
 
-                Count = 0;
+                        Count = 0;
                         iu=beginUb;
                         jv=beginVf;
-                        //writeln("Enter while 3 in iteration ",N2 , " and edge=", i);
                         //writeln("Before Third While");
-                        while ( (iu <=endUb) &&   (jv<=endVf) && Count < Nv)  {
+                        while ( (iu <=endUb) &&   (jv<=endVf) )  {
                             Count += 1;
                             //eu=findEdge(dstR[iu],u);
                             if  ( (dstR[iu]==v) ) {
@@ -975,14 +1025,6 @@ module TriCntMsg {
                             {
                                 if dstR[iu]==dst[jv] {
                                     triCount += 1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dst[jv]].add(1);
-                                    var tmpe = exactEdge(dstR[iu], srcR[iu]);
-                                    NeiAry[tmpe] = true;
-                                    NeiAry[jv] = true;
-                                    NeiAry[i] = true;                                     
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
@@ -1001,10 +1043,8 @@ module TriCntMsg {
                         Count = 0;
                         //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
                         //writeln("Before Fourth While");
-                        while ( (iu <=endUb) &&   (jv<=endVb) && Count < Nv)  {
+                        while ( (iu <=endUb) &&   (jv<=endVb) )  {
                             Count += 1;
-                            //eu=findEdge(dstR[iu],u);
-                            //ev=findEdge(dstR[jv],v);
                             if  ( (dstR[iu]==v) ) {
                                 iu+=1;
                                 continue;
@@ -1016,16 +1056,6 @@ module TriCntMsg {
                             {
                                 if dstR[iu]==dstR[jv] {
                                     triCount +=1;
-                                    TriNum[u].add(1);
-                                    TriNum[v].add(1);
-                                    TriNum[dstR[jv]].add(1);
-                                    //FindEdge
-                                    var tmpe1 = exactEdge(dstR[iu], srcR[iu]);
-                                    var tmpe2 = exactEdge(dstR[jv], srcR[jv]);
-                                    NeiAry[tmpe1] = true;
-                                    NeiAry[tmpe2] = true;
-                                    NeiAry[i] = true;                                 
-                                    //TriCount[i]+=1;
                                     iu+=1;
                                     jv+=1;
                                 } else {
