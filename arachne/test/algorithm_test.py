@@ -86,7 +86,7 @@ class AlgorithmTest(ArkoudaTest):
         complete = self.assertEqual(sum(nx_tri_full.values())/3, ar_tri_full[0])
 
         # TODO: Partial triangle counting returns error. Has to be fixed.
-        # partial = self.assertEqual(sum(nx_tri_partial.values())/3, ak.sum(ar_tri_partial))
+        partial = self.assertEqual(sum(nx_tri_partial.values())/3, ak.sum(ar_tri_partial))
 
         return complete
 
