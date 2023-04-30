@@ -802,7 +802,7 @@ def connected_components(graph: Graph) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def triangles(graph: Graph, vertexArray: pdarray) -> pdarray:
+def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
     """
     This function will return the number of triangles in a static graph if the vertexArray is [-1], 
     otherwise, it will return the number of triangles containing the given vertex. If the input vertexArray is 
@@ -825,6 +825,10 @@ def triangles(graph: Graph, vertexArray: pdarray) -> pdarray:
     RuntimeError
     """
     cmd="segmentedGraphTri"
+
+    if vertexArray is None:
+        vertexArray = ak.array([-1])
+
     args = { "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
              "Directed":graph.directed,
