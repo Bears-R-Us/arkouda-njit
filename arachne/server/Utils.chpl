@@ -386,7 +386,7 @@ module Utils {
                         writeln(comp:string, " = ", X);
                     }
                     when "NODE_MAP_R" {
-                        var X = toSymEntryAD(G.getComp("NODE_MAP_R")).a;
+                        var X = toSymEntryAD(G.getComp(comp:string)).a;
                         writeln(comp:string, " = ", X);
                     }
                     otherwise {
@@ -479,11 +479,40 @@ module Utils {
         var writer = outfile.writer();
 
         for comp in Component {
-            if G.hasComp(comp:string) {
-                var X = toSymEntry(G.getComp(comp:string), int).a;
-                var n = X.size;
-                writer.writeln(n, " ", comp:string);
-                writer.writeln(X);
+            var curr_comp = comp:string;
+            if G.hasComp(curr_comp) {
+                select curr_comp {
+                    when "RELATIONSHIPS", "NODE_LABELS" {
+                        var X = toSymEntry(G.getComp(comp:string), list(string, parSafe=true)).a;
+                        var n = X.size;
+                        writer.writeln(n, " ", comp:string);
+                        writer.writeln(X);
+                    }
+                    when "NODE_PROPS", "EDGE_PROPS" {
+                        var X = toSymEntry(G.getComp(comp:string), list((string,string), parSafe=true)).a;
+                        var n = X.size;
+                        writer.writeln(n, " ", comp:string);
+                        writer.writeln(X);
+                    }
+                    when "EDGE_WEIGHT", "EDGE_WEIGHT_R" {
+                        var X = toSymEntry(G.getComp(comp:string), real).a;
+                        var n = X.size;
+                        writer.writeln(n, " ", comp:string);
+                        writer.writeln(X);
+                    }
+                    when "NODE_MAP_R" {
+                        var X = toSymEntryAD(G.getComp(comp:string)).a;
+                        var n = X.size;
+                        writer.writeln(n, " ", comp:string);
+                        writer.writeln(X);
+                    }
+                    otherwise {
+                        var X = toSymEntry(G.getComp(comp:string), int).a;
+                        var n = X.size;
+                        writer.writeln(n, " ", comp:string);
+                        writer.writeln(X);
+                    }
+                }
             }
         }
         writer.close();

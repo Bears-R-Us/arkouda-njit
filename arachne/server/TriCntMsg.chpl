@@ -759,13 +759,9 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
 
 
             proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
-                    return -1;
-                }
                 if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
                     return -1;
                 }
-
                 if (ary[l]==key){
                     return l;
                 }
@@ -787,11 +783,10 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
                     }
                  }
             }// end of binSearch
-
             // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
             proc findEdge(u:int,v:int):int {
                 //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+                if ((u==v)  ) {
                     return -1;
                     // we do not accept self-loop
                 }
@@ -902,10 +897,8 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
                                          forall j in nextStart..nextEnd with (+ reduce triCount ){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
-                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
                                              var tmpe:int;
-                                             if (e1!=-1) {
-                                                if ( ( lv2!=v4 ) ) {
+                                             if ( ( lv2!=v4 ) ) {
                                                        // we first check if  the two different vertices can be the third edge
                                                        var dv4=nei[v4]+neiR[v4];
                                                        if ldv2<dv4 {
@@ -916,7 +909,80 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
                                                        if (tmpe!=-1) {// there is such third edge
                                                            triCount +=1;
                                                        }
-                                                }
+                                             }
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if
+                                  }// end of triangle counting
+                     }// end of forall. We get the number of triangles for each edge
+                     //subTriSum[here.id]=triCount;
+
+
+
+                     ld = srcR.localSubdomain();
+                     startEdge = ld.lowBound;
+                     endEdge = ld.highBound;
+                     startEdge=max(startEdge,start_iR[vertex]);
+                     endEdge=min(endEdge,start_iR[vertex]+neiR[vertex]-1);
+                     forall i in startEdge..endEdge with(+ reduce triCount){
+                                  var    v1=srcR[i];
+                                  var    v2=dstR[i];
+                                  var    dv1=nei[v1]+neiR[v1];
+                                  var    dv2=nei[v2]+neiR[v2];
+                                  var    sv1:int;
+                                  var    lv2:int;
+                                  var    sdv1:int;
+                                  var    ldv2:int;
+                                  if (dv1<=dv2) {
+                                        sv1=v1;
+                                        lv2=v2;
+                                        sdv1=dv1;
+                                        ldv2=dv2;
+                                  } else {
+                                        sv1=v2;
+                                        lv2=v1;
+                                        sdv1=dv2;
+                                        ldv2=dv1;
+                                  }
+                                  {
+                                      var nextStart=start_i[sv1];
+                                      var nextEnd=start_i[sv1]+nei[sv1]-1;
+                                      if (nei[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (+ reduce triCount){
+                                             var v3=src[j];//v3==sv1
+                                             var v4=dst[j]; 
+                                             var tmpe:int;
+                                             if ( ( lv2!=v4 ) ) {
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       if (ldv2<dv4) {
+                                                            tmpe=findEdge(lv2,v4);
+                                                       } else {
+                                                            tmpe=findEdge(v4,lv2);
+                                                       }
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                           triCount +=1;
+                                                       }
+                                             }// end of if EdgeDeleted[j]<=-1
+                                         }// end of  forall j in nextStart..nextEnd 
+                                      }// end of if nei[v1]>1
+    
+                                      nextStart=start_iR[sv1];
+                                      nextEnd=start_iR[sv1]+neiR[sv1]-1;
+                                      if (neiR[sv1]>0) {
+                                         forall j in nextStart..nextEnd with (+ reduce triCount ){
+                                             var v3=srcR[j];//sv1==v3
+                                             var v4=dstR[j]; 
+                                             var tmpe:int;
+                                             if ( ( lv2!=v4 ) ) {
+                                                       // we first check if  the two different vertices can be the third edge
+                                                       var dv4=nei[v4]+neiR[v4];
+                                                       if ldv2<dv4 {
+                                                          tmpe=findEdge(lv2,v4);
+                                                       } else {
+                                                          tmpe=findEdge(v4,lv2);
+                                                       }
+                                                       if (tmpe!=-1) {// there is such third edge
+                                                           triCount +=1;
+                                                       }
                                              }
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
@@ -927,160 +993,12 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
                 }// end of  on loc 
             } // end of coforall loc in Locales 
 
-
-            /*
-            coforall loc in Locales {
-                on loc {
-                    var ld = src.localSubdomain();
-                    var startEdge = ld.lowBound;
-                    var endEdge = ld.highBound;
-                    startEdge=max(startEdge,start_i[vertex]);
-                    endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
-                    var triCount=0:int;
-                    // each locale only handles the edges owned by itself
-                    forall i in startEdge..endEdge with (+ reduce triCount) {
-                        var u = src[i];
-                        var v = dst[i];
-                        var beginUf=start_i[u];
-                        var endUf=beginUf+nei[u]-1;
-                        var beginUb=start_iR[u];
-                        var endUb=beginUb+neiR[u]-1;
-                        var beginVf=start_i[v];
-                        var endVf=beginVf+nei[v]-1;
-                        var beginVb=start_iR[v];
-                        var endVb=beginVb+neiR[v]-1;
-                        var iu:int;
-                        var jv:int;
-                        var eu:int;
-                        var ev:int;
-                        if ((u!=v) ){
-                        iu=beginUf;
-                        jv=beginVf;
-                        //writeln("Enter while 1 in iteration ",N2 , " and edge=", i);
-                        //writeln("Before First While");
-                        while ( (iu <=endUf) &&   (jv<=endVf))  {
-                            if  ( (dst[iu]==v) ) {
-                                iu+=1;
-                                continue;
-                            }
-                            if ((dst[jv]==u) ) {
-                                jv+=1;
-                                continue;
-                            }
-                            {
-                                if dst[iu]==dst[jv] {
-                                    triCount +=1;
-                                    iu+=1;
-                                    jv+=1;
-                                } else {
-                                    if dst[iu]<dst[jv] {
-                                    iu+=1;
-                                    } else {
-                                    jv+=1;
-                                    }
-                                }
-                            } 
-                        }  
-                        iu=beginUf;
-                        jv=beginVb;
-                        //writeln("Enter while 2 in iteration ",N2 , " and edge=", i);
-                        var Count=0;
-                        //writeln("Before Second While");
-                        while ( (iu <=endUf) && (jv<=endVb) )  {
-                            Count +=1;
-                            if  ( (dst[iu]==v) ) {
-                                iu+=1;
-                                continue;
-                            }
-                            ev=findEdge(dstR[jv],v);
-                            if ( (dstR[jv]==u) ) {
-                                jv+=1;
-                                continue;
-                            }
-                            {
-                                if dst[iu]==dstR[jv] {
-                                    triCount += 1;
-                                    iu+=1;
-                                    jv+=1;
-                                } else {
-                                    if dst[iu]<dstR[jv] {
-                                    iu+=1;
-                                    } else {
-                                    jv+=1;
-                                    }
-                                }
-                            } 
-                        }
-                        iu=beginUb;
-                        jv=beginVf;
-                        //writeln("Before Third While");
-                        while ( (iu <=endUb) &&   (jv<=endVf) )  {
-                            //eu=findEdge(dstR[iu],u);
-                            if  ( (dstR[iu]==v) ) {
-                                iu+=1;
-                                continue;
-                            }
-                            if ( (dst[jv]==u) ) {
-                                jv+=1;
-                                continue;
-                            }
-                            {
-                                if dstR[iu]==dst[jv] {
-                                    triCount += 1;
-                                    iu+=1;
-                                    jv+=1;
-                                } else {
-                                    if dstR[iu]<dst[jv] {
-                                    iu+=1;
-                                    } else {
-                                    jv+=1;
-                                    }
-                                }
-                            } 
-                        }
-                        iu=beginUb;
-                        jv=beginVb;
-            tartEdge=max(startEdge,start_i[vertex]);
-                    endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
-           //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
-                        //writeln("Before Fourth While");
-                        while ( (iu <=endUb) &&   (jv<=endVb) )  {
-                            if  ( (dstR[iu]==v) ) {
-                                iu+=1;
-                                continue;
-                            }
-                            if ( (dstR[jv]==u) ) {
-                                jv+=1;
-                                continue;
-                            }
-                            {
-                                if dstR[iu]==dstR[jv] {
-                                    triCount +=1;
-                                    iu+=1;
-                                    jv+=1;
-                                } else {
-                                    if dstR[iu]<dstR[jv] {
-                                    iu+=1;
-                                    } else {
-                                    jv+=1;
-                                    }
-                                }
-                            } 
-                        }
-            
-                        }//end of if
-                    }// end of forall. We get the number of triangles for each edge
-                    subTriSum[here.id]=triCount;
-                }// end of  on loc 
-            } // end of coforall loc in Locales 
-            */
-            //writeln("Elapsed time for triangle Counting path merge ="+(tmptimer.elapsed()):string);
             return "success";
-        }//END TRI_CTR_KERNEL_PATH_MERGE
+        }//END tr_ctr_vertex
 
 
 
-      proc return_tri_count(): string throws{
+      proc return_tri_count(): int{
           for i in subTriSum {
              TotalCnt[0]+=i;
           }
@@ -1093,15 +1011,7 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
               totalLocal+=i;
           }
           TotalCnt[0]/=3;
-          writeln("$#$#$ Triangle Number=", TotalCnt[0]);
-          //writeln("LocalRatio=", (totalLocal:real)/((totalRemote+totalLocal):real),", TotalTimes=",totalRemote+totalLocal);
-          //writeln("LocalAccessTimes=", totalLocal,", RemoteAccessTimes=",totalRemote);
-          var countName = st.nextName();
-          var countEntry = new shared SymEntry(TotalCnt);
-          st.addEntry(countName, countEntry);
-
-          var cntMsg =  'created ' + st.attrib(countName);
-          return cntMsg;
+          return TotalCnt[0];
 
       }
 
@@ -1127,6 +1037,23 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
           }
           for i in LocalAccessTimes {
               totalLocal+=i;
+          }
+          TotalCnt[0]/=2;
+          return TotalCnt[0];
+
+      }
+
+    proc return_all_count(): int {
+          for i in subTriSum {
+             TotalCnt[0]+=i;
+          }
+          TotalCnt[0]/=3;
+          return TotalCnt[0];
+
+      }
+      proc return_vertex_count(): int {
+          for i in subTriSum {
+             TotalCnt[0]+=i;
           }
           TotalCnt[0]/=2;
           return TotalCnt[0];
@@ -1161,7 +1088,7 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
                 toSymEntry(ag.getComp("SRC_R"), int).a,
                 toSymEntry(ag.getComp("DST_R"), int).a
             );
-              returnary[0]=return_count();
+              returnary[0]=return_all_count();
                } else {
                   for i in 0..returnary.size-1 {
                        triCtr_vertex(
@@ -1174,7 +1101,7 @@ proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int
                         toSymEntry(ag.getComp("SRC_R"), int).a,
                         toSymEntry(ag.getComp("DST_R"), int).a,
                       vertexArray[i]);
-                       returnary[i]=return_count();
+                       returnary[i]=return_vertex_count();
 
                   }
                }

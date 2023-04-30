@@ -233,7 +233,7 @@ class Graph:
         -------
         None
         """
-        cmd = "writeGraphArrays"
+        cmd = "writeGraphArraysToFile"
         args = { "GraphName": self.name,
                     "Path" : path}
         repMsg = generic_msg(cmd=cmd, args=args)
@@ -246,7 +246,7 @@ class Graph:
         -------
         None
         """
-        cmd = "addEdgesFromGraphArraysFile"
+        cmd = "readGraphArraysFromFile"
         args = { "Path" : path}
         
         repMsg = generic_msg(cmd=cmd, args=args)
