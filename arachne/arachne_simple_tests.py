@@ -22,7 +22,7 @@ if __name__ == "__main__":
     src = ak.array([34, 23, 34, 23, 23, 89])
     dst = ak.array([23, 34, 89, 89, 89, 89])
     wgt = ak.array([98, 12, 13, .4, 23, 12])
-    graph = ar.DiGraph()
+    graph = ar.PropGraph()
     graph.add_edges_from(src, dst, wgt)
 
     # Add node labels to the property graph.
@@ -102,8 +102,8 @@ if __name__ == "__main__":
     print("Edges with property since from 2011 =\n", edge_property_filter.__repr__())
     print()
 
-    H = ar.subgraph_view(graph, filter_labels=node_label_filter, filter_relationships=edge_relationship_filter, filter_node_properties=node_property_filter, filter_edge_properties=edge_property_filter)
+    subgraph = ar.subgraph_view(graph, ar.Graph(), filter_labels=node_label_filter, filter_relationships=edge_relationship_filter, filter_node_properties=node_property_filter, filter_edge_properties=edge_property_filter)
     print(graph.edges())
-    print(H.edges())
+    print(subgraph.edges())
 
     ak.shutdown()
