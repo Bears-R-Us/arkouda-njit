@@ -1130,9 +1130,6 @@ module TriCntMsg {
 
 
             proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                if ( (l<D.lowBound) || (h>D.highBound) || (l<0)) {
-                    return -1;
-                }
                 if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
                     return -1;
                 }
