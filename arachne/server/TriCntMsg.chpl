@@ -755,9 +755,7 @@ module TriCntMsg {
 
 
 
-        proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, vertex:int):string throws {
-
-
+proc triCtr_vertex(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, vertex:int):string throws {
 
 
             proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
@@ -767,6 +765,7 @@ module TriCntMsg {
                 if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
                     return -1;
                 }
+
                 if (ary[l]==key){
                     return l;
                 }
@@ -817,13 +816,23 @@ module TriCntMsg {
             }// end of  proc findEdge
 
 
+            // given vertces u and v, return the edge ID e=<u,v>
+            proc exactEdge(u:int,v:int):int {
+                //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+                    return -1;
+                    // we do not accept self-loop
+                }
+                var beginE=start_i[u];
+                var eid=-1:int;
+                if (nei[u]>0) {
+                    if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+                        eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+                    }
+                }
+                return eid;
+            }// end of  proc exatEdge(u:int,v:int)
 
-
-
-            var TriNum=makeDistArray(Nv,atomic int);
-            forall i in TriNum {
-                i.write(0);
-            }
 
             TotalCnt=0;
             subTriSum=0;	
@@ -836,16 +845,16 @@ module TriCntMsg {
 
 
 
-            /* Here is the minimum search method 
             coforall loc in Locales {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
                      var endEdge = ld.highBound;
+                     startEdge=max(startEdge,start_i[vertex]);
+                     endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
+
                      var triCount=0:int;
                      forall i in startEdge..endEdge with(+ reduce triCount){
-                                  var Count:int;
-                                  Count=0;
                                   var    v1=src[i];
                                   var    v2=dst[i];
                                   var    dv1=nei[v1]+neiR[v1];
@@ -914,10 +923,12 @@ module TriCntMsg {
                                   }// end of triangle counting
                      }// end of forall. We get the number of triangles for each edge
                      subTriSum[here.id]=triCount;
-            } // end of coforall loc in Locales  
-            */
+
+                }// end of  on loc 
+            } // end of coforall loc in Locales 
 
 
+            /*
             coforall loc in Locales {
                 on loc {
                     var ld = src.localSubdomain();
@@ -932,16 +943,12 @@ module TriCntMsg {
                         var v = dst[i];
                         var beginUf=start_i[u];
                         var endUf=beginUf+nei[u]-1;
-
                         var beginUb=start_iR[u];
                         var endUb=beginUb+neiR[u]-1;
-
                         var beginVf=start_i[v];
                         var endVf=beginVf+nei[v]-1;
-
                         var beginVb=start_iR[v];
                         var endVb=beginVb+neiR[v]-1;
-
                         var iu:int;
                         var jv:int;
                         var eu:int;
@@ -974,7 +981,6 @@ module TriCntMsg {
                                 }
                             } 
                         }  
-
                         iu=beginUf;
                         jv=beginVb;
                         //writeln("Enter while 2 in iteration ",N2 , " and edge=", i);
@@ -1005,14 +1011,10 @@ module TriCntMsg {
                                 }
                             } 
                         }
-
-
-                        Count = 0;
                         iu=beginUb;
                         jv=beginVf;
                         //writeln("Before Third While");
                         while ( (iu <=endUb) &&   (jv<=endVf) )  {
-                            Count += 1;
                             //eu=findEdge(dstR[iu],u);
                             if  ( (dstR[iu]==v) ) {
                                 iu+=1;
@@ -1036,15 +1038,13 @@ module TriCntMsg {
                                 }
                             } 
                         }
-
-
                         iu=beginUb;
                         jv=beginVb;
-                        Count = 0;
-                        //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
+            tartEdge=max(startEdge,start_i[vertex]);
+                    endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
+           //writeln("Enter while 4 in iteration ",N2 , " and edge=", i);
                         //writeln("Before Fourth While");
                         while ( (iu <=endUb) &&   (jv<=endVb) )  {
-                            Count += 1;
                             if  ( (dstR[iu]==v) ) {
                                 iu+=1;
                                 continue;
@@ -1072,8 +1072,8 @@ module TriCntMsg {
                     }// end of forall. We get the number of triangles for each edge
                     subTriSum[here.id]=triCount;
                 }// end of  on loc 
-
             } // end of coforall loc in Locales 
+            */
             //writeln("Elapsed time for triangle Counting path merge ="+(tmptimer.elapsed()):string);
             return "success";
         }//END TRI_CTR_KERNEL_PATH_MERGE
@@ -1128,7 +1128,7 @@ module TriCntMsg {
           for i in LocalAccessTimes {
               totalLocal+=i;
           }
-          TotalCnt[0]/=3;
+          TotalCnt[0]/=2;
           return TotalCnt[0];
 
       }
