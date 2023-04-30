@@ -1289,7 +1289,6 @@ module TriCntMsg {
                      startEdge=max(startEdge,start_iR[vertex]);
                      endEdge=min(endEdge,start_iR[vertex]+neiR[vertex]-1);
 
-                     triCount=0;
                      forall i in startEdge..endEdge with(+ reduce triCount){
                                   var    v1=srcR[i];
                                   var    v2=dstR[i];
