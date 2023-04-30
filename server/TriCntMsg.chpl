@@ -1163,7 +1163,7 @@ module TriCntMsg {
             // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
             proc findEdge(u:int,v:int):int {
                 //given the destination arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-                if ((u==v) || (u<D1.lowBound) || (v<D1.lowBound) || (u>D1.highBound) || (v>D1.highBound) ) {
+                if ((u==v)  ) {
                     return -1;
                     // we do not accept self-loop
                 }
