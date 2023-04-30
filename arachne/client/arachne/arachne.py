@@ -9,6 +9,7 @@ from arkouda.dtypes import int64 as akint
 
 __all__ = ["Graph",
            "DiGraph",
+           "PropGraph",
            "read_known_edgelist",
            "read_edgelist",
            "bfs_layers",
@@ -213,6 +214,9 @@ class Graph:
                  "Weighted" : bool(self.weighted),
                  "Directed": bool(self.directed) }
         
+        if isinstance(self, PropGraph):
+            args["IsPropGraph"] = "true"
+        
         repMsg = generic_msg(cmd=cmd, args=args)
         returned_vals = (cast(str, repMsg).split('+'))
 
@@ -229,20 +233,20 @@ class Graph:
         -------
         None
         """
-        cmd = "writeGraphArrays"
+        cmd = "writeGraphArraysToFile"
         args = { "GraphName": self.name,
                     "Path" : path}
         repMsg = generic_msg(cmd=cmd, args=args)
         print(f"Graph writen to file: {path}")
 
-    def add_edges_from_graph_arrays_file(self, path:str) -> None:
+    def read_graph_arrays_from_file(self, path:str) -> None:
         """Populates the graph object with arrays as defined from a file. 
 
         Returns
         -------
         None
         """
-        cmd = "addEdgesFromGraphArraysFile"
+        cmd = "readGraphArraysFromFile"
         args = { "Path" : path}
         
         repMsg = generic_msg(cmd=cmd, args=args)
@@ -254,89 +258,6 @@ class Graph:
         oriname = cast(str, returned_vals[4])
         self.name = oriname.strip()
 
-    def add_node_labels(self, labels:ak.DataFrame) -> None:
-        """Populates the graph object with labels from a dataframe. Passed dataframe should follow
-        this same format for key names: 
-        
-        labels = ak.DataFrame({"nodeIDs" : nodes, "nodeLabels" : labels})
-
-        Returns
-        -------
-        None
-        """
-        cmd = "addNodeLabels"
-        arrays = labels["nodeIDs"].name + " " + labels["nodeLabels"].name
-        args = {  "GraphName" : self.name,
-                  "Arrays" : arrays }
-        repMsg = generic_msg(cmd=cmd, args=args)
-
-    def add_edge_relationships(self, relations:ak.DataFrame) -> None:
-        """Populates the graph object with edge relationships from a dataframe. Passed dataframe should 
-        follow this same format for key-value pairs: 
-        
-        relationships = ak.DataFrame({"src" : src, "dst" : dst, "edgeRelationships" : edgeRelationships})
-
-        where X is an arbitrary number of property columns. 
-
-        Returns
-        -------
-        None
-        """
-        cmd = "addEdgeRelationships"
-        arrays = relations["src"].name + " " + relations["dst"].name + " " + relations["edgeRelationships"].name + " "
-        args = {  "GraphName" : self.name,
-                  "Arrays" : arrays }
-        repMsg = generic_msg(cmd=cmd, args=args)
-
-    def add_node_properties(self, properties:ak.DataFrame) -> None:
-        """Populates the graph object with node properties from a dataframe. Passed dataframe should follow
-        this same format for key names below:
-        
-        node_properties = ak.DataFrame({"nodeIDs" : nodes, "prop1" : prop1, ... , "propN" L propN})
-
-        Returns
-        -------
-        None
-        """
-        cmd = "addNodeProperties"
-        arrays = properties["nodeIDs"].name + " " 
-        columns = "nodeIDs" + " "
-
-        for column in properties.columns:
-            if column != "nodeIDs":
-                arrays += properties[column].name + " "
-                columns += column + " "
-
-        args = {  "GraphName" : self.name,
-                  "Arrays" : arrays,
-                  "Columns" : columns }
-        repMsg = generic_msg(cmd=cmd, args=args)
-
-    def add_edge_properties(self, properties:ak.DataFrame) -> None:
-        """Populates the graph object with edge properties from a dataframe. Passed dataframe should follow
-        this same format for key names below:
-        
-        edge_properties = ak.DataFrame({"src" : src, "dst" : dst, "prop1" : prop1, ... , "propM" : propM})
-
-        Returns
-        -------
-        None
-        """
-        cmd = "addEdgeProperties"
-        arrays = properties["src"].name + " " + properties["dst"].name + " "
-        columns = "src" + " " + "dst" + " "
-
-        for column in properties.columns:
-            if column != "src" and column != "dst":
-                arrays += properties[column].name + " "
-                columns += column + " "
-
-        args = {  "GraphName" : self.name,
-                  "Arrays" : arrays,
-                  "Columns" : columns }
-        repMsg = generic_msg(cmd=cmd, args=args)
-
-
 class DiGraph(Graph):
     """Base class for directed graphs. Inherits from Graph.
 
@@ -344,7 +265,7 @@ class DiGraph(Graph):
     on the arkouda server. The user should not call this class directly; rather its instances are 
     created by other arachne functions.
 
-    Graphs hold undirected edges. Self loops and multiple edges are not allowed.
+    DiGraphs hold directed edges. Self loops and multiple edges are not allowed.
 
     Nodes currently are only allowed to be integers. They may contain optional key/value attributes.
 
@@ -426,6 +347,179 @@ class DiGraph(Graph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
+
+class PropGraph(DiGraph):
+    """Base class for property graphs. Inherits from DiGraph.
+
+    This is the double index graph data structure based graph representation. The graph data resides 
+    on the arkouda server. The user should not call this class directly; rather its instances are 
+    created by other arachne functions.
+
+    PropGraphs hold directed edges. Self loops and multiple edges are allowed.
+
+    Nodes currently are only allowed to be integers. They can contain labels as strings and 
+    properties as tuples.
+
+    Edges are represented as directed links between nodes. They can contain relationships as strings
+    and properties as tuples.
+
+    Parameters
+    ----------
+    None
+
+    Attributes
+    ----------
+    n_vertices : int
+        The number of vertices in the graph. 
+    n_edges : int
+        The number of edges in the graph.
+    directed : int
+        The graph is directed (True) or undirected (False).
+    weighted : int
+        The graph is weighted (True) or unweighted (False).
+    name : string
+        The name of the graph in the backend Chapel server. 
+    logger : ArkoudaLogger
+        Used for all logging operations.
+
+    See Also
+    --------
+    Graph
+        
+    Notes
+    -----
+    """
+
+    def __init__(self, *args) -> None:
+        """Initializes the Graph instance by setting all instance
+        attributes, some of which are derived from the array parameters.
+        
+        Parameters
+        ----------
+        n_vertices
+            Must be provided in args[0].
+        n_edges
+            Must be provided in args[1].
+        weighted
+            Must be provided in args[3].
+        name
+            Must be provided in args[4].
+        directed
+            Defaults to 1 since PropGraph is inherently directed. If needed,
+            should be found in args[2].
+         
+        Returns
+        -------
+        None
+        
+        Raises
+        ------
+        RuntimeError
+            Raised if there's an error from the server to create a graph.   
+        ValueError
+            Raised if not enough arguments are passed to generate the graph. 
+        """
+        try:
+            if len(args) < 5:
+                self.n_vertices = 0
+                self.n_edges = 0
+                self.weighted = None
+                self.directed = 1
+                self.name = None
+            else:
+                self.n_vertices = int (cast(int, args[0]))
+                self.n_edges = int(cast(int, args[1]))
+                self.weighted = int(cast(int, args[3]))
+                oriname = cast(str, args[4])
+                self.name = oriname.strip()
+                self.directed = 1
+        except Exception as e:
+            raise RuntimeError(e)
+
+        self.dtype = akint
+        self.logger = getArkoudaLogger(name=__class__.__name__)
+    
+    def add_node_labels(self, labels:ak.DataFrame) -> None:
+        """Populates the graph object with labels from a dataframe. Passed dataframe should follow
+        this same format for key names: 
+        
+        labels = ak.DataFrame({"nodeIDs" : nodes, "nodeLabels" : labels})
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addNodeLabels"
+        arrays = labels["nodeIDs"].name + " " + labels["nodeLabels"].name
+        args = {  "GraphName" : self.name,
+                  "Arrays" : arrays }
+        repMsg = generic_msg(cmd=cmd, args=args)
+
+    def add_edge_relationships(self, relations:ak.DataFrame) -> None:
+        """Populates the graph object with edge relationships from a dataframe. Passed dataframe should 
+        follow this same format for key-value pairs: 
+        
+        relationships = ak.DataFrame({"src" : src, "dst" : dst, "edgeRelationships" : edgeRelationships})
+
+        where X is an arbitrary number of property columns. 
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgeRelationships"
+        arrays = relations["src"].name + " " + relations["dst"].name + " " + relations["edgeRelationships"].name + " "
+        args = {  "GraphName" : self.name,
+                  "Arrays" : arrays }
+        repMsg = generic_msg(cmd=cmd, args=args)
+
+    def add_node_properties(self, properties:ak.DataFrame) -> None:
+        """Populates the graph object with node properties from a dataframe. Passed dataframe should follow
+        this same format for key names below:
+        
+        node_properties = ak.DataFrame({"nodeIDs" : nodes, "prop1" : prop1, ... , "propN" L propN})
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addNodeProperties"
+        arrays = properties["nodeIDs"].name + " " 
+        columns = "nodeIDs" + " "
+
+        for column in properties.columns:
+            if column != "nodeIDs":
+                arrays += properties[column].name + " "
+                columns += column + " "
+
+        args = {  "GraphName" : self.name,
+                  "Arrays" : arrays,
+                  "Columns" : columns }
+        repMsg = generic_msg(cmd=cmd, args=args)
+
+    def add_edge_properties(self, properties:ak.DataFrame) -> None:
+        """Populates the graph object with edge properties from a dataframe. Passed dataframe should follow
+        this same format for key names below:
+        
+        edge_properties = ak.DataFrame({"src" : src, "dst" : dst, "prop1" : prop1, ... , "propM" : propM})
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgeProperties"
+        arrays = properties["src"].name + " " + properties["dst"].name + " "
+        columns = "src" + " " + "dst" + " "
+
+        for column in properties.columns:
+            if column != "src" and column != "dst":
+                arrays += properties[column].name + " "
+                columns += column + " "
+
+        args = {  "GraphName" : self.name,
+                  "Arrays" : arrays,
+                  "Columns" : columns }
+        repMsg = generic_msg(cmd=cmd, args=args)
 
 @typechecked
 def read_known_edgelist(ne: int, nv: int, path: str, weighted: bool = False, directed: bool = False, 
@@ -541,6 +635,7 @@ def read_edgelist(path: str, weighted: bool = False, directed: bool = False, com
              "Directed": directed,
              "Comments" : comments,
              "FileType" : filetype}
+
     repMsg = generic_msg(cmd=cmd, args=args)
 
     if not directed:
@@ -581,10 +676,11 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
 
 @typechecked
 def subgraph_view(graph: Graph,
-                  filter_labels:pdarray = None,
-                  filter_relationships:ak.DataFrame = None,
-                  filter_node_properties:pdarray = None,
-                  filter_edge_properties:ak.DataFrame = None) -> Graph:
+                  return_as: Union[Graph, DiGraph, PropGraph] = Graph,
+                  filter_labels: pdarray = None,
+                  filter_relationships: ak.DataFrame = None,
+                  filter_node_properties: pdarray = None,
+                  filter_edge_properties: ak.DataFrame = None) -> Graph:
     """ This function generates a subgraph view (a filtered graph) of a passed Graph. The returned
     graph is a simple graph where no labels, relationships, or properties are maintained.
 
@@ -643,9 +739,9 @@ def subgraph_view(graph: Graph,
         
     src = create_pdarray(returned_vals[0])
     dst = create_pdarray(returned_vals[1])
-    H = DiGraph()
-    H.add_edges_from(src, dst)
-    return H
+    subgraph = return_as
+    subgraph.add_edges_from(src, dst)
+    return subgraph
 
 @typechecked
 def triangle_centrality(graph: Graph) -> pdarray:
@@ -706,7 +802,7 @@ def connected_components(graph: Graph) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def triangles(graph: Graph, vertexArray: pdarray) -> pdarray:
+def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
     """
     This function will return the number of triangles in a static graph if the vertexArray is [-1], 
     otherwise, it will return the number of triangles containing the given vertex. If the input vertexArray is 
@@ -729,6 +825,10 @@ def triangles(graph: Graph, vertexArray: pdarray) -> pdarray:
     RuntimeError
     """
     cmd="segmentedGraphTri"
+
+    if vertexArray is None:
+        vertexArray = ak.array([-1])
+
     args = { "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
              "Directed":graph.directed,
