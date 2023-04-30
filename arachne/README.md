@@ -47,6 +47,6 @@ python3 bfs.py node port -d /path/to/arkouda-njit/arachne/data -t 10
 ## Testing
 The Arachne tests are executed from the arkouda-njit/arachne directory as follows:
 ```
-python3 -m pytest test/bfs_test.py test/reading_test.py test/class_test.py
+python3 -m pytest test/algorithm_test.py test/class_test.py test/prop_graph_test.py test/reading_test.py
 ```
 **Note**: Errors when executing using pytest from arachne directory. 

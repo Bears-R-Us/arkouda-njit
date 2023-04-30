@@ -1,4 +1,3 @@
-
 module TrussMsg {
   use Reflection;
   use ServerErrors;
@@ -24,7 +23,6 @@ module TrussMsg {
   use Atomics;
   use IO.FormattedIO; 
   use GraphArray;
-  use GraphMsg;
 
 
   private config const logLevel = LogLevel.DEBUG;
