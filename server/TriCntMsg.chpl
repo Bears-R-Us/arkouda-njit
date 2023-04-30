@@ -1259,10 +1259,8 @@ module TriCntMsg {
                                          forall j in nextStart..nextEnd with (+ reduce triCount ){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
-                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
                                              var tmpe:int;
-                                             if (e1!=-1) {
-                                                if ( ( lv2!=v4 ) ) {
+                                             if ( ( lv2!=v4 ) ) {
                                                        // we first check if  the two different vertices can be the third edge
                                                        var dv4=nei[v4]+neiR[v4];
                                                        if ldv2<dv4 {
@@ -1273,13 +1271,12 @@ module TriCntMsg {
                                                        if (tmpe!=-1) {// there is such third edge
                                                            triCount +=1;
                                                        }
-                                                }
                                              }
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
                                   }// end of triangle counting
                      }// end of forall. We get the number of triangles for each edge
-                     subTriSum[here.id]=triCount;
+                     //subTriSum[here.id]=triCount;
 
 
 
@@ -1288,7 +1285,6 @@ module TriCntMsg {
                      endEdge = ld.highBound;
                      startEdge=max(startEdge,start_iR[vertex]);
                      endEdge=min(endEdge,start_iR[vertex]+neiR[vertex]-1);
-
                      forall i in startEdge..endEdge with(+ reduce triCount){
                                   var    v1=srcR[i];
                                   var    v2=dstR[i];
@@ -1337,10 +1333,8 @@ module TriCntMsg {
                                          forall j in nextStart..nextEnd with (+ reduce triCount ){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
-                                             var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
                                              var tmpe:int;
-                                             if (e1!=-1) {
-                                                if ( ( lv2!=v4 ) ) {
+                                             if ( ( lv2!=v4 ) ) {
                                                        // we first check if  the two different vertices can be the third edge
                                                        var dv4=nei[v4]+neiR[v4];
                                                        if ldv2<dv4 {
@@ -1351,13 +1345,12 @@ module TriCntMsg {
                                                        if (tmpe!=-1) {// there is such third edge
                                                            triCount +=1;
                                                        }
-                                                }
                                              }
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
                                   }// end of triangle counting
                      }// end of forall. We get the number of triangles for each edge
-                     subTriSum[here.id]+=triCount;
+                     subTriSum[here.id]=triCount;
 
                 }// end of  on loc 
             } // end of coforall loc in Locales 
