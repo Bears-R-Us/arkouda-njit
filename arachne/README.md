@@ -6,12 +6,12 @@ The Arachne project provides an extension for graph analysis that works with Ark
 ## Installation
 Installation is performed by running `module_configuration.py`. This file is copied from the `Bears-R-Us/arkouda-contrib` repository. When running `module_configuration.py`, the complete path to the location of the Arkouda repo must be specificed through the `ak_loc` flag along with the complete path to the Arkouda contrib repo. In our case, it would be the complete path to this directory housing Arachne. An example follows below:
 
-```
+```bash
 python3 module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/arachne/
 ```
 
 When the above command completes, the result will be a couple of commands along the lines of:
-```
+```bash
 pip install -U /rhome/oaa9/Research/arkouda-njit/arachne/client
 cp /rhome/oaa9/Research/arkouda/ServerModules.cfg ~/TmpServerModules.cfg.1681487975
 ARKOUDA_SERVER_USER_MODULES=" /rhome/oaa9/Research/arkouda-njit/arachne/server/GraphMsg.chpl" ARKOUDA_CONFIG_FILE=~/TmpServerModules.cfg.1681487975 ARKOUDA_SKIP_CHECK_DEPS=true make -C /rhome/oaa9/Research/arkouda
@@ -22,31 +22,31 @@ The length of the last command is dependent on the number of modules you have li
 Next, simply just copy and paste the outputted commands into terminal and your arkouda server should start to build with Arachne added onto it. 
 
 If you run into environment errors, you can run the commands below to ensure both Arachne and Arkouda have been pip installed into your Python environment. This will oftentimes fix errors where Arkouda or Arachne commands are unrecognized by Python.
-```
+```bash
 pip3 install -e /path/to/arachne/client/.
 pip3 install -e /path/to/arkouda/.
 ```
 
 ## Usage
 To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne-simple-tests.py` to build a small property graph. The file is executed as follows:
-```
+```bash
 python3 arachne-simple-tests.py node port
 ```
 Where the host name and port number change according to your configuration.
 
 For more involved benchmarking, functions currently available can be found in `arkouda-njit/arachne/client/README.md` with benchmark files that can be used as a sample found in the `arkouda-njit/arachne/benchmarks` folder. For benchmarking a single graph you can execute: 
-```
+```bash
 python3 bfs.py node port -f /path/to/arkouda-njit/arachne/data/karate.mtx -t 10
 ```
 
 For benchmarking a directory of graphs you can execute: 
-```
+```bash
 python3 bfs.py node port -d /path/to/arkouda-njit/arachne/data -t 10
 ```
 
 ## Testing
 The Arachne tests are executed from the arkouda-njit/arachne directory as follows:
-```
+```bash
 python3 -m pytest test/algorithm_test.py test/class_test.py test/prop_graph_test.py test/reading_test.py
 ```
 **Note**: Errors when executing using pytest from arachne directory. 

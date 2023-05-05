@@ -401,7 +401,7 @@ module BuildGraphMsg {
         var myedgeD = mysrc.domain;
 
         var myneighbor = makeDistArray(new_nv, int);
-        var myvertexD=myneighbor.domain;
+        var myvertexD = myneighbor.domain;
 
         // Arrays made from the edge domain. 
         var mydst, mysrcR, mydstR, myiv: [myedgeD] int;
