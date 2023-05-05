@@ -20,7 +20,7 @@ For example, if we are building Arkouda with the functionality provided Arachne 
 python module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/arachne/
 ```
 
-This generates three commands along the lines of:
+This generates three commands along the lines of that must be copied and pasted into the terminal unless they were piped straight to the shell ("Sample execution" above):
 ```bash
 pip install -U /complete/path/to/arkouda-njit/arachne/client
 cp /complete/path/to/arkouda/ServerModules.cfg ~/TmpServerModules.cfg.1683320760
