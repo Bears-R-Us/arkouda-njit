@@ -1133,8 +1133,6 @@ module TriCntMsg {
                 if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
                     return -1;
                 }
-                   startEdge=max(startEdge,start_i[vertex]);
-                    endEdge=min(endEdge,start_i[vertex]+nei[vertex]-1);
                 if (ary[l]==key){
                     return l;
                 }
