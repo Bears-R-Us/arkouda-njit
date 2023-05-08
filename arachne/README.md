@@ -11,15 +11,13 @@ python3 module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/
 ```
 
 ## Usage
-To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne-simple-tests.py` to build a small property graph and run some kernels on a filtered property graph. The file is executed as follows:
+To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne-simple-tests.py` to build a small property graph, filer it, and run some graph kernels. The file is executed as follows:
 ```bash
 python3 arachne-simple-tests.py node port
 ```
 Where the host name and port number change according to your configuration.
 
-For more involved benchmarking, we have included benchmark files that can be used as a sample found in the `arkouda-njit/arachne/benchmarks` folder. These are currently only available for breadth-first search (bfs). 
-
-For benchmarking a single graph you can execute: 
+For more involved benchmarking, we have included benchmark files that can be used as a sample found in the `arkouda-njit/arachne/benchmarks` folder. These are currently only available for breadth-first search (bfs). For benchmarking a single graph you can execute: 
 ```bash
 python3 bfs.py node port -f /path/to/arkouda-njit/arachne/data/karate.mtx -t 10
 ```
@@ -30,7 +28,7 @@ python3 bfs.py node port -d /path/to/arkouda-njit/arachne/data -t 10
 ```
 
 ## Testing
-The Arachne tests are executed from the arkouda-njit/arachne directory as follows:
+The Arachne tests are executed from the arkouda-njit/arachne directory as follows with pytest:
 ```bash
 python3 -m pytest test/algorithm_test.py test/class_test.py test/prop_graph_test.py test/reading_test.py
 ```
