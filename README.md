@@ -17,7 +17,7 @@ python module_configuration.py --help
 python module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/arachne/ | bash
 ```
 
-The above script will pipe the following three commands to terminal that installs Arachne using pip, copies the Arkouda server modules to a temporary file, and combines them with the Arachne server modules to build the enhanced `arkouda_server`.
+The above command will pipe the following three commands to terminal that installs Arachne using pip, copies the Arkouda server modules to a temporary file, and combines them with the Arachne server modules to build the enhanced `arkouda_server`.
 ```bash
 pip install -U /complete/path/to/arkouda-njit/arachne/client
 cp /complete/path/to/arkouda/ServerModules.cfg ~/TmpServerModules.cfg.1683320760
@@ -25,6 +25,9 @@ ARKOUDA_SERVER_USER_MODULES=" /complete/path/to/arkouda-njit/arachne/server/Buil
 ```
 
 The server can be started as specified in the [Arkouda documentation](https://github.com/Bears-R-Us/arkouda#running-arkouda_server-toc). To run a simple test file as well as pytests please proceed to the [arachne](arachne/) folder for those instructions.
+
+### Installing Development Arachne
+If you are interested in installing the development version of Arachne, please follow the same instructions as above, but for `pkg_path` include `/complete/path/to/arkouda-njit/arachne_development/`.
 
 ## Usage Notes
 ```python
