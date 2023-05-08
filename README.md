@@ -38,4 +38,4 @@ import arachne as ar
 
 ## Common Issues
 * **Issue**: Unrecognized HDF5, Apache Arrow, etc. installations. 
-  **Fix**: Ensure `Makefile.paths` was properly added to the base Arkouda directory. More information [found here](https://github.com/Bears-R-Us/arkouda#building-arkouda-toc).
+  **Fix**: Ensure `Makefile.paths` was properly added to the base Arkouda directory. More information can be found in the [Arkouda build instructions](https://github.com/Bears-R-Us/arkouda#building-arkouda-toc).
