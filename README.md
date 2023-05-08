@@ -24,7 +24,7 @@ cp /complete/path/to/arkouda/ServerModules.cfg ~/TmpServerModules.cfg.1683320760
 ARKOUDA_SERVER_USER_MODULES=" /complete/path/to/arkouda-njit/arachne/server/BuildGraphMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/PropertyGraphMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/GraphInfoMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/BFSMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/TriCtrMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/TriCntMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/TrussMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/CCMsg.chpl" ARKOUDA_CONFIG_FILE=~/TmpServerModules.cfg.1683320760 ARKOUDA_SKIP_CHECK_DEPS=true make -C /Users/alvaradoo/Research/arkouda
 ```
 
-The server can be started as specified in the [Arkouda documentation](https://github.com/Bears-R-Us/arkouda#running-arkouda_server-toc).
+The server can be started as specified in the [Arkouda documentation](https://github.com/Bears-R-Us/arkouda#running-arkouda_server-toc). To run a simple test file as well as pytests please proceed to the [arachne](arachne/) folder for those instructions.
 
 ## Usage Notes
 ```python
