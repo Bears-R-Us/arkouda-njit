@@ -1,40 +1,41 @@
 ## Arkouda-NJIT
-This is an external repository to build functionality for [Arkouda](https://github.com/Bears-R-Us/Arkouda) such as advanced string and graph processing. It is built with the same structure as [arkouda-contrib](https://github.com/Bears-R-Us/arkouda-contrib) to manage modules and easily swap out functionality. 
+This is an external repository to build functionality for [Arkouda](https://github.com/Bears-R-Us/Arkouda) with a focus on advanced graph processing. It is built with the same structure as [arkouda-contrib](https://github.com/Bears-R-Us/arkouda-contrib) to manage modules and easily swap between the production (`arachne`) and development (`arachne_development`) directories.
+
+## Prerequisites
+1. Download and build [Chapel](https://chapel-lang.org/download.html).
+2. Download but **do not build** [Arkouda](https://github.com/Bears-R-Us/arkouda). We recommend using the most recent release.
+3. Follow instructions to activate the Arkouda environment and install all [prerequisites](https://github.com/Bears-R-Us/arkouda#prerequisites-toc). **Note: we recommend you use `Anaconda` to manage all dependencies.** 
 
 ## Installation Overview
-To install, the user just has to run the `module_configuration.py` file. It will generate commands which you can pipe to a shell for execution which will build the Arkouda server including the functionality from the files specified in `pkg_path`. The complete path to the location of Arkouda must be specified through `ak_loc`.
+Installation is performed through runing the `module_configuration.py` file. The complete path to the location of `arkouda` must be specified through `ak_loc` and the complete path to the location of `arachne` should be specified through `pkg_path`. Executing this file will generate commands that can be piped to the shell for execution or copied and pasted. 
 
 ```bash
 # Print usage instructions.
 python module_configuration.py --help
 
-# Sample invocation.
-python module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/module/
-
-# Sample execution.
-python module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/module/ | bash
-```
-
-For example, if we are building Arkouda with the functionality provided Arachne we would run the command below:
-```bash
+# Sample invocation to generate commands that must then be copied and pasted.
 python module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/arachne/
+
+# Sample execution that pipes the commands directly to the terminals.
+python module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/complete/path/to/arkouda-njit/arachne/ | bash
 ```
 
-This generates three commands along the lines of that must be copied and pasted into the terminal unless they were piped straight to the shell ("Sample execution" above):
+After running the above command, the result should commands along the lines of:
 ```bash
 pip install -U /complete/path/to/arkouda-njit/arachne/client
 cp /complete/path/to/arkouda/ServerModules.cfg ~/TmpServerModules.cfg.1683320760
 ARKOUDA_SERVER_USER_MODULES=" /complete/path/to/arkouda-njit/arachne/server/BuildGraphMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/PropertyGraphMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/GraphInfoMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/BFSMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/TriCtrMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/TriCntMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/TrussMsg.chpl  /complete/path/to/arkouda-njit/arachne/server/CCMsg.chpl" ARKOUDA_CONFIG_FILE=~/TmpServerModules.cfg.1683320760 ARKOUDA_SKIP_CHECK_DEPS=true make -C /Users/alvaradoo/Research/arkouda
 ```
 
-Let's now dissect what each of these commands do separately. The first command, `pip`, installs the dependencies defined by the `setup.py` found at `/complete/path/to/arkouda-njit/arachne/client`. **Note: for the `pip` command to execute without error, the client folder must contain both a `setup.py` file and a `README.md` file**. The second command, `cp`, copies the server modules specified at `/complete/path/to/arkouda/ServerModules.cfg` to a temporary file. Finally, the third command, `make` compiles the `arkouda_server` executable by including both of the modules specified in `ServerModules.cfg` from `/complete/path/to/arkouda-njit/arachne/` and `/complete/path/to/arkouda/`. 
+These commands will need to be executed to build the Arkouda server with the added functionality. Then, the server can be started as specified in the [Arkouda documentation](https://github.com/Bears-R-Us/arkouda#running-arkouda_server-toc).
 
-### Usage Notes
+## Usage Notes
 ```python
 import arkouda as ak
-import yourModule as ym
-# code using module and arkouda below
+import arachne as ar
+# code using arachne and arkouda below
 ```
 
-## Available Modules
-Currently, there are two available modules, `arachne` and `sandbox`. The graph algorithm implementations with best performance can be found in `arachne` that include code for breadth-first search, triangle counting, triangle centrality, connected components, and k-truss. Unit tests are provided that can be executed by the command available from within the `arachne` folder. Test algorithms and functionality as well as upcoming functionality can be found inside of the `sandbox` folder. 
+## Common Issues
+* **Issue**: Unrecognized HDF5, Apache Arrow, etc. installations. 
+  **Fix**: Ensure `Makefile.paths` was properly added to the base Arkouda directory. More information [found here](https://github.com/Bears-R-Us/arkouda#building-arkouda-toc).
