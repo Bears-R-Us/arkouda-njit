@@ -6,7 +6,7 @@ This is an external repository to build functionality for [Arkouda](https://gith
 2. Download but **do not build** [Arkouda](https://github.com/Bears-R-Us/arkouda). We recommend using the most recent release.
 3. Follow instructions to activate the Arkouda environment and install all [prerequisites](https://github.com/Bears-R-Us/arkouda#prerequisites-toc). **Note: we recommend you use `Anaconda` to manage all dependencies.** 
 
-## Installation Overview
+## Installation
 Installation is performed through runing the `module_configuration.py` file. The complete path to the location of `arkouda` must be specified through `ak_loc` and the complete path to the location of `arachne` should be specified through `pkg_path`. Executing this file will generate commands that can be piped to the shell for execution or copied and pasted. 
 
 ```bash
