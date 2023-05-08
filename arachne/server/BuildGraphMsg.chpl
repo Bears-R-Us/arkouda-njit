@@ -340,7 +340,7 @@ module BuildGraphMsg {
                 }
             } else {
                 try  { 
-                    combine_sort(srcR, dstR, e_weightR, weighted, false);
+                    combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
@@ -656,7 +656,7 @@ module BuildGraphMsg {
                 }
             } else {
                 try  { 
-                    combine_sort(srcR, dstR, e_weightR, weighted, false);
+                    combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
