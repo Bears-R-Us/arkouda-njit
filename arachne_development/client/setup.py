@@ -23,7 +23,7 @@ setup(
     # There are some restrictions on what makes a valid project name
     # specification here:
     # https://packaging.python.org/specifications/core-metadata/#name
-    name='arkouda-njit',  # Required
+    name='arachne_development',  # Required
 
     # Versions should comply with PEP 440:
     # https://www.python.org/dev/peps/pep-0440/
@@ -35,7 +35,7 @@ setup(
     # This is a one-line description or tagline of what your project does. This
     # corresponds to the "Summary" metadata field:
     # https://packaging.python.org/specifications/core-metadata/#summary
-    description='Graph client on top of Arkouda',  # Optional
+    description='Client code for arachne_development',  # Optional
 
     # This is an optional longer description of your project that represents
     # the body of text which users will see when they visit PyPI.
@@ -133,8 +133,7 @@ setup(
         'pandas>=1.1.0',
         'pyzmq>=20.0.0,<=22.2.1',
         'typeguard==2.10.0',
-        'pyfiglet',
-        'arkouda'
+        'pyfiglet'
     ],
 
     # List additional groups of dependencies here (e.g. development

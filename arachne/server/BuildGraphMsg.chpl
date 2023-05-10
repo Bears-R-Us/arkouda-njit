@@ -340,7 +340,7 @@ module BuildGraphMsg {
                 }
             } else {
                 try  { 
-                    combine_sort(srcR, dstR, e_weightR, weighted, false);
+                    combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
@@ -401,7 +401,7 @@ module BuildGraphMsg {
         var myedgeD = mysrc.domain;
 
         var myneighbor = makeDistArray(new_nv, int);
-        var myvertexD=myneighbor.domain;
+        var myvertexD = myneighbor.domain;
 
         // Arrays made from the edge domain. 
         var mydst, mysrcR, mydstR, myiv: [myedgeD] int;
@@ -656,7 +656,7 @@ module BuildGraphMsg {
                 }
             } else {
                 try  { 
-                    combine_sort(srcR, dstR, e_weightR, weighted, false);
+                    combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");

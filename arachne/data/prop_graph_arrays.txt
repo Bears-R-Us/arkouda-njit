@@ -15,7 +15,7 @@
 5 RELATIONSHIPS
 [lives-with] [drives, owns] [lives-with] [drives] [drives]
 4 NODE_LABELS
-[Person] [Person] [Car, Vehicle] []
+[Person] [Person] [Vehicle, Car] []
 3 NODE_PROPS
 [(name, Dan), (born, 12-05-1975)] [(name, Ann), (born, 05-29-1990)] []
 5 EDGE_PROPS
