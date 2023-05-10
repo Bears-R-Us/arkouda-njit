@@ -1,6 +1,6 @@
 # This file is designed to provide a user with the commands required to configure their external module.
 # NOTE - this file will not automatically execute any commands, the user must manually copy the commands and run them.
-# TODO - add option to export commands to shell script
+# TODO - add option to export commands to shell script.
 
 # Currently export of PYTHONPATH is only functional when run manually or source file.sh.
 

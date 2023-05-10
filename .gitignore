@@ -1,4 +1,3 @@
-GraphServerModules.cfg.*
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -128,3 +127,9 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+# MacBook Stuff
+.DS_Store
+
+# Old Arkouda-NJIT stuff
+GraphServerModules.cfg.*
