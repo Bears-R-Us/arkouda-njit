@@ -11,7 +11,7 @@ python3 module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/
 ```
 
 ## Usage
-To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne-simple-tests.py` to build a small property graph, filer it, and run some graph kernels. This assumes that you have started an arkouda server using `./arkouda_server` in the arkouda home directory. The file is executed as follows:
+To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne_simple_tests.py` to build a small property graph, filer it, and run some graph kernels. This assumes that you have started an arkouda server using `./arkouda_server` in the arkouda home directory. The file is executed as follows:
 ```bash
 python3 arachne_simple_tests.py node port
 ```
