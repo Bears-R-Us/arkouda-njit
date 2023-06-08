@@ -113,7 +113,7 @@ setup(
     #
     #   py_modules=["my_module"],
     #
-    packages=["arkouda_graph"],  # Required
+    packages=["arachne_development"],  # Required
 
     # Specify which Python versions you support. In contrast to the
     # 'Programming Language' classifiers above, 'pip install' will check this
