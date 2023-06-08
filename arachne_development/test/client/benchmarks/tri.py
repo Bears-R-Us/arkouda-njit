@@ -5,7 +5,7 @@ import time
 import sys
 import numpy as np
 import arkouda as ak
-import arkouda_njit as njit
+import arkouda_njit.arachne_development.client.arachne_development.graph as njit
 
 def tri_graph(filename:str, skiplines:int, remap_flag:int, degree_sort_flag:int, rcm_flag:int,\
                     write_flag:int, build_aligned_array_flag:int, trials:int):
