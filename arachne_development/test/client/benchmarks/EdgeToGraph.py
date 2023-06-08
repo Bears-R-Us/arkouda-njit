@@ -5,7 +5,7 @@ import numpy as np
 import arkouda as ak
 import random
 import string
-import arkouda_njit.arachne_development.client.arachne_development.graph as njit
+import arachne_development.graph as njit
 
 
 def edge_to_graph_test():
