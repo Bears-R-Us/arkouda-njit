@@ -5,7 +5,7 @@ import numpy as np
 import arkouda as ak
 import random
 import string
-import arkouda_njit as njit
+import arkouda_njit.arachne_development.client.arachne_development.graph as njit
 
 def get_config():
     cfg = ak.get_config()
