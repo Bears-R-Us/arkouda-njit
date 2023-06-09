@@ -5,7 +5,7 @@ import numpy as np
 import arkouda as ak
 import random
 import string
-import arkouda_njit as njit
+import arachne_development.graph as njit
 
 TYPES = ('int64', 'float64', 'bool', 'str')
 
