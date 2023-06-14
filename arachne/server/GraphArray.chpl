@@ -13,6 +13,37 @@ module GraphArray {
     private config const logLevel = LogLevel.DEBUG;
     const graphLogger = new Logger(logLevel);
 
+    class Node {
+        var data : string;
+        var vertex : int;
+        var prev : borrowed Node?;
+        var next : shared Node?;
+
+        proc init() {
+            data = "";
+            vertex = -1;
+            prev = nil; 
+            next = nil;
+        }
+
+        proc init(value: string, v: int) {
+            data = value; 
+            vertex = v;
+            prev = nil; 
+            next = nil;
+        }
+
+        override proc writeThis(f) throws {
+            if(next == nil) {
+                f.write("{ data = ", data, ", vertex = ", vertex, ", next = nil",            ", loc = ", this.locale.id, " }");
+            } else {
+                f.write("{ data = ", data, ", vertex = ", vertex, ", next = ", next!.vertex, ", loc = ", this.locale.id, " }");
+            }
+        }
+    }
+
+    var last_label_tracker = new map(string, shared Node, parSafe=true);
+
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
         SRC,            // The source of every edge in the graph, array

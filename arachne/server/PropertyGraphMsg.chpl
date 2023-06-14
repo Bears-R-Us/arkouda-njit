@@ -52,25 +52,62 @@ module PropertyGraphMsg {
         // Extract the labels array which is a string array aka a segmented string.
         var labels_arr:SegString = getSegString(labels_name, st);
 
-        // Create array of lists. 
-        var node_labels: [nodes_arr.domain] list(string, parSafe=true);
-
         // Get graph for usage.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         
         // Extract the revesred node_map to see what each original node value maps to.
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        var nei = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+
+        // Create array of lists to store the data nodes for each label.
+        var node_labels: [nei.domain] list(shared Node, parSafe=true);
 
         var timer:stopwatch;
         timer.start();
-        // Add label to the array of linked lists for each node. 
-        forall i in nodes_arr.domain {
-            var labels = labels_arr[i].split();
-            for lbl in labels {
-                node_labels[node_map_r[nodes_arr[i]]].append(lbl);
+
+        //forall i in nodes_arr.domain with (ref last_label_tracker){
+        for loc in Locales do on loc {
+            for i in nodes_arr.localSubdomain() {
+                var lbl = labels_arr[i];
+                var vertex = node_map_r[nodes_arr[i]];
+                var new_node = new shared Node(lbl, vertex);
+                node_labels[node_map_r[nodes_arr[i]]].append(new_node);
+                if (!last_label_tracker.contains(lbl)) {
+                    last_label_tracker.add(lbl, new_node);
+                }
+                else {
+                    var prev_node = last_label_tracker[lbl];
+                    prev_node.next = new_node;
+                    new_node.prev = prev_node;
+                    last_label_tracker.replace(lbl, new_node);
+                }
             }
-        } 
+        }
+        
+        var local_debug = true;
+        var label_count = 0;
+        if local_debug {
+            writeln();
+            for val in last_label_tracker.values() {
+                var borrowed_val = val.borrow();
+                write("list = ", borrowed_val, " ");
+                label_count += 1;
+                while(borrowed_val!.prev != nil) {
+                    label_count += 1;
+                    borrowed_val = borrowed_val.prev!;
+                    write(borrowed_val, " ");
+                }
+                writeln();
+                writeln();
+            }
+        }
+        writeln("$$$$$label_count = ", label_count);
+        writeln();
+    
+        for a in node_labels {
+            writeln(a);
+        }
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "NODE_LABELS");
