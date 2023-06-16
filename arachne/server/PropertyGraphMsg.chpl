@@ -60,34 +60,59 @@ module PropertyGraphMsg {
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
         var nei = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
+        
+        /**************************************************************/
+        /********************* Doubly Linked List *********************/
+        /**************************************************************/
+        
         // Create array of lists to store the data nodes for each label.
         var node_labels: [nei.domain] list(shared Node, parSafe=true);
 
         var timer:stopwatch;
         timer.start();
 
-        //forall i in nodes_arr.domain with (ref last_label_tracker){
-        for loc in Locales do on loc {
-            for i in nodes_arr.localSubdomain() {
+        var count: atomic int; // our counter
+        var lock$: sync bool;   // the mutex lock
+
+        count.write(1);       // Only let two tasks in at a time.
+        lock$.writeXF(true);  // Set lock$ to full (unlocked)
+        // Note: The value doesn't actually matter, just the state
+        // (full:unlocked / empty:locked)
+        // Also, writeXF() fills (F) the sync var regardless of its state (X)
+
+        forall i in nodes_arr.domain with (ref last_label_tracker){
+        //for loc in Locales do on loc {
+            //for i in nodes_arr.localSubdomain() {
                 var lbl = labels_arr[i];
                 var vertex = node_map_r[nodes_arr[i]];
                 var new_node = new shared Node(lbl, vertex);
                 node_labels[node_map_r[nodes_arr[i]]].append(new_node);
+
+                // Create a barrier.
+                do {
+                    lock$.readFE();           // Read lock$ (wait)
+                } while (count.read() < 1); // Keep waiting until a spot opens up
+                
+                count.sub(1);          // decrement the counter
+                lock$.writeXF(true); // Set lock$ to full (signal)
                 if (!last_label_tracker.contains(lbl)) {
                     last_label_tracker.add(lbl, new_node);
                 }
-                else {
+                else {                    
                     var prev_node = last_label_tracker[lbl];
-                    prev_node.next = new_node;
-                    new_node.prev = prev_node;
+                    prev_node.append(new_node);                    
                     last_label_tracker.replace(lbl, new_node);
                 }
-            }
+                count.add(1);        // Increment the counter
+                lock$.writeXF(true); // Set lock$ to full (signal)
+            //}
         }
+        timer.stop();
+        writeln("$$$$$$$$$$ DOUBLY LINKED LIST TIME TAKES: ", timer.elapsed());
         
         var local_debug = true;
-        var label_count = 0;
         if local_debug {
+            var label_count = 0;
             writeln();
             for val in last_label_tracker.values() {
                 var borrowed_val = val.borrow();
@@ -101,13 +126,24 @@ module PropertyGraphMsg {
                 writeln();
                 writeln();
             }
+            writeln("$$$$$label_count = ", label_count);
+            writeln();
+
+            var count = 1;
+            for a in node_labels {
+                writeln(count, " ", a);
+                count += 1;
+            }
         }
-        writeln("$$$$$label_count = ", label_count);
-        writeln();
-    
-        for a in node_labels {
-            writeln(a);
+
+        /*******************************************************/
+        /********************* Byte Arrays *********************/
+        /*******************************************************/
+        var lbl_set = new set(string, parSafe=true);
+        forall i in nodes_arr.domain with (ref lbl_set){
+            lbl_set.add(labels_arr[i]);
         }
+        writeln("$$$$ lbl_set size = ", lbl_set.size);
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "NODE_LABELS");
