@@ -33,11 +33,16 @@ module GraphArray {
             next = nil;
         }
 
+        proc append(node: shared Node) {
+            this.next = node;
+            node.prev = this;
+        }
+
         override proc writeThis(f) throws {
-            if(next == nil) {
-                f.write("{ data = ", data, ", vertex = ", vertex, ", next = nil",            ", loc = ", this.locale.id, " }");
+            if(prev == nil) {
+                f.write("{ data = ", data, ", vertex = ", vertex, ", prev = nil",            ", loc = ", this.locale.id, " }");
             } else {
-                f.write("{ data = ", data, ", vertex = ", vertex, ", next = ", next!.vertex, ", loc = ", this.locale.id, " }");
+                f.write("{ data = ", data, ", vertex = ", vertex, ", prev = ", prev!.vertex, ", loc = ", this.locale.id, " }");
             }
         }
     }
