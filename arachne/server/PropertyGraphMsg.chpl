@@ -113,41 +113,70 @@ module PropertyGraphMsg {
         var local_debug = true;
         if local_debug {
             var label_count = 0;
-            writeln();
+            // writeln();
             for val in last_label_tracker.values() {
                 var borrowed_val = val.borrow();
-                write("list = ", borrowed_val, " ");
+                // write("list = ", borrowed_val, " ");
                 label_count += 1;
                 while(borrowed_val!.prev != nil) {
                     label_count += 1;
                     borrowed_val = borrowed_val.prev!;
-                    write(borrowed_val, " ");
+                    // write(borrowed_val, " ");
                 }
-                writeln();
-                writeln();
+                // writeln();
+                // writeln();
             }
             writeln("$$$$$label_count = ", label_count);
             writeln();
 
-            var count = 1;
-            for a in node_labels {
-                writeln(count, " ", a);
-                count += 1;
-            }
+            // var count = 1;
+            // for a in node_labels {
+            //     writeln(count, " ", a);
+            //     count += 1;
+            // }
         }
 
         /*******************************************************/
         /********************* Byte Arrays *********************/
         /*******************************************************/
+        timer.clear();
+        timer.start();
         var lbl_set = new set(string, parSafe=true);
-        forall i in nodes_arr.domain with (ref lbl_set){
-            lbl_set.add(labels_arr[i]);
-        }
-        writeln("$$$$ lbl_set size = ", lbl_set.size);
+        forall i in nodes_arr.domain with (ref lbl_set) do lbl_set.add(labels_arr[i]);
 
+        var lbl_set_arr = lbl_set.toArray();
+        var num_labels = lbl_set_arr.size;
+        var D_lbl: domain(string);
+        D_lbl += lbl_set_arr;
+        var lbl_arr: [D_lbl] int;
+        forall (ind,val) in zip(lbl_set_arr.domain, lbl_set_arr) do lbl_arr[val] = ind;
+        // writeln("$$$$ lbl_set size = ", num_labels);
+
+        var D_byte_label_arrays: domain(2) dmapped Block({0..<num_labels, 0..<nei.size}) = {0..<num_labels, 0..<nei.size};
+        var byte_label_arrays: [D_byte_label_arrays] bool;
+        byte_label_arrays = false;
+        
+        forall i in nodes_arr.domain {
+            var lbl = labels_arr[i];
+            var lbl_ind = lbl_arr[lbl];
+            var vertex = node_map_r[nodes_arr[i]];
+
+            byte_label_arrays[lbl_ind,vertex] = true;
+        }
+        // writeln("byte_label_arrays = \n", byte_label_arrays);
+        var count_2: atomic int = 0;
+        forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
+        timer.stop();
+        writeln("$$$$$$$$$$ BYTE ARRAYS TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$label_count = ", count_2);
+        writeln();
+
+        
+        /****************************************************/
+        /********************* END CODE *********************/
+        /****************************************************/
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "NODE_LABELS");
-        timer.stop();
         
         var repMsg = "labels added";
         outMsg = "Adding node labels to property graph takes " + timer.elapsed():string;
