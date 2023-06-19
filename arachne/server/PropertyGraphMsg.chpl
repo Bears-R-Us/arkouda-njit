@@ -61,9 +61,9 @@ module PropertyGraphMsg {
         var nei = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
         
-        /**************************************************************/
-        /********************* Doubly Linked List *********************/
-        /**************************************************************/
+        /****************************************************/
+        /********************* DIP-List *********************/
+        /****************************************************/
         
         // Create array of lists to store the data nodes for each label.
         var node_labels: [nei.domain] list(shared Node, parSafe=true);
@@ -108,7 +108,7 @@ module PropertyGraphMsg {
             //}
         }
         timer.stop();
-        writeln("$$$$$$$$$$ DOUBLY LINKED LIST TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$$$$$$ BUILDING DIP-list TIME TAKES: ", timer.elapsed());
         
         var local_debug = true;
         if local_debug {
@@ -136,9 +136,9 @@ module PropertyGraphMsg {
             // }
         }
 
-        /*******************************************************/
-        /********************* Byte Arrays *********************/
-        /*******************************************************/
+        /*****************************************************/
+        /********************* DIP-Array *********************/
+        /*****************************************************/
         timer.clear();
         timer.start();
         var lbl_set = new set(string, parSafe=true);
@@ -167,11 +167,83 @@ module PropertyGraphMsg {
         var count_2: atomic int = 0;
         forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
         timer.stop();
-        writeln("$$$$$$$$$$ BYTE ARRAYS TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$$$$$$ BUILDING DIP-array TIME TAKES: ", timer.elapsed());
         writeln("$$$$$label_count = ", count_2);
         writeln();
 
+        /******************************************************************/
+        /******************** QUERYING ENTIRE LABELS **********************/
+        /******************************************************************/
+        var labels_to_find = ["student", "employee"];
         
+        /********************* DIP-list *********************/
+        timer.clear();
+        timer.start();
+        var lbl_list = new set(int, parSafe=true);
+        forall lbl in labels_to_find with (ref lbl_list){
+            var borrowed_val = last_label_tracker[lbl].borrow();
+            lbl_list.add(borrowed_val.vertex);
+            while(borrowed_val!.prev != nil) {
+                borrowed_val = borrowed_val.prev!;
+                lbl_list.add(borrowed_val.vertex);
+            }
+        }
+        timer.stop();
+        writeln("$$$$$$$$$$ QUERYING DIP-list TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$DIP-list query size = ", lbl_list.size);
+        writeln();
+
+        /********************* DIP-array *********************/
+        timer.clear();
+        timer.start();
+        var lbl_list_2 = new set(int, parSafe=true);
+        forall lbl in labels_to_find with (ref lbl_list_2) {
+            var lbl_ind = lbl_arr[lbl];
+            forall i in D_byte_label_arrays.dim(0) with (ref lbl_list_2) {
+                if i == lbl_ind {
+                    forall j in D_byte_label_arrays.dim(1) with (ref lbl_list_2){
+                        if (byte_label_arrays[i,j] == true) then lbl_list_2.add(j);
+                    }
+                }
+            }
+        }
+        timer.stop();
+        writeln("$$$$$$$$$$ QUERYING DIP-array TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$DIP-array query size = ", lbl_list_2.size);
+        writeln();
+
+        /*************************************************************/
+        /******************** QUERYING VERTICES **********************/
+        /*************************************************************/
+        var vertex_to_find = 0;
+
+        /********************* DIP-list *********************/
+        timer.clear();
+        timer.start();
+        var labels_on_vertex = new list(string, parSafe=true);
+        forall node in node_labels[vertex_to_find] with (ref labels_on_vertex) {
+            labels_on_vertex.append(node.data);
+        }
+        timer.stop();
+        writeln("$$$$$$$$$$ QUERYING DIP-list VERTEX TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$DIP-list query size = ", labels_on_vertex.size);
+        writeln();
+
+        /********************* DIP-array *********************/
+        timer.clear();
+        timer.start();
+        var labels_on_vertex_2 = new list(string, parSafe=true);
+        forall (i, x) in zip(byte_label_arrays[..,vertex_to_find].domain, byte_label_arrays[..,vertex_to_find]) with (ref labels_on_vertex_2) {
+            if (x == true) then labels_on_vertex_2.append(lbl_set_arr[i]);
+        }
+        timer.stop();
+        writeln("$$$$$$$$$$ QUERYING DIP-array VERTEX TIME TAKES: ", timer.elapsed());
+        writeln("$$$$$DIP-array query size = ", labels_on_vertex_2.size);
+        writeln();
+
+
+        
+
         /****************************************************/
         /********************* END CODE *********************/
         /****************************************************/
