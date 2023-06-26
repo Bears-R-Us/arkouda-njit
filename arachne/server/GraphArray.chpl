@@ -47,7 +47,7 @@ module GraphArray {
         }
     }
 
-    var last_label_tracker = new map(string, shared Node, parSafe=true);
+    var last_label_tracker = new map(string, shared Node/*, parSafe=true*/);
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
@@ -67,6 +67,18 @@ module GraphArray {
         NODE_LABELS,    // Any labels that belong to a specific node
         NODE_PROPS,     // Any properties that belong to a specific node
         EDGE_PROPS,     // Any properties that belong to a specific edge
+        DIP_SLL_RELATIONSHIPS,  // The relationships that belong to specific edges
+        DIP_SLL_NODE_LABELS,    // Any labels that belong to a specific node
+        DIP_SLL_NODE_PROPS,     // Any properties that belong to a specific node
+        DIP_SLL_EDGE_PROPS,     // Any properties that belong to a specific edge
+        DIP_DLL_RELATIONSHIPS,  // The relationships that belong to specific edges
+        DIP_DLL_NODE_LABELS,    // Any labels that belong to a specific node
+        DIP_DLL_NODE_PROPS,     // Any properties that belong to a specific node
+        DIP_DLL_EDGE_PROPS,     // Any properties that belong to a specific edge
+        DIP_ARR_RELATIONSHIPS,  // The relationships that belong to specific edges
+        DIP_ARR_NODE_LABELS,    // Any labels that belong to a specific node
+        DIP_ARR_NODE_PROPS,     // Any properties that belong to a specific node
+        DIP_ARR_EDGE_PROPS,     // Any properties that belong to a specific edge
     }
 
     /**

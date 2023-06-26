@@ -34,7 +34,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipArrayaddNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -268,7 +268,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipArrayaddEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -457,7 +457,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipArrayaddNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -517,7 +517,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipArrayaddEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
