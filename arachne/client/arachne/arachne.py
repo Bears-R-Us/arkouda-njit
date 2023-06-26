@@ -449,7 +449,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "addNodeLabels"
+        cmd = "DipSLLaddNodeLabels"
         arrays = labels["nodeIDs"].name + " " + labels["nodeLabels"].name
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
@@ -467,7 +467,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "addEdgeRelationships"
+        cmd = "DipSLLaddEdgeRelationships"
         arrays = relations["src"].name + " " + relations["dst"].name + " " + relations["edgeRelationships"].name + " "
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
@@ -483,7 +483,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "addNodeProperties"
+        cmd = "DipSLLaddNodeProperties"
         arrays = properties["nodeIDs"].name + " " 
         columns = "nodeIDs" + " "
 
@@ -507,7 +507,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "addEdgeProperties"
+        cmd = "DipSLLaddEdgeProperties"
         arrays = properties["src"].name + " " + properties["dst"].name + " "
         columns = "src" + " " + "dst" + " "
 

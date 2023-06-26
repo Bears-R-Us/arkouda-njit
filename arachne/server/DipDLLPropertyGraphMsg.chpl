@@ -1,4 +1,4 @@
-module DipArrayPropertyGraphMsg {
+module DipDLLPropertyGraphMsg {
     // Chapel modules.
     use Reflection;
     use Set;
@@ -34,7 +34,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipDLLaddNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -257,7 +257,7 @@ module DipArrayPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipArrayaddNodeLabelsMsg
+    } // end of DipDLLaddNodeLabelsMsg
 
     /**
     * Adds edge relationships to the edges of a property graph.
@@ -268,7 +268,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipDLLaddEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -446,7 +446,7 @@ module DipArrayPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipArrayaddEdgeRelationshipsMsg
+    } // end of DipDLLaddEdgeRelationshipsMsg
 
     /**
     * Adds properties to the nodes of a property graph.
@@ -457,7 +457,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipDLLaddNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -506,7 +506,7 @@ module DipArrayPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipArrayaddNodePropertiesMsg
+    } // end of DipDLLaddNodePropertiesMsg
 
     /**
     * Adds properties to the edges of a property graph.
@@ -517,7 +517,7 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc DipDLLaddEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
@@ -582,10 +582,10 @@ module DipArrayPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipArrayaddEdgePropertiesMsg
+    } // end of DipDLLaddEdgePropertiesMsg
     use CommandMap;
-    registerFunction("DipArrayaddNodeLabels", DipArrayaddNodeLabelsMsg, getModuleName());
-    registerFunction("DipArrayaddEdgeRelationships", DipArrayaddEdgeRelationshipsMsg, getModuleName());
-    registerFunction("DipArrayaddNodeProperties", DipArrayaddNodePropertiesMsg, getModuleName());
-    registerFunction("DipArrayaddEdgeProperties", DipArrayaddEdgePropertiesMsg, getModuleName());
+    registerFunction("DipDLLaddNodeLabels", DipDLLaddNodeLabelsMsg, getModuleName());
+    registerFunction("DipDLLaddEdgeRelationships", DipDLLaddEdgeRelationshipsMsg, getModuleName());
+    registerFunction("DipDLLaddNodeProperties", DipDLLaddNodePropertiesMsg, getModuleName());
+    registerFunction("DipDLLaddEdgeProperties", DipDLLaddEdgePropertiesMsg, getModuleName());
 }
