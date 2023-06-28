@@ -443,7 +443,10 @@ class PropGraph(DiGraph):
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         this same format for key names: 
         
-        labels = ak.DataFrame({"nodeIDs" : nodes, "nodeLabels" : labels})
+        Parameters
+        ----------
+        labels
+            ak.DataFrame({"nodeIDs" : nodes, "nodeLabels" : labels})
 
         Returns
         -------
@@ -459,9 +462,10 @@ class PropGraph(DiGraph):
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe should 
         follow this same format for key-value pairs: 
         
-        relationships = ak.DataFrame({"src" : src, "dst" : dst, "edgeRelationships" : edgeRelationships})
-
-        where X is an arbitrary number of property columns. 
+        Parameters
+        ----------
+        relationships
+            ak.DataFrame({"src" : src, "dst" : dst, "edgeRelationships" : edgeRelationships}).
 
         Returns
         -------
@@ -477,7 +481,10 @@ class PropGraph(DiGraph):
         """Populates the graph object with node properties from a dataframe. Passed dataframe should follow
         this same format for key names below:
         
-        node_properties = ak.DataFrame({"nodeIDs" : nodes, "prop1" : prop1, ... , "propN" L propN})
+        Parameters
+        ----------
+        node_properties
+            ak.DataFrame({"nodeIDs" : nodes, "prop1" : prop1, ... , "propN" : propN})
 
         Returns
         -------
@@ -501,7 +508,10 @@ class PropGraph(DiGraph):
         """Populates the graph object with edge properties from a dataframe. Passed dataframe should follow
         this same format for key names below:
         
-        edge_properties = ak.DataFrame({"src" : src, "dst" : dst, "prop1" : prop1, ... , "propM" : propM})
+        Parameters
+        ----------
+        edge_properties
+            ak.DataFrame({"src" : src, "dst" : dst, "prop1" : prop1, ... , "propM" : propM})
 
         Returns
         -------
@@ -519,6 +529,76 @@ class PropGraph(DiGraph):
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays,
                   "Columns" : columns }
+        repMsg = generic_msg(cmd=cmd, args=args)
+
+    def query(self, 
+              nodes_to_find:pdarray = None, 
+              edges_to_find:Tuple(pdarray,pdarray) = None, 
+              relationships_to_find:pdarray = None,
+              labels_to_find:pdarray = None,
+              node_properties_to_find:pdarray = None,
+              edge_properties_to_find:pdarray = None) -> dict:
+        """Given pdarrays specifiying a subset of nodes, edges, or attributes, this function 
+        finds them within the nodes and returns to the user pdarrays with either attributes, nodes,
+        or edges that satisfy the query.
+
+        Parameters
+        ----------
+        nodes_to_find
+            A pdarray of nodes (vertices) whose labels or properties are to be found and returned.
+        edges_to_find
+            A pdarray of edges whose relationships or properties are to be found and returned.
+        relationships_to_find
+            A pdarray with edge relationships whose edges are to be returned.
+        labels_to_find
+            A pdarray with node labels whose nodes are to be returned.
+        node_properties_to_find
+            A pdarray with node properties whose nodes are to be returned.
+        edge_properties_to_find
+            A pdarray with edge properties whose edges are to be returned.
+        
+        Returns
+        -------
+        None
+        """
+        cmd = "DipSLLquery"
+        arrays = ""
+
+        if nodes_to_find is not None: 
+            arrays += nodes_to_find.name + " "
+        else:
+            arrays += "no_nodes_to_find" + " "
+
+        if edges_to_find is not None:
+            arrays += edges_to_find[0].name + " "
+            arrays += edges_to_find[1].name + " "
+        else:
+            arrays += "no_edges_to_find_src" + " "
+            arrays += "no_edges_to_find_dst" + " "
+
+        if relationships_to_find is not None:
+            arrays += relationships_to_find.name + " "
+        else:
+            arrays += "no_relationships_to_find" + " "
+        
+        if labels_to_find is not None:
+            arrays += labels_to_find.name + " "
+        else:
+            arrays += "no_labels_to_find" + " "
+        
+        if node_properties_to_find is not None:
+            arrays += node_properties_to_find.name + " "
+        else: 
+            arrays += "no_node_properties_to_find" + " "
+        
+        if edge_properties_to_find is not None:
+            arrays += edge_properties_to_find.name + " "
+        else:
+            arrays += "no_edge_properties_to_find" + " "
+
+
+        args = {  "GraphName" : self.name,
+                  "Arrays" : arrays }
         repMsg = generic_msg(cmd=cmd, args=args)
 
 @typechecked
