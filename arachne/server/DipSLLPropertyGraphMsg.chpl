@@ -52,15 +52,17 @@ module DipSLLPropertyGraphMsg {
         // Extract the labels array which is a string array aka a segmented string.
         var labels_arr:SegString = getSegString(labels_name, st);
 
-        // Create array of lists. 
-        var node_labels: [nodes_arr.domain] list(string, parSafe=true);
-
         // Get graph for usage.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         
-        // Extract the revesred node_map to see what each original node value maps to.
+        // Extract the revesred node_map to see what each original node value maps to and node_map
+        // to get the distributed domain.
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+
+        // Create array of lists. 
+        var node_labels: [node_map.domain] list(string, parSafe=true);
 
         var timer:stopwatch;
         timer.start();
@@ -69,11 +71,11 @@ module DipSLLPropertyGraphMsg {
             var lbl = labels_arr[i];
             node_labels[node_map_r[nodes_arr[i]]].pushBack(lbl);
         } 
+        writeln("$$$$$$ node_labels = ", node_labels);
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_SLL_NODE_LABELS");
-        timer.stop();
-        
+        timer.stop();  
         var repMsg = "labels added";
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
@@ -142,6 +144,7 @@ module DipSLLPropertyGraphMsg {
 
             relationships[ind].pushBack(rel_arr[i]); // or j
         }
+        writeln("$$$$$$ relationships = ", relationships);
         
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(relationships):GenSymEntry, "DIP_SLL_RELATIONSHIPS");
@@ -205,7 +208,6 @@ module DipSLLPropertyGraphMsg {
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_props):GenSymEntry, "DIP_SLL_NODE_PROPS");
         timer.stop();
-        
         var repMsg = "node properties added";
         outMsg = "DipSLLaddNodeProperties took " + timer.elapsed():string + " sec";
         
@@ -355,8 +357,8 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "node query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
-            writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
+            // writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
+            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
         /********** QUERY EDGES **********/
         if ((arrays_list[1] != "no_edges_to_find_src") && (arrays_list[2]) != "no_edges_to_find_dst") {
@@ -384,21 +386,27 @@ module DipSLLPropertyGraphMsg {
                 var edge_ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, vi);
                 edge_indices_to_find_set += edge_ind;
             }
-            var return_array : [edge_indices_to_find_set] string;
-            return_array = "";
+            var return_array_rel : [edge_indices_to_find_set] string;
+            var return_array_prop : [edge_indices_to_find_set] string;
+            return_array_rel = "";
+            return_array_prop = "";
 
             // Search in parallel for the nodes whose labels we want to find. 
             var timer:stopwatch;
             timer.start();
             forall u in edge_indices_to_find_set {
                 for rel in edge_relationships[u] {
-                    return_array[u] += rel + " "; 
+                    return_array_rel[u] += rel + " "; 
+                }
+                for prop in edge_properties[u] {
+                    return_array_prop[u] += "(" + prop[0] + ", " + prop[1] + ")";
                 }
             }
             timer.stop();
             var time_msg = "edge query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            writeln("$$$$$$$$$$ return_array = ", return_array);
+            // writeln("$$$$$$$$$$ return_array_rel = ", return_array_rel);
+            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
         if (arrays_list[3] != "no_labels_to_find") {
             // Extract the array that contains the labels we are looking for.
@@ -423,7 +431,7 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "label query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            writeln("$$$$$$$$$$ return_set = ", return_set);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
         }
         if (arrays_list[4] != "no_relationships_to_find") {
             // Extract the array that contains the relationships we are looking for. 
@@ -448,7 +456,57 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            writeln("$$$$$$$$$$ return_set = ", return_set);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[5] != "no_node_properties_to_find") {
+            // Extract the array that contains the node properties we are looking for.
+            var node_props_to_find_name = arrays_list[5];
+            var node_props_to_find : SegString = getSegString(node_props_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var node_props_to_find_set : domain(string);
+            for i in 0..<node_props_to_find.size do node_props_to_find_set += node_props_to_find[i];
+            var return_set : domain(int, parSafe = true);
+
+            // Search in parallel for the nodes that have those labels.
+            var timer:stopwatch;
+            timer.start();
+            forall (u, u_node_prop_set) in zip(node_properties.domain, node_properties) with (ref return_set) {
+                for prop in u_node_prop_set {
+                    if ((node_props_to_find_set.contains(prop[0])) && (prop[0] != "")) {
+                        return_set += u;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "node properties query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[6] != "no_edge_properties_to_find") {
+            // Extract the array that contains the relationships we are looking for. 
+            var edge_props_to_find_name = arrays_list[6];
+            var edge_props_to_find : SegString = getSegString(edge_props_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var edge_props_to_find_set : domain(string);
+            for i in 0..<edge_props_to_find.size do edge_props_to_find_set += edge_props_to_find[i];
+            var return_set : domain(int, parSafe=true);
+
+            // Search in parallel for the edges that have those relationships.
+            var timer:stopwatch;
+            timer.start();
+            forall (edge_ind, edge_ind_edge_props_set) in zip(edge_properties.domain, edge_properties) with (ref return_set) {
+                for prop in edge_ind_edge_props_set {
+                    if ((edge_props_to_find_set.contains(prop[0])) && (prop[0] != "")) {
+                        return_set += edge_ind;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "edge properties query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
         }
 
         var repMsg = "query completed";
@@ -456,7 +514,7 @@ module DipSLLPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } //end of queryMsg
+    } //end of DipSLLqueryMsg
 
     use CommandMap;
     registerFunction("DipSLLaddNodeLabels", DipSLLaddNodeLabelsMsg, getModuleName());
