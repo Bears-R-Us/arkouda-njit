@@ -58,108 +58,26 @@ module DipArrayPropertyGraphMsg {
         
         // Extract the revesred node_map to see what each original node value maps to.
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var nei = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
-        
-        /****************************************************/
-        /********************* DIP-List *********************/
-        /****************************************************/
-        
-        // Create array of lists to store the data nodes for each label.
-        var node_labels: [nei.domain] list(shared Node, parSafe=true);
-
-        var timer:stopwatch;
+        var timer:stopwatch();
         timer.start();
-
-        var count: atomic int; // our counter
-        var lock$: sync bool;   // the mutex lock
-
-        count.write(1);       // Only let two tasks in at a time.
-        lock$.writeXF(true);  // Set lock$ to full (unlocked)
-        // Note: The value doesn't actually matter, just the state
-        // (full:unlocked / empty:locked)
-        // Also, writeXF() fills (F) the sync var regardless of its state (X)
-
-        forall i in nodes_arr.domain with (ref last_label_tracker){
-        //for loc in Locales do on loc {
-            //for i in nodes_arr.localSubdomain() {
-                var lbl = labels_arr[i];
-                var vertex = node_map_r[nodes_arr[i]];
-                var new_node = new shared Node(lbl, vertex);
-                node_labels[node_map_r[nodes_arr[i]]].append(new_node);
-
-                // Create a barrier.
-                do {
-                    lock$.readFE();           // Read lock$ (wait)
-                } while (count.read() < 1); // Keep waiting until a spot opens up
-                
-                count.sub(1);          // decrement the counter
-                lock$.writeXF(true); // Set lock$ to full (signal)
-                if (!last_label_tracker.contains(lbl)) {
-                    last_label_tracker.add(lbl, new_node);
-                }
-                else {                    
-                    var prev_node = last_label_tracker[lbl];
-                    prev_node.append(new_node);                    
-                    last_label_tracker.replace(lbl, new_node);
-                }
-                count.add(1);        // Increment the counter
-                lock$.writeXF(true); // Set lock$ to full (signal)
-            //}
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ BUILDING DIP-list TIME TAKES: ", timer.elapsed());
-        
-        var local_debug = true;
-        if local_debug {
-            var label_count = 0;
-            // writeln();
-            for val in last_label_tracker.values() {
-                var borrowed_val = val.borrow();
-                // write("list = ", borrowed_val, " ");
-                label_count += 1;
-                while(borrowed_val!.prev != nil) {
-                    label_count += 1;
-                    borrowed_val = borrowed_val.prev!;
-                    // write(borrowed_val, " ");
-                }
-                // writeln();
-                // writeln();
-            }
-            writeln("$$$$$label_count = ", label_count);
-            writeln();
-
-            // var count = 1;
-            // for a in node_labels {
-            //     writeln(count, " ", a);
-            //     count += 1;
-            // }
-        }
-
-        /*****************************************************/
-        /********************* DIP-Array *********************/
-        /*****************************************************/
-        timer.clear();
-        timer.start();
+        //Create the indices into the two-dimensional label byte array.  
         var lbl_set = new set(string, parSafe=true);
         forall i in nodes_arr.domain with (ref lbl_set) do lbl_set.add(labels_arr[i]);
-
         var lbl_set_arr = lbl_set.toArray();
         var num_labels = lbl_set_arr.size;
         var D_lbl: domain(string);
         D_lbl += lbl_set_arr;
         var lbl_arr: [D_lbl] int;
         forall (ind,val) in zip(lbl_set_arr.domain, lbl_set_arr) do lbl_arr[val] = ind;
-        // writeln("$$$$ lbl_set size = ", num_labels);
 
-        var D_byte_label_arrays: domain(2) dmapped Block({0..<num_labels, 0..<nei.size}) = {0..<num_labels, 0..<nei.size};
+        // Create the two-dimensional byte array. 
+        var D_byte_label_arrays: domain(2) dmapped Block({0..<num_labels, 0..<node_map.size}) = {0..<num_labels, 0..<node_map.size};
         var byte_label_arrays: [D_byte_label_arrays] bool;
         byte_label_arrays = false;
 
-        // var A: [D_byte_label_arrays] int;
-        // forall a in A do a = a.locale.id;
-        // writeln(A);
-        
+        // Populate the two-dimesional byte array. 
         forall i in nodes_arr.domain {
             var lbl = labels_arr[i];
             var lbl_ind = lbl_arr[lbl];
@@ -167,91 +85,16 @@ module DipArrayPropertyGraphMsg {
 
             byte_label_arrays[lbl_ind,vertex] = true;
         }
-        var count_2: atomic int = 0;
-        forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
-        timer.stop();
-        writeln("$$$$$$$$$$ BUILDING DIP-array TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$label_count = ", count_2);
-        writeln();
-
-        /******************************************************************/
-        /******************** QUERYING ENTIRE LABELS **********************/
-        /******************************************************************/
-        var labels_to_find = ["student", "employee"];
-        
-        /********************* DIP-list *********************/
-        timer.clear();
-        timer.start();
-        var lbl_list = new set(int, parSafe=true);
-        forall lbl in labels_to_find with (ref lbl_list){
-            var borrowed_val = last_label_tracker[lbl].borrow();
-            lbl_list.add(borrowed_val.vertex);
-            while(borrowed_val!.prev != nil) {
-                borrowed_val = borrowed_val.prev!;
-                lbl_list.add(borrowed_val.vertex);
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-list TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-list query size = ", lbl_list.size);
-        writeln();
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var lbl_list_2 = new set(int, parSafe=true);
-        forall lbl in labels_to_find with (ref lbl_list_2) {
-            forall j in D_byte_label_arrays.dim(1) with (ref lbl_list_2) {
-                if (byte_label_arrays[lbl_arr[lbl],j] == true) then lbl_list_2.add(j);
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", lbl_list_2.size);
-        writeln();
-
-        /*************************************************************/
-        /******************** QUERYING VERTICES **********************/
-        /*************************************************************/
-        var vertices_to_find = [1,24];
-
-        /********************* DIP-list *********************/
-        timer.clear();
-        timer.start();
-        var labels_on_vertex = new list((int, string), parSafe=true);
-        forall vertex_to_find in vertices_to_find with(ref labels_on_vertex) {
-            forall node in node_labels[node_map_r[vertex_to_find]] with (ref labels_on_vertex) {
-                labels_on_vertex.append((node.vertex, node.data));
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-list VERTEX TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-list query size = ", labels_on_vertex.size);
-        writeln();
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var labels_on_vertex_2 = new list((int,string), parSafe=true);
-        forall vertex_to_find in vertices_to_find with (ref labels_on_vertex_2){
-            forall (i, x) in zip(byte_label_arrays[..,node_map_r[vertex_to_find]].domain, byte_label_arrays[..,node_map_r[vertex_to_find]]) with (ref labels_on_vertex_2) {
-                if (x == true) then labels_on_vertex_2.append((i,lbl_set_arr[i]));
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array VERTEX TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", labels_on_vertex_2.size);
-        writeln();
-
-        /****************************************************/
-        /********************* END CODE *********************/
-        /****************************************************/
+        // var count_2: atomic int = 0;
+        // forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "NODE_LABELS");
         
+        // TODO: add two-dimensional array into symbol table!
+        // graph.withComp(new shared SymEntry(byte_label_arrays):GenSymEntry, "DIP_ARR_NODE_LABELS");
+        timer.stop();  
         var repMsg = "labels added";
-        outMsg = "Adding node labels to property graph takes " + timer.elapsed():string;
-        
+        outMsg = "DipARRaddNodeLabels took " + timer.elapsed():string + " sec ";
+
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
