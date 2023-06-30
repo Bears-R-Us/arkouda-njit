@@ -576,15 +576,15 @@ class PropGraph(DiGraph):
             arrays += "no_edges_to_find_src" + " "
             arrays += "no_edges_to_find_dst" + " "
 
-        if relationships_to_find is not None:
-            arrays += relationships_to_find.name + " "
-        else:
-            arrays += "no_relationships_to_find" + " "
-        
         if labels_to_find is not None:
             arrays += labels_to_find.name + " "
         else:
             arrays += "no_labels_to_find" + " "
+        
+        if relationships_to_find is not None:
+            arrays += relationships_to_find.name + " "
+        else:
+            arrays += "no_relationships_to_find" + " "
         
         if node_properties_to_find is not None:
             arrays += node_properties_to_find.name + " "

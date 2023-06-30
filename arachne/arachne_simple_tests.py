@@ -60,7 +60,9 @@ if __name__ == "__main__":
     # Let us do some querying of data!
     graph.query(
         nodes_to_find = ak.array([1,2]),
-        edges_to_find = (ak.array([20,22]),ak.array([2,2]))
+        edges_to_find = (ak.array([20,22]),ak.array([2,2])),
+        labels_to_find = ak.array(["student"]),
+        relationships_to_find = ak.array(["friends", "coworkers"])
     )
 
     # # Build graph from an array.

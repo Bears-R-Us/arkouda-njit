@@ -336,21 +336,27 @@ module DipSLLPropertyGraphMsg {
             // Convert array to associative domain to maintain the found labels.
             var nodes_to_find_set : domain(int);
             nodes_to_find_set += nodes_to_find;
-            var return_array : [nodes_to_find_set] string;
-            return_array = "";
+            var return_array_lbl : [nodes_to_find_set] string;
+            var return_array_prop : [nodes_to_find_set] string;
+            return_array_lbl = "";
+            return_array_prop = "";
 
             // Search in parallel for the nodes whose labels we want to find. 
             var timer:stopwatch;
             timer.start();
             forall u in nodes_to_find {
                 for lbl in node_labels[node_map_r[u]] {
-                    return_array[u] += lbl + " "; 
+                    return_array_lbl[u] += lbl + " "; 
+                }
+                for prop in node_properties[node_map_r[u]] {
+                    return_array_prop[u] += "(" + prop[0] + ", " + prop[1] + ")";
                 }
             }
             timer.stop();
             var time_msg = "node query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            writeln("$$$$$$$$$$ return_array = ", return_array);
+            writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
+            writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
         /********** QUERY EDGES **********/
         if ((arrays_list[1] != "no_edges_to_find_src") && (arrays_list[2]) != "no_edges_to_find_dst") {
@@ -366,7 +372,7 @@ module DipSLLPropertyGraphMsg {
             var edges_to_find_dst = edges_to_find_dst_sym.a;
 
             // Convert arrays to associative domain to maintain the edge indices we must find.
-            var edge_indices_to_find_set : domain(int);
+            var edge_indices_to_find_set : domain(int, parSafe=true);
             forall (u,v) in zip(edges_to_find_src, edges_to_find_dst) with (ref edge_indices_to_find_set) {
                 var ui = node_map_r[u];
                 var vi = node_map_r[v];
@@ -381,8 +387,6 @@ module DipSLLPropertyGraphMsg {
             var return_array : [edge_indices_to_find_set] string;
             return_array = "";
 
-            writeln("$$$$$$ edge_indices_to_find_set = ", edge_indices_to_find_set);
-
             // Search in parallel for the nodes whose labels we want to find. 
             var timer:stopwatch;
             timer.start();
@@ -395,6 +399,56 @@ module DipSLLPropertyGraphMsg {
             var time_msg = "edge query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
             writeln("$$$$$$$$$$ return_array = ", return_array);
+        }
+        if (arrays_list[3] != "no_labels_to_find") {
+            // Extract the array that contains the labels we are looking for.
+            var labels_to_find_name = arrays_list[3];
+            var labels_to_find : SegString = getSegString(labels_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var labels_to_find_set : domain(string);
+            for i in 0..<labels_to_find.size do labels_to_find_set += labels_to_find[i];
+            var return_set : domain(int, parSafe = true);
+
+            // Search in parallel for the nodes that have those labels.
+            var timer:stopwatch;
+            timer.start();
+            forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_set) {
+                for lbl in u_label_set {
+                    if labels_to_find_set.contains(lbl) {
+                        return_set += u;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "label query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[4] != "no_relationships_to_find") {
+            // Extract the array that contains the relationships we are looking for. 
+            var relationships_to_find_name = arrays_list[4];
+            var relationships_to_find : SegString = getSegString(relationships_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var relationships_to_find_set : domain(string);
+            for i in 0..<relationships_to_find.size do relationships_to_find_set += relationships_to_find[i];
+            var return_set : domain(int, parSafe=true);
+
+            // Search in parallel for the edges that have those relationships.
+            var timer:stopwatch;
+            timer.start();
+            forall (edge_ind, edge_ind_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_set) {
+                for rel in edge_ind_relationship_set {
+                    if relationships_to_find_set.contains(rel) {
+                        return_set += edge_ind;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            writeln("$$$$$$$$$$ return_set = ", return_set);
         }
 
         var repMsg = "query completed";
