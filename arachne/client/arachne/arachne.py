@@ -439,7 +439,7 @@ class PropGraph(DiGraph):
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
     
-    def add_node_labels(self, labels:ak.DataFrame) -> None:
+    def add_node_labels(self, labels:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         this same format for key names: 
         
@@ -452,13 +452,13 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "DipSLLaddNodeLabels"
+        cmd = cmd_type
         arrays = labels["nodeIDs"].name + " " + labels["nodeLabels"].name
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
         repMsg = generic_msg(cmd=cmd, args=args)
 
-    def add_edge_relationships(self, relations:ak.DataFrame) -> None:
+    def add_edge_relationships(self, relations:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe should 
         follow this same format for key-value pairs: 
         
@@ -471,13 +471,13 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "DipSLLaddEdgeRelationships"
+        cmd = cmd_type
         arrays = relations["src"].name + " " + relations["dst"].name + " " + relations["edgeRelationships"].name + " "
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
         repMsg = generic_msg(cmd=cmd, args=args)
 
-    def add_node_properties(self, properties:ak.DataFrame) -> None:
+    def add_node_properties(self, properties:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with node properties from a dataframe. Passed dataframe should follow
         this same format for key names below:
         
@@ -490,7 +490,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "DipSLLaddNodeProperties"
+        cmd = cmd_type
         arrays = properties["nodeIDs"].name + " " 
         columns = "nodeIDs" + " "
 
@@ -504,7 +504,7 @@ class PropGraph(DiGraph):
                   "Columns" : columns }
         repMsg = generic_msg(cmd=cmd, args=args)
 
-    def add_edge_properties(self, properties:ak.DataFrame) -> None:
+    def add_edge_properties(self, properties:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with edge properties from a dataframe. Passed dataframe should follow
         this same format for key names below:
         
@@ -517,7 +517,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "DipSLLaddEdgeProperties"
+        cmd = cmd_type
         arrays = properties["src"].name + " " + properties["dst"].name + " "
         columns = "src" + " " + "dst" + " "
 
@@ -531,7 +531,8 @@ class PropGraph(DiGraph):
                   "Columns" : columns }
         repMsg = generic_msg(cmd=cmd, args=args)
 
-    def query(self, 
+    def query(self,
+              cmd_type:str, 
               nodes_to_find:pdarray = None, 
               edges_to_find:Tuple(pdarray,pdarray) = None, 
               relationships_to_find:pdarray = None,
@@ -561,7 +562,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "DipSLLquery"
+        cmd = cmd_type
         arrays = ""
 
         if nodes_to_find is not None: 

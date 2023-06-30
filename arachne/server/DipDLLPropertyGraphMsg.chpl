@@ -58,15 +58,10 @@ module DipDLLPropertyGraphMsg {
         
         // Extract the revesred node_map to see what each original node value maps to.
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var nei = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-
-        
-        /****************************************************/
-        /********************* DIP-List *********************/
-        /****************************************************/
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
         
         // Create array of lists to store the data nodes for each label.
-        var node_labels: [nei.domain] list(shared Node, parSafe=true);
+        var node_labels: [node_map.domain] list(shared Node, parSafe=true);
 
         var timer:stopwatch;
         timer.start();
@@ -81,176 +76,36 @@ module DipDLLPropertyGraphMsg {
         // Also, writeXF() fills (F) the sync var regardless of its state (X)
 
         forall i in nodes_arr.domain with (ref last_label_tracker){
-        //for loc in Locales do on loc {
-            //for i in nodes_arr.localSubdomain() {
-                var lbl = labels_arr[i];
-                var vertex = node_map_r[nodes_arr[i]];
-                var new_node = new shared Node(lbl, vertex);
-                node_labels[node_map_r[nodes_arr[i]]].append(new_node);
-
-                // Create a barrier.
-                do {
-                    lock$.readFE();           // Read lock$ (wait)
-                } while (count.read() < 1); // Keep waiting until a spot opens up
-                
-                count.sub(1);          // decrement the counter
-                lock$.writeXF(true); // Set lock$ to full (signal)
-                if (!last_label_tracker.contains(lbl)) {
-                    last_label_tracker.add(lbl, new_node);
-                }
-                else {                    
-                    var prev_node = last_label_tracker[lbl];
-                    prev_node.append(new_node);                    
-                    last_label_tracker.replace(lbl, new_node);
-                }
-                count.add(1);        // Increment the counter
-                lock$.writeXF(true); // Set lock$ to full (signal)
-            //}
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ BUILDING DIP-list TIME TAKES: ", timer.elapsed());
-        
-        var local_debug = true;
-        if local_debug {
-            var label_count = 0;
-            // writeln();
-            for val in last_label_tracker.values() {
-                var borrowed_val = val.borrow();
-                // write("list = ", borrowed_val, " ");
-                label_count += 1;
-                while(borrowed_val!.prev != nil) {
-                    label_count += 1;
-                    borrowed_val = borrowed_val.prev!;
-                    // write(borrowed_val, " ");
-                }
-                // writeln();
-                // writeln();
-            }
-            writeln("$$$$$label_count = ", label_count);
-            writeln();
-
-            // var count = 1;
-            // for a in node_labels {
-            //     writeln(count, " ", a);
-            //     count += 1;
-            // }
-        }
-
-        /*****************************************************/
-        /********************* DIP-Array *********************/
-        /*****************************************************/
-        timer.clear();
-        timer.start();
-        var lbl_set = new set(string, parSafe=true);
-        forall i in nodes_arr.domain with (ref lbl_set) do lbl_set.add(labels_arr[i]);
-
-        var lbl_set_arr = lbl_set.toArray();
-        var num_labels = lbl_set_arr.size;
-        var D_lbl: domain(string);
-        D_lbl += lbl_set_arr;
-        var lbl_arr: [D_lbl] int;
-        forall (ind,val) in zip(lbl_set_arr.domain, lbl_set_arr) do lbl_arr[val] = ind;
-        // writeln("$$$$ lbl_set size = ", num_labels);
-
-        var D_byte_label_arrays: domain(2) dmapped Block({0..<num_labels, 0..<nei.size}) = {0..<num_labels, 0..<nei.size};
-        var byte_label_arrays: [D_byte_label_arrays] bool;
-        byte_label_arrays = false;
-
-        // var A: [D_byte_label_arrays] int;
-        // forall a in A do a = a.locale.id;
-        // writeln(A);
-        
-        forall i in nodes_arr.domain {
             var lbl = labels_arr[i];
-            var lbl_ind = lbl_arr[lbl];
             var vertex = node_map_r[nodes_arr[i]];
+            var new_node = new shared Node(lbl, vertex);
+            node_labels[node_map_r[nodes_arr[i]]].pushBack(new_node);
 
-            byte_label_arrays[lbl_ind,vertex] = true;
+            // Create a barrier.
+            do {
+                lock$.readFE();           // Read lock$ (wait)
+            } while (count.read() < 1); // Keep waiting until a spot opens up
+            
+            count.sub(1);          // decrement the counter
+            lock$.writeXF(true); // Set lock$ to full (signal)
+            if (!last_label_tracker.contains(lbl)) {
+                last_label_tracker.add(lbl, new_node);
+            }
+            else {                    
+                var prev_node = last_label_tracker[lbl];
+                prev_node.append(new_node);                    
+                last_label_tracker.replace(lbl, new_node);
+            }
+            count.add(1);        // Increment the counter
+            lock$.writeXF(true); // Set lock$ to full (signal)
         }
-        var count_2: atomic int = 0;
-        forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
-        timer.stop();
-        writeln("$$$$$$$$$$ BUILDING DIP-array TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$label_count = ", count_2);
-        writeln();
-
-        /******************************************************************/
-        /******************** QUERYING ENTIRE LABELS **********************/
-        /******************************************************************/
-        var labels_to_find = ["student", "employee"];
+        writeln("$$$$$$ node_labels = ", node_labels);
         
-        /********************* DIP-list *********************/
-        timer.clear();
-        timer.start();
-        var lbl_list = new set(int, parSafe=true);
-        forall lbl in labels_to_find with (ref lbl_list){
-            var borrowed_val = last_label_tracker[lbl].borrow();
-            lbl_list.add(borrowed_val.vertex);
-            while(borrowed_val!.prev != nil) {
-                borrowed_val = borrowed_val.prev!;
-                lbl_list.add(borrowed_val.vertex);
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-list TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-list query size = ", lbl_list.size);
-        writeln();
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var lbl_list_2 = new set(int, parSafe=true);
-        forall lbl in labels_to_find with (ref lbl_list_2) {
-            forall j in D_byte_label_arrays.dim(1) with (ref lbl_list_2) {
-                if (byte_label_arrays[lbl_arr[lbl],j] == true) then lbl_list_2.add(j);
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", lbl_list_2.size);
-        writeln();
-
-        /*************************************************************/
-        /******************** QUERYING VERTICES **********************/
-        /*************************************************************/
-        var vertices_to_find = [1,24];
-
-        /********************* DIP-list *********************/
-        timer.clear();
-        timer.start();
-        var labels_on_vertex = new list((int, string), parSafe=true);
-        forall vertex_to_find in vertices_to_find with(ref labels_on_vertex) {
-            forall node in node_labels[node_map_r[vertex_to_find]] with (ref labels_on_vertex) {
-                labels_on_vertex.append((node.vertex, node.data));
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-list VERTEX TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-list query size = ", labels_on_vertex.size);
-        writeln();
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var labels_on_vertex_2 = new list((int,string), parSafe=true);
-        forall vertex_to_find in vertices_to_find with (ref labels_on_vertex_2){
-            forall (i, x) in zip(byte_label_arrays[..,node_map_r[vertex_to_find]].domain, byte_label_arrays[..,node_map_r[vertex_to_find]]) with (ref labels_on_vertex_2) {
-                if (x == true) then labels_on_vertex_2.append((i,lbl_set_arr[i]));
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array VERTEX TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", labels_on_vertex_2.size);
-        writeln();
-
-        /****************************************************/
-        /********************* END CODE *********************/
-        /****************************************************/
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "NODE_LABELS");
-        
+        graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_DLL_NODE_LABELS");
+        timer.stop();  
         var repMsg = "labels added";
-        outMsg = "Adding node labels to property graph takes " + timer.elapsed():string;
+        outMsg = "DipDLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -304,28 +159,17 @@ module DipDLLPropertyGraphMsg {
         var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
 
         // Create array of lists to store relationships and populate it. 
-        var relationships: [src_actual.domain] list(string, parSafe=true);
+        var relationships: [src_actual.domain] list(shared Node, parSafe=true);
 
-        /*****************************************************/
-        /********************* DIP-Array *********************/
-        /*****************************************************/
-        timer.clear();
-        timer.start();
-        var rel_set = new set(string, parSafe=true);
-        forall i in src.domain with (ref rel_set) do rel_set.add(rel_arr[i]);
+        var count: atomic int; // our counter
+        var lock$: sync bool;   // the mutex lock
 
-        var rel_set_arr = rel_set.toArray();
-        var num_relationships = rel_set_arr.size;
-        var D_lbl: domain(string);
-        D_lbl += rel_set_arr;
-        var relations_arr: [D_lbl] int;
-        forall (ind,val) in zip(rel_set_arr.domain, rel_set_arr) do relations_arr[val] = ind;
-
-        var D_byte_relationship_arrays: domain(2) dmapped Block({0..<num_relationships, 0..<src_actual.size}) = {0..<num_relationships, 0..<src_actual.size};
-        var byte_relationship_arrays: [D_byte_relationship_arrays] bool;
-        byte_relationship_arrays = false;
-        
-        forall (i,j) in zip(src.domain, dst.domain) with (ref byte_relationship_arrays, ref rel_arr){
+        count.write(1);       // Only let two tasks in at a time.
+        lock$.writeXF(true);  // Set lock$ to full (unlocked)
+        // Note: The value doesn't actually matter, just the state
+        // (full:unlocked / empty:locked)
+        // Also, writeXF() fills (F) the sync var regardless of its state (X)
+        forall (i,j) in zip(src.domain, dst.domain) with (ref relationships, ref rel_arr, ref last_relationship_tracker){
             var u = node_map_r[src[i]];
             var v = node_map_r[dst[j]];
 
@@ -335,112 +179,35 @@ module DipDLLPropertyGraphMsg {
             var neighborhood = dst_actual[start..end-1];
             var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
 
-            byte_relationship_arrays[relations_arr[rel_arr[i]],[ind]] = true;
-        }
-        var count_2: atomic int = 0;
-        forall a in byte_relationship_arrays with (ref count_2) do if a == true then count_2.add(1);
-        timer.stop();
-        writeln("$$$$$$$$$$ BUILDING DIP-array RELATIONSHIPS TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$relationship_count = ", count_2);
-        writeln();
+            var rel = rel_arr[i];
+            var new_node = new shared Node(rel, ind);
+            relationships[ind].pushBack(new_node); // or j
 
-        /*************************************************************************/
-        /******************** QUERYING ENTIRE RELATIONSHIPS **********************/
-        /*************************************************************************/
-        var relationships_to_find = ["teammates", "friends"];
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var edges_list = new list((int,int), parSafe=true);
-        
-        // Turn relationships to find into an associative domain.
-        var D_relationships_to_find: domain(string);
-        D_relationships_to_find += relationships_to_find;
-        
-        // Slice our associative array of relationship_name to index value according to the 
-        // relationships we are looking for. Save these indices to an associative domain for easy
-        // lookup.
-        var relations_arr_slice = relations_arr[D_relationships_to_find];
-        var D_indices_of_relationships_to_find: domain(int);
-        D_indices_of_relationships_to_find += relations_arr_slice;
-
-        var forall_comp : stopwatch;
-        var count_forall1 = 0;
-        var count_forall2 = 0;
-        writeln("dims = ", D_byte_relationship_arrays.dims());
-        forall_comp.start();
-        forall (i,j) in byte_relationship_arrays.domain with (ref edges_list, + reduce count_forall1) {
-            if D_indices_of_relationships_to_find.contains(i) {
-                if byte_relationship_arrays[i,j] == true { 
-                    count_forall1 += 1;
-                    edges_list.append((src_actual[j], dst_actual[j]));
-                }
-            }
-        }
-        forall_comp.stop();
-        writeln("$$$$$ one forall loop time = ", forall_comp.elapsed());
-        edges_list.clear();
-        forall_comp.clear();
-        forall_comp.start();
-        forall i in D_byte_relationship_arrays.dim(0) with (ref edges_list, + reduce count_forall2) {
-            forall j in D_byte_relationship_arrays.dim(1) with (ref edges_list, + reduce count_forall2) {
-                if D_indices_of_relationships_to_find.contains(i) {
-                    if byte_relationship_arrays[i,j] == true {
-                        count_forall2 += 1;
-                        edges_list.append((src_actual[j], dst_actual[j]));
-                    }
-                }
-            }
-        }
-        forall_comp.stop();
-        writeln("$$$$$ two forall loop time = ", forall_comp.elapsed());
-        
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array RELATIONSHIPS TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", edges_list.size);
-        writeln();
-
-        /**********************************************************/
-        /******************** QUERYING EDGES **********************/
-        /**********************************************************/
-        var src_to_find = [32,22];
-        var dst_to_find = [1,1];
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var relationships_list = new list((int,string), parSafe=true);        
-
-        for i in src_to_find.domain {
-            var u = src_to_find[i];
-            var v = dst_to_find[i];
+            // Create a barrier.
+            do {
+                lock$.readFE();           // Read lock$ (wait)
+            } while (count.read() < 1); // Keep waiting until a spot opens up
             
-            var ui = node_map_r[u];
-            var vi = node_map_r[v];
-
-            var start = start_idx[ui];
-            var end = start + neighbor[ui];
-
-            var neighborhood = dst_actual[start..end-1];
-            var edge_ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, vi);
-            forall j in D_byte_relationship_arrays.dim(0) with (ref relationships_list) {
-                if (byte_relationship_arrays[j, edge_ind] == true) then relationships_list.append((j,rel_set_arr[j]));
+            count.sub(1);          // decrement the counter
+            lock$.writeXF(true); // Set lock$ to full (signal)
+            if (!last_relationship_tracker.contains(rel)) {
+                last_relationship_tracker.add(rel, new_node);
             }
+            else {                    
+                var prev_node = last_relationship_tracker[rel];
+                prev_node.append(new_node);                    
+                last_relationship_tracker.replace(rel, new_node);
+            }
+            count.add(1);        // Increment the counter
+            lock$.writeXF(true); // Set lock$ to full (signal)
         }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array EDGES TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", relationships_list.size);
-        writeln();
+        writeln("$$$$$$ relationships = ", relationships);
         
-        /****************************************************/
-        /********************* END CODE *********************/
-        /****************************************************/
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(relationships):GenSymEntry, "RELATIONSHIPS");
+        graph.withComp(new shared SymEntry(relationships):GenSymEntry, "DIP_DLL_RELATIONSHIPS");
         timer.stop();
         var repMsg = "relationships added";
-        outMsg = "Adding relationships to property graph takes " + timer.elapsed():string;
+        outMsg = "DipDLLaddEdgeRelationships took " + timer.elapsed():string + " sec";
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -583,9 +350,233 @@ module DipDLLPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of DipDLLaddEdgePropertiesMsg
+    
+    /**
+    * Queries the property graph and returns either arrays of strings or arrays of integer values
+    * that represent vertices and edges.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc DipDLLqueryMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract needed data.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var arraysName = msgArgs.getValueOf("Arrays");
+
+        // Extracts the arrays we are going to use that will hold our query arrays.
+        var arrays_list = arraysName.split();
+
+        // Extract graph data for usage in this function.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
+        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
+        var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
+        var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
+        var node_labels = toSymEntry(graph.getComp("DIP_SLL_NODE_LABELS"), list(string, parSafe=true)).a;
+        var edge_relationships = toSymEntry(graph.getComp("DIP_SLL_RELATIONSHIPS"), list(string, parSafe=true)).a;
+        var node_properties = toSymEntry(graph.getComp("DIP_SLL_NODE_PROPS"), list((string,string), parSafe=true)).a;
+        var edge_properties = toSymEntry(graph.getComp("DIP_SLL_EDGE_PROPS"), list((string,string), parSafe=true)).a;
+
+        /********** QUERY NODES **********/
+        var return_list = new list(string);
+        if (arrays_list[0] != "no_nodes_to_find") {
+            // Extract the array that contains the nodes whose labels we are looking for.
+            var nodes_to_find_name = arrays_list[0];
+            var nodes_to_find_entry : borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_to_find_name, st);
+            var nodes_to_find_sym = toSymEntry(nodes_to_find_entry, int);
+            var nodes_to_find = nodes_to_find_sym.a;
+
+            // Convert array to associative domain to maintain the found labels.
+            var nodes_to_find_set : domain(int);
+            nodes_to_find_set += nodes_to_find;
+            var return_array_lbl : [nodes_to_find_set] string;
+            var return_array_prop : [nodes_to_find_set] string;
+            return_array_lbl = "";
+            return_array_prop = "";
+
+            // Search in parallel for the nodes whose labels we want to find. 
+            var timer:stopwatch;
+            timer.start();
+            forall u in nodes_to_find {
+                for lbl in node_labels[node_map_r[u]] {
+                    return_array_lbl[u] += lbl + " "; 
+                }
+                for prop in node_properties[node_map_r[u]] {
+                    return_array_prop[u] += "(" + prop[0] + ", " + prop[1] + ")";
+                }
+            }
+            timer.stop();
+            var time_msg = "node query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
+            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
+        }
+        /********** QUERY EDGES **********/
+        if ((arrays_list[1] != "no_edges_to_find_src") && (arrays_list[2]) != "no_edges_to_find_dst") {
+            // Extract the arrays that contains the edges whose relationships we are looking for.
+            var edges_to_find_src_name = arrays_list[1];
+            var edges_to_find_src_entry : borrowed GenSymEntry = getGenericTypedArrayEntry(edges_to_find_src_name, st);
+            var edges_to_find_src_sym = toSymEntry(edges_to_find_src_entry, int);
+            var edges_to_find_src = edges_to_find_src_sym.a;
+
+            var edges_to_find_dst_name = arrays_list[2];
+            var edges_to_find_dst_entry : borrowed GenSymEntry = getGenericTypedArrayEntry(edges_to_find_dst_name, st);
+            var edges_to_find_dst_sym = toSymEntry(edges_to_find_dst_entry, int);
+            var edges_to_find_dst = edges_to_find_dst_sym.a;
+
+            // Convert arrays to associative domain to maintain the edge indices we must find.
+            var edge_indices_to_find_set : domain(int, parSafe=true);
+            forall (u,v) in zip(edges_to_find_src, edges_to_find_dst) with (ref edge_indices_to_find_set) {
+                var ui = node_map_r[u];
+                var vi = node_map_r[v];
+
+                var start = start_idx[ui];
+                var end = start + neighbor[ui];
+
+                ref neighborhood = dst_actual[start..end-1];
+                var edge_ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, vi);
+                edge_indices_to_find_set += edge_ind;
+            }
+            var return_array_rel : [edge_indices_to_find_set] string;
+            var return_array_prop : [edge_indices_to_find_set] string;
+            return_array_rel = "";
+            return_array_prop = "";
+
+            // Search in parallel for the nodes whose labels we want to find. 
+            var timer:stopwatch;
+            timer.start();
+            forall u in edge_indices_to_find_set {
+                for rel in edge_relationships[u] {
+                    return_array_rel[u] += rel + " "; 
+                }
+                for prop in edge_properties[u] {
+                    return_array_prop[u] += "(" + prop[0] + ", " + prop[1] + ")";
+                }
+            }
+            timer.stop();
+            var time_msg = "edge query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_array_rel = ", return_array_rel);
+            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
+        }
+        if (arrays_list[3] != "no_labels_to_find") {
+            // Extract the array that contains the labels we are looking for.
+            var labels_to_find_name = arrays_list[3];
+            var labels_to_find : SegString = getSegString(labels_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var labels_to_find_set : domain(string);
+            for i in 0..<labels_to_find.size do labels_to_find_set += labels_to_find[i];
+            var return_set : domain(int, parSafe = true);
+
+            // Search in parallel for the nodes that have those labels.
+            var timer:stopwatch;
+            timer.start();
+            forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_set) {
+                for lbl in u_label_set {
+                    if labels_to_find_set.contains(lbl) {
+                        return_set += u;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "label query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[4] != "no_relationships_to_find") {
+            // Extract the array that contains the relationships we are looking for. 
+            var relationships_to_find_name = arrays_list[4];
+            var relationships_to_find : SegString = getSegString(relationships_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var relationships_to_find_set : domain(string);
+            for i in 0..<relationships_to_find.size do relationships_to_find_set += relationships_to_find[i];
+            var return_set : domain(int, parSafe=true);
+
+            // Search in parallel for the edges that have those relationships.
+            var timer:stopwatch;
+            timer.start();
+            forall (edge_ind, edge_ind_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_set) {
+                for rel in edge_ind_relationship_set {
+                    if relationships_to_find_set.contains(rel) {
+                        return_set += edge_ind;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[5] != "no_node_properties_to_find") {
+            // Extract the array that contains the node properties we are looking for.
+            var node_props_to_find_name = arrays_list[5];
+            var node_props_to_find : SegString = getSegString(node_props_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var node_props_to_find_set : domain(string);
+            for i in 0..<node_props_to_find.size do node_props_to_find_set += node_props_to_find[i];
+            var return_set : domain(int, parSafe = true);
+
+            // Search in parallel for the nodes that have those labels.
+            var timer:stopwatch;
+            timer.start();
+            forall (u, u_node_prop_set) in zip(node_properties.domain, node_properties) with (ref return_set) {
+                for prop in u_node_prop_set {
+                    if ((node_props_to_find_set.contains(prop[0])) && (prop[0] != "")) {
+                        return_set += u;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "node properties query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[6] != "no_edge_properties_to_find") {
+            // Extract the array that contains the relationships we are looking for. 
+            var edge_props_to_find_name = arrays_list[6];
+            var edge_props_to_find : SegString = getSegString(edge_props_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var edge_props_to_find_set : domain(string);
+            for i in 0..<edge_props_to_find.size do edge_props_to_find_set += edge_props_to_find[i];
+            var return_set : domain(int, parSafe=true);
+
+            // Search in parallel for the edges that have those relationships.
+            var timer:stopwatch;
+            timer.start();
+            forall (edge_ind, edge_ind_edge_props_set) in zip(edge_properties.domain, edge_properties) with (ref return_set) {
+                for prop in edge_ind_edge_props_set {
+                    if ((edge_props_to_find_set.contains(prop[0])) && (prop[0] != "")) {
+                        return_set += edge_ind;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "edge properties query DIP-SLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            // writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+
+        var repMsg = "query completed";
+        // Print out debug information to arkouda server output.
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } //end of DipDLLqueryMsg
+
     use CommandMap;
     registerFunction("DipDLLaddNodeLabels", DipDLLaddNodeLabelsMsg, getModuleName());
     registerFunction("DipDLLaddEdgeRelationships", DipDLLaddEdgeRelationshipsMsg, getModuleName());
     registerFunction("DipDLLaddNodeProperties", DipDLLaddNodePropertiesMsg, getModuleName());
     registerFunction("DipDLLaddEdgeProperties", DipDLLaddEdgePropertiesMsg, getModuleName());
+    registerFunction("DipDLLqueryMsg", DipDLLqueryMsg, getModuleName());
 }

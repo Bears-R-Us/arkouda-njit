@@ -48,6 +48,7 @@ module GraphArray {
     }
 
     var last_label_tracker = new map(string, shared Node/*, parSafe=true*/);
+    var last_relationship_tracker = new map(string, shared Node/*, parSafe=true*/);
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
