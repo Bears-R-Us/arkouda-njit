@@ -36,7 +36,8 @@ module CCMsg {
   config const start_min_degree = 1000000;
   var tmpmindegree=start_min_degree;
 
-  var JumpSteps:int=6;
+  const JumpSteps=6;
+  const ORDERH=256;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -760,6 +761,252 @@ module CCMsg {
     }
 
 
+    inline proc find_split(u:int,  parents:[?D1] int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                parents[i]= w;
+                i = v;
+          }
+      }
+      return v;
+    }
+
+    inline proc find_naive(u:int,  parents:[?D1] int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                //parents[i]= w;
+                i = v;
+          }
+      }
+      return v;
+    }
+    inline proc find_naive_atomic(u:int,  parents:[?D1] atomic int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                //parents[i]= w;
+                i = v;
+          }
+      }
+      return v;
+    }
+
+
+
+    inline proc find_split_atomic(u:int,  parents:[?D1] atomic int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                parents[i].write(w);
+                i = v;
+          }
+      }
+      return v;
+    }
+
+
+    inline proc find_split_h(u:int,  parents:[?D1] int, h:int):int {
+       var  t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                parents[i]= w;
+                i = v;
+          }
+          t=t+1;
+      }
+      return v;
+    }
+    inline proc find_split_atomic_h(u:int,  parents:[?D1] atomic int, h:int):int {
+       var t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                parents[i].compareAndSwap(v, w);
+                i = v;
+          }
+          t=t+1;
+      }
+      return v;
+    }
+
+    proc find_half(u:int,  parents:[?D1] int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                parents[i]= w;
+                i = parents[i];
+          }
+       }
+       return v;
+    }
+    proc find_half_h(u:int,  parents:[?D1] int,h:int):int {
+       var t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                parents[i]= w;
+                i = parents[i];
+          }
+          t=t+1;
+       }
+       return v;
+    }
+
+    proc find_half_atomic_h(u:int,  parents:[?D1] atomic int,h:int):int {
+       var t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                parents[i].compareAndSwap(v, w);
+                i = parents[i].read();
+          }
+          t=t+1;
+       }
+       return v;
+    }
+
+
+    proc find_half_atomic(u:int,  parents:[?D1] atomic int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                parents[i].compareAndSwap(v, w);
+                i = parents[i].read();
+          }
+       }
+       return v;
+    }
+
+
+
+    proc unite(u:int, v:int,  parents:[?D1] int):int {
+       var rx=u;
+       var ry=v;
+       var p_ry = parents[ry];
+       var p_rx = parents[rx];
+       while (p_ry!=p_rx){
+          if (p_rx > p_ry) {
+               rx<=>ry;
+               p_rx<=> p_ry;
+          }
+          if (ry == p_ry ) {
+                 parents[ry]= p_rx;
+                 while (parents[parents[u]]<parents[u]) {
+                      parents[u]=parents[parents[u]];
+                 }
+                 while (parents[parents[v]]<parents[v]) {
+                      parents[v]=parents[parents[v]];
+                 }
+                 //compress(x, parents);
+                 //compress(y, parents);
+                 return rx;
+          } else {
+                    //rx = splice(rx, ry, parents);
+                    parents[ry]= p_ry;
+          }
+          p_ry = parents[ry];
+          p_rx = parents[rx];
+       }
+       return rx;
+    }
+
+
+
+    proc unite_atomic(u:int, v:int,  parents:[?D1] atomic int):int {
+       var ru=u;
+       var rv=v;
+       var p_rv = parents[rv].read() ;
+       var p_ru = parents[ru].read();
+       while (p_rv!=p_ru) {
+          if (p_ru < p_rv) {
+               ru<=>rv;
+               p_ru<=> p_rv;
+          }
+
+          if ( (ru == p_ru) && (parents[ru].compareAndSwap(ru,p_rv) ) ) {
+                
+                 //var oldx=parents[u].read();
+                 //while (parents[oldx].read()<parents[u].read()) {
+                 //     parents[u].write(parents[oldx].read());
+                 //     oldx=parents[u].read();
+                 //}
+                 //oldx=parents[v].read();
+                 //while (parents[oldx].read()<parents[v].read()) {
+                 //     parents[v].write(parents[oldx].read());
+                 //     oldx=parents[v].read();
+                 //}
+                 //compress(x, parents);
+                 //compress(y, parents);
+                 return ru;
+          } else {
+                    //ru = splice(ru, rv, parents);
+                    //parents[rv].compareAndSwap(p_rv,parents[p_rv].read());
+                    parents[ru].compareAndSwap(p_ru,p_rv);
+                    ru=p_ru;
+          }
+       }
+       return ru;
+    }
+
+
 
 
     // FastSpread: a  propogation based connected components algorithm
@@ -843,7 +1090,7 @@ module CCMsg {
         }
         itera += 1;
       }
-      */
+
       while(!converged) {
         var count:int=0;
         var count1:int=0;
@@ -919,6 +1166,60 @@ module CCMsg {
             }//end of forall
           }
         }
+        */
+
+
+
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+                  var TmpMin:int;
+                  if (itera==1) {
+                      TmpMin=min(u,v);
+                  } else{
+                      TmpMin=find_split_h(u,f,ORDERH);
+                      TmpMin=min(TmpMin,find_split_h(v,f,ORDERH));
+                  }
+                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
+                      var myx=u;
+                      while (f[myx] >TmpMin ) {
+                          var lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                      myx=v;
+                      while (f[myx] >TmpMin ) {
+                          var lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                  }
+                  //if (f[TmpMin]!=TmpMin) {
+                  //           count = 1;
+                  //}
+
+                  
+            }//end of forall
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+              if (count==0) {
+                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                        count=1;
+                    } 
+              }
+            }
+          }
+        }
 
 
         if( (count==0) ) {
@@ -940,6 +1241,78 @@ module CCMsg {
 
 
 
+    // union-find
+    proc cc_unionfind(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+
+      // Initialize f and f_low in distributed memory.
+
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+
+
+      var converged:bool = false;
+      var itera = 1;
+      {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+              unite(u,v,f);
+            }//end of forall
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+              var l=find_half(u,f);
+              var t=u;
+              var ft=f[t];
+              while (f[t]>l) {
+                  ft=f[t];
+                  f[t]=l;
+                  t=ft;
+              }
+              l=find_half(v,f);
+              t=v;
+              while (f[t]>l) {
+                  ft=f[t];
+                  f[t]=l;
+                  t=ft;
+              }
+            }//end of forall
+          }
+        }
+      }
+      writeln("Number of iterations = ", itera);
+
+      return f;
+    }
 
 
 
@@ -1164,7 +1537,6 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
-            /*
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
@@ -1177,7 +1549,6 @@ module CCMsg {
                      f[i]=tmpv;
                 }
             }
-            */
           }
         }
       }
@@ -1199,28 +1570,41 @@ module CCMsg {
               var v = dst[x];
 
               var TmpMin:int;
-              TmpMin=min(f[f[u]],f[f[v]]);
+              if (itera==1) {
+                     TmpMin=min(u,v);
+              } else {
+                TmpMin=min(f[f[u]],f[f[v]]);
+              }
               if(TmpMin < f[f[u]]) {
                      //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",f[u],"]=",f_low[f[u]]," with ", TmpMin);
                      f[f[u]] = TmpMin;
-                     count+=1;
+                     //count+=1;
               }
               if(TmpMin < f[f[v]]) {
                      //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",f[v],"]=",f_low[f[v]]," with ", TmpMin);
                      f[f[v]] = TmpMin;
-                     count+=1;
+                     //count+=1;
               }
               if(TmpMin < f[u]) {
                 //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",u,"]=",f_low[u]," with ", TmpMin);
                 f[u] = TmpMin;
-                count+=1;
+                //count+=1;
               }
               if(TmpMin < f[v]) {
                 //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",v,"]=",f_low[v]," with ", TmpMin);
                 f[v] = TmpMin;
-                count+=1;
+                //count+=1;
               }
             }//end of forall
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+              if (count==0) {
+                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                        count=1;
+                    } 
+              }
+            }
           }
         }
 
@@ -1526,6 +1910,9 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
+
+
+
       while(!converged) {
         var count:int=0;
         var count1:int=0;
@@ -1537,6 +1924,73 @@ module CCMsg {
             forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
               var u = src[x];
               var v = dst[x];
+
+
+              var TmpMin:int;
+              var oldval:int;
+
+                  if (itera==1){
+                     TmpMin=min(u,v);
+                  } else {
+                     TmpMin=find_atomic_split_h(u,f_low,ORDERH);
+                     TmpMin=min(TmpMin,find_atomic_split_h(v,f_low,ORDERH));
+                  }
+                  if ( (f_low[u].read()!=TmpMin) || (f_low[v].read()!=TmpMin)) {
+                      var myx=u;
+                      while (f_low[myx].read() >TmpMin ) {
+                          var lastx=f_low[myx].read();
+                          f_low[myx].write(TmpMin);
+                          myx=lastx;
+                      }
+                      myx=v;
+                      while (f_low[myx].read() >TmpMin ) {
+                          var lastx=f_low[myx].read();
+                          f_low[myx].write(TmpMin);
+                          myx=lastx;
+                      }
+                  }
+
+            }//end of forall
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+              if (count==0) {
+                    if (f_low[u].read()!=f_low[f_low[u].read()].read()  || 
+                        f_low[v].read()!=f_low[f_low[v].read()].read()  || 
+                        f_low[f_low[u].read()].read() !=f_low[f_low[v].read()].read()) {
+                        count=1;
+                    } 
+              }
+            }
+          }
+        }
+
+        //writeln("After iteration ", itera," f=",f);
+        
+        if(  (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+
+
+      /* 
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+
 
 
               var TmpMin:int;
@@ -1599,6 +2053,9 @@ module CCMsg {
                   }
               }
             }//end of forall
+
+
+
           }
         }
 
@@ -1613,6 +2070,7 @@ module CCMsg {
         }
         itera += 1;
       }
+      */
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
       coforall loc in Locales {
@@ -1629,6 +2087,94 @@ module CCMsg {
     }
 
 
+
+    // the atomic method for union find implementation
+    proc cc_unionfind_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_low = makeDistArray(Nv, atomic int); 
+
+      // Initialize f and f_low in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f_low[i].write(i);
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f_low[i].write(tmpv);
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f_low[i].write(tmpv);
+                }
+            }
+          }
+        }
+      }
+
+
+      var converged:bool = false;
+      var itera = 1;
+
+
+
+      {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+
+              unite_atomic(u,v,f_low);
+            }
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+              var l=find_naive_atomic(u,f_low);
+              var oldx=f_low[u].read();
+              while (oldx<l) {
+                    f_low[u].write(l);
+                    u=oldx;
+                    oldx=f_low[u].read();
+              }
+              l=find_naive_atomic(v,f_low);
+              oldx=f_low[v].read();
+              while (oldx<l) {
+                    f_low[v].write(l);
+                    v=oldx;
+                    oldx=f_low[v].read();
+              }
+
+            }//end of forall
+          }
+        }
+        
+      }
+
+
+      writeln("Number of iterations = ", itera);
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = f_low[i].read();
+          }
+        }
+      }
+
+      return f;
+    }
 
 
     // the atomic method is slower than the non atomic method. However, for large graphs, it seems the atomic method is good.
@@ -1662,6 +2208,76 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
+
+      while(!converged) {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+
+              var TmpMin:int;
+              var oldval:int;
+
+                  if (itera==1){
+                     TmpMin=min(u,v);
+                  } else {
+                     TmpMin=find_split_atomic_h(u,f_low,ORDERH);
+                     TmpMin=min(TmpMin,find_split_atomic_h(v,f_low,ORDERH));
+                  }
+                  if ( (f_low[u].read()!=TmpMin) || (f_low[v].read()!=TmpMin)) {
+                      var myx=u;
+                      while (f_low[myx].read() >TmpMin ) {
+                          var lastx=f_low[myx].read();
+                          f_low[myx].compareAndSwap(lastx,TmpMin);
+                          myx=lastx;
+                          //if (count==0) {
+                          //   count = 1;
+                          //}
+                      }
+                      myx=v;
+                      while (f_low[myx].read() >TmpMin ) {
+                          var lastx=f_low[myx].read();
+                          f_low[myx].compareAndSwap(lastx,TmpMin);
+                          myx=lastx;
+                          //if (count==0) {
+                          //   count = 1;
+                          //}
+                      }
+                  }
+
+            }//end of forall
+            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+              if (count==0) {
+                    if (f_low[u].read()!=f_low[f_low[u].read()].read()  || 
+                        f_low[v].read()!=f_low[f_low[v].read()].read()  || 
+                        f_low[f_low[u].read()].read() !=f_low[f_low[v].read()].read()) {
+                        count=1;
+                    } 
+              }
+            }
+          }
+        }
+
+        //writeln("After iteration ", itera," f=",f);
+        
+        if(  (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+      }
+      /*
       while(!converged) {
         var count:int=0;
         var count1:int=0;
@@ -1800,6 +2416,8 @@ module CCMsg {
         }
         itera += 1;
       }
+      */
+
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
       coforall loc in Locales {
@@ -2470,7 +3088,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f7 = cc_fs_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f7 = cc_unionfind_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -2479,7 +3097,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for simple atomic fs  cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for union-find  atomic cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
