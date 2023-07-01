@@ -794,6 +794,7 @@ module CCMsg {
       }
       return v;
     }
+
     inline proc find_naive_atomic(u:int,  parents:[?D1] atomic int):int {
        var i=u;
        var v,w:int;
@@ -981,26 +982,15 @@ module CCMsg {
                p_ru<=> p_rv;
           }
 
-          if ( (ru == p_ru) && (parents[ru].compareAndSwap(ru,p_rv) ) ) {
-                
-                 //var oldx=parents[u].read();
-                 //while (parents[oldx].read()<parents[u].read()) {
-                 //     parents[u].write(parents[oldx].read());
-                 //     oldx=parents[u].read();
-                 //}
-                 //oldx=parents[v].read();
-                 //while (parents[oldx].read()<parents[v].read()) {
-                 //     parents[v].write(parents[oldx].read());
-                 //     oldx=parents[v].read();
-                 //}
-                 //compress(x, parents);
-                 //compress(y, parents);
+          if ( (ru == p_ru) && (parents[ru].compareAndSwap(p_ru,p_rv) ) ) {
                  return ru;
           } else {
-                    //ru = splice(ru, rv, parents);
-                    //parents[rv].compareAndSwap(p_rv,parents[p_rv].read());
-                    parents[ru].compareAndSwap(p_ru,p_rv);
-                    ru=p_ru;
+                    var g_u=parents[p_ru].read();
+                    if (p_ru!=g_u) {
+                         parents[ru].compareAndSwap(p_ru,g_u);
+                    }
+                    ru=g_u;
+                    p_ru = parents[ru].read();
           }
        }
        return ru;
@@ -2142,16 +2132,18 @@ module CCMsg {
               var v = dst[x];
               var l=find_naive_atomic(u,f_low);
               var oldx=f_low[u].read();
-              while (oldx<l) {
-                    f_low[u].write(l);
-                    u=oldx;
+              while (oldx>l) {
+                    if (f_low[u].compareAndSwap(oldx,l)) {
+                        u=oldx;
+                    }
                     oldx=f_low[u].read();
               }
               l=find_naive_atomic(v,f_low);
               oldx=f_low[v].read();
-              while (oldx<l) {
-                    f_low[v].write(l);
-                    v=oldx;
+              while (oldx>l) {
+                    if (f_low[v].compareAndSwap(oldx,l)) {
+                        v=oldx;
+                    }
                     oldx=f_low[v].read();
               }
 
