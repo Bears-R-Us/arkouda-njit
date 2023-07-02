@@ -51,6 +51,7 @@ def time_ak_cc():
             [12582869,4194304,2,0,HomeDir+"Adata/Delaunay/delaunay_n22/delaunay_n22.mtx.pr"],\
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx.pr"],\
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx.pr"],\
+            [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
               ]
     UK=[ [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
             [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
