@@ -37,7 +37,7 @@ module CCMsg {
   var tmpmindegree=start_min_degree;
 
   const JumpSteps=6;
-  const ORDERH=256;
+  const ORDERH=16;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -309,6 +309,211 @@ module CCMsg {
       // writeln("hist = ", hist); 
       return "success";
     }//end of cc_kernel_und
+
+
+
+
+
+    // BFS method
+    proc cc_bfs(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws { 
+
+      var f = makeDistArray(Nv, int); 
+      // Change the visited array to all -1. 
+      coforall loc in Locales {
+        on loc {
+          forall i in visited.localSubdomain() {
+            visited[i] = -1; 
+            f[i]=i;
+          }
+        }
+      }
+
+      var finder = visited.find(-1); 
+      var unvisited:bool = finder[0]; 
+      var nextVertex:int = finder[1];
+      var component:int = 0; 
+
+
+        // Current level starts at 0.
+        var cur_level = 0; 
+
+        var SetCurF = new DistBag(int, Locales);
+        var SetNextF = new DistBag(int, Locales); 
+
+        SetCurF.add(nextVertex); 
+
+        // Size of the current frontier. 
+        var numCurF:int = 1; 
+
+        // Top-down and bottom-up counters. 
+        var topdown:int = 0; 
+        var bottomup:int = 0; 
+
+        // Make the depth array. 
+        var depth = makeDistArray(Nv, int); 
+
+        // Initialize the depth array. 
+        coforall loc in Locales {
+          on loc {
+            forall i in visited.localSubdomain() {
+              depth[i] = -1; 
+            }
+          }
+        }
+
+        // The BFS loop for while the number of vertices in the current 
+        // frontier is greater than 0. 
+      while(unvisited) {
+        cur_level = 0; 
+        while(numCurF > 0) {
+          coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
+            on loc {
+              // Get references to the arrays we will be using so 
+              // data is not copied.
+              ref srcf = src; 
+              ref df = dst; 
+              ref nf = nei; 
+              ref sf = start_i; 
+
+              ref srcfR = srcR; 
+              ref dfR = dstR; 
+              ref nfR = neiR; 
+              ref sfR = start_iR;
+
+              // Get from edge arrays the low and high indices. 
+              var edgeBegin = src.localSubdomain().lowBound; 
+              var edgeEnd = src.localSubdomain().highBound; 
+
+              // Test variables.
+              var arrBegin = nei.localSubdomain().lowBound; 
+              var arrEnd = nei.localSubdomain().highBound; 
+
+              var vertexBegin=src[edgeBegin];
+              var vertexEnd=src[edgeEnd];
+              var vertexBeginR=srcR[edgeBegin];
+              var vertexEndR=srcR[edgeEnd];
+
+              proc xlocal(x:int, low:int, high:int) : bool {
+                if (low <= x && x <= high) {
+                  return true;
+                } 
+                else {
+                  return false;
+                }
+              }
+                      
+              // These steps I do manually here wheras in the BFS
+              // code they are done before the calling of the 
+              // procedure. This is a temporary workaround! 
+              var GivenRatio = -0.6 * -1;
+              var LF = 1; 
+                      
+              // If the ratio is ever greater than 0.6, bottom-up is
+              // activated. 
+              var switchratio = (numCurF:real) / nf.size:real;
+                      
+              /****************** TOP DOWN ********************/
+              if (switchratio < GivenRatio) {
+                topdown+=1;
+                forall i in SetCurF with (ref SetNextF) {
+                  // Current edge has the vertex. 
+                  if ((xlocal(i, vertexBegin, vertexEnd)) || (LF == 0)) {
+                    var numNF = nf[i];
+                    var edgeId = sf[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
+                    ref NF = df[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF){
+                      if (depth[j] == -1) {
+                        depth[j] = cur_level+1;
+                        SetNextF.add(j);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+                  } 
+                  if ((xlocal(i, vertexBeginR, vertexEndR)) || (LF == 0))  {
+                    var numNF = nfR[i];
+                    var edgeId = sfR[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
+                    ref NF = dfR[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF) {
+                      if (depth[j] == -1) {
+                        depth[j] = cur_level+1;
+                        SetNextF.add(j);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+                  }
+                }//end forall
+              } 
+              /****************** BOTTOM UP ********************/
+              else {
+                bottomup+=1;
+                forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                  if (depth[i] == -1) {
+                    var numNF = nf[i];
+                    var edgeId = sf[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId + numNF - 1);
+                    ref NF = df[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF){
+                      if (SetCurF.contains(j)) {
+                        depth[i] = cur_level+1;
+                        SetNextF.add(i);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+
+                  }
+                }
+                forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
+                  if (depth[i] == -1) {
+                    var numNF = nfR[i];
+                    var edgeId = sfR[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF - 1);
+                    ref NF = dfR[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF)  {
+                      if (SetCurF.contains(j)) {
+                        depth[i] = cur_level+1;
+                        SetNextF.add(i);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+                  }
+                }
+              }
+            }//end on loc
+          }//end coforall loc
+          cur_level+=1;
+          numCurF=SetNextF.getSize();
+          SetCurF<=>SetNextF;
+          SetNextF.clear();
+        }//end while  
+        writeln("Component=",component, " diameter=",cur_level);
+
+        // Increase the component number to find the next component, if it exists.
+        finder = visited.find(-1);
+        unvisited = finder[0]; 
+        nextVertex = finder[1];
+        component += 1; 
+      } // end outermost while
+
+
+      writeln("Total Number of Component=",component);
+
+      return f;
+    }//end of  cc-bfs
+
 
     // Implementation of a second algorithm for undirected graphs, 
     // they can be weighted or unweighted. 
@@ -3001,7 +3206,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f2 = cc_fast_sv(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f2 = cc_bfs(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3010,7 +3215,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fast sv cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for bfs cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
@@ -3161,10 +3366,10 @@ module CCMsg {
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
               //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
-              if ((f1[i] != f2[i]) ) {
-                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
+              //if ((f1[i] != f2[i]) ) {
+              //  var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
+              //  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              //}
               if ((f1[i] != f3[i]) ) {
                 var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
