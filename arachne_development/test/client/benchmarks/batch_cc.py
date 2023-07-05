@@ -18,7 +18,7 @@ def time_ak_cc():
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/home/duzh/"
-    Test1=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
+    ProP=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
             [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
             [53381,26475,2,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
             [88234,4039,2,0,HomeDir+"Adata/SNAP/facebook_combined.txt.pr"],\
@@ -31,12 +31,7 @@ def time_ak_cc():
             [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.pr"],\
             [68993773,4847570,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
-            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
-            [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx.pr"],\
-            [261787258,18484117,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx.pr"],\
-            [783027125,39454746,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx.pr"],\
-             ]
-    TestMtx=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
+            [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
             [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx.pr"] ,\
             [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx.pr"] ,\
             [24547,8192,2,0,HomeDir+"Adata/Delaunay/delaunay_n13/delaunay_n13.mtx.pr"] ,\
@@ -51,6 +46,13 @@ def time_ak_cc():
             [12582869,4194304,2,0,HomeDir+"Adata/Delaunay/delaunay_n22/delaunay_n22.mtx.pr"],\
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx.pr"],\
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx.pr"],\
+             ]
+    ProPBig=[ [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
+            [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx.pr"],\
+            [261787258,18484117,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx.pr"],\
+            [783027125,39454746,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx.pr"],\
+             ]
+    TestMtx=[ [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
               ]
     UK=[ [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
             [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
@@ -70,7 +72,7 @@ def time_ak_cc():
               ]
 
     start = time.time()
-    for i in Test1:
+    for i in ProP:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]
@@ -81,6 +83,16 @@ def time_ak_cc():
         cc = njit.graph_cc(Graph)
         print("Number of components=",cc)
     for i in TestMtx:
+        Edges=i[0]
+        Vertices=i[1]
+        Columns=i[2]
+        Directed=i[3]
+        FileName=i[4]
+        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
+        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
+        cc = njit.graph_cc(Graph)
+        print("Number of components=",cc)
+    for i in ProPBig:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]
