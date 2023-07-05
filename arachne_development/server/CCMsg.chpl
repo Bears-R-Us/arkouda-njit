@@ -37,6 +37,7 @@ module CCMsg {
   var tmpmindegree=start_min_degree;
 
   const JumpSteps=6;
+  const FirstOrderIters=4;
   const ORDERH=16;
 
   private proc xlocal(x :int, low:int, high:int):bool {
@@ -318,29 +319,27 @@ module CCMsg {
     proc cc_bfs(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws { 
 
       var f = makeDistArray(Nv, int); 
+      var depth = makeDistArray(Nv, int); 
       // Change the visited array to all -1. 
       coforall loc in Locales {
         on loc {
-          forall i in visited.localSubdomain() {
-            visited[i] = -1; 
+          forall i in depth.localSubdomain() {
+            depth[i] = -1; 
             f[i]=i;
           }
         }
       }
 
-      var finder = visited.find(-1); 
-      var unvisited:bool = finder[0]; 
-      var nextVertex:int = finder[1];
-      var component:int = 0; 
 
 
         // Current level starts at 0.
-        var cur_level = 0; 
+      var cur_level = 0; 
+      var (unvisited,nextVertex) = depth.find(-1); 
+      var component:int = 0; 
 
         var SetCurF = new DistBag(int, Locales);
         var SetNextF = new DistBag(int, Locales); 
 
-        SetCurF.add(nextVertex); 
 
         // Size of the current frontier. 
         var numCurF:int = 1; 
@@ -350,21 +349,14 @@ module CCMsg {
         var bottomup:int = 0; 
 
         // Make the depth array. 
-        var depth = makeDistArray(Nv, int); 
 
-        // Initialize the depth array. 
-        coforall loc in Locales {
-          on loc {
-            forall i in visited.localSubdomain() {
-              depth[i] = -1; 
-            }
-          }
-        }
 
         // The BFS loop for while the number of vertices in the current 
         // frontier is greater than 0. 
       while(unvisited) {
         cur_level = 0; 
+        SetCurF.add(nextVertex); 
+        depth[nextVertex]=cur_level;
         while(numCurF > 0) {
           coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
             on loc {
@@ -405,15 +397,10 @@ module CCMsg {
               // These steps I do manually here wheras in the BFS
               // code they are done before the calling of the 
               // procedure. This is a temporary workaround! 
-              var GivenRatio = -0.6 * -1;
               var LF = 1; 
                       
-              // If the ratio is ever greater than 0.6, bottom-up is
-              // activated. 
-              var switchratio = (numCurF:real) / nf.size:real;
-                      
               /****************** TOP DOWN ********************/
-              if (switchratio < GivenRatio) {
+              {
                 topdown+=1;
                 forall i in SetCurF with (ref SetNextF) {
                   // Current edge has the vertex. 
@@ -426,10 +413,8 @@ module CCMsg {
                     forall j in NF with (ref SetNextF){
                       if (depth[j] == -1) {
                         depth[j] = cur_level+1;
+                        visited[j] = component; 
                         SetNextF.add(j);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
                       }
                     }
                   } 
@@ -442,56 +427,13 @@ module CCMsg {
                     forall j in NF with (ref SetNextF) {
                       if (depth[j] == -1) {
                         depth[j] = cur_level+1;
+                        visited[j] = component; 
                         SetNextF.add(j);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
                       }
                     }
                   }
                 }//end forall
               } 
-              /****************** BOTTOM UP ********************/
-              else {
-                bottomup+=1;
-                forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
-                  if (depth[i] == -1) {
-                    var numNF = nf[i];
-                    var edgeId = sf[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId + numNF - 1);
-                    ref NF = df[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF){
-                      if (SetCurF.contains(j)) {
-                        depth[i] = cur_level+1;
-                        SetNextF.add(i);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
-                      }
-                    }
-
-                  }
-                }
-                forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
-                  if (depth[i] == -1) {
-                    var numNF = nfR[i];
-                    var edgeId = sfR[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId+numNF - 1);
-                    ref NF = dfR[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF)  {
-                      if (SetCurF.contains(j)) {
-                        depth[i] = cur_level+1;
-                        SetNextF.add(i);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
-                      }
-                    }
-                  }
-                }
-              }
             }//end on loc
           }//end coforall loc
           cur_level+=1;
@@ -499,12 +441,10 @@ module CCMsg {
           SetCurF<=>SetNextF;
           SetNextF.clear();
         }//end while  
-        writeln("Component=",component, " diameter=",cur_level);
+        (unvisited,nextVertex)  = depth.find(-1);
+        writeln("Component=",component, " diameter=",cur_level, " unvisited=",unvisited," nextVertex=",nextVertex);
 
         // Increase the component number to find the next component, if it exists.
-        finder = visited.find(-1);
-        unvisited = finder[0]; 
-        nextVertex = finder[1];
         component += 1; 
       } // end outermost while
 
@@ -1204,8 +1144,8 @@ module CCMsg {
 
 
 
-    // FastSpread: a  propogation based connected components algorithm
-    proc cc_fs_dist(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    // Contour: a  mapping based connected components algorithm
+    proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
 
@@ -1237,10 +1177,8 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
-      /*
-      //while( (!converged) && (itera<JumpSteps) ) {
-      while( (!converged) ) {
-      //for t in 0..JumpSteps {
+      //we first check with order=1 mapping method
+      while( (!converged) && (itera<FirstOrderIters* numLocales) ) {
         var count:int=0;
         var count1:int=0;
         coforall loc in Locales with ( + reduce count) {
@@ -1252,33 +1190,31 @@ module CCMsg {
               var u = src[x];
               var v = dst[x];
 
-                  var TmpMin:int;
-                         TmpMin=min(f[f[u]],f[f[v]]);
-                         if(TmpMin < f[f[u]]) {
-                             f[f[u]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[f[v]]) {
-                             f[f[v]] = TmpMin;
-                             count+=1;
-                         }
+                         var TmpMin:int;
+                         TmpMin=min(f[u],f[v]);
                          if(TmpMin < f[u]) {
                              f[u] = TmpMin;
-                             count+=1;
                          }
                          if(TmpMin < f[v]) {
                              f[v] = TmpMin;
-                             count+=1;
                          }
                   
             }//end of forall
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+              if (count==0) {
+                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                        count+=1;
+                    } 
+              }
+            }
           }
         }
 
 
         if( (count==0) ) {
           converged = true;
-          //break;
         }
         else {
           converged = false;
@@ -1286,6 +1222,7 @@ module CCMsg {
         itera += 1;
       }
 
+      /*
       while(!converged) {
         var count:int=0;
         var count1:int=0;
@@ -1398,10 +1335,6 @@ module CCMsg {
                           myx=lastx;
                       }
                   }
-                  //if (f[TmpMin]!=TmpMin) {
-                  //           count = 1;
-                  //}
-
                   
             }//end of forall
             forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
@@ -1426,9 +1359,6 @@ module CCMsg {
         itera += 1;
       }
 
-
-
-      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera);
 
       return f;
@@ -3220,7 +3150,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f3 = cc_fs_dist(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3229,7 +3159,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs dist cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for contour cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
