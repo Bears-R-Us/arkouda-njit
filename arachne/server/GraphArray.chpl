@@ -80,6 +80,8 @@ module GraphArray {
         DIP_ARR_NODE_LABELS,    // Any labels that belong to a specific node
         DIP_ARR_NODE_PROPS,     // Any properties that belong to a specific node
         DIP_ARR_EDGE_PROPS,     // Any properties that belong to a specific edge
+        DIP_ARR_LBL_INDICES,    // Maintains index value for the row of the two-dimensional array
+        DIP_ARR_REL_INDICES,    // Maintains index value for the row of the two-dimensional array
     }
 
     /**
