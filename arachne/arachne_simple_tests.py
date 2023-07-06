@@ -56,24 +56,48 @@ if __name__ == "__main__":
     # Insert attributes into a property graph using the singly linked list method.
     graph.add_node_labels(node_label_dataframe, "DipSLLaddNodeLabels")
     graph.add_edge_relationships(edge_relationship_dataframe, "DipSLLaddEdgeRelationships")
+    graph.add_node_properties(node_prop_dataframe, "DipSLLaddNodeProperties")
+    graph.add_edge_properties(edge_prop_dataframe, "DipSLLaddEdgeProperties")
+
+    # Querying with DipSLLquery:
+    graph.query(
+        "DipSLLquery",
+        nodes_to_find = ak.array([1,2]),
+        edges_to_find = (ak.array([20,22]),ak.array([2,2])),
+        labels_to_find = ak.array(["student"]),
+        relationships_to_find = ak.array(["friends", "coworkers"])
+        # node_properties_to_find = ak.array(["age"]),
+        # edge_properties_to_find = ak.array(["team"])
+    )
 
     # Insert attributes into a property graph using the two-dimensional array method.
     graph.add_node_labels(node_label_dataframe, "DipArrayaddNodeLabels")
-    # graph.add_edge_relationships(edge_relationship_dataframe, "DipArrayaddEdgeRelationships")
+    graph.add_edge_relationships(edge_relationship_dataframe, "DipArrayaddEdgeRelationships")
+
+    # Querying with DipARRquery:
+    graph.query(
+        "DipArrayquery",
+        nodes_to_find = ak.array([1,2]),
+        edges_to_find = (ak.array([20,22]),ak.array([2,2])),
+        labels_to_find = ak.array(["student"]),
+        relationships_to_find = ak.array(["friends", "coworkers"])
+        # node_properties_to_find = ak.array(["age"]),
+        # edge_properties_to_find = ak.array(["team"])
+    )
 
     # Insert attributes into a property graph using the doubly linked list method.
     graph.add_node_labels(node_label_dataframe, "DipDLLaddNodeLabels")
     graph.add_edge_relationships(edge_relationship_dataframe, "DipDLLaddEdgeRelationships")
-
-    # Let us do some querying of data!
-    # graph.query(
-    #     "DipSLLquery",
-    #     nodes_to_find = ak.array([1,2]),
-    #     edges_to_find = (ak.array([20,22]),ak.array([2,2])),
-    #     labels_to_find = ak.array(["student"]),
-    #     relationships_to_find = ak.array(["friends", "coworkers"]),
-    #     node_properties_to_find = ak.array(["age"]),
-    #     edge_properties_to_find = ak.array(["team"])
-    # )
+    
+    # Querying with DipDLLquery:
+    graph.query(
+        "DipDLLquery",
+        nodes_to_find = ak.array([1,2]),
+        edges_to_find = (ak.array([20,22]),ak.array([2,2])),
+        labels_to_find = ak.array(["student"]),
+        relationships_to_find = ak.array(["friends", "coworkers"])
+        # node_properties_to_find = ak.array(["age"]),
+        # edge_properties_to_find = ak.array(["team"])
+    )
 
     ak.shutdown()

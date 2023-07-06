@@ -71,7 +71,7 @@ module DipSLLPropertyGraphMsg {
             var lbl = labels_arr[i];
             node_labels[node_map_r[nodes_arr[i]]].pushBack(lbl);
         } 
-        writeln("$$$$$$ node_labels = ", node_labels);
+        // writeln("$$$$$$ node_labels = ", node_labels);
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_SLL_NODE_LABELS");
@@ -144,7 +144,7 @@ module DipSLLPropertyGraphMsg {
 
             relationships[ind].pushBack(rel_arr[i]); // or j
         }
-        writeln("$$$$$$ relationships = ", relationships);
+        // writeln("$$$$$$ relationships = ", relationships);
         
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(relationships):GenSymEntry, "DIP_SLL_RELATIONSHIPS");
@@ -357,7 +357,7 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "node query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            // writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
+            writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
             // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
         /********** QUERY EDGES **********/
@@ -405,7 +405,7 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "edge query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            // writeln("$$$$$$$$$$ return_array_rel = ", return_array_rel);
+            writeln("$$$$$$$$$$ return_array_rel = ", return_array_rel);
             // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
         if (arrays_list[3] != "no_labels_to_find") {
@@ -431,7 +431,7 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "label query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            // writeln("$$$$$$$$$$ return_set = ", return_set);
+            writeln("$$$$$$$$$$ return_set = ", return_set);
         }
         if (arrays_list[4] != "no_relationships_to_find") {
             // Extract the array that contains the relationships we are looking for. 
@@ -456,7 +456,7 @@ module DipSLLPropertyGraphMsg {
             timer.stop();
             var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
-            // writeln("$$$$$$$$$$ return_set = ", return_set);
+            writeln("$$$$$$$$$$ return_set = ", return_set);
         }
         if (arrays_list[5] != "no_node_properties_to_find") {
             // Extract the array that contains the node properties we are looking for.

@@ -19,6 +19,9 @@ module DipArrayPropertyGraphMsg {
     use AryUtil;
     use Logging;
     use Message;
+
+    // 2D arrays from Ben.
+    use SymEntry2D;
     
     // Server message logger. 
     private config const logLevel = LogLevel.DEBUG;
@@ -85,12 +88,12 @@ module DipArrayPropertyGraphMsg {
 
             byte_label_arrays[lbl_ind,vertex] = true;
         }
-        // var count_2: atomic int = 0;
-        // forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
-        // Add the component for the node labels for the graph. 
+        var count_2: atomic int = 0;
+        forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
         
-        // TODO: add two-dimensional array into symbol table!
-        // graph.withComp(new shared SymEntry(byte_label_arrays):GenSymEntry, "DIP_ARR_NODE_LABELS");
+        // Add two-dimensional array into symbol table using Ben's approach!
+        graph.withComp(new shared SymEntry2D(byte_label_arrays):GenSymEntry, "DIP_ARR_NODE_LABELS");
+        graph.withComp(new shared SymEntry(lbl_set_arr):GenSymEntry, "DIP_ARR_LBL_INDICES");
         timer.stop();  
         var repMsg = "labels added";
         outMsg = "DipARRaddNodeLabels took " + timer.elapsed():string + " sec ";
@@ -146,14 +149,6 @@ module DipArrayPropertyGraphMsg {
         var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
         var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
 
-        // Create array of lists to store relationships and populate it. 
-        var relationships: [src_actual.domain] list(string, parSafe=true);
-
-        /*****************************************************/
-        /********************* DIP-Array *********************/
-        /*****************************************************/
-        timer.clear();
-        timer.start();
         var rel_set = new set(string, parSafe=true);
         forall i in src.domain with (ref rel_set) do rel_set.add(rel_arr[i]);
 
@@ -176,115 +171,24 @@ module DipArrayPropertyGraphMsg {
             var end = start + neighbor[u];
 
             var neighborhood = dst_actual[start..end-1];
-            var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
+            var edge_ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
+            var rel = rel_arr[i];
+            var rel_ind = relations_arr[rel];
 
-            byte_relationship_arrays[relations_arr[rel_arr[i]],[ind]] = true;
+            byte_relationship_arrays[rel_ind,edge_ind] = true;
         }
         var count_2: atomic int = 0;
         forall a in byte_relationship_arrays with (ref count_2) do if a == true then count_2.add(1);
-        timer.stop();
-        writeln("$$$$$$$$$$ BUILDING DIP-array RELATIONSHIPS TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$relationship_count = ", count_2);
-        writeln();
+        writeln("count_2 = ", count_2);
 
-        /*************************************************************************/
-        /******************** QUERYING ENTIRE RELATIONSHIPS **********************/
-        /*************************************************************************/
-        var relationships_to_find = ["teammates", "friends"];
+        // Add two-dimensional array into symbol table using Ben's approach!
+        graph.withComp(new shared SymEntry2D(byte_relationship_arrays):GenSymEntry, "DIP_ARR_RELATIONSHIPS");
+        graph.withComp(new shared SymEntry(rel_set_arr):GenSymEntry, "DIP_ARR_REL_INDICES");
+        timer.stop();  
 
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var edges_list = new list((int,int), parSafe=true);
-        
-        // Turn relationships to find into an associative domain.
-        var D_relationships_to_find: domain(string);
-        D_relationships_to_find += relationships_to_find;
-        
-        // Slice our associative array of relationship_name to index value according to the 
-        // relationships we are looking for. Save these indices to an associative domain for easy
-        // lookup.
-        var relations_arr_slice = relations_arr[D_relationships_to_find];
-        var D_indices_of_relationships_to_find: domain(int);
-        D_indices_of_relationships_to_find += relations_arr_slice;
-
-        var forall_comp : stopwatch;
-        var count_forall1 = 0;
-        var count_forall2 = 0;
-        writeln("dims = ", D_byte_relationship_arrays.dims());
-        forall_comp.start();
-        forall (i,j) in byte_relationship_arrays.domain with (ref edges_list, + reduce count_forall1) {
-            if D_indices_of_relationships_to_find.contains(i) {
-                if byte_relationship_arrays[i,j] == true { 
-                    count_forall1 += 1;
-                    edges_list.append((src_actual[j], dst_actual[j]));
-                }
-            }
-        }
-        forall_comp.stop();
-        writeln("$$$$$ one forall loop time = ", forall_comp.elapsed());
-        edges_list.clear();
-        forall_comp.clear();
-        forall_comp.start();
-        forall i in D_byte_relationship_arrays.dim(0) with (ref edges_list, + reduce count_forall2) {
-            forall j in D_byte_relationship_arrays.dim(1) with (ref edges_list, + reduce count_forall2) {
-                if D_indices_of_relationships_to_find.contains(i) {
-                    if byte_relationship_arrays[i,j] == true {
-                        count_forall2 += 1;
-                        edges_list.append((src_actual[j], dst_actual[j]));
-                    }
-                }
-            }
-        }
-        forall_comp.stop();
-        writeln("$$$$$ two forall loop time = ", forall_comp.elapsed());
-        
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array RELATIONSHIPS TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", edges_list.size);
-        writeln();
-
-        /**********************************************************/
-        /******************** QUERYING EDGES **********************/
-        /**********************************************************/
-        var src_to_find = [32,22];
-        var dst_to_find = [1,1];
-
-        /********************* DIP-array *********************/
-        timer.clear();
-        timer.start();
-        var relationships_list = new list((int,string), parSafe=true);        
-
-        for i in src_to_find.domain {
-            var u = src_to_find[i];
-            var v = dst_to_find[i];
-            
-            var ui = node_map_r[u];
-            var vi = node_map_r[v];
-
-            var start = start_idx[ui];
-            var end = start + neighbor[ui];
-
-            var neighborhood = dst_actual[start..end-1];
-            var edge_ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, vi);
-            forall j in D_byte_relationship_arrays.dim(0) with (ref relationships_list) {
-                if (byte_relationship_arrays[j, edge_ind] == true) then relationships_list.append((j,rel_set_arr[j]));
-            }
-        }
-        timer.stop();
-        writeln("$$$$$$$$$$ QUERYING DIP-array EDGES TIME TAKES: ", timer.elapsed());
-        writeln("$$$$$DIP-array query size = ", relationships_list.size);
-        writeln();
-        
-        /****************************************************/
-        /********************* END CODE *********************/
-        /****************************************************/
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(relationships):GenSymEntry, "RELATIONSHIPS");
-        timer.stop();
         var repMsg = "relationships added";
-        outMsg = "Adding relationships to property graph takes " + timer.elapsed():string;
-        
+        outMsg = "DipARRaddEdgeRelationships took " + timer.elapsed():string + " sec ";
+
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
@@ -300,54 +204,9 @@ module DipArrayPropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc DipArrayaddNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var arrays = msgArgs.getValueOf("Arrays");
-        var columns = msgArgs.getValueOf("Columns");
-
-        // Extract the names of the arrays storing the nodeIDs and labels.
-        var arrays_list = arrays.split();
-        var nodes_name = arrays_list[0];
-
-        // Extract the column names.
-        var cols_list = columns.split();
-        
-        // Extract the nodes array that is an integer array.
-        var nodes_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_name, st);
-        var nodes_sym = toSymEntry(nodes_entry, int);
-        var nodes_arr = nodes_sym.a;
-
-        // Get graph for usage.
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
-        
-        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-        var node_props: [node_map.domain] list((string,string), parSafe=true);
-        if graph.hasComp("NODE_PROPS") {
-            node_props = toSymEntry(graph.getComp("NODE_PROPS"), list((string,string), parSafe=true)).a;
-        }
-
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var timer:stopwatch;
-        timer.start();
-        forall i in 1..arrays_list.size - 1 {
-            var curr_prop_arr:SegString = getSegString(arrays_list[i], st);
-            forall j in nodes_arr.domain {
-                node_props[node_map_r[nodes_arr[j]]].append((cols_list[i],curr_prop_arr[j]));
-            }   
-        }
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_props):GenSymEntry, "NODE_PROPS");
-        timer.stop();
-        
-        var repMsg = "node properties added";
-        outMsg = "Adding node properties to property graph takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+    proc DipArrayaddNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {        
+        var repMsg = "DipArrayaddNodePropertiesMsg node properties not implemented";
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of DipArrayaddNodePropertiesMsg
 
@@ -361,74 +220,209 @@ module DipArrayPropertyGraphMsg {
     * returns: message back to Python.
     */
     proc DipArrayaddEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
+        var repMsg = "DipArrayaddEdgePropertiesMsg edge properties not implemented";
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of DipArrayaddEdgePropertiesMsg
+
+    /**
+    * Queries the property graph and returns either arrays of strings or arrays of integer values
+    * that represent vertices and edges.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc DipArrayqueryMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract needed data.
         var graphEntryName = msgArgs.getValueOf("GraphName");
-        var arrays = msgArgs.getValueOf("Arrays");
-        var columns = msgArgs.getValueOf("Columns");
+        var arraysName = msgArgs.getValueOf("Arrays");
 
-        // Extract the names of the arrays passed to the function.
-        var arrays_list = arrays.split();
-        var cols_list = columns.split();
-        var src_name = arrays_list[0];
-        var dst_name = arrays_list[1];
-        
-        // Extract the actual arrays for each of the names above.
-        var src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var src_sym = toSymEntry(src_entry, int);
-        var src = src_sym.a;
-        
-        var dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var dst_sym = toSymEntry(dst_entry, int);
-        var dst = dst_sym.a;
+        // Extracts the arrays we are going to use that will hold our query arrays.
+        var arrays_list = arraysName.split();
 
-        var timer:stopwatch;
-        timer.start();
-        
-        // Get graph for usage and needed arrays.
+        // Extract graph data for usage in this function.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
         var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
         var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
         var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
         var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
+        var node_labels = toSymEntry2D(graph.getComp("DIP_ARR_NODE_LABELS"), bool).a;
+        var dip_arr_lbl_indices = toSymEntry(graph.getComp("DIP_ARR_LBL_INDICES"), string).a;
+        var edge_relationships = toSymEntry2D(graph.getComp("DIP_ARR_RELATIONSHIPS"), bool).a;
+        var dip_arr_rel_indices = toSymEntry(graph.getComp("DIP_ARR_REL_INDICES"), string).a;
 
-        // Create array of lists to store edge_props and populate it. 
-        var edge_props: [src_actual.domain] list((string,string), parSafe=true);
-        if(graph.hasComp("EDGE_PROPS")) {
-            edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), list((string,string), parSafe=true)).a;
-        }
+        /********** QUERY NODES **********/
+        var return_list = new list(string);
+        if (arrays_list[0] != "no_nodes_to_find") {
+            // Extract the array that contains the nodes whose labels we are looking for.
+            var nodes_to_find_name = arrays_list[0];
+            var nodes_to_find_entry : borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_to_find_name, st);
+            var nodes_to_find_sym = toSymEntry(nodes_to_find_entry, int);
+            var nodes_to_find = nodes_to_find_sym.a;
 
-        forall x in 2..arrays_list.size - 1 {
-            var curr_prop_arr:SegString = getSegString(arrays_list[x], st);
-            forall (i,j) in zip(src.domain, dst.domain) {
-                var u = node_map_r[src[i]];
-                var v = node_map_r[dst[j]];
+            // Convert array to associative domain to maintain the found labels.
+            var nodes_to_find_set : domain(int);
+            nodes_to_find_set += nodes_to_find;
+            var return_array_lbl : [nodes_to_find_set] string;
+            var return_array_prop : [nodes_to_find_set] string;
+            return_array_lbl = "";
+            return_array_prop = "";
 
-                var start = start_idx[u];
-                var end = start + neighbor[u];
-
-                var neighborhood = dst_actual[start..end-1];
-                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-                edge_props[ind].append((cols_list[x],curr_prop_arr[i])); // or j
+            // Search in parallel for the nodes whose labels we want to find. 
+            var timer:stopwatch;
+            timer.start();
+            forall (i,j) in node_labels.domain { // i is the row index and j is the column index
+                if (nodes_to_find_set.contains(node_map[j])) {
+                    if node_labels[i,j] == true {
+                        return_array_lbl[node_map[j]] += dip_arr_lbl_indices[i] + " "; 
+                    }
+                }
             }
+            timer.stop();
+            var time_msg = "node query DIP-ARR took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
+            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
-        
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(edge_props):GenSymEntry, "EDGE_PROPS");
-        timer.stop();
-        var repMsg = "edge properties added";
-        outMsg = "Adding edge properties to property graph takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        /********** QUERY EDGES **********/
+        if ((arrays_list[1] != "no_edges_to_find_src") && (arrays_list[2]) != "no_edges_to_find_dst") {
+            // Extract the arrays that contains the edges whose relationships we are looking for.
+            var edges_to_find_src_name = arrays_list[1];
+            var edges_to_find_src_entry : borrowed GenSymEntry = getGenericTypedArrayEntry(edges_to_find_src_name, st);
+            var edges_to_find_src_sym = toSymEntry(edges_to_find_src_entry, int);
+            var edges_to_find_src = edges_to_find_src_sym.a;
+
+            var edges_to_find_dst_name = arrays_list[2];
+            var edges_to_find_dst_entry : borrowed GenSymEntry = getGenericTypedArrayEntry(edges_to_find_dst_name, st);
+            var edges_to_find_dst_sym = toSymEntry(edges_to_find_dst_entry, int);
+            var edges_to_find_dst = edges_to_find_dst_sym.a;
+
+            // Convert arrays to associative domain to maintain the edge indices we must find.
+            var edge_indices_to_find_set : domain(int, parSafe=true);
+            forall (u,v) in zip(edges_to_find_src, edges_to_find_dst) with (ref edge_indices_to_find_set) {
+                var ui = node_map_r[u];
+                var vi = node_map_r[v];
+
+                var start = start_idx[ui];
+                var end = start + neighbor[ui];
+
+                ref neighborhood = dst_actual[start..end-1];
+                var edge_ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, vi);
+                edge_indices_to_find_set += edge_ind;
+            }
+            var return_array_rel : [edge_indices_to_find_set] string;
+            var return_array_prop : [edge_indices_to_find_set] string;
+            return_array_rel = "";
+            return_array_prop = "";
+            
+            // Search in parallel for the nodes whose labels we want to find. 
+            var timer:stopwatch;
+            timer.start();
+            forall (i,j) in edge_relationships.domain { // i is the row index and j is the column index
+                if (edge_indices_to_find_set.contains(j)) {
+                    if edge_relationships[i,j] == true {
+                        return_array_rel[j] += dip_arr_rel_indices[i] + " "; 
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "edge query DIP-ARR took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            writeln("$$$$$$$$$$ return_array_rel = ", return_array_rel);
+            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
+        }
+        if (arrays_list[3] != "no_labels_to_find") {
+            // Extract the array that contains the labels we are looking for.
+            var labels_to_find_name = arrays_list[3];
+            var labels_to_find : SegString = getSegString(labels_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var labels_to_find_set : domain(string);
+            var label_indices_to_find_set : domain(int);
+            for i in 0..<labels_to_find.size do labels_to_find_set += labels_to_find[i];
+            var return_set : domain(int, parSafe = true);
+
+            // Generate the indices of the rows we are to target.
+            for (i,lbl) in zip(dip_arr_lbl_indices.domain, dip_arr_lbl_indices) {
+                if labels_to_find_set.contains(lbl) {
+                    label_indices_to_find_set += i;
+                }
+            }
+            
+            // Search in parallel for the nodes that have those labels.
+            var timer:stopwatch;
+            timer.start();
+            forall (i,j) in node_labels.domain with (ref return_set) { 
+                if label_indices_to_find_set.contains(i) {
+                    if node_labels[i,j] == true {
+                        return_set += node_map[j];
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "label query DIP-DLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[4] != "no_relationships_to_find") {
+            // Extract the array that contains the relationships we are looking for. 
+            var relationships_to_find_name = arrays_list[4];
+            var relationships_to_find : SegString = getSegString(relationships_to_find_name, st);
+
+            // Convert array to associative domain to maintain the relationships to find.
+            var relationships_to_find_set : domain(string);
+            var relationship_indices_to_find_set : domain(int);
+            for i in 0..<relationships_to_find.size do relationships_to_find_set += relationships_to_find[i];
+            var return_set : domain(int, parSafe=true);
+
+            // Generate the indices of the rows we are to target.
+            for (i,rel) in zip(dip_arr_rel_indices.domain, dip_arr_rel_indices) {
+                if relationships_to_find_set.contains(rel) {
+                    relationship_indices_to_find_set += i;
+                }
+            }
+
+            // Search in parallel for the edges that have those relationships.
+            var timer:stopwatch;
+            timer.start();
+            forall (i,j) in edge_relationships.domain with (ref return_set) { 
+                if relationship_indices_to_find_set.contains(i) {
+                    if edge_relationships[i,j] == true {
+                        return_set += j;
+                    }
+                }
+            }
+            timer.stop();
+            var time_msg = "relationship query DIP-DLL took " + timer.elapsed():string + " sec";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+            writeln("$$$$$$$$$$ return_set = ", return_set);
+        }
+        if (arrays_list[5] != "no_node_properties_to_find") {
+            var time_msg = "node properties query DIP-DLL not implemented";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+        }
+        if (arrays_list[6] != "no_edge_properties_to_find") {
+            var time_msg = "edge properties query DIP-DLL not implemented";
+            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+        }
+
+        var repMsg = "query completed";
+        // Print out debug information to arkouda server output.
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipArrayaddEdgePropertiesMsg
+    } //end of DipDArrrayqueryMsg
+
     use CommandMap;
     registerFunction("DipArrayaddNodeLabels", DipArrayaddNodeLabelsMsg, getModuleName());
     registerFunction("DipArrayaddEdgeRelationships", DipArrayaddEdgeRelationshipsMsg, getModuleName());
     registerFunction("DipArrayaddNodeProperties", DipArrayaddNodePropertiesMsg, getModuleName());
     registerFunction("DipArrayaddEdgeProperties", DipArrayaddEdgePropertiesMsg, getModuleName());
+    registerFunction("DipArrayquery", DipArrayqueryMsg, getModuleName());
 }
