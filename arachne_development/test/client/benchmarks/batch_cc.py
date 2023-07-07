@@ -17,7 +17,7 @@ def time_ak_cc():
     print("number of PUs =",cfg["numPUs"])
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
-    HomeDir="/home/duzh/"
+    HomeDir="/rhome/zhihui/"
     ProP=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
             [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
             [53381,26475,2,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
@@ -47,7 +47,9 @@ def time_ak_cc():
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx.pr"],\
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx.pr"],\
              ]
-    ProPBig=[ [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
+    ProPBig=[ [14855842,456626,2,0,HomeDir+"Adata/higgs-social_network.edgelist"],\
+            [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt"],\
+            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
             [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx.pr"],\
             [261787258,18484117,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx.pr"],\
             [783027125,39454746,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx.pr"],\

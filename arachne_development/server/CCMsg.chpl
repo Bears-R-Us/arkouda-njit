@@ -38,7 +38,8 @@ module CCMsg {
 
   const JumpSteps=6;
   const FirstOrderIters=4;
-  const ORDERH=16;
+  const SecondOrderIters=7;
+  const ORDERH=128;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -442,14 +443,16 @@ module CCMsg {
           SetNextF.clear();
         }//end while  
         (unvisited,nextVertex)  = depth.find(-1);
-        writeln("Component=",component, " diameter=",cur_level, " unvisited=",unvisited," nextVertex=",nextVertex);
-
+        if (cur_level!=0) {
+              writeln("Component=",component, " diameter=",cur_level, " unvisited=",unvisited," nextVertex=",nextVertex);
+        }
         // Increase the component number to find the next component, if it exists.
         component += 1; 
       } // end outermost while
 
 
       writeln("Total Number of Component=",component);
+      writeln("Number of iterations = 1");
 
       return f;
     }//end of  cc-bfs
@@ -1177,10 +1180,9 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
+      var count:int=0;
       //we first check with order=1 mapping method
       while( (!converged) && (itera<FirstOrderIters* numLocales) ) {
-        var count:int=0;
-        var count1:int=0;
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1194,21 +1196,14 @@ module CCMsg {
                          TmpMin=min(f[u],f[v]);
                          if(TmpMin < f[u]) {
                              f[u] = TmpMin;
+                             count=count+1;
                          }
                          if(TmpMin < f[v]) {
                              f[v] = TmpMin;
+                             count=count+1;
                          }
                   
             }//end of forall
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-              if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count+=1;
-                    } 
-              }
-            }
           }
         }
 
@@ -1218,26 +1213,27 @@ module CCMsg {
         }
         else {
           converged = false;
+          count=0;
         }
         itera += 1;
       }
 
-      /*
-      while(!converged) {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+      // Then we use order=2 mapping
+      while(!converged && (itera<SecondOrderIters* numLocales)) {
+        //var count:int=0;
+        //var count1:int=0;
+        coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
               var u = src[x];
               var v = dst[x];
 
                   var TmpMin:int;
-                  if ((numLocales ==1) || (itera % JumpSteps ==0)  ) {
-                         TmpMin=min(f[f[u]],f[f[v]]);
+                  TmpMin=min(f[f[u]],f[f[v]]);
+                  {
                          if(TmpMin < f[f[u]]) {
                              f[f[u]] = TmpMin;
                              count+=1;
@@ -1254,63 +1250,31 @@ module CCMsg {
                              f[v] = TmpMin;
                              count+=1;
                          }
-                  } else {
-                    if ((itera % (JumpSteps*3) !=0) ) {
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                         }
-                    } else { 
-                       //if ((itera % (JumpSteps*3) ==0) ) {
-                       TmpMin=min(f[f[f[u]]],f[f[f[v]]]);
-                       if(TmpMin < f[f[f[u]]]) {
-                           f[f[f[u]]] = TmpMin;
-                           count+=1;
-                       }
-                       if(TmpMin < f[f[f[v]]]) {
-                           f[f[f[v]]] = TmpMin;
-                           count+=1;
-                       }
-                       if(TmpMin < f[f[u]]) {
-                             f[f[u]] = TmpMin;
-                             count+=1;
-                       }
-                       if(TmpMin < f[f[v]]) {
-                             f[f[v]] = TmpMin;
-                             count+=1;
-                       }
-                       if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                       }
-                       if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                       }
-                    } 
-                  }
-                  
+                  } 
             }//end of forall
           }
         }
-        */
 
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+          count=0;
+        }
+        itera += 1;
+      }
 
-
+      // In the third step, we employ high order mapping
       while(!converged) {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+        //var count:int=0;
+        //var count1:int=0;
+        coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
               var u = src[x];
               var v = dst[x];
 
@@ -1318,26 +1282,26 @@ module CCMsg {
                   if (itera==1) {
                       TmpMin=min(u,v);
                   } else{
-                      TmpMin=find_split_h(u,f,ORDERH);
-                      TmpMin=min(TmpMin,find_split_h(v,f,ORDERH));
+                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
                   }
                   if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
                       var myx=u;
+                      var lastx=u;
                       while (f[myx] >TmpMin ) {
-                          var lastx=f[myx];
+                          lastx=f[myx];
                           f[myx]=TmpMin;
                           myx=lastx;
                       }
                       myx=v;
                       while (f[myx] >TmpMin ) {
-                          var lastx=f[myx];
+                          lastx=f[myx];
                           f[myx]=TmpMin;
                           myx=lastx;
                       }
                   }
                   
             }//end of forall
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
               var u = src[x];
               var v = dst[x];
               if (count==0) {
@@ -1355,6 +1319,7 @@ module CCMsg {
         }
         else {
           converged = false;
+          count=0;
         }
         itera += 1;
       }
