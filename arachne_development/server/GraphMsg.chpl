@@ -1900,7 +1900,7 @@ module GraphMsg {
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
+                      if (line[0]=="%" || line[0]=="#") {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
@@ -2437,7 +2437,7 @@ module GraphMsg {
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
+                      if (line[0]=="%" || line[0]=="#") {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
@@ -2871,7 +2871,7 @@ module GraphMsg {
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
+                      if (line[0]=="%"||line[0]=="#") {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
@@ -3950,7 +3950,7 @@ module GraphMsg {
 
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
+                      if (line[0]=="%"||line[0]=="#") {
                           continue;
                       }
                       if ((curline==0) && (!StartF)) {
