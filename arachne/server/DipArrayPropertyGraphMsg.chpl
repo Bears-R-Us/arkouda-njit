@@ -268,19 +268,25 @@ module DipArrayPropertyGraphMsg {
 
             // Convert array to associative domain to maintain the found labels.
             var nodes_to_find_set : domain(int);
-            nodes_to_find_set += nodes_to_find;
+            // nodes_to_find_set += node_map_r[nodes_to_find];
+            for node in nodes_to_find do nodes_to_find_set += node_map_r[node];
             var return_array_lbl : [nodes_to_find_set] string;
-            var return_array_prop : [nodes_to_find_set] string;
             return_array_lbl = "";
-            return_array_prop = "";
 
             // Search in parallel for the nodes whose labels we want to find. 
             var timer:stopwatch;
             timer.start();
-            forall (i,j) in node_labels.domain { // i is the row index and j is the column index
-                if (nodes_to_find_set.contains(node_map[j])) {
-                    if node_labels[i,j] == true {
-                        return_array_lbl[node_map[j]] += dip_arr_lbl_indices[i] + " "; 
+            // forall (i,j) in node_labels.domain { // i is the row index and j is the column index
+            //     if (nodes_to_find_set.contains(j)) {
+            //         if node_labels[i,j] == true {
+            //             return_array_lbl[j] += dip_arr_lbl_indices[i] + " "; 
+            //         }
+            //     }
+            // }
+            forall node in nodes_to_find_set with (ref return_array_lbl) {
+                forall (lbl_index,_) in node_labels.domain[.., node..node] with (ref return_array_lbl) {
+                    if node_labels.localAccess[lbl_index,node] == true {
+                        return_array_lbl[node] += dip_arr_lbl_indices[lbl_index] + " ";
                     }
                 }
             }
@@ -288,7 +294,6 @@ module DipArrayPropertyGraphMsg {
             var time_msg = "node query DIP-ARR took " + timer.elapsed():string + " sec";
             smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
             writeln("$$$$$$$$$$ return_array_lbl = ", return_array_lbl);
-            // writeln("$$$$$$$$$$ return_array_prop = ", return_array_prop);
         }
         /********** QUERY EDGES **********/
         if ((arrays_list[1] != "no_edges_to_find_src") && (arrays_list[2]) != "no_edges_to_find_dst") {
@@ -324,10 +329,17 @@ module DipArrayPropertyGraphMsg {
             // Search in parallel for the nodes whose labels we want to find. 
             var timer:stopwatch;
             timer.start();
-            forall (i,j) in edge_relationships.domain { // i is the row index and j is the column index
-                if (edge_indices_to_find_set.contains(j)) {
-                    if edge_relationships[i,j] == true {
-                        return_array_rel[j] += dip_arr_rel_indices[i] + " "; 
+            // forall (i,j) in edge_relationships.domain { // i is the row index and j is the column index
+            //     if (edge_indices_to_find_set.contains(j)) {
+            //         if edge_relationships[i,j] == true {
+            //             return_array_rel[j] += dip_arr_rel_indices[i] + " "; 
+            //         }
+            //     }
+            // }
+            forall edge in edge_indices_to_find_set with (ref return_array_rel) {
+                forall (rel_index,_) in edge_relationships.domain[.., edge..edge] with (ref return_array_rel) {
+                    if edge_relationships.localAccess[rel_index,edge] == true {
+                        return_array_rel[edge] += dip_arr_rel_indices[rel_index] + " ";
                     }
                 }
             }
@@ -358,10 +370,17 @@ module DipArrayPropertyGraphMsg {
             // Search in parallel for the nodes that have those labels.
             var timer:stopwatch;
             timer.start();
-            forall (i,j) in node_labels.domain with (ref return_set) { 
-                if label_indices_to_find_set.contains(i) {
-                    if node_labels[i,j] == true {
-                        return_set += node_map[j];
+            // forall (i,j) in node_labels.domain with (ref return_set) { 
+            //     if label_indices_to_find_set.contains(i) {
+            //         if node_labels[i,j] == true {
+            //             return_set += node_map[j];
+            //         }
+            //     }
+            // }
+            forall lbl in label_indices_to_find_set with (ref return_set) {
+                forall (_, node) in node_labels.domain[lbl..lbl, ..] with (ref return_set) {
+                    if node_labels.localAccess[lbl,node] == true {
+                        return_set += node;
                     }
                 }
             }
@@ -391,10 +410,17 @@ module DipArrayPropertyGraphMsg {
             // Search in parallel for the edges that have those relationships.
             var timer:stopwatch;
             timer.start();
-            forall (i,j) in edge_relationships.domain with (ref return_set) { 
-                if relationship_indices_to_find_set.contains(i) {
-                    if edge_relationships[i,j] == true {
-                        return_set += j;
+            // forall (i,j) in edge_relationships.domain with (ref return_set) { 
+            //     if relationship_indices_to_find_set.contains(i) {
+            //         if edge_relationships[i,j] == true {
+            //             return_set += j;
+            //         }
+            //     }
+            // }
+            forall rel in relationship_indices_to_find_set with (ref return_set) {
+                forall (_, edge) in edge_relationships.domain[rel..rel, ..] with (ref return_set) {
+                    if edge_relationships.localAccess[rel,edge] == true {
+                        return_set += edge;
                     }
                 }
             }
