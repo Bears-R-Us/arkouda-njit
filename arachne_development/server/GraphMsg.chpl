@@ -123,7 +123,7 @@ module GraphMsg {
           }
           var vertexAry=VertexSet.toArray();
           if vertexAry.size!=numV {
-               smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+               smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                          "number of vertices is not equal to the given number");
           }
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -153,7 +153,7 @@ module GraphMsg {
           }
           var vertexAry=VertexSet.toArray();
           if vertexAry.size!=numV {
-               smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+               smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                          "number of vertices is not equal to the given number");
           }
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -1901,7 +1901,7 @@ module GraphMsg {
 
                   while r.readLine(line) {
                       if (line[0]=="%" || line[0]=="#") {
-                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
                       }
@@ -1914,7 +1914,7 @@ module GraphMsg {
                            }
                       }
                       if a==b {
-                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "self cycle "+ a +"->"+b);
                       }
                       if (RemapVertexFlag) {
@@ -1935,7 +1935,7 @@ module GraphMsg {
                   } 
                   if (curline<=srclocal.highBound) {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
-                     smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
+                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
                   r.close();
                   f.close();
@@ -2161,7 +2161,7 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      //mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
                   mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
@@ -2202,9 +2202,9 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      //mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  //mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
@@ -2258,9 +2258,9 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      //mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%-15i    %-15i".format(i,tmp));
                   }
-                  //mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
+                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
       }
