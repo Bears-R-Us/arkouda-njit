@@ -1898,6 +1898,7 @@ module GraphMsg {
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
+                  var localskip:int=0;
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
@@ -1906,8 +1907,8 @@ module GraphMsg {
                           //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "edge  error");
                           continue;
                       }
-                      if (curline<SkipLine) {
-                          SkipLine=SkipLine-1;
+                      if (localskip<SkipLine) {
+                          localskip=localskip+1;
                           continue;
                       }
                       if NumCol==2 {
