@@ -34,7 +34,7 @@ def time_ak_write():
             [1049866,317080,2,0,HomeDir+"Adata/SNAP/com-dblp.ungraph.txt.gr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"],\
             [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
-            [68993773,537377,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
+            [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
             [14855842,456626,2,0,HomeDir+"Adata/higgs-social_network.edgelist"],\
             [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt.gr"],\
             ]
