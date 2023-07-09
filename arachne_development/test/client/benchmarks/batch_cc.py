@@ -30,7 +30,7 @@ def time_ak_cc():
             [405740,75879,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.txt.pr"],\
             [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.pr"],\
-            [68993773,4847570,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
+            [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
             [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
             [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx.pr"] ,\
             [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx.pr"] ,\
