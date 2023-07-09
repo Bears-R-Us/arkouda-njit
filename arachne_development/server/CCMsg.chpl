@@ -1182,7 +1182,7 @@ module CCMsg {
       var itera = 1;
       var count:int=0;
       //we first check with order=1 mapping method
-      while( (!converged) && (itera<FirstOrderIters* numLocales) ) {
+      while( (!converged) && (itera<FirstOrderIters) ) {
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1219,7 +1219,7 @@ module CCMsg {
       }
 
       // Then we use order=2 mapping
-      while(!converged && (itera<SecondOrderIters* numLocales)) {
+      while(!converged && (itera<SecondOrderIters)) {
         //var count:int=0;
         //var count1:int=0;
         coforall loc in Locales with ( + reduce count ) {
