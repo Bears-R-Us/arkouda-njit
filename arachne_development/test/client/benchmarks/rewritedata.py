@@ -34,9 +34,9 @@ def time_ak_write():
             [1049866,317080,2,0,HomeDir+"Adata/SNAP/com-dblp.ungraph.txt.gr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"],\
             [3387388,4033394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.gr"],\
-            [68993773,537377,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
+            [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
             [14855842,456626,2,0,HomeDir+"Adata/higgs-social_network.edgelist"],\
-            [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt"],\
+            [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt.gr"],\
             ]
 
     MtxFile=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
@@ -60,7 +60,7 @@ def time_ak_write():
             [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
             [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
             ]
-   BigMtxFile=[ [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
+    BigMtxFile=[ [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
             [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
             [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
             [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
@@ -90,6 +90,15 @@ def time_ak_write():
         njit.graph_file_preprocessing(Edges,Vertices,Columns,Directed,str(FileName),0,1,1,0,1,0)
         #Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,1)
     for i in MtxFile:
+        Edges=i[0]
+        Vertices=i[1]
+        Columns=i[2]
+        Directed=i[3]
+        FileName=i[4]
+        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
+        njit.graph_file_preprocessing(Edges,Vertices,Columns,Directed,str(FileName),1,1,1,0,1,0)
+        #Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,1,0,1)
+    for i in BigMtxFile:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]

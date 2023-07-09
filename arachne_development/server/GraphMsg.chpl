@@ -1757,6 +1757,7 @@ module GraphMsg {
       //var EweightTypeS=msgArgs.getValueOf("EweightType");
       //var VweightTypeS=msgArgs.getValueOf("VweightType");
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
+      var SkipLineS=msgArgs.getValueOf("SkipLines");
 
 
       var Ne:int =(NeS:int);
@@ -1771,6 +1772,7 @@ module GraphMsg {
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+      var SkipLine:int=(SkipLineS:int);
 
       var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
@@ -1896,13 +1898,17 @@ module GraphMsg {
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
+                  var localskip:int=0;
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
                       if (line[0]=="%" || line[0]=="#") {
-                          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
-                                "edge  error");
+                          //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "edge  error");
+                          continue;
+                      }
+                      if (localskip<SkipLine) {
+                          localskip=localskip+1;
                           continue;
                       }
                       if NumCol==2 {
