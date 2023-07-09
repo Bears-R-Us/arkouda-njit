@@ -1886,7 +1886,7 @@ module GraphMsg {
            // we check if the file can be opened correctly
            f.close();
       } catch {
-                  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "Open file error");
       }
 
@@ -1922,6 +1922,7 @@ module GraphMsg {
                       if a==b {
                           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "self cycle "+ a +"->"+b);
+                          continue;
                       }
                       if (RemapVertexFlag) {
                           if srclocal.contains(curline) {
@@ -1951,15 +1952,15 @@ module GraphMsg {
       
 
       readLinebyLine(); 
-      if (RemapVertexFlag) {
-          NewNv=vertex_remap(src,dst,Nv,OriVertexAry);
-      } 
 
       timer.stop();
       
 
       outMsg="Reading File takes " + timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      if (RemapVertexFlag) {
+          NewNv=vertex_remap(src,dst,Nv,OriVertexAry);
+      } 
 
 
       timer.clear();
@@ -1971,14 +1972,18 @@ module GraphMsg {
                  combine_sort(src, dst);
               }
       } catch {
-             try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+             try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
       }
 
       set_neighbour(src,start_i,neighbour);
       if (!RemapVertexFlag) {
           forall i in 0..Nv-1 {
-              OriVertexAry[i]=src[start_i[i]];
+              if (start_i[i]!=-1) {
+                  OriVertexAry[i]=src[start_i[i]];
+              } else {
+                  OriVertexAry[i]=i;
+              }
           }
       }
 
@@ -1993,7 +1998,7 @@ module GraphMsg {
           }
           try  { combine_sort(srcR, dstR);
           } catch {
-                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                 try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
           }
           set_neighbour(srcR,start_iR,neighbourR);
@@ -2116,7 +2121,7 @@ module GraphMsg {
                   }
 
           } catch {
-                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                 try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
           }
 
@@ -2135,7 +2140,7 @@ module GraphMsg {
               try  { 
                      combine_sort(mysrcR, mydstR);
               } catch {
-                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                     try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                           "combine sort error");
               }
               set_neighbour(mysrcR,mystart_iR,myneighbourR);
@@ -2167,9 +2172,13 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%i %i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
+                  mw.close();
+                  wf.close();
+                  wf = open(FileName+".sta", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  mw.writeln("%i %i %i".format(low,up, (ave/(max(NewNv-point,1))):int));
                   mw.close();
                   wf.close();
 
@@ -2208,9 +2217,13 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%i %i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
+                  mw.close();
+                  wf.close();
+                  wf = open(FileName+".sta", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  mw.writeln("%i %i %i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
@@ -2220,7 +2233,7 @@ module GraphMsg {
                   var mw = wf.writer(kind=ionative);
 
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15i    %-15i".format(mysrc[i],mydst[i]));
+                      mw.writeln("%i %i".format(mysrc[i],mydst[i]));
                   }
                   mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
@@ -2234,7 +2247,7 @@ module GraphMsg {
                   var wf = open(FileName+".pr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
+                      mw.writeln("%i %i".format(src[i],dst[i]));
                   }
                   mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
@@ -2264,9 +2277,13 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%i %i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
+                  mw.close();
+                  wf.close();
+                  wf = open(FileName+".sta", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  mw.writeln("%i %i %i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
       }
