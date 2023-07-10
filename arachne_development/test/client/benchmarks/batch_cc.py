@@ -18,20 +18,22 @@ def time_ak_cc():
     print("Max Tasks =",cfg["maxTaskPar"])
     print("Memory =",cfg["physicalMemory"])
     HomeDir="/rhome/zhihui/"
-    ProP=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
+    ProSNAP=[ [14484,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.pr"],\
             [25973,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.pr"],\
             [53381,26475,2,0,HomeDir+"Adata/SNAP/as-caida20071105.txt.pr"],\
             [88234,4039,2,0,HomeDir+"Adata/SNAP/facebook_combined.txt.pr"],\
             [93439,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.txt.pr"],\
             [118489,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.txt.pr"],\
             [198050,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.txt.pr"],\
+            [1049866,317080,2,0,HomeDir+'Adata/SNAP/com-dblp.ungraph.txt.gr.pr']
             [183831,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.gr.pr"],\
             [214078,58228,2,0,HomeDir+"Adata/SNAP/loc-brightkite_edges.txt.pr"],\
             [405740,75879,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.txt.pr"],\
             [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.pr"],\
-            [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
-            [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
+            [25004123,4847571,2,0,HomeDir+'Adata/SNAP/soc-LiveJournal1.txt.pr']
+            ]
+    ProDelaunay=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx.pr"],\
             [6127,2048,2,0,HomeDir+"Adata/Delaunay/delaunay_n11/delaunay_n11.mtx.pr"] ,\
             [12264, 4096,2,0,HomeDir+"Adata/Delaunay/delaunay_n12/delaunay_n12.mtx.pr"] ,\
             [24547,8192,2,0,HomeDir+"Adata/Delaunay/delaunay_n13/delaunay_n13.mtx.pr"] ,\
@@ -49,23 +51,21 @@ def time_ak_cc():
              ]
     ProPBig=[ [14855842,456626,2,0,HomeDir+"Adata/higgs-social_network.edgelist"],\
             [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt"],\
-            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
             [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx.pr"],\
+            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
             [261787258,18484117,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx.pr"],\
             [783027125,39454746,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx.pr"],\
              ]
+
     TestMtx=[ [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
               ]
-    UK=[ [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
-            [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
-              ]
-    TestRGG=[ \
+    ProRGG=[ \
             [14487995,2097148,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_21_s0/rgg_n_2_21_s0.mtx.pr"],\
             [30359198,4194301,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_22_s0/rgg_n_2_22_s0.mtx.pr"],\
             [63501393,8388607,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_23_s0/rgg_n_2_23_s0.mtx.pr"],\
             [132557200,16777215,2,0,HomeDir+"Adata/rgg_n_2/rgg_n_2_24_s0/rgg_n_2_24_s0.mtx.pr"],\
               ]
-    TestKron=[ \
+    ProKron=[ \
             [2456071,55321,3,0,HomeDir+"Adata/kron_g500-logn/kron_g500-logn16/kron_g500-logn16.mtx.pr"],\
             [5113985,107909,3,0,HomeDir+"Adata/kron_g500-logn/kron_g500-logn17/kron_g500-logn17.mtx.pr"],\
             [10582686,210155,3,0,HomeDir+"Adata/kron_g500-logn/kron_g500-logn18/kron_g500-logn18.mtx.pr"],\
