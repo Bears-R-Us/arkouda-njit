@@ -49,8 +49,8 @@ def time_ak_cc():
              ]
     ProPBig=[ [14855842,456626,2,0,HomeDir+"Adata/higgs-social_network.edgelist"],\
             [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt"],\
-            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
-            [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx.pr"],\
+            [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx.pr"],\
+            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx.pr"],\
             [261787258,18484117,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx.pr"],\
             [783027125,39454746,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx.pr"],\
              ]
