@@ -2895,7 +2895,7 @@ module GraphMsg {
 
                   while r.readLine(line) {
                       if (line[0]=="%"||line[0]=="#") {
-                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
                       }
