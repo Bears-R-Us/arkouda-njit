@@ -37,9 +37,13 @@ module CCMsg {
   var tmpmindegree=start_min_degree;
 
   const JumpSteps=6;
+  //const FirstOrderIters=4;
+  //const SecondOrderIters=7;
+  //const ORDERH=128;
   const FirstOrderIters=4;
-  const SecondOrderIters=7;
-  const ORDERH=128;
+  const SecondOrderIters=6;
+  var  ORDERH:int=512;
+  const LargeScale=1000000;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -1182,7 +1186,7 @@ module CCMsg {
       var itera = 1;
       var count:int=0;
       //we first check with order=1 mapping method
-      while( (!converged) && (itera<FirstOrderIters) ) {
+      while( (!converged) && ( ((itera<FirstOrderIters) && ( Ne/here.numPUs() < LargeScale)) || (itera==1))) {
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1219,7 +1223,7 @@ module CCMsg {
       }
 
       // Then we use order=2 mapping
-      while(!converged && (itera<SecondOrderIters)) {
+      while(!converged && (itera<SecondOrderIters) && ((Ne/here.numPUs()) < LargeScale) ) {
         //var count:int=0;
         //var count1:int=0;
         coforall loc in Locales with ( + reduce count ) {
@@ -1269,6 +1273,11 @@ module CCMsg {
       while(!converged) {
         //var count:int=0;
         //var count1:int=0;
+       if (Ne/here.numPUs() < LargeScale) {
+           ORDERH=128;
+       }else {
+           ORDERH=100000;
+       }  
         coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
