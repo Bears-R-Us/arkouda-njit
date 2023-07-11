@@ -57,8 +57,8 @@ def time_ak_cc():
     MtxOther=[[28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             ]
     BigMtxFile=[ 
-            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
             [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx"],\
+            [232705452,214005017,2,0,HomeDir+"Adata/SNAP/kmer_V1r.mtx"],\
             [298113762,18520486,2,0,HomeDir+"Adata/SNAP/uk-2002.mtx"],\
 #            [936364282,39459925,2,0,HomeDir+"Adata/SNAP/uk-2005.mtx"],\
               ]
