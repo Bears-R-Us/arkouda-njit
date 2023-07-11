@@ -362,6 +362,7 @@ module CCMsg {
         cur_level = 0; 
         SetCurF.add(nextVertex); 
         depth[nextVertex]=cur_level;
+        numCurF=1;
         while(numCurF > 0) {
           coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
             on loc {
