@@ -44,6 +44,7 @@ module CCMsg {
   const SecondOrderIters=6;
   var  ORDERH:int=512;
   const LargeScale=1000000;
+  const EdgeEfficiency=0.5;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -1345,12 +1346,15 @@ module CCMsg {
 
 
     // Contour variant: a  mapping based connected components algorithm
-    proc cc_1mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_11mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var localtimer:Timer;
 
       // Initialize f and f_low in distributed memory.
 
+      localtimer.clear();
+      localtimer.start(); 
       coforall loc in Locales {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
@@ -1379,7 +1383,14 @@ module CCMsg {
       var itera = 1;
       var count:int=0;
       //we first check with order=1 mapping method
-      while( (!converged) && ( ((itera<FirstOrderIters) && ( Ne/here.numPUs() < LargeScale)) || (itera==1))) {
+      localtimer.stop(); 
+      var executime=localtimer.elapsed();
+      var myefficiency:real =(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+      while( (!converged) && 
+             (itera<FirstOrderIters) && 
+             ( (Ne/here.numPUs() < LargeScale) || (itera==1) || (myefficiency>EdgeEfficiency)) ) {
+        localtimer.clear();
+        localtimer.start(); 
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1405,6 +1416,7 @@ module CCMsg {
         }
 
 
+        itera += 1;
         if( (count==0) ) {
           converged = true;
         }
@@ -1412,14 +1424,17 @@ module CCMsg {
           converged = false;
           count=0;
         }
-        itera += 1;
         writeln("My Order is 1"); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
       if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=128;
+           ORDERH=8;
       }else {
-           ORDERH=100000;
+           ORDERH=1024;
       }  
       // In the second step, we employ high order mapping
       while(!converged) {
@@ -1480,91 +1495,8 @@ module CCMsg {
         itera += 1;
         writeln("My Order is ",ORDERH); 
       }
-      //we check with order=1 mapping method
-      while(!converged && itera <7) {
-        coforall loc in Locales with ( + reduce count) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-      }
-      // Then we use order=2 mapping
-      while(!converged && (itera<SecondOrderIters) && ((Ne/here.numPUs()) < LargeScale) ) {
-        //var count:int=0;
-        //var count1:int=0;
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                  var TmpMin:int;
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  {
-                         if(TmpMin < f[f[u]]) {
-                             f[f[u]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[f[v]]) {
-                             f[f[v]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                         }
-                  } 
-            }//end of forall
-          }
-        }
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-      }
-
-
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -1609,12 +1541,12 @@ module CCMsg {
       var itera = 1;
       var count:int=0;
       if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=128;
+           ORDERH=2;
       }else {
            ORDERH=100000;
       }  
       //we first check with order=1 mapping method
-      while( (!converged) && ( ((itera<FirstOrderIters) && ( Ne/here.numPUs() < LargeScale)) || (itera==1))) {
+      while( (!converged) ) {
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1640,6 +1572,7 @@ module CCMsg {
         }
 
 
+        itera += 1;
         if( (count==0) ) {
           converged = true;
           continue;
@@ -1648,18 +1581,55 @@ module CCMsg {
           converged = false;
           count=0;
         }
-        itera += 1;
         writeln("My Order is 1"); 
 
-      // In the second step, we employ high order mapping
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
+        // In the second step, we employ high order mapping
+        if (ORDERH==2) {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+
+                  TmpMin=min(f[f[u]],f[f[v]]);
+                  if(TmpMin < f[f[u]]) {
+                     f[f[u]] = TmpMin;
+                  }
+                  if(TmpMin < f[f[v]]) {
+                     f[f[v]] = TmpMin;
+                  }
+                  if(TmpMin < f[u]) {
+                    f[u] = TmpMin;
+                  }
+                  if(TmpMin < f[v]) {
+                    f[v] = TmpMin;
+                  }
+                }//end of forall
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        } 
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+        } else {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
 
                   var TmpMin:int;
                   if (itera==1) {
@@ -1683,17 +1653,20 @@ module CCMsg {
                       }
                   }
                   
-            }//end of forall
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-              if (count==0) {
+                }//end of forall
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
                     if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
                         count=1;
                     } 
-              }
-            }
-          }
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+
         }
 
 
@@ -1708,54 +1681,8 @@ module CCMsg {
         writeln("My Order is ",ORDERH); 
       }
 
-      while(!converged && (itera<SecondOrderIters) && ((Ne/here.numPUs()) < LargeScale) ) {
-        //var count:int=0;
-        //var count1:int=0;
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                  var TmpMin:int;
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  {
-                         if(TmpMin < f[f[u]]) {
-                             f[f[u]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[f[v]]) {
-                             f[f[v]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                         }
-                  } 
-            }//end of forall
-          }
-        }
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-      }
-
-
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -1959,7 +1886,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -2036,7 +1963,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -2140,8 +2067,7 @@ module CCMsg {
         }
         itera += 1;
       }
-      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -3531,7 +3457,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f2 = cc_1mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f2 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
