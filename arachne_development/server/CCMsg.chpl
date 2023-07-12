@@ -664,6 +664,9 @@ module CCMsg {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
 
       forall i in 0..Nv-1 {
         f[i] = i;
@@ -678,6 +681,8 @@ module CCMsg {
       var gf = f;
       var itera = 1;
       while(!converged) {
+        localtimer.clear();
+        localtimer.start(); 
         // Duplicate of gf.
         var dup = gf;
 
@@ -761,9 +766,12 @@ module CCMsg {
           converged = false;
         }
         itera += 1;
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
-      //writeln("Fast sv visited =      ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -777,6 +785,9 @@ module CCMsg {
       var gf = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
       var diff = makeDistArray(Nv, int);
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
 
       // Initialize f and f_low in distributed memory.
       coforall loc in Locales {
@@ -794,6 +805,8 @@ module CCMsg {
       var itera = 1;
       gf = f;
       while(!converged) {
+        localtimer.clear();
+        localtimer.start(); 
         // Duplicate of gf.
         dup = gf;
 
@@ -907,9 +920,13 @@ module CCMsg {
           converged = false;
         }
         itera += 1;
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       return f;
     }
@@ -1157,6 +1174,9 @@ module CCMsg {
     proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
 
 
       coforall loc in Locales {
@@ -1188,6 +1208,8 @@ module CCMsg {
       var count:int=0;
       //we first check with order=1 mapping method
       while( (!converged) && ( ((itera<FirstOrderIters) && ( Ne/here.numPUs() < LargeScale)) || (itera==1))) {
+      localtimer.clear();
+      localtimer.start(); 
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1222,12 +1244,21 @@ module CCMsg {
         }
         itera += 1;
         writeln("My Order is 1"); 
+      localtimer.clear();
+      localtimer.start(); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
       // Then we use order=2 mapping
       while(!converged && (itera<SecondOrderIters) && ((Ne/here.numPUs()) < LargeScale) ) {
         //var count:int=0;
         //var count1:int=0;
+        localtimer.clear();
+        localtimer.start();
+
         coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1270,17 +1301,25 @@ module CCMsg {
         }
         itera += 1;
         writeln("My Order is 2"); 
+        localtimer.stop();
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
+
       }
 
       // In the third step, we employ high order mapping
       while(!converged) {
+        localtimer.clear();
+        localtimer.start();
+
         //var count:int=0;
         //var count1:int=0;
-       if (Ne/here.numPUs() < LargeScale) {
+        if (Ne/here.numPUs() < LargeScale) {
            ORDERH=128;
-       }else {
+        }else {
            ORDERH=100000;
-       }  
+        }  
         coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1335,6 +1374,11 @@ module CCMsg {
         }
         itera += 1;
         writeln("My Order is ",ORDERH); 
+        localtimer.stop();
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
+
       }
 
       writeln("Number of iterations = ", itera);
@@ -1440,6 +1484,8 @@ module CCMsg {
       while(!converged) {
         //var count:int=0;
         //var count1:int=0;
+        localtimer.clear();
+        localtimer.start(); 
         coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1494,6 +1540,10 @@ module CCMsg {
         }
         itera += 1;
         writeln("My Order is ",ORDERH); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
       writeln("Number of iterations = ", itera-1);
@@ -1510,6 +1560,9 @@ module CCMsg {
     proc cc_1m1m(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
 
       // Initialize f and f_low in distributed memory.
 
@@ -1547,6 +1600,8 @@ module CCMsg {
       }  
       //we first check with order=1 mapping method
       while( (!converged) ) {
+        localtimer.clear();
+        localtimer.start(); 
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1573,6 +1628,11 @@ module CCMsg {
 
 
         itera += 1;
+        writeln("My Order is 1"); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
         if( (count==0) ) {
           converged = true;
           continue;
@@ -1581,9 +1641,10 @@ module CCMsg {
           converged = false;
           count=0;
         }
-        writeln("My Order is 1"); 
 
         // In the second step, we employ high order mapping
+        localtimer.clear();
+        localtimer.start(); 
         if (ORDERH==2) {
             coforall loc in Locales with ( + reduce count ) {
               on loc {
@@ -1679,6 +1740,10 @@ module CCMsg {
         }
         itera += 1;
         writeln("My Order is ",ORDERH); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
 
@@ -1769,6 +1834,9 @@ module CCMsg {
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
 
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
       // Initialize f and f_low in distributed memory.
 
 
@@ -1801,6 +1869,9 @@ module CCMsg {
       var converged:bool = false;
       var itera = 1;
       while(!converged) {
+        localtimer.clear();
+        localtimer.start();
+
         var count:int=0;
         var count1:int=0;
         coforall loc in Locales with ( + reduce count, + reduce count1) {
@@ -1813,35 +1884,7 @@ module CCMsg {
               var v = dst[x];
 
               var TmpMin:int;
-              //TmpMin=min(f[u],f[v]);
-              if ((itera % (JumpSteps*3) ==0) ) {
-                     TmpMin=min(f[f[f[u]]],f[f[f[v]]]);
-                     if(TmpMin < f_low[f[f[u]]]) {
-                       f_low[f[f[u]]] = TmpMin;
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[f[f[v]]]) {
-                       f_low[f[f[v]]] = TmpMin;
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[f[u]]) {
-                       f_low[f[u]] = TmpMin;
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[f[v]]) {
-                       f_low[f[v]] = TmpMin;
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[u]) {
-                       f_low[u] = TmpMin;
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[v]) {
-                       f_low[v] = TmpMin;
-                       count+=1;
-                     }
-              } else {
-                  if ((numLocales ==1) || (itera % JumpSteps ==0) || (itera < JumpSteps ) ) {
+                  {
                      TmpMin=min(f[f[u]],f[f[v]]);
                      if(TmpMin < f_low[f[u]]) {
                          f_low[f[u]] = TmpMin;
@@ -1859,18 +1902,7 @@ module CCMsg {
                          f_low[v] = TmpMin;
                          count+=1;
                      }
-                  } else {
-                     TmpMin=min(f[u],f[v]);
-                     if(TmpMin < f_low[u]) {
-                         f_low[u] = TmpMin;
-                         count+=1;
-                     }
-                     if(TmpMin < f_low[v]) {
-                         f_low[v] = TmpMin;
-                         count+=1;
-                     }
                   } 
-              }//end of if     
             }//end of forall
           }
         }
@@ -1884,8 +1916,12 @@ module CCMsg {
           converged = false;
         }
         itera += 1;
+        localtimer.stop();
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
+
       }
-      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera-1);
 
       return f;
@@ -1898,7 +1934,9 @@ module CCMsg {
     proc cc_fs_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
       // Initialize f and f_low in distributed memory.
       coforall loc in Locales {
         on loc {
@@ -1927,6 +1965,8 @@ module CCMsg {
       var converged:bool = false;
       var itera = 1;
       while(!converged) {
+        localtimer.clear();
+        localtimer.start(); 
         var count:int=0;
         var count1:int=0;
         coforall loc in Locales with ( + reduce count, + reduce count1) {
@@ -1953,6 +1993,10 @@ module CCMsg {
           }
         }
 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
 
         if( (count==0) ) {
           converged = true;
@@ -1975,6 +2019,9 @@ module CCMsg {
     proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var localtimer:Timer;
+      var myefficiency:real;
+      var executime:real;
 
       // Initialize f and f_low in distributed memory.
 
@@ -2007,6 +2054,8 @@ module CCMsg {
       var itera = 1;
       while(!converged) {
         var count:int=0;
+        localtimer.clear();
+        localtimer.start(); 
         coforall loc in Locales with ( + reduce count ) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -2059,6 +2108,10 @@ module CCMsg {
         //writeln("After iteration ", itera, " f=",f);
         //writeln("After iteration ", itera, " f_low=",f_low);
 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
         if( (count==0) ) {
           converged = true;
         }
@@ -2306,7 +2359,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       coforall loc in Locales {
         on loc {
@@ -2518,7 +2571,7 @@ module CCMsg {
       }
       */
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
       coforall loc in Locales {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
@@ -2867,7 +2920,7 @@ module CCMsg {
       */
 
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
       coforall loc in Locales {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
@@ -3132,7 +3185,7 @@ module CCMsg {
           itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
 
       coforall loc in Locales {
@@ -3410,7 +3463,7 @@ module CCMsg {
         itera += 1;
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
 
       coforall loc in Locales {
         on loc {
@@ -3466,7 +3519,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for 1m1 cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for 11mm cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
