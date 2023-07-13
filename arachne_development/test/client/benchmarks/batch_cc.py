@@ -141,16 +141,6 @@ def time_ak_cc():
         Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
         cc = njit.graph_cc(Graph)
         print("Number of components=",cc)
-    for i in MtxDelaunay:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
-        FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
     for i in MtxOther:
         Edges=i[0]
         Vertices=i[1]
@@ -162,6 +152,16 @@ def time_ak_cc():
         cc = njit.graph_cc(Graph)
         print("Number of components=",cc)
     for i in BigMtxFile:
+        Edges=i[0]
+        Vertices=i[1]
+        Columns=i[2]
+        Directed=i[3]
+        FileName=i[4]
+        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
+        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
+        cc = njit.graph_cc(Graph)
+        print("Number of components=",cc)
+    for i in MtxDelaunay:
         Edges=i[0]
         Vertices=i[1]
         Columns=i[2]

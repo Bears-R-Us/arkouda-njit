@@ -1213,10 +1213,9 @@ module CCMsg {
       var count:int=0;
       //we first check with order=1 mapping method
       while( (!converged) && (itera<FirstOrderIters) && 
-               ( (Ne/here.numPUs() < LargeScale) || 
-                 ( (Ne/here.numPUs() > LargeScale) && (myefficiency>LargeEdgeEfficiency)))) {
-      localtimer.clear();
-      localtimer.start(); 
+               ( (Ne/here.numPUs() < LargeScale) )) {
+        localtimer.clear();
+        localtimer.start(); 
         coforall loc in Locales with ( + reduce count) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
@@ -1263,7 +1262,7 @@ module CCMsg {
       if (Ne/here.numPUs() < LargeScale) {
            ORDERH=2;
       }else {
-           ORDERH=100000;
+           ORDERH=1024;
       }  
       // then we use 1m1m method
       while( (!converged) ) {
@@ -1639,7 +1638,7 @@ module CCMsg {
       }
 
       if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=8;
+           ORDERH=4;
       }else {
            ORDERH=1024;
       }  
@@ -3780,10 +3779,23 @@ module CCMsg {
     if (Directed == 0) {
 
 
+        timer.clear();
+        timer.start();
+        f1 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for Contour cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
         timer.start(); 
-        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f2 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
                                 toSymEntry(ag.getSTART_IDX(), int).a, 
                                 toSymEntry(ag.getSRC(), int).a, 
                                 toSymEntry(ag.getDST(), int).a, 
@@ -3795,23 +3807,10 @@ module CCMsg {
         outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        timer.clear();
-        timer.start();
-        f2 = cc_mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for mm cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
         timer.start();
-        f3 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_unionfind_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3820,7 +3819,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for contour cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
@@ -3830,7 +3829,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f4 = cc_fs_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f4 = cc_fs_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3839,12 +3838,12 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs syn dist cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
         timer.start();
-        f5 = cc_fs_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f5 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3853,7 +3852,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs 1 cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
@@ -3861,7 +3860,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f6 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f6 = cc_mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3870,27 +3869,13 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs 2 cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
         timer.clear();
         timer.start();
-        f7 = cc_unionfind_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for union-find  atomic cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f8 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f7 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3900,6 +3885,20 @@ module CCMsg {
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
         outMsg = "Time elapsed for   1m1m  cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f8 = cc_fs_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         /*
