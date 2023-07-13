@@ -88,8 +88,8 @@ module DipArrayPropertyGraphMsg {
 
             byte_label_arrays[lbl_ind,vertex] = true;
         }
-        var count_2: atomic int = 0;
-        forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
+        // var count_2: atomic int = 0;
+        // forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
         
         // Add two-dimensional array into symbol table using Ben's approach!
         graph.withComp(new shared SymEntry2D(byte_label_arrays):GenSymEntry, "DIP_ARR_NODE_LABELS");
@@ -177,9 +177,9 @@ module DipArrayPropertyGraphMsg {
 
             byte_relationship_arrays[rel_ind,edge_ind] = true;
         }
-        var count_2: atomic int = 0;
-        forall a in byte_relationship_arrays with (ref count_2) do if a == true then count_2.add(1);
-        writeln("count_2 = ", count_2);
+        // var count_2: atomic int = 0;
+        // forall a in byte_relationship_arrays with (ref count_2) do if a == true then count_2.add(1);
+        // writeln("count_2 = ", count_2);
 
         // Add two-dimensional array into symbol table using Ben's approach!
         graph.withComp(new shared SymEntry2D(byte_relationship_arrays):GenSymEntry, "DIP_ARR_RELATIONSHIPS");
