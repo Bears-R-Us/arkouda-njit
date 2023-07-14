@@ -3704,8 +3704,6 @@ module CCMsg {
         outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        timer.clear();
-        timer.start();
 
 
         timer.clear();
@@ -3722,6 +3720,8 @@ module CCMsg {
         outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        timer.clear();
+        timer.start();
         f3 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
