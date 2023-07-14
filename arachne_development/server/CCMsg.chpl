@@ -1414,135 +1414,6 @@ module CCMsg {
 
 
 
-      // Then we use order=2 mapping
-      while(!converged && (itera<SecondOrderIters) && ((Ne/here.numPUs()) < LargeScale) ) {
-        //var count:int=0;
-        //var count1:int=0;
-        localtimer.clear();
-        localtimer.start();
-
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                  var TmpMin:int;
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  {
-                         if(TmpMin < f[f[u]]) {
-                             f[f[u]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[f[v]]) {
-                             f[f[v]] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count+=1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count+=1;
-                         }
-                  } 
-            }//end of forall
-          }
-        }
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        writeln("My Order is 2"); 
-        localtimer.stop();
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
-
-      }
-
-      // In the third step, we employ high order mapping
-      while(!converged) {
-        localtimer.clear();
-        localtimer.start();
-
-        //var count:int=0;
-        //var count1:int=0;
-        if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=128;
-        }else {
-           ORDERH=100000;
-        }  
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                      TmpMin=min(u,v);
-                  } else{
-                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
-                  }
-                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
-                      var myx=u;
-                      var lastx=u;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                      myx=v;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                  }
-                  
-            }//end of forall
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-              if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-              }
-            }
-          }
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        writeln("My Order is ",ORDERH); 
-        localtimer.stop();
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
-
-      }
-
       writeln("Number of iterations = ", itera-1);
 
       return f;
@@ -1638,7 +1509,7 @@ module CCMsg {
       }
 
       if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=4;
+           ORDERH=2;
       }else {
            ORDERH=1024;
       }  
@@ -1758,7 +1629,7 @@ module CCMsg {
       if (Ne/here.numPUs() < LargeScale) {
            ORDERH=2;
       }else {
-           ORDERH=100000;
+           ORDERH=1024;
       }  
       //we first check with order=1 mapping method
       while( (!converged) ) {
@@ -1959,16 +1830,57 @@ module CCMsg {
       var itera = 1;
       var count:int=0;
       if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=4;
+           ORDERH=2;
       }else {
-           ORDERH=100000;
+           ORDERH=1024;
       }  
       //we first check with order=1 mapping method
       while( (!converged) ) {
         // In the second step, we employ high order mapping
         localtimer.clear();
         localtimer.start(); 
-        {
+
+
+
+
+        if (ORDERH==2) {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+
+                  TmpMin=min(f[f[u]],f[f[v]]);
+                  if(TmpMin < f[f[u]]) {
+                     f[f[u]] = TmpMin;
+                  }
+                  if(TmpMin < f[f[v]]) {
+                     f[f[v]] = TmpMin;
+                  }
+                  if(TmpMin < f[u]) {
+                    f[u] = TmpMin;
+                  }
+                  if(TmpMin < f[v]) {
+                    f[v] = TmpMin;
+                  }
+                }//end of forall
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        } 
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+        } else {
             coforall loc in Locales with ( + reduce count ) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
@@ -3778,24 +3690,9 @@ module CCMsg {
     var f8 = makeDistArray(Nv, int);
     if (Directed == 0) {
 
-
-        timer.clear();
-        timer.start();
-        f1 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for Contour cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
         timer.clear();
         timer.start(); 
-        f2 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
                                 toSymEntry(ag.getSTART_IDX(), int).a, 
                                 toSymEntry(ag.getSRC(), int).a, 
                                 toSymEntry(ag.getDST(), int).a, 
@@ -3807,10 +3704,13 @@ module CCMsg {
         outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        timer.clear();
+        timer.start();
+
 
         timer.clear();
         timer.start();
-        f3 = cc_unionfind_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f2 = cc_unionfind_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3822,7 +3722,17 @@ module CCMsg {
         outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-
+        f3 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for Contour cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
 
@@ -3860,7 +3770,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f6 = cc_mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f6 = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3884,7 +3794,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for   1m1m  cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for   11mm  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         timer.clear();
