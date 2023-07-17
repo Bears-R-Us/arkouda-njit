@@ -535,7 +535,7 @@ module BuildGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgesFromMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc addEdgesFromChapelVersionMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
         var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
@@ -991,6 +991,6 @@ module BuildGraphMsg {
     use CommandMap;
     registerFunction("readKnownEdgelist", readKnownEdgelistMsg, getModuleName());
     registerFunction("readEdgelist", readEdgelistMsg, getModuleName());
-    registerFunction("addEdgesFrom", addEdgesFromMsg, getModuleName());
+    registerFunction("addEdgesFromChapelVersion", addEdgesFromChapelVersionMsg, getModuleName());
     registerFunction("subgraphView", subgraphViewMsg, getModuleName());
 }
