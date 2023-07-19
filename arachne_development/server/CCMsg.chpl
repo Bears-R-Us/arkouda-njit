@@ -2142,7 +2142,6 @@ module CCMsg {
           var vertexEnd = f.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             f[i] = i;
-            /*
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
                 if ( tmpv <i ) {
@@ -2155,7 +2154,6 @@ module CCMsg {
                      f[i]=tmpv;
                 }
             }
-            */
           }
         }
       }
@@ -2245,8 +2243,6 @@ module CCMsg {
         }
       }
 
-      //writeln("After initial step.  f=",f);
-      //writeln("After initial step.  f_low=",f_low);
 
       var converged:bool = false;
       var itera = 1;
@@ -2270,24 +2266,16 @@ module CCMsg {
                 TmpMin=min(f[f[u]],f[f[v]]);
               }
               if(TmpMin < f[f[u]]) {
-                     //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",f[u],"]=",f_low[f[u]]," with ", TmpMin);
                      f[f[u]] = TmpMin;
-                     //count+=1;
               }
               if(TmpMin < f[f[v]]) {
-                     //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",f[v],"]=",f_low[f[v]]," with ", TmpMin);
                      f[f[v]] = TmpMin;
-                     //count+=1;
               }
               if(TmpMin < f[u]) {
-                //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",u,"]=",f_low[u]," with ", TmpMin);
                 f[u] = TmpMin;
-                //count+=1;
               }
               if(TmpMin < f[v]) {
-                //writeln("Iterate=", itera, " Edge=<",u,",",v,"> Updata f[",v,"]=",f_low[v]," with ", TmpMin);
                 f[v] = TmpMin;
-                //count+=1;
               }
             }//end of forall
             forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
@@ -2303,8 +2291,6 @@ module CCMsg {
         }
 
 
-        //writeln("After iteration ", itera, " f=",f);
-        //writeln("After iteration ", itera, " f_low=",f_low);
 
         localtimer.stop(); 
         executime=localtimer.elapsed();
