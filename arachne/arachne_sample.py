@@ -16,6 +16,7 @@ Sample usage: python3 arachne_simple_tests.py n51 5555 -n 5000 -m 20000
 import argparse
 import arkouda as ak
 import arachne as ar
+import time
 
 def create_parser():
     """Creates the command line parser for this script"""
@@ -39,12 +40,19 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    # Build graph from two source and destination arrays.
+    ## Build graph from randonmly generated source and destination arrays.
+    # Use Arkouda's randint to generate the random edge arrays.
     src = ak.randint(0, args.n, args.m)
     dst = ak.randint(0, args.n, args.m)
-    print(f"Building graph with arrays {src.name} and {dst.name} ...")
+    print("Building graph...")
+    start = time.time()
     graph = ar.Graph()
-    graph.add_edges_from(src,dst)
-    print(f"Built graph with {graph.n_vertices} vertices and {graph.n_edges} edges.")
+    graph.add_edges_from(src, dst)
+    end = time.time()
+    print(f"Building graph with {graph.n_vertices} vertices and {graph.n_edges} edges took {end-start} seconds")
+
+    ## Run breadth-first search on the input graph.
+    # Pick first randomly selected value of src.
+    # graph_bfs_layers = ar.bfs_layers(graph, int(src[0]))
 
     ak.shutdown()

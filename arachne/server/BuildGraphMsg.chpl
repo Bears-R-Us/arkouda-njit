@@ -843,6 +843,107 @@ module BuildGraphMsg {
     } // end of addEdgesFromMsg
 
     /**
+    * Convert akarrays to a graph object. 
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc addEdgesFromMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from the Python front-end.
+        var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
+        var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
+        var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
+        var akarray_weightS = msgArgs.getValueOf("AkArrayWeight");
+        var weightedS = msgArgs.getValueOf("Weighted");
+        var directedS = msgArgs.getValueOf("Directed");
+        var num_verticesS = msgArgs.getValueOf("NumVertices");
+        var num_edgesS = msgArgs.getValueOf("NumEdges");
+
+        var is_prop_graph:bool;
+        if msgArgs.contains("IsPropGraph") {
+            is_prop_graph = true;
+        }
+
+        // Extract the names of the arrays and the data for the non-array variables.
+        var src_name:string = (akarray_srcS:string);
+        var dst_name:string = (akarray_dstS:string);
+        var vmap_name:string = (akarray_vmapS:string);
+        var weight_name:string = (akarray_weightS:string);
+
+        var weighted:bool; 
+        weightedS = weightedS.toLower();
+        weighted = weightedS:bool;
+
+        var directed:bool;
+        directedS = directedS.toLower();
+        directed = directedS:bool;
+
+        var num_vertices:int;
+        num_vertices = num_verticesS:int;
+
+        var num_edges:int;
+        num_edges = num_edgesS:int;
+
+        // Timer for populating the graph data structure. 
+        var timer:stopwatch;
+        timer.start();
+
+        // Get the symbol table entires for the edge, weight, and node map arrays.
+        var akarray_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
+        var akarray_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
+        var akarray_vmap_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vmap_name, st);
+        var akarray_weight_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(weight_name, st);
+
+        // Extract the data for use. 
+        var akarray_src_sym = toSymEntry(akarray_src_entry,int);
+        var src = akarray_src_sym.a;
+
+        var akarray_dst_sym = toSymEntry(akarray_dst_entry,int);
+        var dst = akarray_dst_sym.a;
+
+        var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
+        var vmap = akarray_vmap_sym.a;
+
+        var akarray_weight_sym = toSymEntry(akarray_weight_entry, real);
+        var e_weight = akarray_weight_sym.a;
+
+        // Populate the graph object.
+        var start_i = makeDistArray(num_vertices, int);
+        var neighbor : [start_i.domain] int;
+        set_neighbor(src, start_i, neighbor);
+
+        var graph = new shared SegGraph(num_edges, num_vertices, directed, weighted);
+        graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
+            .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
+            .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
+            .withComp(new shared SymEntry(neighbor):GenSymEntry, "NEIGHBOR")
+            .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
+
+        if (weighted) {
+            graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+        }
+
+        // Add graph to the specific symbol table entry. 
+        var graphEntryName = st.nextName();
+        var graphSymEntry = new shared GraphSymEntry(graph);
+        st.addEntry(graphEntryName, graphSymEntry);
+        var repMsg = graphEntryName;
+        
+        // Print out the length of time it takes to read in and build a known graph file.
+        timer.stop();
+        outMsg = "Building graph from two edge arrays took " + timer.elapsed():string + " sec";
+        
+        // Print out debug information to arkouda server output. 
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of addEdgesFromMsg
+
+    /**
     * Generates a subgraph from a graph after filtering for specific edge relationships, node
     * labels, and properties.
     *
@@ -992,5 +1093,6 @@ module BuildGraphMsg {
     registerFunction("readKnownEdgelist", readKnownEdgelistMsg, getModuleName());
     registerFunction("readEdgelist", readEdgelistMsg, getModuleName());
     registerFunction("addEdgesFromChapelVersion", addEdgesFromChapelVersionMsg, getModuleName());
+    registerFunction("addEdgesFrom", addEdgesFromMsg, getModuleName());
     registerFunction("subgraphView", subgraphViewMsg, getModuleName());
 }

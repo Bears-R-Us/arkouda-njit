@@ -205,71 +205,63 @@ class Graph:
         """
         cmd = "addEdgesFrom"
 
-        # First, we symmetrize our graph. This means keeping two copies of every edge for when the
-        # graph is undirected. We do this by concatenating our remapped arrays to each other.
-        src_sym = ak.concatenate([akarray_src,akarray_dst])
-        dst_sym = ak.concatenate([akarray_dst,akarray_src])
-        print(f"*****EDGE LIST AFTER SYMMETRYZING*****")
-        edges_df = ak.DataFrame({"src" : src_sym, "dst" : dst_sym})
-        print(f"{edges_df.__repr__}\n")
+        ## Edge dedupping and delooping.
+        # 1. Symmetrize the graph by concatenation the src to dst arrays and vice versa.
+        src_sym = ak.concatenate([akarray_src, akarray_dst])
+        dst_sym = ak.concatenate([akarray_dst, akarray_src])
 
-        # Now, it is time for a GroupBy to sort the edge arrays together. It considers the keys to
-        # to be both edge values at an index i together. This will also handle removing duplicated
-        # edges.
-        gb_edges = ak.GroupBy([src_sym,dst_sym])
-        print(f"size before GroupBy is {src_sym.size} and after GroupBy it is {gb_edges.unique_keys[0].size}")
-        edges_df = ak.DataFrame({"src" : gb_edges.unique_keys[0], "dst" : gb_edges.unique_keys[1]})
-        print(f"*****EDGE LIST AFTER DEDUPPING*****")
-        print(f"{edges_df.__repr__}\n")
+        # 2. Sort the edges and remove duplicates.
+        gb_edges = ak.GroupBy([src_sym, dst_sym])
         src_sym_dedupped = gb_edges.unique_keys[0]
         dst_sym_dedupped = gb_edges.unique_keys[1]
 
-        # Now, let us get rid of self loops by creating a mask on the indices that are equal to each
-        # other.
+        # 3. Removed duplicated edges by created a boolean mask.
         loop_mask = src_sym_dedupped == dst_sym_dedupped
         src_sym_dedupped_delooped = src_sym_dedupped[~loop_mask]
         dst_sym_dedupped_delooped = dst_sym_dedupped[~loop_mask]
-        print(f"size before delooping is {src_sym_dedupped.size} and after GroupBy it is {src_sym_dedupped_delooped.size}")
-        print(f"*****EDGE LIST AFTER DELOOPING*****")
-        edges_df = ak.DataFrame({"src" : src_sym_dedupped_delooped, "dst" : dst_sym_dedupped_delooped})
-        print(f"{edges_df.__repr__}\n")
 
-        # Now, we must carry out the vertex remapping by extracting the unique keys of an array
-        # using GroupBy. The GroupBy takes a concatenation of both our src and dst arrays and
-        # returns the unique keys (vertex names) in sorted order and how many times each key
-        # appears.
-        gb_vertices = ak.GroupBy(ak.concatenate([src_sym_dedupped_delooped,dst_sym_dedupped_delooped]))
-        print(f"gb_vertices permutation = {gb_vertices.permutation}")
-        print(f"gb_vertices unique keys = {gb_vertices.unique_keys} with size {gb_vertices.unique_keys.size}")
-        print(f"hb_vertices num groups  = {gb_vertices.ngroups}\n")
-
-        # Second step of vertex remapping, we use broadcast to generate the zero-up mapping of the
-        # vertices.
+        ## Vertex remapping.
+        # 1. Extract the unique vertex names of the graph.
+        gb_vertices = ak.GroupBy(ak.concatenate([src_sym_dedupped_delooped, dst_sym_dedupped_delooped]))
+        
+        # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
+        #    the values of the new range to the original vertices.
         new_vertex_range = ak.arange(gb_vertices.unique_keys.size)
         gb_vertices_remapped = gb_vertices.broadcast(new_vertex_range)
-        print(f"new_vertex_range     = {new_vertex_range}")
-        print(f"gb_vertices_remapped = {gb_vertices_remapped}\n")
 
-        # Extract out the new edge arrays after they have been remapped.
+        # 3. Extract out the new edge arrays after they have been remapped.
         src_remapped = gb_vertices_remapped[0:src_sym_dedupped_delooped.size]
         dst_remapped = gb_vertices_remapped[src_sym_dedupped_delooped.size:]
-        print(f"src_remapped = {src_remapped}")
-        print(f"dst_remapped = {dst_remapped}\n")
 
-        # To see the values that mapped to each other, we can look at the output of arange and of unique
-        # keys from the GroupBy.
-        map_df = ak.DataFrame({"internal" : new_vertex_range, "external" : gb_vertices.unique_keys})
-        print(f"*****MAPPING FROM OLD VERTEX NAME TO NEW VERTEX NAME*****")
-        print(f"{map_df.__repr__}\n")
+        ## Metadata creation and storage on the Arkouda server.
+        # 1. Extract the number of vertices and edges from the arrays.
+        self.n_vertices = int(gb_vertices.unique_keys.size)
+        self.n_edges = int(src_remapped.size/2)
 
-        # To double check we can do some indexing into gb_vertices unique keys. 
-        print(f"Indexing with 7 should give us 45: {gb_vertices.unique_keys[7]}")
-        print(f"Indexing with 8 should give us 54: {gb_vertices.unique_keys[8]}")
-        print(f"Indexing with 3 should give us 17: {gb_vertices.unique_keys[3]}\n")
+        # 2. Store data into an Graph object in the Chapel server.
+        args = { "AkArraySrc" : src_remapped,
+                 "AkArrayDst" : dst_remapped,
+                 "AkArrayVmap" : gb_vertices.unique_keys,
+                 "Directed": bool(self.directed),
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
 
-        self.n_vertices = gb_vertices.unique_keys.size
-        self.n_edges = src_remapped.size
-    
+        if isinstance(akarray_weight, pdarray):
+            self.weighted = 1
+            args["AkArrayWeight"] = akarray_weight
+            args["Weighted"] = bool(self.weighted)
+        else:
+            self.weighted = 0
+            args["AkArrayWeight"] = ak.array([-1.0])
+            args["Weighted"] = bool(self.weighted)
+
+        if isinstance(self, PropGraph):
+            args["IsPropGraph"] = "true"
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
+
     def add_edges_from_chapel_version(  self, akarray_src: pdarray, akarray_dst: pdarray, 
                                         akarray_weight: Union[None, pdarray] = None) -> None:
         """Populates the graph object with edges as defined by the akarrays. Uses the original 
