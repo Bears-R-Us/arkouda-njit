@@ -856,6 +856,8 @@ module BuildGraphMsg {
         var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
         var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
         var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
+        var akarray_neiS = msgArgs.getValueOf("AkArrayNei");
+        var akarray_strS = msgArgs.getValueOf("AkArrayStr");
         var akarray_weightS = msgArgs.getValueOf("AkArrayWeight");
         var weightedS = msgArgs.getValueOf("Weighted");
         var directedS = msgArgs.getValueOf("Directed");
@@ -871,6 +873,8 @@ module BuildGraphMsg {
         var src_name:string = (akarray_srcS:string);
         var dst_name:string = (akarray_dstS:string);
         var vmap_name:string = (akarray_vmapS:string);
+        var nei_name:string = (akarray_neiS:string);
+        var str_name:string = (akarray_strS:string);
         var weight_name:string = (akarray_weightS:string);
 
         var weighted:bool; 
@@ -895,6 +899,8 @@ module BuildGraphMsg {
         var akarray_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
         var akarray_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
         var akarray_vmap_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vmap_name, st);
+        var akarray_nei_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nei_name, st);
+        var akarray_str_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(str_name, st);
         var akarray_weight_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(weight_name, st);
 
         // Extract the data for use. 
@@ -907,13 +913,14 @@ module BuildGraphMsg {
         var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
         var vmap = akarray_vmap_sym.a;
 
+        var akarray_nei_sym = toSymEntry(akarray_nei_entry, int);
+        var neighbor = akarray_nei_sym.a;
+
+        var akarray_str_sym = toSymEntry(akarray_str_entry, int);
+        var start_i = akarray_str_sym.a;
+
         var akarray_weight_sym = toSymEntry(akarray_weight_entry, real);
         var e_weight = akarray_weight_sym.a;
-
-        // Populate the graph object.
-        var start_i = makeDistArray(num_vertices, int);
-        var neighbor : [start_i.domain] int;
-        set_neighbor(src, start_i, neighbor);
 
         var graph = new shared SegGraph(num_edges, num_vertices, directed, weighted);
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")

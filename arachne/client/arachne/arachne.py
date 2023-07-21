@@ -206,23 +206,23 @@ class Graph:
         cmd = "addEdgesFrom"
 
         ## Edge dedupping and delooping.
-        # 1. Symmetrize the graph by concatenation the src to dst arrays and vice versa.
-        src_sym = ak.concatenate([akarray_src, akarray_dst])
-        dst_sym = ak.concatenate([akarray_dst, akarray_src])
+        # 1. Symmetrize the graph by concatenating the src to dst arrays and vice versa.
+        src = ak.concatenate([akarray_src, akarray_dst])
+        dst = ak.concatenate([akarray_dst, akarray_src])
 
         # 2. Sort the edges and remove duplicates.
-        gb_edges = ak.GroupBy([src_sym, dst_sym])
-        src_sym_dedupped = gb_edges.unique_keys[0]
-        dst_sym_dedupped = gb_edges.unique_keys[1]
+        gb_edges = ak.GroupBy([src, dst])
+        src = gb_edges.unique_keys[0]
+        dst = gb_edges.unique_keys[1]
 
         # 3. Removed duplicated edges by created a boolean mask.
-        loop_mask = src_sym_dedupped == dst_sym_dedupped
-        src_sym_dedupped_delooped = src_sym_dedupped[~loop_mask]
-        dst_sym_dedupped_delooped = dst_sym_dedupped[~loop_mask]
+        loop_mask = src == dst
+        src = src[~loop_mask]
+        dst = dst[~loop_mask]
 
         ## Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
-        gb_vertices = ak.GroupBy(ak.concatenate([src_sym_dedupped_delooped, dst_sym_dedupped_delooped]))
+        gb_vertices = ak.GroupBy(ak.concatenate([src, dst]))
         
         # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
         #    the values of the new range to the original vertices.
@@ -230,18 +230,28 @@ class Graph:
         gb_vertices_remapped = gb_vertices.broadcast(new_vertex_range)
 
         # 3. Extract out the new edge arrays after they have been remapped.
-        src_remapped = gb_vertices_remapped[0:src_sym_dedupped_delooped.size]
-        dst_remapped = gb_vertices_remapped[src_sym_dedupped_delooped.size:]
+        src = gb_vertices_remapped[0:src.size]
+        dst = gb_vertices_remapped[src.size:]
+
+        ## Create vertex index arrays.
+        # 1. Do a GroupBy on the sorted src array.
+        gb_vertices = ak.GroupBy(src, assume_sorted=True)
+
+        # 2. Extract the keys, counts (neighbors), and segments (start indices).
+        neighbors = gb_vertices.count()[1]
+        start_i = gb_vertices.segments
 
         ## Metadata creation and storage on the Arkouda server.
         # 1. Extract the number of vertices and edges from the arrays.
         self.n_vertices = int(gb_vertices.unique_keys.size)
-        self.n_edges = int(src_remapped.size/2)
+        self.n_edges = int(src.size / 2)
 
         # 2. Store data into an Graph object in the Chapel server.
-        args = { "AkArraySrc" : src_remapped,
-                 "AkArrayDst" : dst_remapped,
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
                  "AkArrayVmap" : gb_vertices.unique_keys,
+                 "AkArrayNei" : neighbors,
+                 "AkArrayStr" : start_i,
                  "Directed": bool(self.directed),
                  "NumVertices" : self.n_vertices,
                  "NumEdges" : self.n_edges }
