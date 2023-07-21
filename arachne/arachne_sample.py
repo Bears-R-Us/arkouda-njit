@@ -35,7 +35,7 @@ if __name__ == "__main__":
     # Command line parser and extraction.
     parser = create_parser()
     args = parser.parse_args()
-    
+
     # Connect to the Arkouda server.
     ak.verbose = False
     ak.connect(args.hostname, args.port)
@@ -50,6 +50,9 @@ if __name__ == "__main__":
     graph.add_edges_from(src, dst)
     end = time.time()
     print(f"Building graph with {graph.n_vertices} vertices and {graph.n_edges} edges took {end-start} seconds")
+    edges = graph.edges()
+    edges_df = ak.DataFrame({"src" : edges[0], "dst" : edges[1]})
+    print(f"The edges of the graph are: \n {edges_df.__repr__}")
 
     ## Run breadth-first search on the input graph.
     # Pick first randomly selected value of src.
