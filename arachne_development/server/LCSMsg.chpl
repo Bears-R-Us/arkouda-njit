@@ -44,14 +44,25 @@ module JCSMsg {
       var sname1=msgArgs.getValueOf("StrName1");
       var sname2=msgArgs.getValueOf("StrName2");
 
-      var string1 = getSegString(sname1, st);
-      var string2 = getSegString(sname2, st);
+      var sstring1 = getSegString(sname1, st);
+      var sstring2 = getSegString(sname2, st);
 
+      var size1=sstrings1.size;
+      var nBytes1 = sstrings1.nBytes;
+      var length1=sstrings1.getLengths();
+      var offsegs1 = (+ scan length1) - length1;
+
+      var size2=sstrings2.size;
+      var nBytes2 = sstrings2.nBytes;
+      var length2=sstrings2.getLengths();
+      var offsegs2 = (+ scan length2) - length2;
 
 
       const infin:int=9999;
-      const m:int=string1.size;
-      const n:int=string2.size;
+      const m:int=length1[0];
+      const n:int=length2[0];
+      ref string1=sstring1.values.a[0..m-1];
+      ref string2=sstring2.values.a[0..n-1];
       var mat:[0..m][0..n] int;
 
       //Below is for making the adjacency matrix of the graph.
@@ -402,16 +413,27 @@ module JCSMsg {
           cur+=1;
         }
       }
-
+      /*
       var segName = st.nextName();
       var valName = st.nextName();
       var segEntry = new shared SymEntry(offsegs);
       var valEntry = new shared SymEntry(strArray);
       st.addEntry(segName, segEntry);
       st.addEntry(valName, valEntry);
+      */
 
 
-      repMsg = 'created ' + st.attrib(segName) + '+created ' + st.attrib(valName);
+      var offsetsEntry = new shared SymEntry(offsegs);
+      var valuesEntry = new shared SymEntry(strArray);
+      var stringsEntry = new shared SegStringSymEntry(offsetsEntry, valuesEntry, string);
+      var myname = st.nextName();
+      st.addEntry(myname, stringsEntry);
+
+
+      repMsg = 'created ' + st.attrib(stringsEntry.name) + '+created bytes.size %t'.format(stringsEntry.nBytes);
+
+
+      //repMsg = 'created ' + st.attrib(segName) + '+created ' + st.attrib(valName);
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }

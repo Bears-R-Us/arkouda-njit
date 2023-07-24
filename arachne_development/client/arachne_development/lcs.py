@@ -25,7 +25,7 @@ def lcs(string1: Strings,string2:Strings) -> Strings:
         given two strings, return the longest common subsequence
     """
     cmd = "segmentedStrLCS"
-    args ={"StrName1":string1,"StrName2":string2 }
+    args ={"StrName1":string1.name,"StrName2":string2.name }
     repMsg = generic_msg(cmd=cmd, args=args)
-    return Strings(*(cast(str, repMsg)))
+    return  return Strings.from_return_msg(cast(str, repMsg)) 
 
