@@ -56,18 +56,23 @@ module GraphArray {
         // The graph is weighted (True) or unweighted (False)
         var weighted: bool;
 
+        // The graph is a property graph (True) or not (False)
+        var propertied: bool;
+
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
         */
-        proc init(num_v:int, num_e:int, directed:bool, weighted:bool) {
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool) {
             this.n_vertices = num_v;
             this.n_edges = num_e;
             this.directed = directed;
             this.weighted = weighted;
+            this.propertied = propertied;
         }
 
         proc isDirected():bool { return this.directed; }
         proc isWeighted():bool { return this.weighted; }
+        proc isPropertied():bool { return this.propertied; }
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
