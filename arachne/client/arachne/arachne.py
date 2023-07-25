@@ -1,3 +1,7 @@
+"""Contains all current Arachne functionality. Includes different graph classes, building methods, 
+and graph algorithmic kernels. Please look at each class and function docstrings for more 
+information.
+"""
 from __future__ import annotations
 from typing import cast, Tuple, Union
 from typeguard import typechecked
@@ -192,7 +196,7 @@ class Graph:
         returned_vals = (cast(str, repMsg).split('+'))
         
         return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
-
+    
     def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
                        akarray_weight:Union[None,pdarray] = None) -> None:
         """
@@ -205,25 +209,40 @@ class Graph:
         """
         cmd = "addEdgesFrom"
 
-        ## Edge dedupping and delooping.
+        ### Edge dedupping and delooping.
         # 1. Symmetrize the graph by concatenating the src to dst arrays and vice versa.
         src = ak.concatenate([akarray_src, akarray_dst])
         dst = ak.concatenate([akarray_dst, akarray_src])
+
+        # 1a. Initialize and symmetrize the weights of each edge, if applicable.
+        wgt = ak.array([1.0])
+        weighted = False
+        if isinstance(akarray_weight,pdarray):
+            wgt = ak.concatenate([akarray_weight, akarray_weight])
+            weighted = True
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
 
         # 2. Sort the edges and remove duplicates.
         gb_edges = ak.GroupBy([src, dst])
         src = gb_edges.unique_keys[0]
         dst = gb_edges.unique_keys[1]
+        if weighted:
+            indices = gb_edges.permutation[gb_edges.segments]
+            wgt = wgt[indices]
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
 
-        # 3. Removed duplicated edges by created a boolean mask.
+        # 3. Remove self loops by creating a boolean mask.
         loop_mask = src == dst
         src = src[~loop_mask]
         dst = dst[~loop_mask]
+        if weighted:
+            wgt = wgt[~loop_mask]
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
 
-        ## Vertex remapping.
+        ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
         gb_vertices = ak.GroupBy(ak.concatenate([src, dst]))
-        
+
         # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
         #    the values of the new range to the original vertices.
         new_vertex_range = ak.arange(gb_vertices.unique_keys.size)
@@ -233,47 +252,38 @@ class Graph:
         src = gb_vertices_remapped[0:src.size]
         dst = gb_vertices_remapped[src.size:]
 
-        ## Create vertex index arrays.
+        ### Create vertex index arrays.
         # 1. Do a GroupBy on the sorted src array.
         gb_vertices = ak.GroupBy(src, assume_sorted=True)
 
-        # 2. Extract the keys, counts (neighbors), and segments (start indices).
+        # 2. Extract the counts (neighbors), and segments (start indices).
         neighbors = gb_vertices.count()[1]
         start_i = gb_vertices.segments
 
-        ## Metadata creation and storage on the Arkouda server.
+        ### Metadata creation and storage on the Arkouda server.
         # 1. Extract the number of vertices and edges from the arrays.
         self.n_vertices = int(gb_vertices.unique_keys.size)
         self.n_edges = int(src.size / 2)
+        self.weighted = int(weighted)
 
         # 2. Store data into an Graph object in the Chapel server.
         args = { "AkArraySrc" : src,
                  "AkArrayDst" : dst,
+                 "AkArrayWeight" : wgt,
                  "AkArrayVmap" : gb_vertices.unique_keys,
                  "AkArrayNei" : neighbors,
                  "AkArrayStr" : start_i,
                  "Directed": bool(self.directed),
+                 "Weighted" : weighted,
                  "NumVertices" : self.n_vertices,
                  "NumEdges" : self.n_edges }
-
-        if isinstance(akarray_weight, pdarray):
-            self.weighted = 1
-            args["AkArrayWeight"] = akarray_weight
-            args["Weighted"] = bool(self.weighted)
-        else:
-            self.weighted = 0
-            args["AkArrayWeight"] = ak.array([-1.0])
-            args["Weighted"] = bool(self.weighted)
-
-        if isinstance(self, PropGraph):
-            args["IsPropGraph"] = "true"
 
         rep_msg = generic_msg(cmd=cmd, args=args)
         oriname = rep_msg
         self.name = oriname.strip()
 
-    def add_edges_from_chapel_version(  self, akarray_src: pdarray, akarray_dst: pdarray, 
-                                        akarray_weight: Union[None, pdarray] = None) -> None:
+    def add_edges_from_chapel_version(self, akarray_src: pdarray, akarray_dst: pdarray,
+                                      akarray_weight: Union[None, pdarray] = None) -> None:
         """Populates the graph object with edges as defined by the akarrays. Uses the original 
         Chapel-based reading version.
 
@@ -428,6 +438,91 @@ class DiGraph(Graph):
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
 
+    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
+                       akarray_weight:Union[None,pdarray] = None) -> None:
+        """
+        Populates the directed graph object with edges as defined by the akarrays. Uses an 
+        Arkouda-based reading version. 
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgesFrom"
+
+        ### Edge dedupping and delooping.
+        # 1. Assign input arrays to new variable names. NO NEED TO SYMMETRIZE.
+        src = akarray_src
+        dst = akarray_dst
+
+        # 1a. Assign weights, if applicable.
+        wgt = ak.array([1.0])
+        weighted = False
+        if isinstance(akarray_weight,pdarray):
+            wgt = akarray_weight
+            weighted = True
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
+
+        # 2. Sort the edges and remove duplicates.
+        gb_edges = ak.GroupBy([src, dst])
+        src = gb_edges.unique_keys[0]
+        dst = gb_edges.unique_keys[1]
+        if weighted:
+            indices = gb_edges.permutation[gb_edges.segments]
+            wgt = wgt[indices]
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
+
+        # 3. Remove self loops by creating a boolean mask.
+        loop_mask = src == dst
+        src = src[~loop_mask]
+        dst = dst[~loop_mask]
+        if weighted:
+            wgt = wgt[~loop_mask]
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
+
+        ### Vertex remapping.
+        # 1. Extract the unique vertex names of the graph.
+        gb_vertices = ak.GroupBy(ak.concatenate([src, dst]))
+
+        # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
+        #    the values of the new range to the original vertices.
+        new_vertex_range = ak.arange(gb_vertices.unique_keys.size)
+        gb_vertices_remapped = gb_vertices.broadcast(new_vertex_range)
+
+        # 3. Extract out the new edge arrays after they have been remapped.
+        src = gb_vertices_remapped[0:src.size]
+        dst = gb_vertices_remapped[src.size:]
+
+        ### Create vertex index arrays.
+        # 1. Do a GroupBy on the sorted src array.
+        gb_vertices = ak.GroupBy(src, assume_sorted=True)
+
+        # 2. Extract the counts (neighbors), and segments (start indices).
+        neighbors = gb_vertices.count()[1]
+        start_i = gb_vertices.segments
+
+        ### Metadata creation and storage on the Arkouda server.
+        # 1. Extract the number of vertices and edges from the arrays.
+        self.n_vertices = int(gb_vertices.unique_keys.size)
+        self.n_edges = int(src.size / 2)
+        self.weighted = int(weighted)
+
+        # 2. Store data into an Graph object in the Chapel server.
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
+                 "AkArrayWeight" : wgt,
+                 "AkArrayVmap" : gb_vertices.unique_keys,
+                 "AkArrayNei" : neighbors,
+                 "AkArrayStr" : start_i,
+                 "Directed": bool(self.directed),
+                 "Weighted" : weighted,
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
+
 class PropGraph(DiGraph):
     """Base class for property graphs. Inherits from DiGraph.
 
@@ -518,6 +613,83 @@ class PropGraph(DiGraph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
+
+    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
+                       akarray_weight:Union[None,pdarray] = None) -> None:
+        """
+        Populates the property graph object with edges as defined by the akarrays. Uses an 
+        Arkouda-based reading version. 
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgesFrom"
+
+        ### Edge dedupping and delooping.
+        # 1. Assign input arrays to new variable names. NO NEED TO SYMMETRIZE.
+        src = akarray_src
+        dst = akarray_dst
+
+        # 1a. Assign weights, if applicable.
+        wgt = ak.array([1.0])
+        weighted = False
+        if isinstance(akarray_weight,pdarray):
+            wgt = akarray_weight
+            weighted = True
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
+
+        # 2. Sort the edges and remove duplicates.
+        gb_edges = ak.GroupBy([src, dst])
+        src = gb_edges.unique_keys[0]
+        dst = gb_edges.unique_keys[1]
+        if weighted:
+            indices = gb_edges.permutation[gb_edges.segments]
+            wgt = wgt[indices]
+            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
+
+        ### Vertex remapping.
+        # 1. Extract the unique vertex names of the graph.
+        gb_vertices = ak.GroupBy(ak.concatenate([src, dst]))
+
+        # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
+        #    the values of the new range to the original vertices.
+        new_vertex_range = ak.arange(gb_vertices.unique_keys.size)
+        gb_vertices_remapped = gb_vertices.broadcast(new_vertex_range)
+
+        # 3. Extract out the new edge arrays after they have been remapped.
+        src = gb_vertices_remapped[0:src.size]
+        dst = gb_vertices_remapped[src.size:]
+
+        ### Create vertex index arrays.
+        # 1. Do a GroupBy on the sorted src array.
+        gb_vertices = ak.GroupBy(src, assume_sorted=True)
+
+        # 2. Extract the counts (neighbors), and segments (start indices).
+        neighbors = gb_vertices.count()[1]
+        start_i = gb_vertices.segments
+
+        ### Metadata creation and storage on the Arkouda server.
+        # 1. Extract the number of vertices and edges from the arrays.
+        self.n_vertices = int(gb_vertices.unique_keys.size)
+        self.n_edges = int(src.size / 2)
+        self.weighted = int(weighted)
+
+        # 2. Store data into an Graph object in the Chapel server.
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
+                 "AkArrayWeight" : wgt,
+                 "AkArrayVmap" : gb_vertices.unique_keys,
+                 "AkArrayNei" : neighbors,
+                 "AkArrayStr" : start_i,
+                 "Directed": bool(self.directed),
+                 "Weighted" : weighted,
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
     
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
@@ -950,5 +1122,3 @@ def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
-
-

@@ -15,14 +15,17 @@ module BuildGraphMsg {
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
     use ServerConfig;
+    use ServerErrors;
+    use ServerErrorStrings;
     use ArgSortMsg;
     use AryUtil;
     use Logging;
     use Message;
     
     // Server message logger. 
-    private config const logLevel = LogLevel.DEBUG;
-    const smLogger = new Logger(logLevel);
+    private config const logLevel = ServerConfig.logLevel;
+    private config const logChannel = ServerConfig.logChannel;
+    const bgmLogger = new Logger(logLevel, logChannel);
     var outMsg:string;
 
     /**
@@ -68,7 +71,7 @@ module BuildGraphMsg {
 
         // Write message to show which file was read in. 
         outMsg = "path of read file = " + path;
-        smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         // Graph data structure building timer. 
         var timer:stopwatch;
@@ -94,7 +97,7 @@ module BuildGraphMsg {
             var f = open(path, ioMode.r);
             f.close();
         } catch {
-            smLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Error opening file.");
+            bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Error opening file.");
         }
 
         // Read the file line by line. 
@@ -105,14 +108,14 @@ module BuildGraphMsg {
             try { 
                 combine_sort(src, dst, e_weight, weighted, false);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                     "Combine sort error.");
             }
         } else {
             try { 
                 combine_sort(src, dst, e_weight, weighted, true);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                     "Combine sort error.");
             }
         }
@@ -122,7 +125,7 @@ module BuildGraphMsg {
 
         // Create the reversed arrays for undirected graphs
         if (!directed) {
-            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+            bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                            "Read undirected graph.");
             coforall loc in Locales  {
                 on loc {
@@ -140,13 +143,13 @@ module BuildGraphMsg {
                 try  { 
                     combine_sort(srcR, dstR, e_weightR, weighted, false);
                 } catch {
-                    try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error");
+                    try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error");
                 }
             } else {
                 try  { 
                     combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
-                    try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error");
+                    try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error");
                 }
             }
             set_neighbor(srcR,start_iR,neighborR);
@@ -185,8 +188,8 @@ module BuildGraphMsg {
         outMsg = "Building graph from known edge file takes " + timer.elapsed():string;
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readKnownEdgelistMsg
@@ -235,7 +238,7 @@ module BuildGraphMsg {
             var f = open(path, ioMode.r);
             f.close();
         } catch {
-            smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Error opening file.");
+            bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Error opening file.");
         }
 
         // Perform a first pass over the file to get number of edges and vertices.
@@ -306,13 +309,13 @@ module BuildGraphMsg {
             try { 
                 combine_sort(src, dst, e_weight, weighted, false);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
             }
         } else {
             try { 
                 combine_sort(src, dst, e_weight, weighted, true);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
             }
         }
 
@@ -321,7 +324,7 @@ module BuildGraphMsg {
 
         // Read in undirected graph parts into reversed arrays.
         if (!directed) {
-            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Read undirected graph.");
+            bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Read undirected graph.");
             coforall loc in Locales  {
                 on loc {
                     forall i in srcR.localSubdomain(){
@@ -335,14 +338,14 @@ module BuildGraphMsg {
                 try  { 
                     combine_sort(srcR, dstR, e_weightR, weighted, false);
                 } catch {
-                    try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                    try!  bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
                 }
             } else {
                 try  { 
                     combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
-                    try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                    try!  bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
                 }
             }
@@ -350,7 +353,7 @@ module BuildGraphMsg {
         }
 
         // Remove self loops and duplicated edges.
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                        "Remove self loops and duplicated edges");
         var cur = 0;
         var tmpsrc = src;
@@ -412,7 +415,7 @@ module BuildGraphMsg {
         
         // Finish creating the new arrays after removing self-loops and multiedges.
         if (new_ne < ne ) {
-            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+            bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                 "Removed " + (ne - new_ne):string + " edges");
 
             forall i in 0..new_ne-1 {
@@ -423,7 +426,7 @@ module BuildGraphMsg {
             try { 
                 combine_sort(mysrc, mydst, mye_weight, weighted, false);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                     "Combine sort error.");
             }
 
@@ -444,14 +447,14 @@ module BuildGraphMsg {
                     try  { 
                         combine_sort(mysrcR, mydstR, mye_weightR, weighted, false);
                     } catch {
-                        try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                        try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                             "Combine sort error");
                     }
                 } else {
                     try  { 
                         combine_sort(mysrcR, mydstR, mye_weightR, weighted, true);
                     } catch {
-                        try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                        try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                             "Combine sort error");
                     }
                 }
@@ -520,8 +523,8 @@ module BuildGraphMsg {
         outMsg = "Building graph from unknown edge file takes " + timer.elapsed():string;
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readEdgelistMsg
@@ -622,13 +625,13 @@ module BuildGraphMsg {
             try { 
                 combine_sort(src, dst, e_weight, weighted, false);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
             }
         } else {
             try { 
                 combine_sort(src, dst, e_weight, weighted, true);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),"Combine sort error.");
             }
         }
 
@@ -637,7 +640,7 @@ module BuildGraphMsg {
 
         // Read in undirected graph parts into reversed arrays.
         if (!directed) {
-            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Read undirected graph.");
+            bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),"Read undirected graph.");
             coforall loc in Locales  {
                 on loc {
                     forall i in srcR.localSubdomain(){
@@ -651,14 +654,14 @@ module BuildGraphMsg {
                 try  { 
                     combine_sort(srcR, dstR, e_weightR, weighted, false);
                 } catch {
-                    try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                    try!  bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
                 }
             } else {
                 try  { 
                     combine_sort(srcR, dstR, e_weightR, weighted, true);
                 } catch {
-                    try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                    try!  bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                         "Combine sort error");
                 }
             }
@@ -666,7 +669,7 @@ module BuildGraphMsg {
         }
 
         // Remove self loops and duplicated edges.
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                        "Remove self loops and duplicated edges");
         var cur = 0;
         var tmpsrc = src;
@@ -730,7 +733,7 @@ module BuildGraphMsg {
         
         // Finish creating the new arrays after removing self-loops and multiedges.
         if (new_ne < ne ) {
-            smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
+            bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                 "Removed " + (ne - new_ne):string + " edges");
 
             forall i in 0..new_ne-1 {
@@ -741,7 +744,7 @@ module BuildGraphMsg {
             try { 
                 combine_sort(mysrc, mydst, mye_weight, weighted, false);
             } catch {
-                try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                     "Combine sort error.");
             }
 
@@ -762,14 +765,14 @@ module BuildGraphMsg {
                     try  { 
                         combine_sort(mysrcR, mydstR, mye_weightR, weighted, false);
                     } catch {
-                        try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                        try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                             "Combine sort error");
                     }
                 } else {
                     try  { 
                         combine_sort(mysrcR, mydstR, mye_weightR, weighted, true);
                     } catch {
-                        try! smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                        try! bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                             "Combine sort error");
                     }
                 }
@@ -836,8 +839,8 @@ module BuildGraphMsg {
         outMsg = "Building graph from two edge arrays takes " + timer.elapsed():string;
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addEdgesFromMsg
@@ -852,6 +855,7 @@ module BuildGraphMsg {
     * returns: message back to Python.
     */
     proc addEdgesFromMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
         // Parse the message from the Python front-end.
         var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
         var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
@@ -864,9 +868,9 @@ module BuildGraphMsg {
         var num_verticesS = msgArgs.getValueOf("NumVertices");
         var num_edgesS = msgArgs.getValueOf("NumEdges");
 
-        var is_prop_graph:bool;
+        var propertied:bool;
         if msgArgs.contains("IsPropGraph") {
-            is_prop_graph = true;
+            propertied = true;
         }
 
         // Extract the names of the arrays and the data for the non-array variables.
@@ -877,7 +881,7 @@ module BuildGraphMsg {
         var str_name:string = (akarray_strS:string);
         var weight_name:string = (akarray_weightS:string);
 
-        var weighted:bool; 
+        var weighted:bool;
         weightedS = weightedS.toLower();
         weighted = weightedS:bool;
 
@@ -919,18 +923,36 @@ module BuildGraphMsg {
         var akarray_str_sym = toSymEntry(akarray_str_entry, int);
         var start_i = akarray_str_sym.a;
 
-        var akarray_weight_sym = toSymEntry(akarray_weight_entry, real);
-        var e_weight = akarray_weight_sym.a;
-
-        var graph = new shared SegGraph(num_edges, num_vertices, directed, weighted);
+        var graph = new shared SegGraph(num_edges, num_vertices, directed, weighted, propertied);
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
             .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
             .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
             .withComp(new shared SymEntry(neighbor):GenSymEntry, "NEIGHBOR")
             .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
 
-        if (weighted) {
-            graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+        if weighted {
+            select akarray_weight_entry.dtype {
+                when DType.Int64 {
+                    var akarray_weight_sym = toSymEntry(akarray_weight_entry, int);
+                    var e_weight = akarray_weight_sym.a;
+                    graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+                }
+                when DType.UInt64 {
+                    var akarray_weight_sym = toSymEntry(akarray_weight_entry, uint);
+                    var e_weight = akarray_weight_sym.a;
+                    graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+                }
+                when DType.Float64 {
+                    var akarray_weight_sym = toSymEntry(akarray_weight_entry, real);
+                    var e_weight = akarray_weight_sym.a;
+                    graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+                }
+                otherwise {
+                    var errorMsg = notImplementedError(pn, akarray_weight_entry.dtype);
+                    bgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+            }
         }
 
         // Add graph to the specific symbol table entry. 
@@ -944,8 +966,8 @@ module BuildGraphMsg {
         outMsg = "Building graph from two edge arrays took " + timer.elapsed():string + " sec";
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addEdgesFromMsg
@@ -1091,8 +1113,8 @@ module BuildGraphMsg {
         outMsg = "Generating edge list for subgraph view takes " + timer.elapsed():string;
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of subgraphViewMsg
 
