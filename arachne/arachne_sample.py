@@ -40,16 +40,48 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    ## Build graph from randonmly generated source and destination arrays.
-    # Use Arkouda's randint to generate the random edge arrays.
+    ### Build graph from randonmly generated source and destination arrays.
+    # 1a. Use Arkouda's randint to generate the random edge arrays.
     src = ak.randint(0, args.n, args.m)
     dst = ak.randint(0, args.n, args.m)
-    print("Building graph...")
+    wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+
+    print("Building undirected graph...")
     start = time.time()
     graph = ar.Graph()
-    graph.add_edges_from(src, dst)
+    graph.add_edges_from(src, dst, wgt)
     end = time.time()
-    print(f"Building graph with {graph.n_vertices} vertices and {graph.n_edges} edges took {end-start} seconds")
+    print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges took "
+        f"{end-start} seconds")
+    print()
+
+    src = ak.randint(0, args.n, args.m)
+    dst = ak.randint(0, args.n, args.m)
+    wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+
+    print("Building directed graph...")
+    start = time.time()
+    graph = ar.DiGraph()
+    graph.add_edges_from(src, dst, wgt)
+    end = time.time()
+    print(f"Building directed graph with {graph.n_vertices} vertices and {graph.n_edges} edges took "
+        f"{end-start} seconds")
+    print()
+
+    src = ak.randint(0, args.n, args.m)
+    dst = ak.randint(0, args.n, args.m)
+    wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+
+    print("Building property graph...")
+    start = time.time()
+    graph = ar.PropGraph()
+    graph.add_edges_from(src, dst, wgt)
+    end = time.time()
+    print(f"Building property graph with {graph.n_vertices} vertices and {graph.n_edges} edges took "
+        f"{end-start} seconds")
+    print()
+
+    # We can look at the edges that were just inserted into the graph.
     edges = graph.edges()
     edges_df = ak.DataFrame({"src" : edges[0], "dst" : edges[1]})
     print(f"The edges of the graph are: \n {edges_df.__repr__}")
