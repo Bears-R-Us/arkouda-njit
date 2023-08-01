@@ -5,6 +5,7 @@ module BuildGraphMsg {
     use Time; 
     use Sort; 
     use List;
+    use ReplicatedDist;
     
     // Arachne Modules.
     use Utils;
@@ -156,7 +157,7 @@ module BuildGraphMsg {
         }
 
         // Add graph data structure to the symbol table. 
-        var graph = new shared SegGraph(ne, nv, directed, weighted);
+        var graph = new shared SegGraph(ne, nv, directed, weighted, false);
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
              .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
              .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
@@ -464,7 +465,7 @@ module BuildGraphMsg {
         }
 
         // Finish building graph data structure.
-        var graph = new shared SegGraph(ne, nv, directed, weighted);
+        var graph = new shared SegGraph(ne, nv, directed, weighted, false);
         if (new_ne < ne) { // Different arrays for when edges had to be removed.
             graph.withComp(new shared SymEntry(mysrc):GenSymEntry, "SRC")
                 .withComp(new shared SymEntry(mydst):GenSymEntry, "DST")
@@ -781,7 +782,7 @@ module BuildGraphMsg {
         }
 
         // Finish building graph data structure.
-        var graph = new shared SegGraph(ne, nv, directed, weighted);
+        var graph = new shared SegGraph(ne, nv, directed, weighted,false);
         if (new_ne < ne) { // Different arrays for when edges had to be removed.
             graph.withComp(new shared SymEntry(mysrc):GenSymEntry, "SRC")
                 .withComp(new shared SymEntry(mydst):GenSymEntry, "DST")
@@ -954,6 +955,23 @@ module BuildGraphMsg {
                 }
             }
         }
+
+        // Create the ranges array that keeps track of the vertices the edge arrays store on each
+        // locale.
+        var D_sbdmn = {0..numLocales-1} dmapped Replicated();
+        var ranges : [D_sbdmn] (int,locale);
+
+        // Write the local subdomain low value to the ranges array.
+        coforall loc in Locales {
+            on loc {
+                var low_vertex = src[src.localSubdomain().low];
+
+                coforall rloc in Locales do on rloc { 
+                    ranges[loc.id] = (low_vertex,loc);
+                }
+            }
+        }
+        graph.withComp(new shared SymEntry(ranges):GenSymEntry, "RANGES");
 
         // Add graph to the specific symbol table entry. 
         var graphEntryName = st.nextName();

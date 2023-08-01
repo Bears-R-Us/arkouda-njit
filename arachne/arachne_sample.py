@@ -14,9 +14,10 @@ Sample usage: python3 arachne_simple_tests.py n51 5555 -n 5000 -m 20000
 
 """
 import argparse
+import time
 import arkouda as ak
 import arachne as ar
-import time
+import networkx as nx
 
 def create_parser():
     """Creates the command line parser for this script"""
@@ -42,52 +43,30 @@ if __name__ == "__main__":
 
     ### Build graph from randonmly generated source and destination arrays.
     # 1a. Use Arkouda's randint to generate the random edge arrays.
-    src = ak.randint(0, args.n, args.m)
-    dst = ak.randint(0, args.n, args.m)
-    wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+    # src = ak.randint(0, args.n, args.m)
+    # dst = ak.randint(0, args.n, args.m)
+    # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+    src = ak.array([0,1,1,2,3,4,4,5,6,7,7,8,9,9,24])
+    dst = ak.array([1,1,1,3,4,5,2,6,7,8,5,9,6,6,24])
+    wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,10])
 
     print("Building undirected graph...")
     start = time.time()
     graph = ar.Graph()
     graph.add_edges_from(src, dst, wgt)
     end = time.time()
-    print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges took "
-        f"{end-start} seconds")
+    print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges "
+          f"took {end-start} seconds")
     print()
-
-    src = ak.randint(0, args.n, args.m)
-    dst = ak.randint(0, args.n, args.m)
-    wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
-
-    print("Building directed graph...")
-    start = time.time()
-    graph = ar.DiGraph()
-    graph.add_edges_from(src, dst, wgt)
-    end = time.time()
-    print(f"Building directed graph with {graph.n_vertices} vertices and {graph.n_edges} edges took "
-        f"{end-start} seconds")
-    print()
-
-    src = ak.randint(0, args.n, args.m)
-    dst = ak.randint(0, args.n, args.m)
-    wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
-
-    print("Building property graph...")
-    start = time.time()
-    graph = ar.PropGraph()
-    graph.add_edges_from(src, dst, wgt)
-    end = time.time()
-    print(f"Building property graph with {graph.n_vertices} vertices and {graph.n_edges} edges took "
-        f"{end-start} seconds")
-    print()
-
-    # We can look at the edges that were just inserted into the graph.
-    edges = graph.edges()
-    edges_df = ak.DataFrame({"src" : edges[0], "dst" : edges[1]})
-    print(f"The edges of the graph are: \n {edges_df.__repr__}")
 
     ## Run breadth-first search on the input graph.
-    # Pick first randomly selected value of src.
-    # graph_bfs_layers = ar.bfs_layers(graph, int(src[0]))
+    start = time.time()
+    graph_bfs_layers = ar.bfs_layers(graph, int(graph.edges()[0][6]))
+    end = time.time()
+    print(f"Running breadth-first search on graph took {end-start} seconds")
+    print(graph_bfs_layers)
+
+    graph_bfs_layers_2 = ar.bfs_layers(graph, int(graph.edges()[0][6]))
+    print(graph_bfs_layers_2)
 
     ak.shutdown()
