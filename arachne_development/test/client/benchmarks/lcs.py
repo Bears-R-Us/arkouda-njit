@@ -5,22 +5,33 @@ import numpy as np
 import arkouda as ak
 import random
 import string
-import arachne_development.graph as njit
+import arachne_development.lcs as njit
 
 
 def time_ak_lcs( strlen1, strlen2,trials):
-    print(">>> arkouda suffix array")
-    cfg = ak.get_config()
-    Nv = vsize * cfg["numLocales"]
-    print("numLocales = {},  num of strings  = {:,}".format(cfg["numLocales"], Nv))
 
-    stringsOne = ak.random_strings_uniform(1, strlen1, UNIQUE, characters="printable")
-    stringsTwo = ak.random_strings_uniform(1, strlen2, UNIQUE, characters="printable")
+    stringsOne = ak.random_strings_uniform(minlen=strlen1-1, maxlen=strlen1, seed=1,\
+                  size= 1, characters="printable")
+    stringsTwo = ak.random_strings_uniform(minlen=strlen2-1, maxlen=strlen2, seed=1, \
+                  size=1, characters="printable")
+
+    print(stringsOne)
+    print(stringsOne.size)
+    print(stringsOne.nbytes)
+    print(stringsOne.ndim)
+    print(stringsOne.shape)
+    print(stringsOne.dtype)
+    print(stringsTwo)
+    print(stringsTwo.size)
+    print(stringsTwo.nbytes)
+    print(stringsTwo.ndim)
+    print(stringsTwo.shape)
+    print(stringsTwo.dtype)
 
     timings = []
     for _ in range(trials):
         start = time.time()
-        c=njit.lcs(stringsOne,StringsTwo)
+        c=njit.lcs(stringsOne,stringsTwo)
         end = time.time()
         timings.append(end - start)
     tavg = sum(timings) / trials

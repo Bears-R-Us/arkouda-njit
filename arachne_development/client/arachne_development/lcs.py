@@ -9,12 +9,10 @@ from arkouda.pdarrayclass import pdarray, create_pdarray, \
 from arkouda.strings import Strings
 from arkouda.logger import getArkoudaLogger
 import numpy as np  # type: ignore
-from arkouda.dtypes import resolve_scalar_dtype, translate_np_dtype, int64
 import json
 from arkouda.infoclass import information
 from arkouda.dtypes import dtype
-from arkouda.dtypes import int64 as akint64
-from arkouda.pdarraysetops import in1d
+
 
 __all__ = ["lcs"]
 
@@ -25,7 +23,7 @@ def lcs(string1: Strings,string2:Strings) -> Strings:
         given two strings, return the longest common subsequence
     """
     cmd = "segmentedStrLCS"
-    args ={"StrName1":string1.name,"StrName2":string2.name }
+    args ={"StrEntry1":string1.entry,"StrEntry2":string2.entry }
     repMsg = generic_msg(cmd=cmd, args=args)
-    return  return Strings.from_return_msg(cast(str, repMsg)) 
+    return Strings.from_return_msg(cast(str, repMsg)) 
 
