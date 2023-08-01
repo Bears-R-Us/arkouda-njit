@@ -21,6 +21,7 @@ module GraphArray {
         DST_R,          // Reverse of DST (created from SRC)
         START_IDX,      // The starting index of every vertex in src and dst
         START_IDX_R,    // Reverse of START_IDX
+        RANGES,         // Keeps the range of the vertices the edge list stores per locale
         NEIGHBOR,       // Number of neighbors for a vertex  
         NEIGHBOR_R,     // Number of neighbors for a vertex based on the reversed arrays
         EDGE_WEIGHT,    // Edge weights

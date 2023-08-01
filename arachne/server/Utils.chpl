@@ -26,6 +26,28 @@ module Utils {
     const smLogger = new Logger(logLevel);
     private var outMsg:string;
 
+    /** 
+    * Helper procedure to parse ranges and return the locale we must write to.
+    * 
+    * val: value for which we want to find the locale that owns it. 
+    * 
+    * returns: array of the locale names. */
+    proc find_locs(val:int, graph:SegGraph) throws {
+        var ranges = toSymEntry(graph.getComp("RANGES"), (int,locale)).a;
+        var locs = new list(locale);
+        for i in 1..numLocales - 1 {
+            if (val >= ranges[i-1][0] && val <= ranges[i][0]) {
+                locs.pushBack(ranges[i-1][1]);
+            }
+            if (i == numLocales - 1) {
+                if val >= ranges[i][0] {
+                    locs.pushBack(ranges[i][1]);
+                }
+            }
+        }
+        return locs.toArray();
+    }
+
     /**
     * Set the neighbor and start_i arrays for the graph data structure.
     *

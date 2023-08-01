@@ -218,7 +218,7 @@ module GraphInfoMsg {
     proc readGraphArraysFromFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
         var path = msgArgs.getValueOf("Path");
-        var graph = new shared SegGraph(0, 0, false, false);
+        var graph = new shared SegGraph(0, 0, false, false, false);
 
         var timer:stopwatch;
         timer.start();
