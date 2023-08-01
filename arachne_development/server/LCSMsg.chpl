@@ -41,8 +41,8 @@ module JCSMsg {
   // calculate longest common subsequence of two strings
   proc segLCSMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       var repMsg: string;
-      var sname1=msgArgs.getValueOf("StrName1");
-      var sname2=msgArgs.getValueOf("StrName2");
+      var sname1=msgArgs.getValueOf("StrEntry1");
+      var sname2=msgArgs.getValueOf("StrEntry2");
 
       var sstring1 = getSegString(sname1, st);
       var sstring2 = getSegString(sname2, st);
@@ -420,7 +420,6 @@ module JCSMsg {
       var valEntry = new shared SymEntry(strArray);
       st.addEntry(segName, segEntry);
       st.addEntry(valName, valEntry);
-      */
 
 
       var offsetsEntry = new shared SymEntry(offsegs);
@@ -428,32 +427,17 @@ module JCSMsg {
       var stringsEntry = new shared SegStringSymEntry(offsetsEntry, valuesEntry, string);
       var myname = st.nextName();
       st.addEntry(myname, stringsEntry);
+      */
 
+      var retString = getSegString(offsegs, strArray, st);
 
-      repMsg = 'created ' + st.attrib(stringsEntry.name) + '+created bytes.size %t'.format(stringsEntry.nBytes);
+      repMsg = 'created ' + st.attrib(retString.name) + '+created bytes.size %t'.format(retString.nBytes);
 
 
       //repMsg = 'created ' + st.attrib(segName) + '+created ' + st.attrib(valName);
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
