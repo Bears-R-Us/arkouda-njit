@@ -44,27 +44,38 @@ module JCSMsg {
       var sname1=msgArgs.getValueOf("StrEntry1");
       var sname2=msgArgs.getValueOf("StrEntry2");
 
-      var sstring1 = getSegString(sname1, st);
-      var sstring2 = getSegString(sname2, st);
+      st.checkTable(sname1);
+      st.checkTable(sname2);
+
+      writeln("name1=",sname1);
+      writeln("name2=",sname2);
+      var sstrings1 = getSegString(sname1, st);
+      var sstrings2 = getSegString(sname2, st);
+
 
       var size1=sstrings1.size;
       var nBytes1 = sstrings1.nBytes;
       var length1=sstrings1.getLengths();
+      writeln("Len1=",length1);
       var offsegs1 = (+ scan length1) - length1;
 
       var size2=sstrings2.size;
       var nBytes2 = sstrings2.nBytes;
       var length2=sstrings2.getLengths();
+      writeln("Len2=",length2);
       var offsegs2 = (+ scan length2) - length2;
 
 
       const infin:int=9999;
       const m:int=length1[0];
       const n:int=length2[0];
-      ref string1=sstring1.values.a[0..m-1];
-      ref string2=sstring2.values.a[0..n-1];
+      writeln("m=",m);
+      writeln("n=",n);
+      ref string1=sstrings1.values.a[0..m-1];
+      ref string2=sstrings2.values.a[0..n-1];
       var mat:[0..m][0..n] int;
-
+      writeln("string1=",string1);
+      writeln("string2=",string2);
       //Below is for making the adjacency matrix of the graph.
       forall i in 0..m-1{
         forall j in 0..n-1{
@@ -392,8 +403,8 @@ module JCSMsg {
           common[i-1]=1;
         }
       }
+      var cur:int=0;
       for i in 0..m-1{
-        var cur:int=0;
         if(common[i]){
           cur+=1;
         }
@@ -402,17 +413,16 @@ module JCSMsg {
 
 
       var offsegs:[0..0] int =0 ;
-      startposition = 0;
-      endposition = nBytes-1;
       var strArray:[0..cur-1]uint(8);
 
       for i in 0..m-1{
-        var cur:int=0;
+        var mycur:int=0;
         if(common[i]){
-          strArray[cur]=string1[i]:uint(8);
-          cur+=1;
+          strArray[mycur]=string1[i]:uint(8);
+          mycur+=1;
         }
       }
+      writeln("lcs=",strArray);
       /*
       var segName = st.nextName();
       var valName = st.nextName();
