@@ -10,12 +10,14 @@ import arachne_development.lcs as njit
 
 def time_ak_lcs( strlen1, strlen2,trials):
 
+    print("before call")
     stringsOne = ak.random_strings_uniform(minlen=strlen1-1, maxlen=strlen1, seed=1,\
                   size= 1, characters="printable")
+    print(stringsOne.size)
+    print("after call")
     stringsTwo = ak.random_strings_uniform(minlen=strlen2-1, maxlen=strlen2, seed=1, \
                   size=1, characters="printable")
 
-    print(stringsOne)
     print(stringsOne.size)
     print(stringsOne.nbytes)
     print(stringsOne.ndim)
@@ -35,6 +37,7 @@ def time_ak_lcs( strlen1, strlen2,trials):
         end = time.time()
         timings.append(end - start)
     tavg = sum(timings) / trials
+    print(c)
 
     print("Average time = {:.4f} sec".format(tavg))
 
@@ -43,8 +46,8 @@ def create_parser():
     parser = argparse.ArgumentParser(description="Measure the performance of suffix array building: C= suffix_array(V)")
     parser.add_argument('hostname', help='Hostname of arkouda server')
     parser.add_argument('port', type=int, help='Port of arkouda server')
-    parser.add_argument('--len1', default=20, help='length of string 1')
-    parser.add_argument('--len2', default=10, help='length of string 2')
+    parser.add_argument('--len1', default=400, help='length of string 1')
+    parser.add_argument('--len2', default=200, help='length of string 2')
     parser.add_argument('-t', '--trials', type=int, default=6, help='Number of times to run the benchmark')
     return parser
 
@@ -57,5 +60,5 @@ if __name__ == "__main__":
     ak.connect(args.hostname, args.port)
 
     time_ak_lcs(args.len1, args.len2, args.trials)
-    ak.shutdown()
-    sys.exit(0)
+    #ak.shutdown()
+    #`sys.exit(0)
