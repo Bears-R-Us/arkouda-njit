@@ -4,6 +4,9 @@ module BreadthFirstSearch {
     use Set;
     use List;
 
+    // Package modules.
+    use CopyAggregation;
+
     // Arachne modules.
     use GraphArray;
     use Utils;
@@ -25,8 +28,7 @@ module BreadthFirstSearch {
         // Extract graph data.
         var src = toSymEntry(graph.getComp("SRC"),int).a;
         var dst = toSymEntry(graph.getComp("DST"),int).a;
-        var str = toSymEntry(graph.getComp("START_IDX"),int).a;
-        var nei = toSymEntry(graph.getComp("NEIGHBOR"),int).a;
+        var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
         
         // Generate the frontier sets.
         var frontier_sets : [{0..1}] list(int, parSafe=true);
@@ -40,7 +42,7 @@ module BreadthFirstSearch {
         while true { 
             var pending_work:bool;
             forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work) {
-                ref neighborhood = dst.localSlice(str[u]..str[u]+nei[u]-1);
+                ref neighborhood = dst.localSlice(seg[u]..<seg[u+1]);
                 for v in neighborhood {
                     if (depth[v] == -1) {
                         pending_work = true;
@@ -75,8 +77,7 @@ module BreadthFirstSearch {
         frontier_sets_idx = 0;
         var src = toSymEntry(graph.getComp("SRC"),int).a;
         var dst = toSymEntry(graph.getComp("DST"),int).a;
-        var str = toSymEntry(graph.getComp("START_IDX"),int).a;
-        var nei = toSymEntry(graph.getComp("NEIGHBOR"),int).a;
+        var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, graph) {
@@ -89,23 +90,25 @@ module BreadthFirstSearch {
             var pending_work:bool;
             coforall loc in Locales with(|| reduce pending_work) {
                 on loc {
-                    var edgeBegin = src.localSubdomain().low;
-                    var edgeEnd = src.localSubdomain().high;
-                    var vertexBegin = src[edgeBegin];
-                    var vertexEnd = src[edgeEnd];
-                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var agg = new SetDstAggregator(int)) {
-                        var numNF = nei[u];
-                        var edgeId = str[u];
-                        var nextStart = max(edgeId, edgeBegin);
-                        var nextEnd = min(edgeEnd, edgeId + numNF - 1);
-                        ref neighborhood = dst.localSlice(nextStart..nextEnd);
+                    var src_low = src.localSubdomain().low;
+                    var src_high = src.localSubdomain().high;
+                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new SetDstAggregator(int), var depth_agg = new DstAggregator(int)) {
+                        var adj_list_start = seg[u];
+                        var adj_list_end = seg[u+1] - 1;
+                        
+                        // Only pull the part of the adjacency list that is local.
+                        var actual_start = max(adj_list_start, src_low);
+                        var actual_end = min(src_high, adj_list_end);
+                        
+                        ref neighborhood = dst.localSlice(actual_start..actual_end);
                         for v in neighborhood { 
                             if (depth[v] == -1) {
                                 pending_work = true;
-                                depth[v] = cur_level + 1;
+                                // depth[v] = cur_level + 1;
+                                depth_agg.copy(depth[v], cur_level + 1);
                                 var locs = find_locs(v, graph);
                                 for lc in locs {
-                                    agg.copy(lc.id, v);
+                                    frontier_agg.copy(lc.id, v);
                                 }
                             }
                         }
