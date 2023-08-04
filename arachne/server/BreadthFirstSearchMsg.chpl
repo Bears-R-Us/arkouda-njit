@@ -13,6 +13,8 @@ module BreadthFirstSearchMsg {
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
     use ServerConfig;
+    use ServerErrors;
+    use ServerErrorStrings;
     use AryUtil;
     use Logging;
     use Message;
@@ -46,50 +48,51 @@ module BreadthFirstSearchMsg {
     * returns: message back to Python.
     */
     proc segBFSMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
         // Info messages to print stuff to the Chapel Server.
         var repMsg:string;
         var outMsg:string;
 
         // Extract messages send from Python.
-        var n_verticesN = msgArgs.getValueOf("NumOfVertices");
-        var n_edgesN = msgArgs.getValueOf("NumOfEdges");
-        var directedN = msgArgs.getValueOf("Directed");
-        var weightedN = msgArgs.getValueOf("Weighted");
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var rootN = msgArgs.getValueOf("Source");
 
-        // Convert strings to actual datatypes needed.
-        var directed = directedN:int:bool;
+        // Convert messages to datatypes.
         var root = rootN:int;
        
         // Pull out our graph from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var ag = gEntry.graph; 
+        var g = gEntry.graph; 
 
         // Create empty depth array to return at the end of execution. Initialized here to ensure 
         // the function makes changes to an array reference and does not return a new array at
         // the end of execution.
         var depthName:string;
-        var depth = makeDistArray(ag.n_vertices, int);
+        var depth = makeDistArray(g.n_vertices, int);
         depth = -1;
 
         // Run the breacth-first search steps dependent on the hardware. 
         var timer:stopwatch;
-        if(!directed) {
+        if(!g.directed || g.directed) {
             if(numLocales == 1) {
                 var timer:stopwatch;
                 timer.start();
-                bfs_kernel_und_smem(ag, root, depth);
+                bfs_kernel_und_smem(g, root, depth);
                 timer.stop();
                 outMsg = "Shared memory breadth-first search took " + timer.elapsed():string + " sec";
             }
             else {
                 var timer:stopwatch;
                 timer.start();
-                bfs_kernel_und_dmem(ag, root, depth);
+                bfs_kernel_und_dmem(g, root, depth);
                 timer.stop();
                 outMsg = "Distributed memory breadth-first search took " + timer.elapsed():string + " sec";
             }
+        } else {
+            var errorMsg = notImplementedError(pn, "property graph");
+            bfsLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            return new MsgTuple(errorMsg, MsgType.ERROR);
         }
         repMsg = return_depth(depth, st);
         bfsLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
