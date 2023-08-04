@@ -344,6 +344,110 @@ class DiGraph(Graph):
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
 
+    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
+                       akarray_weight:Union[None,pdarray] = None) -> None:
+        """
+        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
+        reading version. 
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgesFrom"
+
+        ### Edge dedupping and delooping.
+        # 1. Initialize the edge arrays.
+        src = akarray_src
+        dst = akarray_dst
+        
+        # 1a. Initialize the weights array, if applicable.
+        wgt = ak.array([1.0])
+        weighted = False
+        if isinstance(akarray_weight,pdarray):
+            wgt = akarray_weight
+            weighted = True
+
+        # 2. Sort the edges and remove duplicates.
+        gb_edges = ak.GroupBy([src,dst])
+        src = gb_edges.unique_keys[0]
+        dst = gb_edges.unique_keys[1]
+        if weighted:
+            wgt = gb_edges.aggregate(wgt, "sum")[1]
+
+        print("Edge set after duplicate removal:")
+        print(src)
+        print(dst)
+        print()
+
+        ### Vertex remapping.
+        # 1. Extract the unique vertex names of the graph.
+        all_vertices = ak.concatenate([src,dst])
+        gb_vertices = ak.GroupBy(all_vertices)
+
+        # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
+        #    the values of the new range to the original vertices.
+        new_vertex_range = ak.arange(gb_vertices.unique_keys.size)
+        all_vertices = gb_vertices.broadcast(new_vertex_range)
+        src = all_vertices[0:src.size]
+        dst = all_vertices[src.size:]
+
+        print("Edge set after remapping vertices:")
+        print(src)
+        print(dst)
+        print()
+
+        ### Create vertex index arrays.
+        # 1. Extract the number of vertices, edges, and weighted flag from the graph.
+        self.n_vertices = int(gb_vertices.unique_keys.size)
+        self.n_edges = int(src.size)
+        self.weighted = int(weighted)
+
+        # 2. Build the segments of the adjacency lists for each vertex.
+        gb_src = ak.GroupBy(src, assume_sorted=False)
+        gb_src_indices = gb_src.unique_keys
+        gb_src_segments = gb_src.segments
+        segs = ak.full(self.n_vertices, -1, dtype=ak.int64)
+        segs[gb_src_indices] = gb_src_segments
+        last_seg = ak.array([self.n_edges])
+        segs = ak.concatenate([segs, last_seg])
+        print("Segments before removing -1s:")
+        print(segs)
+        print()
+
+        # 3. Replace all -1s with the previous nonnegative value.
+        # Shoutout to Pierce who helped me with this.
+        where_neg = segs < 0
+        neg_inds = ak.arange(segs.size)[where_neg]
+        if neg_inds[0] == 0:
+            neg_inds = neg_inds[1:]
+        neg_inds -= 1
+        prev_non_neg = neg_inds[segs[neg_inds] > 0]
+        broad_segs = ak.concatenate([ak.array([0]), prev_non_neg])
+        broad_vals = ak.concatenate([ak.array([0]), segs[prev_non_neg]])
+        broadcasted = ak.broadcast(broad_segs, broad_vals, segs.size)
+        segs = ak.where(where_neg, broadcasted, segs)
+
+        print("Segments after removing -1s:")
+        print(segs)
+        print()
+
+        ### Store everything in a graph object in the Chapel server.
+        # 1. Store data into an Graph object in the Chapel server.
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
+                 "AkArraySeg" : segs,
+                 "AkArrayWeight" : wgt,
+                 "AkArrayVmap" : gb_vertices.unique_keys,
+                 "Directed": bool(self.directed),
+                 "Weighted" : weighted,
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
+
 class PropGraph(DiGraph):
     """Base class for property graphs. Inherits from DiGraph.
 
@@ -538,14 +642,48 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     RuntimeError
     """
     cmd = "segmentedGraphBFS"
+    args = { "GraphName":graph.name,
+             "Source":source }
+
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(repMsg)
+
+@typechecked
+def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
+    """
+    This function will return the number of triangles in a static graph if the vertexArray is [-1], 
+    otherwise, it will return the number of triangles containing the given vertex. If the input vertexArray is 
+    [0,10,40] and return array is [3,20,5], it means that there are 3 triangles contain vertex 0; 20 triangles 
+    contains vertex 10; 5 triangles contain vertex 40.
+    
+    Returns
+    -------
+    pdarray
+        The total number of triangles.
+    
+    See Also
+    --------
+    
+    Notes
+    -----
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    cmd="segmentedGraphTri"
+
+    if vertexArray is None:
+        vertexArray = ak.array([-1])
+
     args = { "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
              "Directed":graph.directed,
-             "Weighted":graph.weighted,
+             "Weighted": graph.weighted,
              "GraphName":graph.name,
-             "Source":source}
+             "VertexArray":vertexArray}
 
-    repMsg = generic_msg(cmd=cmd, args=args)
+    repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
 
 @typechecked
@@ -673,44 +811,6 @@ def connected_components(graph: Graph) -> pdarray:
              "GraphName":graph.name}
     
     repMsg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(repMsg)
-
-@typechecked
-def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
-    """
-    This function will return the number of triangles in a static graph if the vertexArray is [-1], 
-    otherwise, it will return the number of triangles containing the given vertex. If the input vertexArray is 
-    [0,10,40] and return array is [3,20,5], it means that there are 3 triangles contain vertex 0; 20 triangles 
-    contains vertex 10; 5 triangles contain vertex 40.
-    
-    Returns
-    -------
-    pdarray
-        The total number of triangles.
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
-    """
-    cmd="segmentedGraphTri"
-
-    if vertexArray is None:
-        vertexArray = ak.array([-1])
-
-    args = { "NumOfVertices":graph.n_vertices,
-             "NumOfEdges":graph.n_edges,
-             "Directed":graph.directed,
-             "Weighted": graph.weighted,
-             "GraphName":graph.name,
-             "VertexArray":vertexArray}
-
-    repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
 
 @typechecked

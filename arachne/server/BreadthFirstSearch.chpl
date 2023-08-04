@@ -42,12 +42,17 @@ module BreadthFirstSearch {
         while true { 
             var pending_work:bool;
             forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work) {
-                ref neighborhood = dst.localSlice(seg[u]..<seg[u+1]);
-                for v in neighborhood {
-                    if (depth[v] == -1) {
-                        pending_work = true;
-                        depth[v] = cur_level + 1;
-                        frontier_sets[(frontier_sets_idx + 1) % 2].pushBack(v);
+                var adj_list_start = seg[u];
+                var num_neighbors = seg[u+1] - adj_list_start;
+                if (num_neighbors != 0) {
+                    var adj_list_end = adj_list_start + num_neighbors - 1;
+                    ref neighborhood = dst.localSlice(adj_list_start..adj_list_end);
+                    for v in neighborhood {
+                        if (depth[v] == -1) {
+                            pending_work = true;
+                            depth[v] = cur_level + 1;
+                            frontier_sets[(frontier_sets_idx + 1) % 2].pushBack(v);
+                        }
                     }
                 }
             }
@@ -94,21 +99,24 @@ module BreadthFirstSearch {
                     var src_high = src.localSubdomain().high;
                     forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new SetDstAggregator(int), var depth_agg = new DstAggregator(int)) {
                         var adj_list_start = seg[u];
-                        var adj_list_end = seg[u+1] - 1;
-                        
-                        // Only pull the part of the adjacency list that is local.
-                        var actual_start = max(adj_list_start, src_low);
-                        var actual_end = min(src_high, adj_list_end);
-                        
-                        ref neighborhood = dst.localSlice(actual_start..actual_end);
-                        for v in neighborhood { 
-                            if (depth[v] == -1) {
-                                pending_work = true;
-                                // depth[v] = cur_level + 1;
-                                depth_agg.copy(depth[v], cur_level + 1);
-                                var locs = find_locs(v, graph);
-                                for lc in locs {
-                                    frontier_agg.copy(lc.id, v);
+                        var num_neighbors = seg[u+1] - adj_list_start;
+                        if (num_neighbors != 0) {
+                            var adj_list_end = adj_list_start + num_neighbors - 1;
+                            
+                            // Only pull the part of the adjacency list that is local.
+                            var actual_start = max(adj_list_start, src_low);
+                            var actual_end = min(src_high, adj_list_end);
+                            
+                            ref neighborhood = dst.localSlice(actual_start..actual_end);
+                            for v in neighborhood { 
+                                if (depth[v] == -1) {
+                                    pending_work = true;
+                                    // depth[v] = cur_level + 1;
+                                    depth_agg.copy(depth[v], cur_level + 1);
+                                    var locs = find_locs(v, graph);
+                                    for lc in locs {
+                                        frontier_agg.copy(lc.id, v);
+                                    }
                                 }
                             }
                         }

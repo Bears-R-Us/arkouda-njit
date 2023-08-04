@@ -49,7 +49,7 @@ module Utils {
     }
 
     /**
-    * Search for a given key in a sorted array. 
+    * Binary search for a given vertex.
     *
     * ary: int array
     * l: low index bound
@@ -88,44 +88,6 @@ module Utils {
             }
         }
     }// end bin_search_v
-
-    /**
-    * Binary search for a given edge.
-    *
-    * ary: arry to perform the search in
-    * l: lowest index of search
-    * h: highest index of search
-    * key: value we are looking for
-    *
-    * returns: true if found. 
-    */
-    proc bin_search_e(ary:[?D] int, l:int, h:int, key:int):int {
-        if ( (l>h) || ((l==h) && ( ary[l] != key)))  {
-            return -1;
-        }
-        if (ary[l]==key){
-            return l;
-        }
-        if (ary[h]==key){
-            return h;
-        }
-
-        var m = (l+h)/2:int;
-        
-        if ((m==l) ) {
-            return -1;
-        }
-        if (ary[m]==key ){
-            return m;
-        } else {
-            if (ary[m]<key) {
-                return binSearchE(ary,m+1,h,key);
-            }
-            else {
-                return binSearchE(ary,l,m-1,key);
-            }
-        }
-    }// end of bin_search_e()
 
     /**
     * Print graph data structure server-side to visualize the raw array data.
