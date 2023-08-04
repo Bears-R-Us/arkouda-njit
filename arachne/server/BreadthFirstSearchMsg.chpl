@@ -85,7 +85,6 @@ module BreadthFirstSearchMsg {
             }
             else {
                 var timer:stopwatch;
-                writeln("$$$$$depth = ", depth);
                 timer.start();
                 bfs_kernel_und_dmem(ag, root, depth);
                 timer.stop();
