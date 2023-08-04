@@ -46,13 +46,13 @@ if __name__ == "__main__":
     # src = ak.randint(0, args.n, args.m)
     # dst = ak.randint(0, args.n, args.m)
     # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
-    src = ak.array([0,1,1,2,3,4,4,5,6,7,7,8,9,9,24])
-    dst = ak.array([1,1,1,3,4,5,2,6,7,8,5,9,6,6,24])
-    wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,10])
+    src = ak.array([2,5,2,3,3,3,2,3,4,4,5,6,7,7,8,9,9,24,25,25])
+    dst = ak.array([1,0,0,0,3,3,3,4,5,2,6,7,8,5,9,6,6,24,26,27])
+    wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10,20,20])
 
     print("Building undirected graph...")
     start = time.time()
-    graph = ar.Graph()
+    graph = ar.DiGraph()
     graph.add_edges_from(src, dst, wgt)
     end = time.time()
     print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges "
