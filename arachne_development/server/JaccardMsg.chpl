@@ -1541,52 +1541,6 @@ module JaccardMsg {
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
     use CommandMap;
     registerFunction("segmentedGraphJaccard", segJaccardMsg,getModuleName());
     registerFunction("segmentedGraphJaccardHash", segDistHashJaccardMsg,getModuleName());
