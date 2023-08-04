@@ -49,8 +49,8 @@ def create_parser():
     parser = argparse.ArgumentParser(description="Measure the performance of suffix array building: C= suffix_array(V)")
     parser.add_argument('hostname', help='Hostname of arkouda server')
     parser.add_argument('port', type=int, help='Port of arkouda server')
-    parser.add_argument('--len1', default=400, help='length of string 1')
-    parser.add_argument('--len2', default=200, help='length of string 2')
+    parser.add_argument('--len1', default=20, help='length of string 1')
+    parser.add_argument('--len2', default=40, help='length of string 2')
     parser.add_argument('-t', '--trials', type=int, default=1, help='Number of times to run the benchmark')
     return parser
 
