@@ -171,80 +171,8 @@ module GraphInfoMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of degreeMsg
 
-    /**
-    * Writes the arrays that make up the graph to a file.
-    *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
-    *
-    * returns: message back to Python.
-    */
-    proc writeGraphArraysToFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var path = msgArgs.getValueOf("Path");
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var ag = gEntry.graph;
-
-        var timer:stopwatch;
-        timer.start();
-        // Invoke utils writeGraphArrays() method.
-        writeGraphArrays(ag, path);
-
-        // Add new copies of each to the symbol table.
-        var repMsg = "";
-        repMsg = "written";
-
-        timer.stop();
-        outMsg = "Writing graph arrays to files takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-
-        return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of writeGraphArraysToFileMsg
-
-    /**
-    * Populates a graph from arrays read in from a file.
-    *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
-    *
-    * returns: message back to Python.
-    */
-    proc readGraphArraysFromFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
-        var path = msgArgs.getValueOf("Path");
-        var graph = new shared SegGraph(0, 0, false, false, false);
-
-        var timer:stopwatch;
-        timer.start();
-        // Invoke utils writeGraphArrays() method.
-        readGraphArrays(graph, path);
-
-        // Create new object for new graph.
-        var graphEntryName = st.nextName();
-        var graphSymEntry = new shared GraphSymEntry(graph);
-        st.addEntry(graphEntryName, graphSymEntry);
-        var repMsg = graph.n_vertices:string + '+ ' + graph.n_edges:string + '+ ' + graph.isDirected():int:string + '+ ' + graph.isWeighted():int:string + '+' + graphEntryName;
-
-        timer.stop();
-        outMsg = "Reading graph arrays from file create graph takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-
-        return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of readGraphArraysFromFileMsg
-
     use CommandMap;
     registerFunction("edges", edgesMsg, getModuleName());
     registerFunction("nodes", nodesMsg, getModuleName());
     registerFunction("degree", degreeMsg, getModuleName());
-    registerFunction("writeGraphArraysToFile", writeGraphArraysToFileMsg, getModuleName());
-    registerFunction("readGraphArraysFromFile", readGraphArraysFromFileMsg, getModuleName());
 }

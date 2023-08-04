@@ -14,14 +14,12 @@ from arkouda.dtypes import int64 as akint
 __all__ = ["Graph",
            "DiGraph",
            "PropGraph",
-           "read_known_edgelist",
-           "read_edgelist",
            "bfs_layers",
-           "subgraph_view",
            "triangles",
+           "k_truss",
            "triangle_centrality",
            "connected_components",
-           "k_truss"
+           "subgraph_view"
            ]
 
 class Graph:
@@ -181,9 +179,9 @@ class Graph:
         args = {"GraphName" : self.name}
         repMsg = generic_msg(cmd=cmd, args=args)
         returned_vals = (cast(str, repMsg).split('+'))
-        
+
         return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
-    
+
     def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
                        akarray_weight:Union[None,pdarray] = None) -> None:
         """
@@ -207,7 +205,6 @@ class Graph:
         if isinstance(akarray_weight,pdarray):
             wgt = ak.concatenate([akarray_weight, akarray_weight])
             weighted = True
-            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
 
         # 2. Sort the edges and remove duplicates.
         gb_edges = ak.GroupBy([src, dst])
@@ -215,7 +212,6 @@ class Graph:
         dst = gb_edges.unique_keys[1]
         if weighted:
             wgt = gb_edges.aggregate(wgt, "sum")[1]
-            print(ak.DataFrame({"src":src, "dst":dst, "wgt":wgt}).__repr__)
 
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
@@ -232,24 +228,23 @@ class Graph:
         # 1. Do a GroupBy on the sorted src array.
         gb_vertices = ak.GroupBy(src, assume_sorted=True)
 
-        # 2. Extract the counts (neighbors), and segments (start indices).
-        neighbors = gb_vertices.count()[1]
-        start_i = gb_vertices.segments
-        print(ak.DataFrame({"neighbors":neighbors, "start_i":start_i}).__repr__)
-
-        ### Metadata creation and storage on the Arkouda server.
-        # 1. Extract the number of vertices and edges from the arrays.
+        # 2. Extract the number of vertices, edges, and weighted flag from the graph.
         self.n_vertices = int(gb_vertices.unique_keys.size)
         self.n_edges = int(src.size / 2)
         self.weighted = int(weighted)
 
-        # 2. Store data into an Graph object in the Chapel server.
+        # 3. Build the segments of the adjacency lists for each vertex.
+        segs = gb_vertices.segments
+        last_seg = ak.array([self.n_edges * 2])
+        segs = ak.concatenate([segs, last_seg])
+
+        ### Store everything in a graph object in the Chapel server.
+        # 1. Store data into an Graph object in the Chapel server.
         args = { "AkArraySrc" : src,
                  "AkArrayDst" : dst,
+                 "AkArraySeg" : segs,
                  "AkArrayWeight" : wgt,
                  "AkArrayVmap" : gb_vertices.unique_keys,
-                 "AkArrayNei" : neighbors,
-                 "AkArrayStr" : start_i,
                  "Directed": bool(self.directed),
                  "Weighted" : weighted,
                  "NumVertices" : self.n_vertices,
@@ -257,72 +252,6 @@ class Graph:
 
         rep_msg = generic_msg(cmd=cmd, args=args)
         oriname = rep_msg
-        self.name = oriname.strip()
-
-    def add_edges_from_chapel_version(self, akarray_src: pdarray, akarray_dst: pdarray,
-                                      akarray_weight: Union[None, pdarray] = None) -> None:
-        """Populates the graph object with edges as defined by the akarrays. Uses the original 
-        Chapel-based reading version.
-
-        Returns
-        -------
-        None
-        """
-        cmd = "addEdgesFromChapelVersion"
-
-        if akarray_weight is not None:
-            self.weighted = 1
-        else:
-            self.weighted = 0
-
-        args = { "AkArraySrc" : akarray_src,
-                 "AkArrayDst" : akarray_dst, 
-                 "AkArrayWeight" : akarray_weight,
-                 "Weighted" : bool(self.weighted),
-                 "Directed": bool(self.directed) }
-        
-        if isinstance(self, PropGraph):
-            args["IsPropGraph"] = "true"
-        
-        repMsg = generic_msg(cmd=cmd, args=args)
-        returned_vals = (cast(str, repMsg).split('+'))
-
-        self.n_vertices = int(cast(int, returned_vals[0]))
-        self.n_edges = int(cast(int, returned_vals[1]))
-        self.weighted = int(cast(int, returned_vals[3]))
-        oriname = cast(str, returned_vals[4])
-        self.name = oriname.strip()
-
-    def write_graph_arrays_to_file(self, path:str) -> None:
-        """Writes the graph arrays that make up a graph to a file. 
-
-        Returns
-        -------
-        None
-        """
-        cmd = "writeGraphArraysToFile"
-        args = { "GraphName": self.name,
-                    "Path" : path}
-        repMsg = generic_msg(cmd=cmd, args=args)
-        print(f"Graph writen to file: {path}")
-
-    def read_graph_arrays_from_file(self, path:str) -> None:
-        """Populates the graph object with arrays as defined from a file. 
-
-        Returns
-        -------
-        None
-        """
-        cmd = "readGraphArraysFromFile"
-        args = {"Path" : path}
-        
-        repMsg = generic_msg(cmd=cmd, args=args)
-        returned_vals = (cast(str, repMsg).split('+'))
-
-        self.n_vertices = int(cast(int, returned_vals[0]))
-        self.n_edges = int(cast(int, returned_vals[1]))
-        self.weighted = int(cast(int, returned_vals[3]))
-        oriname = cast(str, returned_vals[4])
         self.name = oriname.strip()
 
 class DiGraph(Graph):
@@ -587,128 +516,6 @@ class PropGraph(DiGraph):
                   "Arrays" : arrays,
                   "Columns" : columns }
         repMsg = generic_msg(cmd=cmd, args=args)
-
-@typechecked
-def read_known_edgelist(ne: int, nv: int, path: str, weighted: bool = False, directed: bool = False, 
-                        comments: str = "#", filetype: str = "txt") -> Union[Graph, DiGraph]:
-    """ This function is used for creating a graph from a file containing an edge list. To save 
-    time, this method exists for when the number of edges and vertices are known a priori. We also
-    assume that the graph, by nature, does not have self-loops nor multiple edges. TODO: this 
-    should be used after a preprocessing() method! 
-    
-    The file typically looks as below delimited by whitespaces. TODO: add more delimitations.
-        1       5
-        13      9
-        7       6 
-    This file givs the edges of the graph which are <1,5>, <13,9>, <7,6> in this case. If an 
-    additional column is added, it is the weight of each edge. We assume the graph is unweighted 
-    unless stated otherwise. 
-
-    Parameters
-    ----------
-    ne
-        The total number of edges of the graph.
-    nv
-        The total number of vertices of the graph.
-    path
-        Absolute path to where the file is stored. 
-    weight
-        True if the graph is to be weighted, False otherwise. 
-    comments
-        If a line in the file starts with this string, the line is ignored and not read. 
-    filetype:
-        Exists to read an mtx file differently without needing to modify the mtx file before
-        reading it in. If reading an mtx file change to mtx.
-    create_using:
-        Specify the type of graph to be created. If just undirected, do not change, change if
-        reading in a directed graph. 
-
-    Returns
-    -------
-    Graph | DiGraph
-        The Graph or DiGraph object to represent the edge list data. 
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
-    """
-    cmd = "readKnownEdgelist"
-    args = { "NumOfEdges" : ne, 
-             "NumOfVertices" : nv,
-             "Path": path,
-             "Weighted" : weighted,
-             "Directed": directed,
-             "Comments" : comments,
-             "FileType" : filetype }
-    repMsg = generic_msg(cmd=cmd, args=args)
-
-    if not directed:
-        return Graph(*(cast(str, repMsg).split('+')))
-    else:
-        return DiGraph(*(cast(str, repMsg).split('+')))
-
-@typechecked
-def read_edgelist(path: str, weighted: bool = False, directed: bool = False, comments: str = "#",\
-                  filetype: str = "txt") -> Union[Graph, DiGraph]:
-    """ This function is used for creating a graph from a file containing an edge list.
-        
-    The file typically looks as below delimited by whitespaces. TODO: add more delimitations.
-        1       5
-        13      9
-        7       6 
-    This file givs the edges of the graph which are <1,5>, <13,9>, <7,6> in this case. If an 
-    additional column is added, it is the weight of each edge. We assume the graph is unweighted 
-    unless stated otherwise. 
-
-    Parameters
-    ----------
-    path
-        Absolute path to where the file is stored. 
-    weight
-        True if the graph is to be weighted, False otherwise. 
-    comments
-        If a line in the file starts with this string, the line is ignored and not read. 
-    filetype:
-        Exists to read an mtx file differently without needing to modify the mtx file before
-        reading it in. If reading an mtx file change to mtx.
-    create_using:
-        Specify the type of graph to be created. If just undirected, do not change, change if
-        reading in a directed graph. 
-
-    Returns
-    -------
-    Graph | DiGraph
-        The Graph or DiGraph object to represent the edge list data. 
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
-    """
-    cmd = "readEdgelist"
-    args = { "Path": path,
-             "Weighted" : weighted,
-             "Directed": directed,
-             "Comments" : comments,
-             "FileType" : filetype}
-
-    repMsg = generic_msg(cmd=cmd, args=args)
-
-    if not directed:
-        return Graph(*(cast(str, repMsg).split('+')))
-    else:
-        return DiGraph(*(cast(str, repMsg).split('+')))
 
 @typechecked
 def bfs_layers(graph: Graph, source: int) -> pdarray:
