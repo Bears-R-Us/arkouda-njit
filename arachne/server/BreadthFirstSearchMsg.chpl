@@ -63,7 +63,11 @@ module BreadthFirstSearchMsg {
        
         // Pull out our graph from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var g = gEntry.graph; 
+        var g = gEntry.graph;
+
+        // Convert root value to inner mapping.
+        var node_map = toSymEntry(g.getComp("NODE_MAP"),int).a;
+        root = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, root);
 
         // Create empty depth array to return at the end of execution. Initialized here to ensure 
         // the function makes changes to an array reference and does not return a new array at
