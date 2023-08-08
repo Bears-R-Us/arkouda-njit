@@ -201,22 +201,22 @@ class Graph:
 
         # 1a. Initialize and symmetrize the weights of each edge, if applicable.
         wgt = ak.array([1.0])
-        weighted = False
         if isinstance(akarray_weight,pdarray):
             wgt = ak.concatenate([akarray_weight, akarray_weight])
-            weighted = True
+            self.weighted = 1
 
         # 2. Sort the edges and remove duplicates.
         gb_edges = ak.GroupBy([src, dst])
         src = gb_edges.unique_keys[0]
         dst = gb_edges.unique_keys[1]
-        if weighted:
+        if bool(self.weighted):
             wgt = gb_edges.aggregate(wgt, "sum")[1]
 
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
         gb_src_vertices = ak.GroupBy(src)
         gb_dst_vertices = ak.GroupBy(dst)
+        vmap = gb_src_vertices.unique_keys
 
         # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
         #    the values of the new range to the original vertices.
@@ -225,18 +225,18 @@ class Graph:
         dst = gb_dst_vertices.broadcast(new_vertex_range)
 
         ### Create vertex index arrays.
-        # 1. Do a GroupBy on the sorted src array.
+        # 1. Build the neighbors of the adjacency lists for each vertex.
         gb_vertices = ak.GroupBy(src, assume_sorted=True)
+        gb_src_neighbors = gb_vertices.count()[1]
 
-        # 2. Extract the number of vertices, edges, and weighted flag from the graph.
+        # 3. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
+        segs = ak.cumsum(gb_src_neighbors)
+        first_seg = ak.array([0])
+        segs = ak.concatenate([first_seg, segs])
+
+        # 4. Extract the number of vertices, edges, and weighted flag from the graph.
         self.n_vertices = int(gb_vertices.unique_keys.size)
         self.n_edges = int(src.size / 2)
-        self.weighted = int(weighted)
-
-        # 3. Build the segments of the adjacency lists for each vertex.
-        segs = gb_vertices.segments
-        last_seg = ak.array([self.n_edges * 2])
-        segs = ak.concatenate([segs, last_seg])
 
         ### Store everything in a graph object in the Chapel server.
         # 1. Store data into an Graph object in the Chapel server.
@@ -244,9 +244,9 @@ class Graph:
                  "AkArrayDst" : dst,
                  "AkArraySeg" : segs,
                  "AkArrayWeight" : wgt,
-                 "AkArrayVmap" : gb_vertices.unique_keys,
+                 "AkArrayVmap" : vmap,
                  "Directed": bool(self.directed),
-                 "Weighted" : weighted,
+                 "Weighted" : bool(self.weighted),
                  "NumVertices" : self.n_vertices,
                  "NumEdges" : self.n_edges }
 
@@ -360,25 +360,19 @@ class DiGraph(Graph):
         # 1. Initialize the edge arrays.
         src = akarray_src
         dst = akarray_dst
-        
+
         # 1a. Initialize the weights array, if applicable.
         wgt = ak.array([1.0])
-        weighted = False
         if isinstance(akarray_weight,pdarray):
             wgt = akarray_weight
-            weighted = True
+            self.weighted = 1
 
         # 2. Sort the edges and remove duplicates.
         gb_edges = ak.GroupBy([src,dst])
         src = gb_edges.unique_keys[0]
         dst = gb_edges.unique_keys[1]
-        if weighted:
+        if self.weighted == 1:
             wgt = gb_edges.aggregate(wgt, "sum")[1]
-
-        print("Edge set after duplicate removal:")
-        print(src)
-        print(dst)
-        print()
 
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
@@ -392,45 +386,21 @@ class DiGraph(Graph):
         src = all_vertices[0:src.size]
         dst = all_vertices[src.size:]
 
-        print("Edge set after remapping vertices:")
-        print(src)
-        print(dst)
-        print()
-
         ### Create vertex index arrays.
-        # 1. Extract the number of vertices, edges, and weighted flag from the graph.
+        # 1. Build the neighbors of the adjacency lists for each vertex.
+        gb_src = ak.GroupBy(src, assume_sorted = True)
+        gb_src_indices, gb_src_neighbors = gb_src.count()
+        neis = ak.full(gb_vertices.unique_keys.size, 0, dtype=ak.int64)
+        neis[gb_src_indices] = gb_src_neighbors
+
+        # 2. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
+        segs = ak.cumsum(neis)
+        first_seg = ak.array([0])
+        segs = ak.concatenate([first_seg, segs])
+
+        # 3. Extract the number of vertices, edges, and weighted flag from the graph.
         self.n_vertices = int(gb_vertices.unique_keys.size)
         self.n_edges = int(src.size)
-        self.weighted = int(weighted)
-
-        # 2. Build the segments of the adjacency lists for each vertex.
-        gb_src = ak.GroupBy(src, assume_sorted=False)
-        gb_src_indices = gb_src.unique_keys
-        gb_src_segments = gb_src.segments
-        segs = ak.full(self.n_vertices, -1, dtype=ak.int64)
-        segs[gb_src_indices] = gb_src_segments
-        last_seg = ak.array([self.n_edges])
-        segs = ak.concatenate([segs, last_seg])
-        print("Segments before removing -1s:")
-        print(segs)
-        print()
-
-        # 3. Replace all -1s with the previous nonnegative value.
-        # Shoutout to Pierce who helped me with this.
-        where_neg = segs < 0
-        neg_inds = ak.arange(segs.size)[where_neg]
-        if neg_inds[0] == 0:
-            neg_inds = neg_inds[1:]
-        neg_inds -= 1
-        prev_non_neg = neg_inds[segs[neg_inds] > 0]
-        broad_segs = ak.concatenate([ak.array([0]), prev_non_neg])
-        broad_vals = ak.concatenate([ak.array([0]), segs[prev_non_neg]])
-        broadcasted = ak.broadcast(broad_segs, broad_vals, segs.size)
-        segs = ak.where(where_neg, broadcasted, segs)
-
-        print("Segments after removing -1s:")
-        print(segs)
-        print()
 
         ### Store everything in a graph object in the Chapel server.
         # 1. Store data into an Graph object in the Chapel server.
@@ -440,7 +410,7 @@ class DiGraph(Graph):
                  "AkArrayWeight" : wgt,
                  "AkArrayVmap" : gb_vertices.unique_keys,
                  "Directed": bool(self.directed),
-                 "Weighted" : weighted,
+                 "Weighted" : bool(self.weighted),
                  "NumVertices" : self.n_vertices,
                  "NumEdges" : self.n_edges }
 
@@ -629,7 +599,10 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     Returns
     -------
     pdarray
-        The depth of each vertex in relation to the source vertex. 
+        The depth of each vertex in relation to the source vertex. NOTE: The indices of the returned
+        array correspond to the internal Chapel server vertex values. To properly index, the user
+        must perform a find operation on "graph.nodes()" adn then use the returned pdarray to index
+        into depths.
     
     See Also
     --------
