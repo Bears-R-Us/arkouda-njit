@@ -1,17 +1,15 @@
 from base_test import ArkoudaTest
 import arkouda as ak
 import arachne as ar
-import scipy as sp
-import scipy.io
-import pathlib
 import networkx as nx
 
 class ClassTest(ArkoudaTest):
-    def test_add_edges_from(self):
-        src = [0, 1, 2, 3, 4, 5, 6, 7,  8, 9,  9]
-        dst = [1, 2, 3, 4, 5, 6, 7, 8, 10, 8, 10]
-        wgt = [1, 4, 5, 6, 7, 8, 2, 3,  3, 3, 2.1]
+    src = [2,5,2,3,3,3,2,3,5,5,5,7,8,8,9 ,10,10,24,25,25]
+    dst = [1,0,0,0,3,3,3,4,5,2,7,8,9,5,10,7 ,7 ,24,26,27]
+    wgt = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,10,20,20]
 
+    def test_add_edges_from(self):
+        """Testing adding edges to undirected and directed graphs."""
         Gu = ar.Graph()
         Hu = nx.Graph()
 
@@ -62,10 +60,6 @@ class ClassTest(ArkoudaTest):
         return self.assertEqual(check_undirected, check_directed)
 
     def test_nodes_and_edges(self):
-        src = [0, 1, 2, 3, 4, 5, 6, 7,  8, 9,  9]
-        dst = [1, 2, 3, 4, 5, 6, 7, 8, 10, 8, 10]
-        wgt = [1, 4, 5, 6, 7, 8, 2, 3,  3, 3, 2.1]
-
         Gu = ar.Graph()
         Hu = nx.Graph()
 

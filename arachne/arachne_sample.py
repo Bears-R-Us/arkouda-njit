@@ -46,27 +46,49 @@ if __name__ == "__main__":
     # src = ak.randint(0, args.n, args.m)
     # dst = ak.randint(0, args.n, args.m)
     # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
-    src = ak.array([2,5,2,3,3,3,2,3,4,4,5,6,7,7,8,9,9,24,25,25])
-    dst = ak.array([1,0,0,0,3,3,3,4,5,2,6,7,8,5,9,6,6,24,26,27])
-    wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,10,20,20])
+    src = ak.array([2,5,2,3,3,3,2,3,5,5,5,7,8,8,9 ,10,10,24,25,25])
+    dst = ak.array([1,0,0,0,3,3,3,4,5,2,7,8,9,5,10,7 ,7 ,24,26,27])
+    wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,10,20,20])
 
     print("Building undirected graph...")
     start = time.time()
-    graph = ar.DiGraph()
+    graph = ar.Graph()
     graph.add_edges_from(src, dst, wgt)
     end = time.time()
     print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges "
           f"took {end-start} seconds")
     print()
 
-    ## Run breadth-first search on the input graph.
+    print("Building directed graph...")
     start = time.time()
-    graph_bfs_layers = ar.bfs_layers(graph, int(graph.edges()[0][6]))
+    di_graph = ar.DiGraph()
+    di_graph.add_edges_from(src, dst, wgt)
     end = time.time()
-    print(f"Running breadth-first search on graph took {end-start} seconds")
+    print(f"Building directed graph with {di_graph.n_vertices} vertices and {di_graph.n_edges} "
+          f"edges took {end-start} seconds")
+    print()
+
+    s,d = graph.edges()
+    print(s)
+    print(d)
+    print(graph.nodes())
+
+    s,d = di_graph.edges()
+    print(s)
+    print(d)
+    print(di_graph.nodes())
+
+    ## Run breadth-first search on the input graphs.
+    start = time.time()
+    graph_bfs_layers = ar.bfs_layers(graph, 9)
+    end = time.time()
+    print(f"Running breadth-first search on undirected graph took {end-start} seconds")
     print(graph_bfs_layers)
 
-    graph_bfs_layers_2 = ar.bfs_layers(graph, int(graph.edges()[0][6]))
-    print(graph_bfs_layers_2)
+    start = time.time()
+    di_graph_bfs_layers = ar.bfs_layers(di_graph, 9)
+    end = time.time()
+    print(f"Running breadth-first search on directed graph took {end-start} seconds")
+    print(di_graph_bfs_layers)
 
     ak.shutdown()

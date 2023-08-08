@@ -15,14 +15,12 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,            // The source of every edge in the graph, array
-        DST,            // The destination of every edge in the graph, array
+        SRC,            // The source array of every edge in the graph
+        DST,            // The destination array of every edge in the graph
         SEGMENTS,       // The segments of adjacency lists for each vertex in DST
         RANGES,         // Keeps the range of the vertices the edge list stores per locale
-        NEIGHBOR,       // Number of neighbors for a vertex
-        EDGE_WEIGHT,    // Edge weights
+        EDGE_WEIGHT,    // Stores the edge weights of the graph, if applicable
         NODE_MAP,       // Doing an index of NODE_MAP[u] gives you the original value of u
-        NODE_MAP_R,     // Doing an index of NODE_MAP_R[u] gives you the internal value of u
         RELATIONSHIPS,  // The relationships that belong to specific edges
         NODE_LABELS,    // Any labels that belong to a specific node
         NODE_PROPS,     // Any properties that belong to a specific node
