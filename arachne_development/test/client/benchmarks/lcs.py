@@ -33,6 +33,7 @@ def time_ak_lcs( strlen1, strlen2,trials):
     print(stringsTwo.dtype)
 
     print("before lcs ")
+    return 0
     timings = []
     for i in range(trials):
         print("test =",i)
