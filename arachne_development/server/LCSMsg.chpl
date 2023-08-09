@@ -39,7 +39,6 @@ module JCSMsg {
 
   // calculate longest common subsequence of two strings
   proc segLCSMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-      writeln("<====================================>");
       var repMsg: string;
       var sname1=msgArgs.getValueOf("StrEntry1");
       var sname2=msgArgs.getValueOf("StrEntry2");
@@ -92,7 +91,7 @@ module JCSMsg {
                 var ary2=lstring2[0..localn-2];
                 var firstpart=PeelLCS(ary1,ary2,retary);
                 retary[firstpart]=lstring1[localm-1];
-                writeln("last element ",lstring1[localm-1]," is equal");
+                //writeln("last element ",lstring1[localm-1]," is equal");
                 return firstpart+1;
             } else {
                 var ary1=lstring1[0..localm-1];
@@ -104,7 +103,7 @@ module JCSMsg {
                 var part1=PeelLCS(ary1,ary2,retary);
                 var tmpary=retary;
                 var part2=PeelLCS(ary3,ary4,tmpary);
-                writeln("part1=",part1,"value=", retary[0..part1-1],", part2=",part2," value=",tmpary[0..part2-1]);
+                //writeln("part1=",part1,"value=", retary[0..part1-1],", part2=",part2," value=",tmpary[0..part2-1]);
                 if part1 >part2 {
                      return part1;
                 } else {
@@ -481,8 +480,6 @@ module JCSMsg {
       }
       writeln("length of lcs=",mylen,",sequential lcs=",strArray);
       writeln("length of lcs=",mystrArray.size,", parallel lcs=",mystrArray);
-
-
 
 
 
