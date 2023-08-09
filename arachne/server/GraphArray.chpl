@@ -107,9 +107,9 @@ module GraphArray {
     }
 
     /**
-     * Convenience proc to retrieve GraphSymEntry from SymTab.
-     * Performs conversion from AbstractySymEntry to GraphSymEntry.
-     */
+    * Convenience proc to retrieve GraphSymEntry from SymTab.
+    * Performs conversion from AbstractySymEntry to GraphSymEntry.
+    */
     proc getGraphSymEntry(name:string, st: borrowed SymTab): borrowed GraphSymEntry throws {
         var abstractEntry:borrowed AbstractSymEntry = st.lookup(name);
         if !abstractEntry.isAssignableTo(SymbolEntryType.CompositeSymEntry) {
