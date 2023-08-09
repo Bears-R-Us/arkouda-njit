@@ -19,12 +19,12 @@ def time_ak_lcs( strlen1, strlen2,trials):
     stringsTwo = ak.random_strings_uniform(minlen=strlen2-1, maxlen=strlen2, seed=1, \
                   size=1, characters="printable")
 
-    print(stringsOne)
-    print(stringsOne.size)
-    print(stringsOne.nbytes)
-    print(stringsOne.ndim)
-    print(stringsOne.shape)
-    print(stringsOne.dtype)
+    print("String one is ",stringsOne)
+    print("size of string 1 is ",stringsOne.size)
+    print("bytes of string 1 is ",stringsOne.nbytes)
+    print("ndim of string 1 is ", stringsOne.ndim)
+    print("shape of string 1 is", stringsOne.shape)
+    print("dtye of string 1 is ",stringsOne.dtype)
     print(stringsTwo)
     print(stringsTwo.size)
     print(stringsTwo.nbytes)
@@ -32,6 +32,7 @@ def time_ak_lcs( strlen1, strlen2,trials):
     print(stringsTwo.shape)
     print(stringsTwo.dtype)
 
+    print("before lcs ")
     timings = []
     for i in range(trials):
         print("test =",i)
@@ -49,8 +50,8 @@ def create_parser():
     parser = argparse.ArgumentParser(description="Measure the performance of suffix array building: C= suffix_array(V)")
     parser.add_argument('hostname', help='Hostname of arkouda server')
     parser.add_argument('port', type=int, help='Port of arkouda server')
-    parser.add_argument('--len1', default=20, help='length of string 1')
-    parser.add_argument('--len2', default=40, help='length of string 2')
+    parser.add_argument('--len1', default=2, help='length of string 1')
+    parser.add_argument('--len2', default=3, help='length of string 2')
     parser.add_argument('-t', '--trials', type=int, default=1, help='Number of times to run the benchmark')
     return parser
 
