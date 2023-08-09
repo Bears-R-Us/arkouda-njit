@@ -198,6 +198,7 @@ class Graph:
         # 1. Symmetrize the graph by concatenating the src to dst arrays and vice versa.
         src = ak.concatenate([akarray_src, akarray_dst])
         dst = ak.concatenate([akarray_dst, akarray_src])
+        num_original_edges = src.size
 
         # 1a. Initialize and symmetrize the weights of each edge, if applicable.
         wgt = ak.array([1.0])
@@ -212,6 +213,21 @@ class Graph:
         if bool(self.weighted):
             wgt = gb_edges.aggregate(wgt, "sum")[1]
 
+        # 3. Calculate the number of edges that were removed. Due to symmetrization there will be
+        #    an extra copy of self-loops. If the total number of edges removed is z after
+        #    symmetrization then x of these are an extra copy of the self-loop. If there are copies
+        #    of an edge either as u~v or v~u then there will be an extra copy yielded after
+        #    symmetrizing. We will refer to the number of dedupped edges as y. They yield a total of
+        #    2y to the total number of edges removed, z. Therefore, we are solving the basic
+        #    algebraic problem of 2y + x = z where x and z are known for the graph after performing
+        #    the dedupping in the step above.
+        self_loops = src == dst
+        self_loops = ak.value_counts(self_loops)[1][1] # This is our x.
+        num_edges_after_dedup = src.size
+        num_removed_edges = num_original_edges - num_edges_after_dedup # This is our z.
+        num_dupped_edges = (num_removed_edges - self_loops) / 2 # This is solving for.
+        num_edges = akarray_src.size - num_dupped_edges
+        
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
         gb_src_vertices = ak.GroupBy(src)
@@ -229,14 +245,14 @@ class Graph:
         gb_vertices = ak.GroupBy(src, assume_sorted=True)
         gb_src_neighbors = gb_vertices.count()[1]
 
-        # 3. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
+        # 2. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
         segs = ak.cumsum(gb_src_neighbors)
         first_seg = ak.array([0])
         segs = ak.concatenate([first_seg, segs])
 
-        # 4. Extract the number of vertices, edges, and weighted flag from the graph.
-        self.n_vertices = int(gb_vertices.unique_keys.size)
-        self.n_edges = int(src.size / 2)
+        # 3. Extract the number of vertices, edges, and weighted flag from the graph.
+        self.n_vertices = int(vmap.size)
+        self.n_edges = int(num_edges)
 
         ### Store everything in a graph object in the Chapel server.
         # 1. Store data into an Graph object in the Chapel server.
@@ -378,6 +394,7 @@ class DiGraph(Graph):
         # 1. Extract the unique vertex names of the graph.
         all_vertices = ak.concatenate([src,dst])
         gb_vertices = ak.GroupBy(all_vertices)
+        vmap = gb_vertices.unique_keys
 
         # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
         #    the values of the new range to the original vertices.
@@ -399,7 +416,7 @@ class DiGraph(Graph):
         segs = ak.concatenate([first_seg, segs])
 
         # 3. Extract the number of vertices, edges, and weighted flag from the graph.
-        self.n_vertices = int(gb_vertices.unique_keys.size)
+        self.n_vertices = int(vmap.size)
         self.n_edges = int(src.size)
 
         ### Store everything in a graph object in the Chapel server.
@@ -408,7 +425,7 @@ class DiGraph(Graph):
                  "AkArrayDst" : dst,
                  "AkArraySeg" : segs,
                  "AkArrayWeight" : wgt,
-                 "AkArrayVmap" : gb_vertices.unique_keys,
+                 "AkArrayVmap" : vmap,
                  "Directed": bool(self.directed),
                  "Weighted" : bool(self.weighted),
                  "NumVertices" : self.n_vertices,
