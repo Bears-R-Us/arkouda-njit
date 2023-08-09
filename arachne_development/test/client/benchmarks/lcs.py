@@ -33,16 +33,17 @@ def time_ak_lcs( strlen1, strlen2,trials):
     print(stringsTwo.dtype)
 
     print("before lcs ")
-    return 0
     timings = []
     for i in range(trials):
         print("test =",i)
         start = time.time()
         c=njit.lcs(stringsOne,stringsTwo)
+        print("size=",c.size)
+        print("nbyte=",c.nbytes)
+        print("return results=",c)
         end = time.time()
         timings.append(end - start)
     tavg = sum(timings) / trials
-    print(c)
 
     print("Average time = {:.4f} sec".format(tavg))
 
@@ -51,8 +52,8 @@ def create_parser():
     parser = argparse.ArgumentParser(description="Measure the performance of suffix array building: C= suffix_array(V)")
     parser.add_argument('hostname', help='Hostname of arkouda server')
     parser.add_argument('port', type=int, help='Port of arkouda server')
-    parser.add_argument('--len1', default=2, help='length of string 1')
-    parser.add_argument('--len2', default=3, help='length of string 2')
+    parser.add_argument('--len1', default=10, help='length of string 1')
+    parser.add_argument('--len2', default=15, help='length of string 2')
     parser.add_argument('-t', '--trials', type=int, default=1, help='Number of times to run the benchmark')
     return parser
 
