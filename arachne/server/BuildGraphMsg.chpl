@@ -168,8 +168,7 @@ module BuildGraphMsg {
     } // end of addEdgesFromMsg
 
     /**
-    * Generates a subgraph from a graph after filtering for specific edge relationships, node
-    * labels, and properties.
+    * Read in a matrix market file to pdarrays to eventually build a graph.
     *
     * cmd: operation to perform. 
     * msgArgs: arugments passed to backend. 
@@ -177,143 +176,110 @@ module BuildGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc subgraphViewMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Get graph for usage and needed arrays.
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
-        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
-        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
-        var src = toSymEntry(graph.getComp("SRC"), int).a;
-        var dst = toSymEntry(graph.getComp("DST"), int).a;
-        var relationships = toSymEntry(graph.getComp("RELATIONSHIPS"), list(string, parSafe=true)).a;
-        var node_labels = toSymEntry(graph.getComp("NODE_LABELS"), list(string, parSafe=true)).a;
-        var node_props = toSymEntry(graph.getComp("NODE_PROPS"), list((string, string), parSafe=true)).a;
-        var edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), list((string, string), parSafe=true)).a;
+    proc readMatrixMarketFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract needed data. 
+        var pathS = msgArgs.getValueOf("Path");
+        var directedS = msgArgs.getValueOf("Directed");
 
-        // Keep track of the edges that will make up the subgraph.
-        var edge_tracker: [src.domain] int;
-        edge_tracker = 0; 
+        // Converted parsed messages to the needed data types for Chapel operations.
+        var path:string = (pathS:string);
 
-        var timer:stopwatch;
-        timer.start();
-        // Extract the actual arrays for each of the names above.
-        if msgArgs.contains("FilterLabelsExists"){
-            var filter_labels_name = msgArgs.getValueOf("FilterLabelsName");
-            var filter_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_labels_name, st);
-            var filter_labels_sym = toSymEntry(filter_labels_entry, int);
-            var filter_labels = filter_labels_sym.a;
+        var directed:bool;
+        directedS = directedS.toLower();
+        directed = (directedS:bool);
 
-            forall u in filter_labels {
-                var start = start_idx[node_map_r[u]];
-                var end = start + neighbor[node_map_r[u]];
-                forall i in start..end-1 {
-                    edge_tracker[i] = 1;
-                }
+        // Check to see if the file can be opened correctly. 
+        try {
+            var f = open(path, ioMode.r);
+            f.close();
+        } catch {
+            smLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Error opening file.");
+        }
+    
+        // Start parsing through the file.
+        var f = open(path, ioMode.r);
+        var r = f.reader(kind = ionative);
+        var line:string;
+        var a,b,c:string;
+
+        while (r.readLine(line)) {
+            if (line[0] == "%") {
+                continue;
+            }
+            else {
+                var temp = line.split();
+                a = temp[0];
+                b = temp[1];
+                c = temp[2];
+                break;
             }
         }
+        var rows = a:int;
+        var cols = b:int;
+        var entries = c:int;
 
-        if msgArgs.contains("FilterRelationshipsExists") {
-            var filter_relationships_src_name = msgArgs.getValueOf("FilterRelationshipsSrcName");
-            var filter_relationships_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_src_name, st);
-            var filter_relationships_src_sym = toSymEntry(filter_relationships_src_entry, int);
-            var filter_relationships_src = filter_relationships_src_sym.a;
-
-            var filter_relationships_dst_name = msgArgs.getValueOf("FilterRelationshipsDstName");
-            var filter_relationships_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_relationships_dst_name, st);
-            var filter_relationships_dst_sym = toSymEntry(filter_relationships_dst_entry, int);
-            var filter_relationships_dst = filter_relationships_dst_sym.a;
-
-            forall (i,j) in zip(filter_relationships_src.domain, filter_relationships_dst.domain) {
-                var u = node_map_r[filter_relationships_src[i]];
-                var v = node_map_r[filter_relationships_dst[j]];
-
-                var start = start_idx[u];
-                var end = start + neighbor[u];
-
-                var neighborhood = dst[start..end-1];
-                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-                edge_tracker[ind] = 1;
-            }
-        }
-
-        if msgArgs.contains("FilterNodePropertiesExists") {
-            var filter_node_properties_name = msgArgs.getValueOf("FilterNodePropertiesName");
-            var filter_node_properties_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_node_properties_name, st);
-            var filter_node_properties_sym = toSymEntry(filter_node_properties_entry, int);
-            var filter_node_properties = filter_node_properties_sym.a;
-
-            forall u in filter_node_properties {
-                var start = start_idx[node_map_r[u]];
-                var end = start + neighbor[node_map_r[u]];
-                forall i in start..end-1 {
-                    edge_tracker[i] = 1;
-                }
-            }
-        }
-
-        if msgArgs.contains("FilterEdgePropertiesExists") {
-            var filter_edge_properties_src_name = msgArgs.getValueOf("FilterEdgePropertiesSrcName");
-            var filter_edge_properties_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_src_name, st);
-            var filter_edge_properties_src_sym = toSymEntry(filter_edge_properties_src_entry, int);
-            var filter_edge_properties_src = filter_edge_properties_src_sym.a;
-
-            var filter_edge_properties_dst_name = msgArgs.getValueOf("FilterEdgePropertiesDstName");
-            var filter_edge_properties_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(filter_edge_properties_dst_name, st);
-            var filter_edge_properties_dst_sym = toSymEntry(filter_edge_properties_dst_entry, int);
-            var filter_edge_properties_dst = filter_edge_properties_dst_sym.a;
-
-            forall (i,j) in zip(filter_edge_properties_src.domain, filter_edge_properties_dst.domain) {
-                var u = node_map_r[filter_edge_properties_src[i]];
-                var v = node_map_r[filter_edge_properties_dst[j]];
-
-                var start = start_idx[u];
-                var end = start + neighbor[u];
-
-                var neighborhood = dst[start..end-1];
-                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-                edge_tracker[ind] = 1;
-            }
-        }
-        var ne = + reduce edge_tracker;
-        var new_src = makeDistArray(ne, int);
-        var new_dst = makeDistArray(ne, int);
-
-        var next_slot = 0;
-        for (i,u) in zip(edge_tracker.domain, edge_tracker) {
-            if(u == 1) {
-                new_src[next_slot] = src[i];
-                new_dst[next_slot] = dst[i];
-                next_slot += 1;
-            }
-        }
-        timer.stop();
-
-        // Add new copies of each to the symbol table.
-        var repMsg = "";
+        if (rows != cols) then smLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "To be a graph, matrix market file should be symmetric.");
+        var src = makeDistArray(entries, int);
+        var dst = makeDistArray(entries, int);
+        var wgt = makeDistArray(entries, real);
         
-        var attrNameNewSrc = st.nextName();
-        var attrEntryNewSrc = new shared SymEntry(new_src);
-        st.addEntry(attrNameNewSrc, attrEntryNewSrc);
+        r.readLine(line);
+        var temp = line.split();
+        var weighted = false;
+        var ind = 0;
+        if temp.size != 3 {
+            src[ind] = temp[0]:int;
+            dst[ind] = temp[1]:int;
+        } else {
+            src[ind] = temp[0]:int;
+            dst[ind] = temp[1]:int;
+            wgt[ind] = temp[2]:int;
+            weighted = true;
+        }
+        ind += 1;
 
-        var attrNameNewDst = st.nextName();
-        var attrEntryNewDst = new shared SymEntry(new_dst);
-        st.addEntry(attrNameNewDst, attrEntryNewDst);
+        while (r.readLine(line)) {
+            var temp = line.split();
+            if !weighted {
+                src[ind] = temp[0]:int;
+                dst[ind] = temp[1]:int;
+            } else {
+                src[ind] = temp[0]:int;
+                dst[ind] = temp[1]:int;
+                wgt[ind] = temp[2]:int;
+            }
+            ind += 1;
+        }
+        writeln(src);
+        writeln();
+        writeln(dst);
+        writeln();
+        writeln(wgt);
 
-        repMsg = "created " + st.attrib(attrNameNewSrc) + "+ created " + st.attrib(attrNameNewDst);
-        outMsg = "Generating edge list for subgraph view takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        var src_name = st.nextName();
+        var src_entry = new shared SymEntry(src);
+        st.addEntry(src_name, src_entry);
+
+        var dst_name = st.nextName();
+        var dst_entry = new shared SymEntry(dst);
+        st.addEntry(dst_name, dst_entry);
+
+        var wgt_name = st.nextName();
+        var wgt_entry = new shared SymEntry(wgt);
+        st.addEntry(wgt_name, wgt_entry);
+
+        var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
+        if weighted {
+            repMsg += "+ created " + st.attrib(wgt_name);
+        } else {
+            repMsg += "+ nil";
+        }
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of subgraphViewMsg
+    } // end of readMatrixMarketFileMsg
+
+
 
     use CommandMap;
     registerFunction("addEdgesFrom", addEdgesFromMsg, getModuleName());
-    registerFunction("subgraphView", subgraphViewMsg, getModuleName());
+    registerFunction("readMatrixMarketFile", readMatrixMarketFileMsg, getModuleName());
 }

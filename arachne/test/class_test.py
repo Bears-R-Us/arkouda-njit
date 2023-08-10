@@ -1,5 +1,4 @@
 from base_test import ArkoudaTest
-import algorithm_test
 import arkouda as ak
 import arachne as ar
 import networkx as nx
@@ -95,19 +94,6 @@ class ClassTest(ArkoudaTest):
         ar_tuple_dw = (len(ar_di_graph_weighted.nodes()), len(ar_di_graph_weighted.edges()[0]))
         nx_tuple_dw = (len(nx_di_graph_weighted.nodes()), len(nx_di_graph_weighted.edges()))
 
-        print("Nodes and Edges:")
-        print(ar_tuple_u)
-        print(nx_tuple_u)
-        print()
-        print(ar_tuple_d)
-        print(nx_tuple_d)
-        print()
-        print(ar_tuple_uw)
-        print(nx_tuple_uw)
-        print()
-        print(ar_tuple_dw)
-        print(nx_tuple_dw)
-
         undirected_test = self.assertEqual(ar_tuple_u, nx_tuple_u)
         directed_test = self.assertEqual(ar_tuple_d, nx_tuple_d)
         undirected_weighted_test = self.assertEqual(ar_tuple_uw, nx_tuple_uw)
@@ -117,6 +103,56 @@ class ClassTest(ArkoudaTest):
         check_directed = self.assertEqual(directed_test, directed_weighted_test)
 
         return self.assertEqual(check_undirected, check_directed)
+    
+    def test_undirected_degree(self):
+        """Testing returning the degree for all the vertices in a graph."""
+        ar_graph, nx_graph, _, _ = self.build_undirected_graph()
+
+        ar_graph_degree = ar_graph.degree()
+        nx_graph_degree = nx_graph.degree()
+
+        ar_graph_degree = ar_graph_degree.to_list()
+        temp = [0] * len(ar_graph)
+        vertices = ar_graph.nodes().to_list()
+        
+        for tup in nx_graph_degree:
+            vertex = tup[0]
+            degree = tup[1]
+            temp[vertices.index(vertex)] = degree
+        nx_graph_degree = temp
+        
+        return self.assertListEqual(ar_graph_degree, nx_graph_degree)
+
+    def test_directed_degree(self):
+        """Testing returning the in and out degrees for all the vertices in a directed graph."""
+        ar_di_graph, nx_di_graph, _, _ = self.build_directed_graph()
+
+        ar_di_graph_in_degree = ar_di_graph.in_degree().to_list()
+        ar_di_graph_out_degree = ar_di_graph.out_degree().to_list()
+
+        nx_di_graph_in_degree = nx_di_graph.in_degree()
+        nx_di_graph_out_degree = nx_di_graph.out_degree()
+
+        vertices = ar_di_graph.nodes().to_list()
+        
+        temp = [0] * len(ar_di_graph)
+        for tup in nx_di_graph_in_degree:
+            vertex = tup[0]
+            degree = tup[1]
+            temp[vertices.index(vertex)] = degree
+        nx_di_graph_in_degree = temp
+
+        temp = [0] * len(ar_di_graph)
+        for tup in nx_di_graph_out_degree:
+            vertex = tup[0]
+            degree = tup[1]
+            temp[vertices.index(vertex)] = degree
+        nx_di_graph_out_degree = temp
+
+        in_degree_test = self.assertListEqual(ar_di_graph_in_degree, nx_di_graph_in_degree)
+        out_degree_test = self.assertListEqual(ar_di_graph_out_degree, nx_di_graph_out_degree)
+        
+        return self.assertEqual(in_degree_test, out_degree_test)
 
 
 

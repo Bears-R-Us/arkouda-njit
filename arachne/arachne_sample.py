@@ -41,11 +41,18 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    ### Build graph from randonmly generated source and destination arrays.
+    graph_from_mtx = ar.read_matrix_market_file("/scratch/users/oaa9/arkouda-njit/arachne/data/karate.mtx")
+    edges = graph_from_mtx.edges()
+    print(edges)
+
+    ### Build graph from randomly generated source and destination arrays.
     # 1a. Use Arkouda's randint to generate the random edge arrays.
     # src = ak.randint(0, args.n, args.m)
     # dst = ak.randint(0, args.n, args.m)
     # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+    src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
+    dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
+    wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
     src = ak.array([2,5,2,3,3,3,2,3,5,5,5,7,8,8,9 ,10,10,24,25,25])
     dst = ak.array([1,0,0,0,3,3,3,4,5,2,7,8,9,5,10,7 ,7 ,24,26,27])
     wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,10,20,20])
@@ -68,15 +75,12 @@ if __name__ == "__main__":
           f"edges took {end-start} seconds")
     print()
 
-    s,d = graph.edges()
-    print(s)
-    print(d)
-    print(graph.nodes())
-
-    s,d = di_graph.edges()
-    print(s)
-    print(d)
-    print(di_graph.nodes())
+    ## Build graphs with NetworkX to compare some results.
+    ebunch = list(zip(src_list,dst_list))
+    nx_graph = nx.Graph()
+    nx_graph.add_edges_from(ebunch)
+    nx_di_graph = nx.DiGraph()
+    nx_di_graph.add_edges_from(ebunch)
 
     ## Run breadth-first search on the input graphs.
     start = time.time()
