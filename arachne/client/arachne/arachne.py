@@ -19,7 +19,7 @@ __all__ = ["Graph",
            "k_truss",
            "triangle_centrality",
            "connected_components",
-           "subgraph_view"
+           "read_matrix_market_file"
            ]
 
 class Graph:
@@ -163,24 +163,20 @@ class Graph:
         return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
 
     def degree(self) -> pdarray:
-        """Returns the degree view for the whole graph as a tuple of pdarray objects. The format is
-        as follows:
-
-        (out_degree: pdarray, in_degree: pdarray)
-
-        where, for an undirected graph, the in_degree is composed of all 0s.
+        """Returns the degree view for the whole graph as a pdarray. The format is NOTE: self-loops 
+        count twice to the degree count due to the sum of degree theorem.
 
         Returns
         -------
-        (out_degree: pdarray, in_degree: pdarray): tuple.
-            The array containing the number of degrees for each node.
+        degree: pdarray
+            The array containing the degree for each node.
         """
-        cmd = "degree"
-        args = {"GraphName" : self.name}
-        repMsg = generic_msg(cmd=cmd, args=args)
-        returned_vals = (cast(str, repMsg).split('+'))
+        src,dst = self.edges()
+        degree = ak.GroupBy(src, assume_sorted=True).count()[1]
+        self_loops = src == dst
+        degree[src[self_loops]] += 1
 
-        return create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1])
+        return degree
 
     def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
                        akarray_weight:Union[None,pdarray] = None) -> None:
@@ -222,7 +218,10 @@ class Graph:
         #    algebraic problem of 2y + x = z where x and z are known for the graph after performing
         #    the dedupping in the step above.
         self_loops = src == dst
-        self_loops = ak.value_counts(self_loops)[1][1] # This is our x.
+        try:
+            self_loops = ak.value_counts(self_loops)[1][1] # This is our x.
+        except:
+            self_loops = 0
         num_edges_after_dedup = src.size
         num_removed_edges = num_original_edges - num_edges_after_dedup # This is our z.
         num_dupped_edges = (num_removed_edges - self_loops) / 2 # This is solving for.
@@ -359,6 +358,38 @@ class DiGraph(Graph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
+
+    def out_degree(self) -> pdarray:
+        """Returns the out degree view for the whole graph as a pdarray.
+
+        Returns
+        -------
+        out_degree: pdarray
+            The array containing the out_degrees for each node.
+        """
+        src = self.edges()[0]
+        
+        out_degree_keys,out_degree_count = ak.GroupBy(src, assume_sorted=True).count()
+        out_degree = ak.full(self.n_vertices, 0, dtype=ak.int64)
+        out_degree[out_degree_keys] = out_degree_count
+
+        return out_degree
+    
+    def in_degree(self) -> pdarray:
+        """Returns the out degree view for the whole graph as a pdarray.
+
+        Returns
+        -------
+        in_degree: pdarray
+            The array containing the in_degrees for each node.
+        """
+        dst = self.edges()[1]
+
+        in_degree_keys,in_degree_count = ak.GroupBy(dst).count()
+        in_degree = ak.full(self.n_vertices, 0, dtype=ak.int64)
+        in_degree[in_degree_keys] = in_degree_count
+
+        return in_degree
 
     def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
                        akarray_weight:Union[None,pdarray] = None) -> None:
@@ -609,6 +640,55 @@ class PropGraph(DiGraph):
         repMsg = generic_msg(cmd=cmd, args=args)
 
 @typechecked
+def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
+    """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
+    absolute path to the file must be given.
+
+    Returns
+    -------
+    Graph | DiGraph
+        The graph specified by the matrix market file.
+
+    See Also
+    --------
+
+    Notes
+    -----
+
+    Raises
+    ------
+    """
+    cmd = "readMatrixMarketFile"
+    args = { "Path": filepath,
+             "Directed": directed }
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    returned_vals = (cast(str, rep_msg).split('+'))
+
+    src = create_pdarray(returned_vals[0])
+    dst = create_pdarray(returned_vals[1])
+
+    wgt = ak.array([-1])
+    weighted = False
+    if returned_vals[2].strip() != "nil":
+        wgt = create_pdarray(returned_vals[2])
+        weighted = True
+
+    if not directed:
+        graph = Graph()
+        if not weighted:
+            graph.add_edges_from(src, dst)
+        else:
+            graph.add_edges_from(src, dst, wgt)
+        return graph
+    else:
+        di_graph = DiGraph()
+        if not weighted:
+            di_graph.add_edges_from(src, dst)
+        else:
+            di_graph.add_edges_from(src, dst, wgt)
+        return di_graph
+
+@typechecked
 def bfs_layers(graph: Graph, source: int) -> pdarray:
     """ This function generates the breadth-first search sequence of the vertices in a given graph
     starting from the given source vertex.
@@ -675,75 +755,6 @@ def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
-
-@typechecked
-def subgraph_view(graph: Graph,
-                  return_as: Union[Graph, DiGraph, PropGraph] = Graph,
-                  filter_labels: pdarray = None,
-                  filter_relationships: ak.DataFrame = None,
-                  filter_node_properties: pdarray = None,
-                  filter_edge_properties: ak.DataFrame = None) -> Graph:
-    """ This function generates a subgraph view (a filtered graph) of a passed Graph. The returned
-    graph is a simple graph where no labels, relationships, or properties are maintained.
-
-    Format of filter_labels and filter_node_properties:
-    [node_1, node_2, ..., node_n]:pdarray
-    where the nodes listed are computed by Arkouda filtering and are to be kept in the generated 
-    subgraph.
-
-    Format of filter_relationships and filter_edge_properties:
-    {
-    "src":[node_1, node_2, ..., node_m]
-    "dst":[node_1, node_2, ..., node_m]
-    }
-    where the nodes listed ar the src and dst of the edges computed by Arkouda filtering and are to
-    be kept in the generated subgraph.
-    
-
-    Returns
-    -------
-    Graph
-        The induced simple graph from filtering labels, edges, and/or properties.
-
-    See Also
-    --------
-
-    Notes
-    -----
-
-    Raises
-    ------
-    RuntimeError
-    """
-    cmd = "subgraphView"
-    args = {"GraphName" : graph.name}
-
-    if filter_labels is not None:
-        args["FilterLabelsExists"] = "true"
-        args["FilterLabelsName"] = filter_labels.name
-    
-    if filter_relationships is not None:
-        args["FilterRelationshipsExists"] = "true"
-        args["FilterRelationshipsSrcName"] = filter_relationships["src"].name
-        args["FilterRelationshipsDstName"] = filter_relationships["dst"].name
-    
-    if filter_node_properties is not None:
-        args["FilterNodePropertiesExists"] = "true"
-        args["FilterNodePropertiesName"] = filter_node_properties.name
-    
-    if filter_edge_properties is not None:
-        args["FilterEdgePropertiesExists"] = "true"
-        args["FilterEdgePropertiesSrcName"] = filter_edge_properties["src"].name
-        args["FilterEdgePropertiesDstName"] = filter_edge_properties["dst"].name
-
-    repMsg = generic_msg(cmd=cmd, args=args)
-    returned_vals = (cast(str, repMsg).split('+'))
-        
-    src = create_pdarray(returned_vals[0])
-    dst = create_pdarray(returned_vals[1])
-    subgraph = return_as
-    subgraph.add_edges_from(src, dst)
-    return subgraph
 
 @typechecked
 def triangle_centrality(graph: Graph) -> pdarray:
