@@ -6,6 +6,9 @@ module BuildGraphMsg {
     use Sort; 
     use List;
     use ReplicatedDist;
+
+    // Package modules.
+    use CopyAggregation;
     
     // Arachne Modules.
     use Utils;
@@ -202,6 +205,7 @@ module BuildGraphMsg {
         var line:string;
         var a,b,c:string;
 
+        // Prase through the matrix market file header to get number of rows, columns, and entries.
         while (r.readLine(line)) {
             if (line[0] == "%") {
                 continue;
@@ -218,11 +222,12 @@ module BuildGraphMsg {
         var cols = b:int;
         var entries = c:int;
 
-        if (rows != cols) then smLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "To be a graph, matrix market file should be symmetric.");
+        // Make the src and dst arrays to build the graph out of, they will all be of size entries.
         var src = makeDistArray(entries, int);
         var dst = makeDistArray(entries, int);
         var wgt = makeDistArray(entries, real);
         
+        // Read the next line to see if there are three columns, if so the graph is weighted.
         r.readLine(line);
         var temp = line.split();
         var weighted = false;
@@ -233,29 +238,31 @@ module BuildGraphMsg {
         } else {
             src[ind] = temp[0]:int;
             dst[ind] = temp[1]:int;
-            wgt[ind] = temp[2]:int;
+            wgt[ind] = temp[2]:real;
             weighted = true;
         }
         ind += 1;
 
+        // Now, read the rest of the file. The reading will be carried out by the head locale, which
+        // will typically be locale0. Therefore, we will create some aggregators for when locale0
+        // has to write to remote data.
+        var edge_agg = new DstAggregator(int);
+        var wgt_agg = new DstAggregator(real);
         while (r.readLine(line)) {
             var temp = line.split();
             if !weighted {
-                src[ind] = temp[0]:int;
-                dst[ind] = temp[1]:int;
+                edge_agg.copy(src[ind], temp[0]:int);
+                edge_agg.copy(dst[ind], temp[1]:int);
+
             } else {
-                src[ind] = temp[0]:int;
-                dst[ind] = temp[1]:int;
-                wgt[ind] = temp[2]:int;
+                edge_agg.copy(src[ind], temp[0]:int);
+                edge_agg.copy(dst[ind], temp[1]:int);
+                wgt_agg.copy(wgt[ind], temp[2]:real);
             }
             ind += 1;
         }
-        writeln(src);
-        writeln();
-        writeln(dst);
-        writeln();
-        writeln(wgt);
-
+        
+        // Add the read arrays into the symbol table.
         var src_name = st.nextName();
         var src_entry = new shared SymEntry(src);
         st.addEntry(src_name, src_entry);
@@ -268,12 +275,14 @@ module BuildGraphMsg {
         var wgt_entry = new shared SymEntry(wgt);
         st.addEntry(wgt_name, wgt_entry);
 
+        // Write the reply message back to Python. 
         var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
         if weighted {
             repMsg += "+ created " + st.attrib(wgt_name);
         } else {
             repMsg += "+ nil";
         }
+        
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readMatrixMarketFileMsg
 

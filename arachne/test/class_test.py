@@ -2,6 +2,8 @@ from base_test import ArkoudaTest
 import arkouda as ak
 import arachne as ar
 import networkx as nx
+import scipy as sp
+import pathlib
 
 class ClassTest(ArkoudaTest):
     def build_undirected_graph(self):
@@ -134,7 +136,7 @@ class ClassTest(ArkoudaTest):
         nx_di_graph_out_degree = nx_di_graph.out_degree()
 
         vertices = ar_di_graph.nodes().to_list()
-        
+
         temp = [0] * len(ar_di_graph)
         for tup in nx_di_graph_in_degree:
             vertex = tup[0]
@@ -151,9 +153,25 @@ class ClassTest(ArkoudaTest):
 
         in_degree_test = self.assertListEqual(ar_di_graph_in_degree, nx_di_graph_in_degree)
         out_degree_test = self.assertListEqual(ar_di_graph_out_degree, nx_di_graph_out_degree)
-        
+
         return self.assertEqual(in_degree_test, out_degree_test)
 
+    def test_read_matrix_market_file(self):
+        """Tests reading a matrix market file."""
+        # Parse out paths where benchmark files are to be held.
+        curr_path = str(pathlib.Path(__file__).parent.resolve())
+        curr_path = curr_path.rsplit("/", 1)[0] + "/"
+        filepath = curr_path + "data/karate.mtx"
 
+        # Read in the graph with Arachne. 
+        ar_graph = ar.read_matrix_market_file(filepath)
 
+        # Read in graph with NetworkX.
+        file_object = open(filepath, "rb")
+        nx_graph = nx.from_scipy_sparse_array(sp.io.mmread(file_object))
 
+        # (num_vertices, num_edges) tuples for comparison.
+        ar_tuple = (len(ar_graph), ar_graph.size())
+        nx_tuple = (len(nx_graph), nx_graph.size())
+
+        return self.assertEqual(ar_tuple, nx_tuple)
