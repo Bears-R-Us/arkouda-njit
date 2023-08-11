@@ -45,54 +45,54 @@ if __name__ == "__main__":
     edges = graph_from_mtx.edges()
     print(edges)
 
-    ### Build graph from randomly generated source and destination arrays.
-    # 1a. Use Arkouda's randint to generate the random edge arrays.
-    # src = ak.randint(0, args.n, args.m)
-    # dst = ak.randint(0, args.n, args.m)
-    # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
-    src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
-    dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
-    wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
-    src = ak.array([2,5,2,3,3,3,2,3,5,5,5,7,8,8,9 ,10,10,24,25,25])
-    dst = ak.array([1,0,0,0,3,3,3,4,5,2,7,8,9,5,10,7 ,7 ,24,26,27])
-    wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,10,20,20])
+    # ### Build graph from randomly generated source and destination arrays.
+    # # 1a. Use Arkouda's randint to generate the random edge arrays.
+    # # src = ak.randint(0, args.n, args.m)
+    # # dst = ak.randint(0, args.n, args.m)
+    # # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
+    # src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
+    # dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
+    # wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
+    # src = ak.array([2,5,2,3,3,3,2,3,5,5,5,7,8,8,9 ,10,10,24,25,25])
+    # dst = ak.array([1,0,0,0,3,3,3,4,5,2,7,8,9,5,10,7 ,7 ,24,26,27])
+    # wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,10,20,20])
 
-    print("Building undirected graph...")
-    start = time.time()
-    graph = ar.Graph()
-    graph.add_edges_from(src, dst, wgt)
-    end = time.time()
-    print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges "
-          f"took {end-start} seconds")
-    print()
+    # print("Building undirected graph...")
+    # start = time.time()
+    # graph = ar.Graph()
+    # graph.add_edges_from(src, dst, wgt)
+    # end = time.time()
+    # print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges "
+    #       f"took {end-start} seconds")
+    # print()
 
-    print("Building directed graph...")
-    start = time.time()
-    di_graph = ar.DiGraph()
-    di_graph.add_edges_from(src, dst, wgt)
-    end = time.time()
-    print(f"Building directed graph with {di_graph.n_vertices} vertices and {di_graph.n_edges} "
-          f"edges took {end-start} seconds")
-    print()
+    # print("Building directed graph...")
+    # start = time.time()
+    # di_graph = ar.DiGraph()
+    # di_graph.add_edges_from(src, dst, wgt)
+    # end = time.time()
+    # print(f"Building directed graph with {di_graph.n_vertices} vertices and {di_graph.n_edges} "
+    #       f"edges took {end-start} seconds")
+    # print()
 
-    ## Build graphs with NetworkX to compare some results.
-    ebunch = list(zip(src_list,dst_list))
-    nx_graph = nx.Graph()
-    nx_graph.add_edges_from(ebunch)
-    nx_di_graph = nx.DiGraph()
-    nx_di_graph.add_edges_from(ebunch)
+    # ## Build graphs with NetworkX to compare some results.
+    # ebunch = list(zip(src_list,dst_list))
+    # nx_graph = nx.Graph()
+    # nx_graph.add_edges_from(ebunch)
+    # nx_di_graph = nx.DiGraph()
+    # nx_di_graph.add_edges_from(ebunch)
 
-    ## Run breadth-first search on the input graphs.
-    start = time.time()
-    graph_bfs_layers = ar.bfs_layers(graph, 9)
-    end = time.time()
-    print(f"Running breadth-first search on undirected graph took {end-start} seconds")
-    print(graph_bfs_layers)
+    # ## Run breadth-first search on the input graphs.
+    # start = time.time()
+    # graph_bfs_layers = ar.bfs_layers(graph, 9)
+    # end = time.time()
+    # print(f"Running breadth-first search on undirected graph took {end-start} seconds")
+    # print(graph_bfs_layers)
 
-    start = time.time()
-    di_graph_bfs_layers = ar.bfs_layers(di_graph, 9)
-    end = time.time()
-    print(f"Running breadth-first search on directed graph took {end-start} seconds")
-    print(di_graph_bfs_layers)
+    # start = time.time()
+    # di_graph_bfs_layers = ar.bfs_layers(di_graph, 9)
+    # end = time.time()
+    # print(f"Running breadth-first search on directed graph took {end-start} seconds")
+    # print(di_graph_bfs_layers)
 
     ak.shutdown()
