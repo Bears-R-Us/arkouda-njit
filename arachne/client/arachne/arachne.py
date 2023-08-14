@@ -218,13 +218,15 @@ class Graph:
         #    algebraic problem of 2y + x = z where x and z are known for the graph after performing
         #    the dedupping in the step above.
         self_loops = src == dst
-        try:
-            self_loops = ak.value_counts(self_loops)[1][1] # This is our x.
-        except:
-            self_loops = 0
+        self_loops = ak.value_counts(self_loops)[1]
+        if self_loops.size == 1:
+            self_loops = 0 # This is our x.
+        else:
+            self_loops = self_loops[1]  # This is our x.
+
         num_edges_after_dedup = src.size
         num_removed_edges = num_original_edges - num_edges_after_dedup # This is our z.
-        num_dupped_edges = (num_removed_edges - self_loops) / 2 # This is solving for.
+        num_dupped_edges = (num_removed_edges - self_loops) / 2 # This is solving for y.
         num_edges = akarray_src.size - num_dupped_edges
         
         ### Vertex remapping.
