@@ -68,6 +68,11 @@ module BreadthFirstSearchMsg {
         // Convert root value to inner mapping.
         var node_map = toSymEntry(g.getComp("NODE_MAP"),int).a;
         root = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, root);
+        if (root == -1) {
+            var errorMsg = "Source vertex not found in graph.";
+            bfsLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            return new MsgTuple(errorMsg, MsgType.ERROR);
+        }
 
         // Create empty depth array to return at the end of execution. Initialized here to ensure 
         // the function makes changes to an array reference and does not return a new array at
@@ -76,27 +81,21 @@ module BreadthFirstSearchMsg {
         var depth = makeDistArray(g.n_vertices, int);
         depth = -1;
 
-        // Run the breacth-first search steps dependent on the hardware. 
+        // Run the breadth-first search steps dependent on the hardware. 
         var timer:stopwatch;
-        if(!g.directed || g.directed) {
-            if(numLocales == 1) {
-                var timer:stopwatch;
-                timer.start();
-                bfs_kernel_und_smem(g, root, depth);
-                timer.stop();
-                outMsg = "Shared memory breadth-first search took " + timer.elapsed():string + " sec";
-            }
-            else {
-                var timer:stopwatch;
-                timer.start();
-                bfs_kernel_und_dmem(g, root, depth);
-                timer.stop();
-                outMsg = "Distributed memory breadth-first search took " + timer.elapsed():string + " sec";
-            }
-        } else {
-            var errorMsg = notImplementedError(pn, "property graph");
-            bfsLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-            return new MsgTuple(errorMsg, MsgType.ERROR);
+        if(numLocales == 1) {
+            var timer:stopwatch;
+            timer.start();
+            bfs_kernel_und_smem(g, root, depth);
+            timer.stop();
+            outMsg = "Shared memory breadth-first search took " + timer.elapsed():string + " sec";
+        }
+        else {
+            var timer:stopwatch;
+            timer.start();
+            bfs_kernel_und_dmem(g, root, depth);
+            timer.stop();
+            outMsg = "Distributed memory breadth-first search took " + timer.elapsed():string + " sec";
         }
         repMsg = return_depth(depth, st);
         bfsLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
