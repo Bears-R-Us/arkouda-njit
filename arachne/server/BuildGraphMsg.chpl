@@ -85,7 +85,7 @@ module BuildGraphMsg {
         var timer:stopwatch;
         timer.start();
 
-        // Get the symbol table entires for the edge, weight, and node map arrays.
+        // Get the symbol table entries for the edge, weight, and node map arrays.
         var akarray_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
         var akarray_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
         var akarray_vmap_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vmap_name, st);

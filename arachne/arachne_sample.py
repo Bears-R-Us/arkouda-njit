@@ -10,7 +10,7 @@ be pip installed in the environment.
 
 Assumes Arkouda server is running. It will shutdown the Arkouda server upon completion.
 
-Sample usage: python3 arachne_simple_tests.py n51 5555 -n 5000 -m 20000
+Sample usage: python3 arachne_simple_tests.py n51 5555 5000 20000
 
 """
 import argparse
@@ -32,6 +32,16 @@ def create_parser():
 
     return script_parser
 
+def nx_bfs_to_ar_bfs(nx_bfs, ar_graph, array_size):
+    """Helper function to convert NetworkX BFS to Arachne BFS"""
+    vertices = ar_graph.nodes().to_list()
+    nx_layer_dict = dict(enumerate(nx_bfs))
+    nx_layers = [-1] * array_size
+    for layer,vertices_at_layer in nx_layer_dict.items():
+        for vertex in vertices_at_layer:
+            nx_layers[vertices.index(vertex)] = layer
+    return nx_layers
+
 if __name__ == "__main__":
     # Command line parser and extraction.
     parser = create_parser()
@@ -41,58 +51,95 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    graph_from_mtx = ar.read_matrix_market_file("/scratch/users/oaa9/arkouda-njit/arachne/data/karate.mtx")
-    edges = graph_from_mtx.edges()
-    print(edges)
+    ### Build graph from randomly generated source and destination arrays.
+    # 1a. Use Arkouda's randint to generate the random edge arrays.
+    src = ak.randint(0, args.n, args.m)
+    dst = ak.randint(0, args.n, args.m)
 
-    # ### Build graph from randomly generated source and destination arrays.
-    # # 1a. Use Arkouda's randint to generate the random edge arrays.
-    # # src = ak.randint(0, args.n, args.m)
-    # # dst = ak.randint(0, args.n, args.m)
-    # # wgt = ak.randint(0, args.n, args.m, dtype=ak.float64)
-    # src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
-    # dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
-    # wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
-    # src = ak.array([2,5,2,3,3,3,2,3,5,5,5,7,8,8,9 ,10,10,24,25,25])
-    # dst = ak.array([1,0,0,0,3,3,3,4,5,2,7,8,9,5,10,7 ,7 ,24,26,27])
-    # wgt = ak.array([1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,10,20,20])
+    # 2. Build undirected graph.
+    print("### Arachne Graph Building")
+    start = time.time()
+    graph = ar.Graph()
+    graph.add_edges_from(src, dst)
+    end = time.time()
+    print(f"Building undirected graph with {len(graph)} vertices and {graph.size()} edges "
+          f"took {end-start} seconds")
 
-    # print("Building undirected graph...")
-    # start = time.time()
-    # graph = ar.Graph()
-    # graph.add_edges_from(src, dst, wgt)
-    # end = time.time()
-    # print(f"Building undirected graph with {graph.n_vertices} vertices and {graph.n_edges} edges "
-    #       f"took {end-start} seconds")
-    # print()
+    # 3. Build directed graph.
+    start = time.time()
+    di_graph = ar.DiGraph()
+    di_graph.add_edges_from(src, dst)
+    end = time.time()
+    print(f"Building directed graph with {len(di_graph)} vertices and {di_graph.size()} "
+          f"edges took {end-start} seconds")
+    print()
 
-    # print("Building directed graph...")
-    # start = time.time()
-    # di_graph = ar.DiGraph()
-    # di_graph.add_edges_from(src, dst, wgt)
-    # end = time.time()
-    # print(f"Building directed graph with {di_graph.n_vertices} vertices and {di_graph.n_edges} "
-    #       f"edges took {end-start} seconds")
-    # print()
+    # 4. NetworkX graphs for comparison.
+    print("### NetworkX Graph Building")
+    ebunch = list(zip(src.to_list(),dst.to_list()))
+    nx_graph = nx.Graph()
+    start = time.time()
+    nx_graph.add_edges_from(ebunch)
+    end = time.time()
+    print(f"Building undirected graph with {len(nx_graph)} vertices and {nx_graph.size()} edges "
+          f"took {end-start} seconds")
 
-    # ## Build graphs with NetworkX to compare some results.
-    # ebunch = list(zip(src_list,dst_list))
-    # nx_graph = nx.Graph()
-    # nx_graph.add_edges_from(ebunch)
-    # nx_di_graph = nx.DiGraph()
-    # nx_di_graph.add_edges_from(ebunch)
+    start = time.time()
+    nx_di_graph = nx.DiGraph()
+    end = time.time()
+    nx_di_graph.add_edges_from(ebunch)
+    print(f"Building directed graph with {len(nx_di_graph)} vertices and {nx_di_graph.size()} "
+          f"edges took {end-start} seconds")
+    print()
 
-    # ## Run breadth-first search on the input graphs.
-    # start = time.time()
-    # graph_bfs_layers = ar.bfs_layers(graph, 9)
-    # end = time.time()
-    # print(f"Running breadth-first search on undirected graph took {end-start} seconds")
-    # print(graph_bfs_layers)
+    print("Arachne Breadth-First Search")
+    ### Run Arachne breadth-first search on the input graphs.
+    # 1a. BFS on undirected graph.
+    start = time.time()
+    graph_bfs_layers = ar.bfs_layers(graph, 9)
+    end = time.time()
+    print(f"Running breadth-first search on undirected graph took {end-start} seconds")
 
-    # start = time.time()
-    # di_graph_bfs_layers = ar.bfs_layers(di_graph, 9)
-    # end = time.time()
-    # print(f"Running breadth-first search on directed graph took {end-start} seconds")
-    # print(di_graph_bfs_layers)
+    # 2a. BFS on directed graph.
+    start = time.time()
+    di_graph_bfs_layers = ar.bfs_layers(di_graph, 9)
+    end = time.time()
+    print(f"Running breadth-first search on directed graph took {end-start} seconds")
+    print()
+
+    print("NetworkX Breadth-First Search")
+    ### Run NetworkX breadth-first search on the input graphs.
+    # 1a. BFS on undirected graph.
+    start = time.time()
+    nx_graph_bfs_layers = nx.bfs_layers(nx_graph, 9)
+    end = time.time()
+    print(f"Running breadth-first search on undirected graph took {end-start} seconds")
+
+    # 2a. BFS on directed graph.
+    start = time.time()
+    nx_di_graph_bfs_layers = nx.bfs_layers(nx_di_graph, 9)
+    end = time.time()
+    print(f"Running breadth-first search on directed graph took {end-start} seconds")
+    print()
+
+    ### Compare Arachne BFS to NetworkX BFS.
+    list_graph_bfs_layers = graph_bfs_layers.to_list()
+    list_di_graph_bfs_layers = di_graph_bfs_layers.to_list()
+    list_nx_graph_bfs_layers = nx_bfs_to_ar_bfs(nx_graph_bfs_layers,
+                                                graph,
+                                                len(graph_bfs_layers))
+    list_nx_di_graph_bfs_layers = nx_bfs_to_ar_bfs(nx_di_graph_bfs_layers,
+                                                   di_graph,
+                                                   len(di_graph_bfs_layers))
+    
+    if(list_graph_bfs_layers == list_nx_graph_bfs_layers):
+        print("Undirected graph BFS match!")
+    else:
+        print("Error: Undirected graph BFS do not match!")
+
+    if(list_di_graph_bfs_layers == list_nx_di_graph_bfs_layers):
+        print("Directed graph BFS match!")
+    else:
+        print("Error: Directed graph BFS do not match!")
 
     ak.shutdown()
