@@ -11,24 +11,14 @@ python3 module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/
 ```
 
 ## Usage
-To ensure Arachne is property installed, you can use a `arkouda-njit/arachne/arachne_simple_tests.py` to build a small property graph, filer it, and run some graph kernels. This assumes that you have started an arkouda server using `./arkouda_server` in the arkouda home directory. The file is executed as follows:
+To see an example on how to run and use Arachne, please use `arkouda-njit/arachne/arachne_sample.py` to build a random graph and run breadth-first search on it. This assumes that you have started an Arkouda server using `./arkouda_server` in the Arkouda home directory. The file is executed as follows:
 ```bash
-python3 arachne_simple_tests.py node port
+python3 arachne_simple_tests.py node port n m
 ```
-Where the host name and port number change according to your configuration.
-
-For more involved benchmarking, we have included benchmark files that can be used as a sample found in the `arkouda-njit/arachne/benchmarks` folder. These are currently only available for breadth-first search (bfs). For benchmarking a single graph you can execute: 
-```bash
-python3 bfs.py node port -f /path/to/arkouda-njit/arachne/data/karate.mtx -t 10
-```
-
-For benchmarking a directory of graphs you can execute: 
-```bash
-python3 bfs.py node port -d /path/to/arkouda-njit/arachne/data -t 10
-```
+Where `n` is the number of vertices in the graph, `m` is the number of edges, `host` is the locale that the Arkouda server is running on, and `port` is where the Arkouda server is listening on for messages.
 
 ## Testing
 The Arachne tests are executed from the arkouda-njit/arachne directory as follows with pytest:
 ```bash
-python3 -m pytest test/algorithm_test.py test/class_test.py test/prop_graph_test.py test/reading_test.py
+python3 -m pytest test/algorithm_test.py test/class_test.py
 ```
