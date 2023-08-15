@@ -1,55 +1,73 @@
 from base_test import ArkoudaTest
 import arkouda as ak
 import arachne as ar
-import scipy as sp
-import scipy.io
-import pathlib
 import networkx as nx
+import scipy as sp
+import pathlib
 
 class ClassTest(ArkoudaTest):
+    def build_undirected_graph(self):
+        """Builds undirected and weighted graphs in both Arachne and NetworkX for tests."""
+        src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
+        dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
+        wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
+        src = ak.array(src_list)
+        dst = ak.array(dst_list)
+        wgt = ak.array(wgt_list)
+
+        ar_graph = ar.Graph()
+        ar_graph.add_edges_from(src,dst)
+        ar_graph_weighted = ar.Graph()
+        ar_graph_weighted.add_edges_from(src,dst,wgt)
+
+        ebunch = list(zip(src_list,dst_list))
+        nx_graph = nx.Graph()
+        nx_graph.add_edges_from(ebunch)
+        ebunchw = list(zip(src_list,dst_list,wgt_list))
+        nx_graph_weighted = nx.Graph()
+        nx_graph_weighted.add_weighted_edges_from(ebunchw)
+
+        return ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted
+
+    def build_directed_graph(self):
+        """Builds directed and weighted graphs in both Arachne and NetworkX for tests."""
+        src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
+        dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
+        wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
+        src = ak.array(src_list)
+        dst = ak.array(dst_list)
+        wgt = ak.array(wgt_list)
+
+        ar_di_graph = ar.DiGraph()
+        ar_di_graph.add_edges_from(src,dst)
+        ar_di_graph_weighted = ar.DiGraph()
+        ar_di_graph_weighted.add_edges_from(src,dst,wgt)
+
+        ebunch = list(zip(src_list,dst_list))
+        nx_di_graph = nx.DiGraph()
+        nx_di_graph.add_edges_from(ebunch)
+        ebunchw = list(zip(src_list,dst_list,wgt_list))
+        nx_di_graph_weighted = nx.DiGraph()
+        nx_di_graph_weighted.add_weighted_edges_from(ebunchw)
+
+        return ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted
+
     def test_add_edges_from(self):
-        src = [0, 1, 2, 3, 4, 5, 6, 7,  8, 9,  9]
-        dst = [1, 2, 3, 4, 5, 6, 7, 8, 10, 8, 10]
-        wgt = [1, 4, 5, 6, 7, 8, 2, 3,  3, 3, 2.1]
+        """Testing adding edges to undirected and directed graphs."""
+        ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted = self.build_undirected_graph()
+        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted = self.build_directed_graph()
 
-        Gu = ar.Graph()
-        Hu = nx.Graph()
+        ar_tuple_u = (len(ar_graph), ar_graph.size())
+        nx_tuple_u = (len(nx_graph), nx_graph.size())
 
-        Gd = ar.DiGraph()
-        Hd = nx.DiGraph()
+        ar_tuple_d = (len(ar_di_graph), ar_di_graph.size())
+        nx_tuple_d = (len(nx_di_graph), nx_di_graph.size())
 
-        Guw = ar.Graph()
-        Huw = nx.Graph()
+        ar_tuple_uw = (len(ar_graph_weighted), ar_graph_weighted.size())
+        nx_tuple_uw = (len(nx_graph_weighted), nx_graph_weighted.size())
 
-        Gdw = ar.DiGraph()
-        Hdw = nx.DiGraph()
-
-        akarray_src = ak.array(src)
-        akarray_dst = ak.array(dst)
-        akarray_wgt = ak.array(wgt)
-
-        ebunch = list(zip(src, dst))
-        ebunchw = list(zip(src, dst, wgt))
-
-        Gu.add_edges_from(akarray_src, akarray_dst)
-        Hu.add_edges_from(ebunch)
-        ar_tuple_u = (len(Gu), Gu.size())
-        nx_tuple_u = (len(Hu), Hu.size())
-        
-        Gd.add_edges_from(akarray_src, akarray_dst)
-        Hd.add_edges_from(ebunch)
-        ar_tuple_d = (len(Gd), Gd.size())
-        nx_tuple_d = (len(Hd), Hd.size())
-        
-        Guw.add_edges_from(akarray_src, akarray_dst, akarray_wgt)
-        Huw.add_weighted_edges_from(ebunchw)
-        ar_tuple_uw = (len(Guw), Guw.size())
-        nx_tuple_uw = (len(Huw), Huw.size())
-        
-        Gdw.add_edges_from(akarray_src, akarray_dst, akarray_wgt)
-        Hdw.add_weighted_edges_from(ebunchw)
-        ar_tuple_dw = (len(Gdw), Gdw.size())
-        nx_tuple_dw = (len(Hdw), Hdw.size())
+        ar_tuple_dw = (len(ar_di_graph_weighted), ar_di_graph_weighted.size())
+        nx_tuple_dw = (len(nx_di_graph_weighted), nx_di_graph_weighted.size())
 
         undirected_test = self.assertEqual(ar_tuple_u, nx_tuple_u)
         directed_test = self.assertEqual(ar_tuple_d, nx_tuple_d)
@@ -62,48 +80,21 @@ class ClassTest(ArkoudaTest):
         return self.assertEqual(check_undirected, check_directed)
 
     def test_nodes_and_edges(self):
-        src = [0, 1, 2, 3, 4, 5, 6, 7,  8, 9,  9]
-        dst = [1, 2, 3, 4, 5, 6, 7, 8, 10, 8, 10]
-        wgt = [1, 4, 5, 6, 7, 8, 2, 3,  3, 3, 2.1]
+        """Testing returning all the nodes and edges for a graph."""
+        ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted = self.build_undirected_graph()
+        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted = self.build_directed_graph()
 
-        Gu = ar.Graph()
-        Hu = nx.Graph()
+        ar_tuple_u = (len(ar_graph.nodes()), len(ar_graph.edges()[0]))
+        nx_tuple_u = (len(nx_graph.nodes()), len(nx_graph.edges())*2-nx.number_of_selfloops(nx_graph))
 
-        Gd = ar.DiGraph()
-        Hd = nx.DiGraph()
+        ar_tuple_d = (len(ar_di_graph.nodes()), len(ar_di_graph.edges()[0]))
+        nx_tuple_d = (len(nx_di_graph.nodes()), len(nx_di_graph.edges()))
 
-        Guw = ar.Graph()
-        Huw = nx.Graph()
+        ar_tuple_uw = (len(ar_graph_weighted.nodes()), len(ar_graph_weighted.edges()[0]))
+        nx_tuple_uw = (len(nx_graph_weighted.nodes()), len(nx_graph_weighted.edges())*2-nx.number_of_selfloops(nx_graph_weighted))
 
-        Gdw = ar.DiGraph()
-        Hdw = nx.DiGraph()
-
-        akarray_src = ak.array(src)
-        akarray_dst = ak.array(dst)
-        akarray_wgt = ak.array(wgt)
-
-        ebunch = list(zip(src, dst))
-        ebunchw = list(zip(src, dst, wgt))
-
-        Gu.add_edges_from(akarray_src, akarray_dst)
-        Hu.add_edges_from(ebunch)
-        ar_tuple_u = (len(Gu.nodes()), len(Gu.edges()[0]))
-        nx_tuple_u = (len(Hu.nodes()), len(Hu.edges()))
-        
-        Gd.add_edges_from(akarray_src, akarray_dst)
-        Hd.add_edges_from(ebunch)
-        ar_tuple_d = (len(Gd.nodes()), len(Gd.edges()[0]))
-        nx_tuple_d = (len(Hd.nodes()), len(Hd.edges()))
-        
-        Guw.add_edges_from(akarray_src, akarray_dst, akarray_wgt)
-        Huw.add_weighted_edges_from(ebunchw)
-        ar_tuple_uw = (len(Guw.nodes()), len(Guw.edges()[0]))
-        nx_tuple_uw = (len(Huw.nodes()), len(Huw.edges()))
-        
-        Gdw.add_edges_from(akarray_src, akarray_dst, akarray_wgt)
-        Hdw.add_weighted_edges_from(ebunchw)
-        ar_tuple_dw = (len(Gdw.nodes()), len(Gdw.edges()[0]))
-        nx_tuple_dw = (len(Hdw.nodes()), len(Hdw.edges()))
+        ar_tuple_dw = (len(ar_di_graph_weighted.nodes()), len(ar_di_graph_weighted.edges()[0]))
+        nx_tuple_dw = (len(nx_di_graph_weighted.nodes()), len(nx_di_graph_weighted.edges()))
 
         undirected_test = self.assertEqual(ar_tuple_u, nx_tuple_u)
         directed_test = self.assertEqual(ar_tuple_d, nx_tuple_d)
@@ -114,7 +105,73 @@ class ClassTest(ArkoudaTest):
         check_directed = self.assertEqual(directed_test, directed_weighted_test)
 
         return self.assertEqual(check_undirected, check_directed)
+    
+    def test_undirected_degree(self):
+        """Testing returning the degree for all the vertices in a graph."""
+        ar_graph, nx_graph, _, _ = self.build_undirected_graph()
 
+        ar_graph_degree = ar_graph.degree()
+        nx_graph_degree = nx_graph.degree()
 
+        ar_graph_degree = ar_graph_degree.to_list()
+        temp = [0] * len(ar_graph)
+        vertices = ar_graph.nodes().to_list()
+        
+        for tup in nx_graph_degree:
+            vertex = tup[0]
+            degree = tup[1]
+            temp[vertices.index(vertex)] = degree
+        nx_graph_degree = temp
+        
+        return self.assertListEqual(ar_graph_degree, nx_graph_degree)
 
+    def test_directed_degree(self):
+        """Testing returning the in and out degrees for all the vertices in a directed graph."""
+        ar_di_graph, nx_di_graph, _, _ = self.build_directed_graph()
 
+        ar_di_graph_in_degree = ar_di_graph.in_degree().to_list()
+        ar_di_graph_out_degree = ar_di_graph.out_degree().to_list()
+
+        nx_di_graph_in_degree = nx_di_graph.in_degree()
+        nx_di_graph_out_degree = nx_di_graph.out_degree()
+
+        vertices = ar_di_graph.nodes().to_list()
+
+        temp = [0] * len(ar_di_graph)
+        for tup in nx_di_graph_in_degree:
+            vertex = tup[0]
+            degree = tup[1]
+            temp[vertices.index(vertex)] = degree
+        nx_di_graph_in_degree = temp
+
+        temp = [0] * len(ar_di_graph)
+        for tup in nx_di_graph_out_degree:
+            vertex = tup[0]
+            degree = tup[1]
+            temp[vertices.index(vertex)] = degree
+        nx_di_graph_out_degree = temp
+
+        in_degree_test = self.assertListEqual(ar_di_graph_in_degree, nx_di_graph_in_degree)
+        out_degree_test = self.assertListEqual(ar_di_graph_out_degree, nx_di_graph_out_degree)
+
+        return self.assertEqual(in_degree_test, out_degree_test)
+
+    def test_read_matrix_market_file(self):
+        """Tests reading a matrix market file."""
+        # Parse out paths where benchmark files are to be held.
+        curr_path = str(pathlib.Path(__file__).parent.resolve())
+        curr_path = curr_path.rsplit("/", 1)[0] + "/"
+        filepath = curr_path + "data/karate.mtx"
+
+        # Read in the graph with Arachne. 
+        ar_graph = ar.read_matrix_market_file(filepath)
+
+        # Read in graph with NetworkX.
+        file_object = open(filepath, "rb")
+        nx_graph = nx.from_scipy_sparse_array(sp.io.mmread(file_object))
+
+        # (num_vertices, num_edges) tuples for comparison.
+        ar_tuple = (len(ar_graph), ar_graph.size())
+        nx_tuple = (len(nx_graph), nx_graph.size())
+
+        return self.assertEqual(ar_tuple, nx_tuple)
