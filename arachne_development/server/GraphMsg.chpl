@@ -123,7 +123,7 @@ module GraphMsg {
           }
           var vertexAry=VertexSet.toArray();
           if vertexAry.size!=numV {
-               smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+               smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                          "number of vertices is not equal to the given number");
           }
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -153,7 +153,7 @@ module GraphMsg {
           }
           var vertexAry=VertexSet.toArray();
           if vertexAry.size!=numV {
-               smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+               smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                          "number of vertices is not equal to the given number");
           }
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
@@ -1757,6 +1757,7 @@ module GraphMsg {
       //var EweightTypeS=msgArgs.getValueOf("EweightType");
       //var VweightTypeS=msgArgs.getValueOf("VweightType");
       var AlignedArrayS=msgArgs.getValueOf("AlignedFlag");
+      var SkipLineS=msgArgs.getValueOf("SkipLines");
 
 
       var Ne:int =(NeS:int);
@@ -1771,6 +1772,7 @@ module GraphMsg {
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
       var WriteFlag:bool=false;
+      var SkipLine:int=(SkipLineS:int);
 
       var AlignedArray:int=(AlignedArrayS:int);
       outMsg="read file ="+FileName;
@@ -1884,7 +1886,7 @@ module GraphMsg {
            // we check if the file can be opened correctly
            f.close();
       } catch {
-                  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "Open file error");
       }
 
@@ -1896,13 +1898,17 @@ module GraphMsg {
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
+                  var localskip:int=0;
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
-                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
-                                "edge  error");
+                      if (line[0]=="%" || line[0]=="#") {
+                          //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "edge  error");
+                          continue;
+                      }
+                      if (localskip<SkipLine) {
+                          localskip=localskip+1;
                           continue;
                       }
                       if NumCol==2 {
@@ -1914,8 +1920,9 @@ module GraphMsg {
                            }
                       }
                       if a==b {
-                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "self cycle "+ a +"->"+b);
+                          continue;
                       }
                       if (RemapVertexFlag) {
                           if srclocal.contains(curline) {
@@ -1935,7 +1942,7 @@ module GraphMsg {
                   } 
                   if (curline<=srclocal.highBound) {
                      var myoutMsg="The input file " + FileName + " does not give enough edges for locale " + here.id:string +" current line="+curline:string;
-                     smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
+                     smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),myoutMsg);
                   }
                   r.close();
                   f.close();
@@ -1945,15 +1952,15 @@ module GraphMsg {
       
 
       readLinebyLine(); 
-      if (RemapVertexFlag) {
-          NewNv=vertex_remap(src,dst,Nv,OriVertexAry);
-      } 
 
       timer.stop();
       
 
       outMsg="Reading File takes " + timer.elapsed():string;
       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      if (RemapVertexFlag) {
+          NewNv=vertex_remap(src,dst,Nv,OriVertexAry);
+      } 
 
 
       timer.clear();
@@ -1965,14 +1972,18 @@ module GraphMsg {
                  combine_sort(src, dst);
               }
       } catch {
-             try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+             try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
       }
 
       set_neighbour(src,start_i,neighbour);
       if (!RemapVertexFlag) {
           forall i in 0..Nv-1 {
-              OriVertexAry[i]=src[start_i[i]];
+              if (start_i[i]!=-1) {
+                  OriVertexAry[i]=src[start_i[i]];
+              } else {
+                  OriVertexAry[i]=i;
+              }
           }
       }
 
@@ -1987,7 +1998,7 @@ module GraphMsg {
           }
           try  { combine_sort(srcR, dstR);
           } catch {
-                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                 try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
           }
           set_neighbour(srcR,start_iR,neighbourR);
@@ -2110,7 +2121,7 @@ module GraphMsg {
                   }
 
           } catch {
-                 try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                 try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "combine sort error");
           }
 
@@ -2129,7 +2140,7 @@ module GraphMsg {
               try  { 
                      combine_sort(mysrcR, mydstR);
               } catch {
-                     try!  smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                     try!  smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                           "combine sort error");
               }
               set_neighbour(mysrcR,mystart_iR,myneighbourR);
@@ -2161,9 +2172,13 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      //mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%i %i".format(i,tmp));
                   }
-                  mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
+                  mw.close();
+                  wf.close();
+                  wf = open(FileName+".sta", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  mw.writeln("%i %i %i".format(low,up, (ave/(max(NewNv-point,1))):int));
                   mw.close();
                   wf.close();
 
@@ -2202,9 +2217,13 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      //mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%i %i".format(i,tmp));
                   }
-                  //mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(NewNv-point)):int));
+                  mw.close();
+                  wf.close();
+                  wf = open(FileName+".sta", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  mw.writeln("%i %i %i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
@@ -2214,7 +2233,7 @@ module GraphMsg {
                   var mw = wf.writer(kind=ionative);
 
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15i    %-15i".format(mysrc[i],mydst[i]));
+                      mw.writeln("%i %i".format(mysrc[i],mydst[i]));
                   }
                   mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
@@ -2228,7 +2247,7 @@ module GraphMsg {
                   var wf = open(FileName+".pr", iomode.cw);
                   var mw = wf.writer(kind=ionative);
                   for i in 0..NewNe-1 {
-                      mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
+                      mw.writeln("%i %i".format(src[i],dst[i]));
                   }
                   mw.writeln("Num Edge=%i  Num Vertex=%i".format(NewNe, NewNv));
                   mw.close();
@@ -2258,9 +2277,13 @@ module GraphMsg {
                            up=tmp;
                       }
                       ave=ave+tmp;
-                      //mw.writeln("%-15i    %-15i".format(i,tmp));
+                      mw.writeln("%i %i".format(i,tmp));
                   }
-                  //mw.writeln("%-15i    %-15i    %-15i".format(low,up, (ave/(Nv-point)):int));
+                  mw.close();
+                  wf.close();
+                  wf = open(FileName+".sta", iomode.cw);
+                  mw = wf.writer(kind=ionative);
+                  mw.writeln("%i %i %i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
       }
@@ -2437,7 +2460,7 @@ module GraphMsg {
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
+                      if (line[0]=="%" || line[0]=="#") {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
@@ -2871,8 +2894,8 @@ module GraphMsg {
                   var ewlocal=e_weight.localSubdomain();
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
-                          smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
+                      if (line[0]=="%"||line[0]=="#") {
+                          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
                           continue;
                       }
@@ -3950,7 +3973,7 @@ module GraphMsg {
 
 
                   while r.readLine(line) {
-                      if line[0]=="%" {
+                      if (line[0]=="%"||line[0]=="#") {
                           continue;
                       }
                       if ((curline==0) && (!StartF)) {
