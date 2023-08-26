@@ -52,7 +52,7 @@ if __name__ == "__main__":
     ak.connect(args.hostname, args.port)
 
     ### Build graph from randomly generated source and destination arrays.
-    # 1a. Use Arkouda's randint to generate the random edge arrays.
+    # 1. Use Arkouda's randint to generate the random edge arrays.
     src = ak.randint(0, args.n, args.m)
     dst = ak.randint(0, args.n, args.m)
 
@@ -131,13 +131,13 @@ if __name__ == "__main__":
     list_nx_di_graph_bfs_layers = nx_bfs_to_ar_bfs(nx_di_graph_bfs_layers,
                                                    di_graph,
                                                    len(di_graph_bfs_layers))
-    
-    if(list_graph_bfs_layers == list_nx_graph_bfs_layers):
+
+    if list_graph_bfs_layers == list_nx_graph_bfs_layers:
         print("Undirected graph BFS match!")
     else:
         print("Error: Undirected graph BFS do not match!")
 
-    if(list_di_graph_bfs_layers == list_nx_di_graph_bfs_layers):
+    if list_di_graph_bfs_layers == list_nx_di_graph_bfs_layers:
         print("Directed graph BFS match!")
     else:
         print("Error: Directed graph BFS do not match!")
