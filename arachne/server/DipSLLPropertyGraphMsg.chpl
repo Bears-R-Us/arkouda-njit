@@ -5,6 +5,9 @@ module DipSLLPropertyGraphMsg {
     use Time; 
     use Sort; 
     use List;
+    use CopyAggregation;
+    use ReplicatedDist;
+    use CommDiagnostics;
     
     // Arachne Modules.
     use Utils; 
@@ -39,43 +42,61 @@ module DipSLLPropertyGraphMsg {
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
 
-        // Extract the names of the arrays storing the nodeIDs and labels.
+        // Extract the names of the arrays storing the vertices and their labels.
         var arrays_list = arrays.split();
-        var nodes_name = arrays_list[0];
-        var labels_name = arrays_list[1];
+        var input_vertices_name = arrays_list[0];
+        var input_labels_name = arrays_list[1];
+        var label_mapper_name = arrays_list[2];
         
-        // Extract the nodes array that is an integer array.
-        var nodes_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_name, st);
-        var nodes_sym = toSymEntry(nodes_entry, int);
-        var nodes_arr = nodes_sym.a;
+        // Extract the vertices containing labels to be inputted.
+        var input_vertices_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_vertices_name, st);
+        var input_vertices_sym = toSymEntry(input_vertices_entry, int);
+        var input_vertices = input_vertices_sym.a;
 
-        // Extract the labels array which is a string array aka a segmented string.
-        var labels_arr:SegString = getSegString(labels_name, st);
+        // Extract the labels to be inputted for each of the vertices.
+        var input_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_labels_name, st);
+        var input_labels_sym = toSymEntry(input_labels_entry, int);
+        var input_labels = input_labels_sym.a;
 
-        // Get graph for usage.
+        // Extract the label mapper to be sent to each locale.
+        var label_mapper:SegString = getSegString(label_mapper_name, st);
+
+        // Extract the graph we are operating with from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         
-        // Extract the revesred node_map to see what each original node value maps to and node_map
-        // to get the distributed domain.
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        // Extract the node_map array to get the internal vertex values for our graph.
         var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
-        // Create array of lists. 
-        var node_labels: [node_map.domain] list(string, parSafe=true);
+        // Create the array of lists that will store the labels for our vertices.
+        var node_labels: [node_map.domain] domain(int);
 
         var timer:stopwatch;
         timer.start();
-        // Add label to the array of linked lists for each node. 
-        forall i in nodes_arr.domain {
-            var lbl = labels_arr[i];
-            node_labels[node_map_r[nodes_arr[i]]].pushBack(lbl);
-        } 
-        // writeln("$$$$$$ node_labels = ", node_labels);
+        // Generate the internal indices of vertices with labels.
+        var input_vertices_internal = makeDistArray(input_vertices.size, int);
+        startCommDiagnostics();
+        forall i in input_vertices_internal.domain {
+            input_vertices_internal[i] = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, input_vertices[i]);
+        }
+        stopCommDiagnostics();
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+
+        startCommDiagnostics();
+        // Populate the labels with the corresponding vertices.
+        forall i in input_vertices.domain {
+            var lbl = input_labels[i];
+            var u = input_vertices_internal[i];
+            if (u != -1) then node_labels[u] += lbl;
+        }
+        stopCommDiagnostics();
+        printCommDiagnosticsTable();
+        timer.stop();
+        //writeln(node_labels);
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_SLL_NODE_LABELS");
-        timer.stop();  
         var repMsg = "labels added";
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
