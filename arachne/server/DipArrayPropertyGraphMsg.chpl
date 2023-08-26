@@ -5,6 +5,7 @@ module DipArrayPropertyGraphMsg {
     use Time; 
     use Sort; 
     use List;
+    use Atomics;
     
     // Arachne Modules.
     use Utils; 
@@ -59,8 +60,7 @@ module DipArrayPropertyGraphMsg {
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         
-        // Extract the revesred node_map to see what each original node value maps to.
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        // Extract the node map to get the internal vertex values.
         var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
         var timer:stopwatch();
@@ -77,19 +77,18 @@ module DipArrayPropertyGraphMsg {
 
         // Create the two-dimensional byte array. 
         var D_byte_label_arrays: domain(2) dmapped Block({0..<num_labels, 0..<node_map.size}) = {0..<num_labels, 0..<node_map.size};
-        var byte_label_arrays: [D_byte_label_arrays] bool;
-        byte_label_arrays = false;
+        var byte_label_arrays: [D_byte_label_arrays] atomic bool;
 
         // Populate the two-dimesional byte array. 
         forall i in nodes_arr.domain {
             var lbl = labels_arr[i];
             var lbl_ind = lbl_arr[lbl];
-            var vertex = node_map_r[nodes_arr[i]];
-
-            byte_label_arrays[lbl_ind,vertex] = true;
+            var internal_vertex = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, nodes_arr[i]);
+            if (internal_vertex != -1) then byte_label_arrays[lbl_ind,internal_vertex].write(true);
         }
-        // var count_2: atomic int = 0;
-        // forall a in byte_label_arrays with (ref count_2) do if a == true then count_2.add(1);
+        var count_2: atomic int = 0;
+        forall a in byte_label_arrays with (ref count_2) do if a.read() == true then count_2.add(1);
+        writeln("$$$$$ count_2 = ", count_2);
         
         // Add two-dimensional array into symbol table using Ben's approach!
         graph.withComp(new shared SymEntry2D(byte_label_arrays):GenSymEntry, "DIP_ARR_NODE_LABELS");

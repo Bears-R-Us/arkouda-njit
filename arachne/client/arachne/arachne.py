@@ -566,14 +566,29 @@ class PropGraph(DiGraph):
         Parameters
         ----------
         labels
-            ak.DataFrame({"nodeIDs" : nodes, "nodeLabels" : labels})
+            ak.DataFrame({"vertex_ids" : vertices, "vertex_labels" : labels})
 
         Returns
         -------
         None
         """
         cmd = cmd_type
-        arrays = labels["nodeIDs"].name + " " + labels["nodeLabels"].name
+
+        ### Preprocessing steps for faster back-end array population.
+        # 1. GroupBy of the vertex ids and labels.
+        gb_vertex_labels = labels.groupby(labels.columns)
+        vertex_ids = gb_vertex_labels.unique_keys[0]
+        vertex_labels = gb_vertex_labels.unique_keys[1]
+
+        # 2. Broadcast string label names to vertex values.
+        gb_labels = ak.GroupBy(vertex_labels)
+        new_label_ids = ak.arange(gb_labels.unique_keys.size)
+        vertex_labels = gb_labels.broadcast(new_label_ids)
+
+        # 3. Extract out the vertex label string to integer id mapping.
+        label_mapper = gb_labels.unique_keys
+
+        arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
         repMsg = generic_msg(cmd=cmd, args=args)
