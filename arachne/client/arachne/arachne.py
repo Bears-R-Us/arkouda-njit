@@ -561,7 +561,7 @@ class PropGraph(DiGraph):
     
     def add_node_labels(self, labels:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
-        this same format for key names: 
+        the same format specified in the Parameters section below.
         
         Parameters
         ----------
