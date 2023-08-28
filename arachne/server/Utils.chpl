@@ -49,7 +49,7 @@ module Utils {
     }
 
     /**
-    * Binary search for a given vertex.
+    * Binary search for a given key, original version by Dr. Du.
     *
     * ary: int array
     * l: low index bound
@@ -88,6 +88,43 @@ module Utils {
             }
         }
     }// end bin_search_v
+
+    /**
+    * Non-recursive, distributable binary search for a given key.
+    *
+    * arr: int array
+    * l: low index bound
+    * h: high index bound
+    * key: value we are searching for
+    *
+    * returns: index if key is found, -1 if not found
+    */
+    proc bin_search(arr: [?D] int, key: int, comparator:?rec=defaultComparator): int throws {
+        var found:int = -1;
+        coforall loc in Locales with (ref found) do on loc {
+            var l = arr.localSubdomain().lowBound;
+            var h = arr.localSubdomain().highBound;
+            while(l <= h) {
+                const m = (l + h) / 2 : int;
+
+                if chpl_compare(arr[m], key, comparator=comparator) == 0 {
+                    found = m;
+                    break;
+                }
+                else if chpl_compare(key, arr[m], comparator=comparator) > 0 {
+                    l = m;
+                }
+                else {
+                    h = m;
+                }
+
+                if m == l {
+                    break;
+                }
+            }
+        } // end of coforall
+        return found;
+    }// end bin_search
 
     /**
     * Print graph data structure server-side to visualize the raw array data.
