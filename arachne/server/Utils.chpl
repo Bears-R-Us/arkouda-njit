@@ -27,7 +27,7 @@ module Utils {
     private var outMsg:string;
 
     /** 
-    * Helper procedure to parse ranges and return the locale we must write to.
+    * Helper procedure to parse ranges and return the locale(s) we must write to.
     * 
     * val: value for which we want to find the locale that owns it. 
     * 
@@ -90,11 +90,9 @@ module Utils {
     }// end bin_search_v
 
     /**
-    * Non-recursive, distributable binary search for a given key.
+    * Non-recursive, distributed-memory binary search for a given key.
     *
     * arr: int array
-    * l: low index bound
-    * h: high index bound
     * key: value we are searching for
     *
     * returns: index if key is found, -1 if not found
@@ -105,22 +103,16 @@ module Utils {
             var l = arr.localSubdomain().lowBound;
             var h = arr.localSubdomain().highBound;
             while(l <= h) {
+                if arr[l] == key { found = l; break;}
+                if arr[h] == key { found = h; break;}
+                
                 const m = (l + h) / 2 : int;
 
-                if chpl_compare(arr[m], key, comparator=comparator) == 0 {
-                    found = m;
-                    break;
-                }
-                else if chpl_compare(key, arr[m], comparator=comparator) > 0 {
-                    l = m;
-                }
-                else {
-                    h = m;
-                }
-
-                if m == l {
-                    break;
-                }
+                if m == l then break;
+                if arr[m] == key { found = m; break;}
+                
+                if chpl_compare(key, arr[m], comparator=comparator) > 0 then l = m + 1;
+                else h = m - 1;
             }
         } // end of coforall
         return found;
