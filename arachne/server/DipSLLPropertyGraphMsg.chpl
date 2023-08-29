@@ -6,7 +6,6 @@ module DipSLLPropertyGraphMsg {
     use Sort; 
     use List;
     use CopyAggregation;
-    use ReplicatedDist;
     use CommDiagnostics;
     
     // Arachne Modules.
@@ -74,49 +73,20 @@ module DipSLLPropertyGraphMsg {
         var timer:stopwatch;
         timer.start();
         // Generate the internal indices of vertices with labels.
-        var input_vertices_internal1 = makeDistArray(input_vertices.size, int);
-        startCommDiagnostics();
-        forall i in input_vertices_internal1.domain {
-            input_vertices_internal1[i] = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, input_vertices[i]);
+        var input_vertices_internal = makeDistArray(input_vertices.size, int);
+        forall i in input_vertices_internal.domain {
+            input_vertices_internal[i] = bin_search(node_map, input_vertices[i]); // local
+            // bin_search itself could have remote accesses due to the nature of searching on a 
+            // distributed array
         }
-        stopCommDiagnostics();
-        printCommDiagnosticsTable();
-        resetCommDiagnostics();
-        timer.stop();
-        writeln("Original binary search took ", timer.elapsed(), " secs");
-        timer.clear();
 
-        // Generate the internal indices of vertices with labels.
-        var input_vertices_internal2 = makeDistArray(input_vertices.size, int);
-        timer.start();
-        startCommDiagnostics();
-        forall i in input_vertices_internal2.domain {
-            input_vertices_internal2[i] = bin_search(node_map, input_vertices[i]);
+        // Populate the labels with the corresponding vertices.
+        forall i in input_vertices.domain {
+            var lbl = input_labels[i]; // local
+            var u = input_vertices_internal[i]; // local
+            if (u != -1) then node_labels[u] += lbl; // remote -- TODO: balance input arrays better?
         }
-        stopCommDiagnostics();
-        printCommDiagnosticsTable();
-        resetCommDiagnostics();
         timer.stop();
-        writeln("Distributed binary search took ", timer.elapsed(), " secs");
-        timer.clear();
-
-        forall (x,y) in zip(input_vertices_internal1, input_vertices_internal2){
-            if x!=y {
-                writeln("ERROR VALUES DO NOT MATCH for ", x, " and ", y);
-            }
-        } 
-
-        // startCommDiagnostics();
-        // // Populate the labels with the corresponding vertices.
-        // forall i in input_vertices.domain {
-        //     var lbl = input_labels[i];
-        //     var u = input_vertices_internal[i];
-        //     if (u != -1) then node_labels[u] += lbl;
-        // }
-        // stopCommDiagnostics();
-        // printCommDiagnosticsTable();
-        // timer.stop();
-        // //writeln(node_labels);
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_SLL_NODE_LABELS");
