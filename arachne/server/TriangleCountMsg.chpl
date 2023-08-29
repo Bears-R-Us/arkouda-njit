@@ -1,119 +1,91 @@
 module TriCntMsg {
-  use Reflection;
-  use ServerErrors;
-  use Logging;
-  use Message;
-  use SegmentedString;
-  use ServerErrorStrings;
-  use ServerConfig;
-  use MultiTypeSymbolTable;
-  use MultiTypeSymEntry;
-  use RandArray;
-  use IO;
+    // Chapel modules.
+    use Reflection;
+    use Time;
+    
+    // Arachne modules.
+    use GraphArray;
+    use Utils;
+    use Aggregators;
+    use TriangleCount;
+    
+    // Arkouda modules.
+    use MultiTypeSymbolTable;
+    use MultiTypeSymEntry;
+    use ServerConfig;
+    use AryUtil;
+    use Logging;
+    use Message;
 
-
-  use SymArrayDmap;
-  use Random;
-  use RadixSortLSD;
-  use Set;
-  use DistributedBag;
-  use ArgSortMsg;
-  use Time;
-  use CommAggregation;
-  use Sort;
-  use Map;
-  use DistributedDeque;
-
-
-  use AryUtil;
-  use List; 
-  //use LockFreeStack;
-  use Atomics;
-  use IO.FormattedIO; 
-  use GraphArray;
-  use Utils;
-
-
-  private config const logLevel = ServerConfig.logLevel;
-  const smLogger = new Logger(logLevel);
+    // Server message logger. 
+    private config const logLevel = ServerConfig.logLevel;
+    private config const logChannel = ServerConfig.logChannel;
+    const tricntLogger = new Logger(logLevel, logChannel);
   
-  /**
-   * Utility function to handle try/catch when trying to close objects.
-   */
-  proc closeFinally(c): bool {
-    var success = true;
-    try {
-        c.close();
-    } catch {
-        success = false;
-    }
-    return success;
-  }
+    /**
+    * Run triangle counting on an undirected and (un)weighted graph.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc segTriCntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        var repMsg: string;
+        var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+        var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+        var directedN=msgArgs.getValueOf("Directed");
+        var weightedN=msgArgs.getValueOf("Weighted");
+        var graphEntryName=msgArgs.getValueOf("GraphName");
 
-  //Given a graph, calculate its number of triangles
-  proc segTriCntMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-      var repMsg: string;
-      //var (n_verticesN,n_edgesN,directedN,weightedN,graphEntryName,restpart )
-      //    = payload.splitMsgToTuple(6);
+        var vertexArrayName=msgArgs.getValueOf("VertexArray");
+        var gEnt: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexArrayName, st);
+        var e = toSymEntry(gEnt, int);
+        var vertexArray = e.a;
+        var returnary=vertexArray;
 
+        var Nv=n_verticesN:int;
+        var Ne=n_edgesN:int;
+        var Directed=false:bool;
+        var Weighted=false:bool;
+        if (directedN:int) == 1 {
+            Directed=true;
+        }
+        if (weightedN:int) == 1 {
+            Weighted=true;
+        }
+        var countName:string;
+        var timer:stopwatch;
+        timer.start();
 
-      //var msgArgs = parseMessageArgs(payload, argSize);
-      var n_verticesN=msgArgs.getValueOf("NumOfVertices");
-      var n_edgesN=msgArgs.getValueOf("NumOfEdges");
-      var directedN=msgArgs.getValueOf("Directed");
-      var weightedN=msgArgs.getValueOf("Weighted");
-      var graphEntryName=msgArgs.getValueOf("GraphName");
+        var TotalCnt:[0..0] int;
+        var subTriSum: [0..numLocales-1] int;
+        var StartVerAry: [0..numLocales-1] int;
+        var EndVerAry: [0..numLocales-1] int;
+        var RemoteAccessTimes: [0..numLocales-1] int;
+        var LocalAccessTimes: [0..numLocales-1] int;
 
-      var vertexArrayName=msgArgs.getValueOf("VertexArray");
-      var gEnt: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexArrayName, st);
-      var e = toSymEntry(gEnt, int);
-      var vertexArray = e.a;
-      var returnary=vertexArray;
+        TotalCnt=0;
+        subTriSum=0;
+        StartVerAry=-1;
+        EndVerAry=-1;
+        RemoteAccessTimes=0;
+        LocalAccessTimes=0;
 
+        var srcN, dstN, startN, neighbourN,vweightN,eweightN, rootN :string;
+        var srcRN, dstRN, startRN, neighbourRN:string;
 
+        var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
+        var ag = gEntry.graph;
 
-
-      var Nv=n_verticesN:int;
-      var Ne=n_edgesN:int;
-      var Directed=false:bool;
-      var Weighted=false:bool;
-      if (directedN:int)==1 {
-          Directed=true;
-      }
-      if (weightedN:int)==1 {
-          Weighted=true;
-      }
-      var countName:string;
-      var timer:stopwatch;
-      timer.start();
-
-      var TotalCnt:[0..0] int;
-      var subTriSum: [0..numLocales-1] int;
-      var StartVerAry: [0..numLocales-1] int;
-      var EndVerAry: [0..numLocales-1] int;
-      var RemoteAccessTimes: [0..numLocales-1] int;
-      var LocalAccessTimes: [0..numLocales-1] int;
-
-      TotalCnt=0;
-      subTriSum=0;
-      StartVerAry=-1;
-      EndVerAry=-1;
-      RemoteAccessTimes=0;
-      LocalAccessTimes=0;
-
-      var srcN, dstN, startN, neighbourN,vweightN,eweightN, rootN :string;
-      var srcRN, dstRN, startRN, neighbourRN:string;
-
-      var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
-      var ag = gEntry.graph;
-
-    proc triCtr_kernelMST(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) {
-	  var timer:stopwatch;
-          TotalCnt=0;
-          subTriSum=0;	  
-	      timer.start();
-          proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+        proc triCtr_kernelMST(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                              neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) {
+	        var timer:stopwatch;
+            TotalCnt=0;
+            subTriSum=0;	  
+	        timer.start();
+            proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
  
                        if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
                             return -1;
@@ -597,12 +569,12 @@ module TriCntMsg {
                   }
                }
       } else {
-        smLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Triangle count not implemented for directed graphs.");
+        tricntLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Triangle count not implemented for directed graphs.");
       }
       //repMsg = return_tri_count();
       repMsg = return_tri_count_array();
       timer.stop();
-      smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      tricntLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
       return new MsgTuple(repMsg, MsgType.NORMAL);
   }// end of segTriMsg
 

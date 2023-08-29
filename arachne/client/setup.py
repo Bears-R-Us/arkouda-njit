@@ -1,3 +1,4 @@
+"""Arachne setup pip file."""
 from os import path
 from setuptools import setup
 
@@ -9,7 +10,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="arachne",
-    version="2023.04.30",
+    version="2023.08.16",
     description="Graph functionality in Chapel for use with Arkouda.",
     long_description=long_description,
     long_description_content_type="text/markdown",
