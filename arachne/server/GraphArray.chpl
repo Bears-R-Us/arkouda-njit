@@ -15,18 +15,12 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,            // The source of every edge in the graph, array
-        SRC_R,          // Reverse of SRC (created from DST)
-        DST,            // The destination of every edge in the graph, array
-        DST_R,          // Reverse of DST (created from SRC)
-        START_IDX,      // The starting index of every vertex in src and dst
-        START_IDX_R,    // Reverse of START_IDX
-        NEIGHBOR,       // Number of neighbors for a vertex  
-        NEIGHBOR_R,     // Number of neighbors for a vertex based on the reversed arrays
-        EDGE_WEIGHT,    // Edge weights
-        EDGE_WEIGHT_R,  // Edge weights reversed for undirected graphs
-        NODE_MAP,       // Index of remapped arrow pointing to original node value
-        NODE_MAP_R,     // Original node value as key pointing to index in the stored graph
+        SRC,            // The source array of every edge in the graph
+        DST,            // The destination array of every edge in the graph
+        SEGMENTS,       // The segments of adjacency lists for each vertex in DST
+        RANGES,         // Keeps the range of the vertices the edge list stores per locale
+        EDGE_WEIGHT,    // Stores the edge weights of the graph, if applicable
+        NODE_MAP,       // Doing an index of NODE_MAP[u] gives you the original value of u
         RELATIONSHIPS,  // The relationships that belong to specific edges
         NODE_LABELS,    // Any labels that belong to a specific node
         NODE_PROPS,     // Any properties that belong to a specific node
@@ -56,18 +50,23 @@ module GraphArray {
         // The graph is weighted (True) or unweighted (False)
         var weighted: bool;
 
+        // The graph is a property graph (True) or not (False)
+        var propertied: bool;
+
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
         */
-        proc init(num_v:int, num_e:int, directed:bool, weighted:bool) {
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool) {
             this.n_vertices = num_v;
             this.n_edges = num_e;
             this.directed = directed;
             this.weighted = weighted;
+            this.propertied = propertied;
         }
 
         proc isDirected():bool { return this.directed; }
         proc isWeighted():bool { return this.weighted; }
+        proc isPropertied():bool { return this.propertied; }
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
@@ -108,9 +107,9 @@ module GraphArray {
     }
 
     /**
-     * Convenience proc to retrieve GraphSymEntry from SymTab.
-     * Performs conversion from AbstractySymEntry to GraphSymEntry.
-     */
+    * Convenience proc to retrieve GraphSymEntry from SymTab.
+    * Performs conversion from AbstractySymEntry to GraphSymEntry.
+    */
     proc getGraphSymEntry(name:string, st: borrowed SymTab): borrowed GraphSymEntry throws {
         var abstractEntry:borrowed AbstractSymEntry = st.lookup(name);
         if !abstractEntry.isAssignableTo(SymbolEntryType.CompositeSymEntry) {
