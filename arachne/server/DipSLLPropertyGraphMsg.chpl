@@ -75,7 +75,7 @@ module DipSLLPropertyGraphMsg {
         // Generate the internal indices of vertices with labels.
         var input_vertices_internal = makeDistArray(input_vertices.size, int);
         forall i in input_vertices_internal.domain {
-            input_vertices_internal[i] = bin_search(node_map, input_vertices[i]); // local
+            input_vertices_internal[i] = bin_search(node_map, input_vertices[i], node_map.domain.lowBound, node_map.domain.highBound); // local
             // bin_search itself could have remote accesses due to the nature of searching on a 
             // distributed array
         }
