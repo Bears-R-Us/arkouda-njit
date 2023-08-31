@@ -71,22 +71,18 @@ module DipSLLPropertyGraphMsg {
         var node_labels: [node_map.domain] domain(int);
 
         var timer:stopwatch;
+        resetCommDiagnostics();
+        startCommDiagnostics();
         timer.start();
-        // Generate the internal indices of vertices with labels.
-        var input_vertices_internal = makeDistArray(input_vertices.size, int);
-        forall i in input_vertices_internal.domain {
-            input_vertices_internal[i] = bin_search(node_map, input_vertices[i], node_map.domain.lowBound, node_map.domain.highBound); // local
-            // bin_search itself could have remote accesses due to the nature of searching on a 
-            // distributed array
-        }
-
         // Populate the labels with the corresponding vertices.
         forall i in input_vertices.domain {
             var lbl = input_labels[i]; // local
-            var u = input_vertices_internal[i]; // local
-            if (u != -1) then node_labels[u] += lbl; // remote -- TODO: balance input arrays better?
+            var u = input_vertices[i]; // local
+            node_labels[u] += lbl; // remote
         }
         timer.stop();
+        stopCommDiagnostics();
+        printCommDiagnosticsTable();
 
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_SLL_NODE_LABELS");
