@@ -74,8 +74,7 @@ module DipSLLPropertyGraphMsg {
         resetCommDiagnostics();
         startCommDiagnostics();
         timer.start();
-        // Populate the labels with the corresponding vertices.
-        forall i in input_vertices.domain {
+        forall i in input_vertices.domain { // for each input vertex, update its label list. 
             var lbl = input_labels[i]; // local
             var u = input_vertices[i]; // local
             node_labels[u] += lbl; // remote
