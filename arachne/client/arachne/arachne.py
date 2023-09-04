@@ -575,23 +575,27 @@ class PropGraph(DiGraph):
         cmd = cmd_type
 
         ### Preprocessing steps for faster back-end array population.
-        # 1. GroupBy of the vertex ids and labels.
-        gb_vertex_labels = labels.groupby(labels.columns)
-        vertex_ids = gb_vertex_labels.unique_keys[0]
-        vertex_labels = gb_vertex_labels.unique_keys[1]
+        # 0. Extract the vertex ids and vertex labels from the dataframe.
+        vertex_ids = labels["vertex_ids"]
+        vertex_labels = labels["vertex_labels"]
 
-        # 2. Broadcast string label names to vertex values and extract the label str to int id map.
+        # 1. Broadcast string label names to vertex values and extract the label str to int id map.
         gb_labels = ak.GroupBy(vertex_labels)
         new_label_ids = ak.arange(gb_labels.unique_keys.size)
         vertex_labels = gb_labels.broadcast(new_label_ids)
         label_mapper = gb_labels.unique_keys
 
-        # 3. Convert the vertex_ids to internal vertex_ids.
+        # 2. Convert the vertex_ids to internal vertex_ids.
         vertex_map = self.nodes()
-        inds = ak.in1d(vertex_ids,vertex_map)
+        inds = ak.in1d(vertex_ids, vertex_map)
         vertex_ids = vertex_ids[inds]
         vertex_labels = vertex_labels[inds]
         vertex_ids = ak.align(vertex_map, vertex_ids)[1]
+
+        # 3. GroupBy of the vertex ids and labels.
+        gb_vertex_labels = ak.GroupBy([vertex_ids,vertex_labels])
+        vertex_ids = gb_vertex_labels.unique_keys[0]
+        vertex_labels = gb_vertex_labels.unique_keys[1]
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
         args = { "GraphName" : self.name,
