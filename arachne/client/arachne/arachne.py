@@ -566,7 +566,7 @@ class PropGraph(DiGraph):
         Parameters
         ----------
         labels
-            ak.DataFrame({"vertex_ids" : vertices, "vertex_labels" : labels})
+            `ak.DataFrame({"vertex_ids" : vertices, "vertex_labels" : labels})`
 
         Returns
         -------
@@ -579,7 +579,7 @@ class PropGraph(DiGraph):
         vertex_ids = labels["vertex_ids"]
         vertex_labels = labels["vertex_labels"]
 
-        # 1. Broadcast string label names to vertex values and extract the label str to int id map.
+        # 1. Broadcast string label names to int values and extract the label str to int id map.
         gb_labels = ak.GroupBy(vertex_labels)
         new_label_ids = ak.arange(gb_labels.unique_keys.size)
         vertex_labels = gb_labels.broadcast(new_label_ids)
@@ -593,9 +593,9 @@ class PropGraph(DiGraph):
         vertex_ids = ak.align(vertex_map, vertex_ids)[1]
 
         # 3. GroupBy of the vertex ids and labels.
-        gb_vertex_labels = ak.GroupBy([vertex_ids,vertex_labels])
-        vertex_ids = gb_vertex_labels.unique_keys[0]
-        vertex_labels = gb_vertex_labels.unique_keys[1]
+        gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
+        vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
+        vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
         args = { "GraphName" : self.name,
@@ -603,21 +603,70 @@ class PropGraph(DiGraph):
                }
         repMsg = generic_msg(cmd=cmd, args=args)
 
-    def add_edge_relationships(self, relations:ak.DataFrame, cmd_type:str) -> None:
-        """Populates the graph object with edge relationships from a dataframe. Passed dataframe should 
-        follow this same format for key-value pairs: 
+    def add_edge_relationships(self, relationships:ak.DataFrame, cmd_type:str) -> None:
+        """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
+        should follow the same format specified in the Parameters section below.
         
         Parameters
         ----------
         relationships
-            ak.DataFrame({"src" : src, "dst" : dst, "edgeRelationships" : edgeRelationships}).
+            `ak.DataFrame({"src" : src, "dst" : dst, "edge_relationships" : edge_relationships})`
 
         Returns
         -------
         None
         """
         cmd = cmd_type
-        arrays = relations["src"].name + " " + relations["dst"].name + " " + relations["edgeRelationships"].name + " "
+
+        ### Preprocessing steps for faster back-end array population. 
+        # 0. Extract the source and destination vertex ids and the relationships from the dataframe.
+        src_vertex_ids = relationships["src"]
+        dst_vertex_ids = relationships["dst"]
+        edge_relationships = relationships["edge_relationships"]
+
+        # 1. Broadcast string relationship names to int values and extract the relationship str to
+        #    int id map.
+        gb_relationships = ak.GroupBy(edge_relationships)
+        new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
+        edge_relationships = gb_relationships.broadcast(new_relationship_ids)
+        relationship_mapper = gb_relationships.unique_keys
+
+        # 2. Convert the source and destination vertex ids to the internal vertex_ids.
+        vertex_map = self.nodes()
+
+        # 2a. First, handle if any source vertices are not found.
+        src_inds = ak.in1d(src_vertex_ids, vertex_map)
+        src_vertex_ids = src_vertex_ids[src_inds]
+        dst_vertex_ids = dst_vertex_ids[src_inds]
+        edge_relationships = edge_relationships[src_inds]
+
+        # 2b. Secondly, handle if any destination vertices are not found.
+        dst_inds = ak.in1d(dst_vertex_ids, vertex_map)
+        src_vertex_ids = src_vertex_ids[dst_inds]
+        dst_vertex_ids = dst_vertex_ids[dst_inds]
+        edge_relationships = edge_relationships[dst_inds]
+
+        # 2c. Perform the alignment to do the conversion to internal vertex ids.
+        src_vertex_ids = ak.align(vertex_map, src_vertex_ids)[1]
+        dst_vertex_ids = ak.align(vertex_map, dst_vertex_ids)[1]
+
+        # 3. GroupBy of the src and dst vertex ids and relationships.
+        gb_edges_and_relationships = ak.GroupBy([src_vertex_ids,dst_vertex_ids,edge_relationships])
+        src_vertex_ids = gb_edges_and_relationships.unique_keys[0]
+        dst_vertex_ids = gb_edges_and_relationships.unique_keys[1]
+        edge_relationships = gb_edges_and_relationships.unique_keys[2]
+
+        # 4. Ensure all edges are actually present in the underlying graph data structure.
+        edges = self.edges()
+        edge_inds = ak.in1d([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+        src_vertex_ids = src_vertex_ids[edge_inds]
+        dst_vertex_ids = dst_vertex_ids[edge_inds]
+        edge_relationships = edge_relationships[edge_inds]
+
+        # 5. Generate internal edge indices.
+        internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+
+        arrays = internal_edge_indices.name + " " + edge_relationships.name + " " + relationship_mapper.name
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
         repMsg = generic_msg(cmd=cmd, args=args)
