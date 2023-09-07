@@ -15,6 +15,7 @@ __all__ = ["Graph",
            "DiGraph",
            "PropGraph",
            "bfs_layers",
+           "subgraph_isomorphism",
            "triangles",
            "k_truss",
            "triangle_centrality",
@@ -590,12 +591,15 @@ class PropGraph(DiGraph):
         inds = ak.in1d(vertex_ids, vertex_map)
         vertex_ids = vertex_ids[inds]
         vertex_labels = vertex_labels[inds]
-        vertex_ids = ak.align(vertex_map, vertex_ids)[1]
+        vertex_ids = ak.find(vertex_ids, vertex_map)
 
         # 3. GroupBy of the vertex ids and labels.
         gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
         vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
         vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
+
+        print("vertex_ids = ", vertex_ids)
+        print("vertex_labels = ", vertex_labels)
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
         args = { "GraphName" : self.name,
@@ -633,38 +637,29 @@ class PropGraph(DiGraph):
 
         # 2. Convert the source and destination vertex ids to the internal vertex_ids.
         vertex_map = self.nodes()
+        src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
+        dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
 
-        # 2a. First, handle if any source vertices are not found.
-        src_inds = ak.in1d(src_vertex_ids, vertex_map)
-        src_vertex_ids = src_vertex_ids[src_inds]
-        dst_vertex_ids = dst_vertex_ids[src_inds]
-        edge_relationships = edge_relationships[src_inds]
-
-        # 2b. Secondly, handle if any destination vertices are not found.
-        dst_inds = ak.in1d(dst_vertex_ids, vertex_map)
-        src_vertex_ids = src_vertex_ids[dst_inds]
-        dst_vertex_ids = dst_vertex_ids[dst_inds]
-        edge_relationships = edge_relationships[dst_inds]
-
-        # 2c. Perform the alignment to do the conversion to internal vertex ids.
-        src_vertex_ids = ak.align(vertex_map, src_vertex_ids)[1]
-        dst_vertex_ids = ak.align(vertex_map, dst_vertex_ids)[1]
-
-        # 3. GroupBy of the src and dst vertex ids and relationships.
-        gb_edges_and_relationships = ak.GroupBy([src_vertex_ids,dst_vertex_ids,edge_relationships])
-        src_vertex_ids = gb_edges_and_relationships.unique_keys[0]
-        dst_vertex_ids = gb_edges_and_relationships.unique_keys[1]
-        edge_relationships = gb_edges_and_relationships.unique_keys[2]
-
-        # 4. Ensure all edges are actually present in the underlying graph data structure.
+        # 3. Ensure all edges are actually present in the underlying graph data structure.
         edges = self.edges()
         edge_inds = ak.in1d([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
         src_vertex_ids = src_vertex_ids[edge_inds]
         dst_vertex_ids = dst_vertex_ids[edge_inds]
         edge_relationships = edge_relationships[edge_inds]
 
+        # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
+        gb_edges_and_relationships = ak.GroupBy([src_vertex_ids,dst_vertex_ids,edge_relationships])
+        src_vertex_ids = gb_edges_and_relationships.unique_keys[0]
+        dst_vertex_ids = gb_edges_and_relationships.unique_keys[1]
+        edge_relationships = gb_edges_and_relationships.unique_keys[2]
+
         # 5. Generate internal edge indices.
         internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+
+        print("src_vertex_ids = ", src_vertex_ids)
+        print("dst_vertex_ids = ", dst_vertex_ids)
+        print("edge_relationships = ", edge_relationships)
+        print("internal_edge_indices = ", internal_edge_indices)
 
         arrays = internal_edge_indices.name + " " + edge_relationships.name + " " + relationship_mapper.name
         args = {  "GraphName" : self.name,
@@ -911,6 +906,62 @@ def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
              "VertexArray":vertexArray}
 
     repMsg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(repMsg)
+
+@typechecked
+def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pdarray:
+    """
+    Given a graph G and a subgraph H, perform a search in G matching all possible subgraphs that
+    are isomorphic to H. Current contains implementations for Ullmann and VF2. 
+
+    Parameters
+    ----------
+    G : PropGraph | DiGraph
+        Main graph that will be searched into. 
+    H : PropGraph | DiGraph
+        Subgraph (pattern) that will  be searched for. 
+    type : str
+        Algorithmic variation to run. 
+
+    Returns
+    -------
+    pdarray
+        Graph IDs of matching subgraphs from G. 
+    
+    See Also
+    --------
+    
+    Notes
+    -----
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    ### Preprocessing steps for subgraph isomorphism.
+    # 1. Sort vertices by degree in non-ascending order.
+    subgraph_vertex_map = H.nodes()
+    subgraph_internal_vertices = ak.arange(0,len(subgraph_vertex_map))
+    subgraph_in_degree = H.in_degree()
+    subgraph_out_degree = H.out_degree()
+    subgraph_degree = subgraph_in_degree + subgraph_out_degree # TODO: fix to inspect in- and out- degrees separately.
+    perm = ak.argsort(subgraph_degree)
+    subgraph_internal_vertices = subgraph_internal_vertices[perm]
+
+    # 2. Generate the cumulative degree for each vertex in graph.
+    graph_in_degree = G.in_degree()
+    graph_out_degree = G.out_degree()
+    graph_degree = graph_in_degree + graph_out_degree
+
+    cmd = "subgraphIsomorphism"
+    args = { "MainGraphName":G.name,
+             "SubGraphName":H.name,
+             "GraphDegreeName":graph_degree.name,
+             "SubGraphDegreeName":subgraph_degree.name,
+             "SubGraphInternalVerticesSortedName":subgraph_internal_vertices.name,
+             "Type":type }
+
+    repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
 @typechecked

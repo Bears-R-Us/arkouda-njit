@@ -78,9 +78,10 @@ module DipSLLPropertyGraphMsg {
             vertex_labels[u] += lbl; // remote
         }
         timer.stop();
+        writeln("$$$$$ vertex_labels = ", vertex_labels);
 
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(vertex_labels):GenSymEntry, "DIP_SLL_VERTEX_LABELS");
+        graph.withComp(new shared SymEntry(vertex_labels):GenSymEntry, "VERTEX_LABELS");
         var repMsg = "labels added";
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
@@ -139,9 +140,10 @@ module DipSLLPropertyGraphMsg {
             var ind = input_internal_edge_indices[i];
             edge_relationships[ind] += rel;
         }
+        writeln("$$$$$ edge_relationships = ", edge_relationships);
         
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "DIP_SLL_EDGE_RELATIONSHIPS");
+        graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "EDGE_RELATIONSHIPS");
         timer.stop();
         var repMsg = "edge relationships added";
         outMsg = "DipSLLaddEdgeRelationships took " + timer.elapsed():string + " sec";
