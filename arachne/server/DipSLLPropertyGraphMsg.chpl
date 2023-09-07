@@ -67,24 +67,20 @@ module DipSLLPropertyGraphMsg {
         // Extract the node_map array to get the internal vertex values for our graph.
         var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
-        // Create the array of lists that will store the labels for our vertices.
-        var node_labels: [node_map.domain] domain(int);
+        // Create the array of domains that will store the labels for our vertices.
+        var vertex_labels: [node_map.domain] domain(int);
 
         var timer:stopwatch;
-        resetCommDiagnostics();
-        startCommDiagnostics();
         timer.start();
         forall i in input_vertices.domain { // for each input vertex, update its label list. 
             var lbl = input_labels[i]; // local
             var u = input_vertices[i]; // local
-            node_labels[u] += lbl; // remote
+            vertex_labels[u] += lbl; // remote
         }
         timer.stop();
-        stopCommDiagnostics();
-        printCommDiagnosticsTable();
 
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "DIP_SLL_NODE_LABELS");
+        graph.withComp(new shared SymEntry(vertex_labels):GenSymEntry, "DIP_SLL_VERTEX_LABELS");
         var repMsg = "labels added";
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
@@ -111,54 +107,43 @@ module DipSLLPropertyGraphMsg {
 
         // Extract the names of the arrays passed to the function.
         var arrays_list = arrays.split();
-        var src_name = arrays_list[0];
-        var dst_name = arrays_list[1];
-        var rel_name = arrays_list[2];
+        var input_internal_edge_indices_name = arrays_list[0];
+        var input_relationships_name = arrays_list[1];
+        var relationship_mapper_name = arrays_list[2];
         
         // Extract the actual arrays for each of the names above.
-        var src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var src_sym = toSymEntry(src_entry, int);
-        var src = src_sym.a;
-        
-        var dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var dst_sym = toSymEntry(dst_entry, int);
-        var dst = dst_sym.a;
+        var input_internal_edge_indices_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_internal_edge_indices_name, st);
+        var input_internal_edge_indices_sym = toSymEntry(input_internal_edge_indices_entry, int);
+        var input_internal_edge_indices = input_internal_edge_indices_sym.a;
 
-        var rel_arr:SegString = getSegString(rel_name, st);
+        var input_relationships_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_relationships_name, st);
+        var input_relationships_sym = toSymEntry(input_relationships_entry, int);
+        var input_relationships = input_relationships_sym.a;
 
-        var timer:stopwatch;
-        timer.start();
-        
+        var relationship_mapper:SegString = getSegString(relationship_mapper_name, st);
+
         // Get graph for usage and needed arrays.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
-        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
         var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
         var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
+        var segments = toSymEntry(graph.getComp("SEGMENTS"), int).a;
 
         // Create array of lists to store relationships and populate it. 
-        var relationships: [src_actual.domain] list(string, parSafe=true);
-
-        forall (i,j) in zip(src.domain, dst.domain) with (ref relationships, ref rel_arr){
-            var u = node_map_r[src[i]];
-            var v = node_map_r[dst[j]];
-
-            var start = start_idx[u];
-            var end = start + neighbor[u];
-
-            var neighborhood = dst_actual[start..end-1];
-            var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-            relationships[ind].pushBack(rel_arr[i]); // or j
+        var edge_relationships: [src_actual.domain] domain(int);
+        
+        var timer:stopwatch;
+        timer.start();
+        forall i in input_internal_edge_indices.domain {
+            var rel = input_relationships[i];
+            var ind = input_internal_edge_indices[i];
+            edge_relationships[ind] += rel;
         }
-        // writeln("$$$$$$ relationships = ", relationships);
         
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(relationships):GenSymEntry, "DIP_SLL_RELATIONSHIPS");
+        graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "DIP_SLL_EDGE_RELATIONSHIPS");
         timer.stop();
-        var repMsg = "relationships added";
+        var repMsg = "edge relationships added";
         outMsg = "DipSLLaddEdgeRelationships took " + timer.elapsed():string + " sec";
         
         // Print out debug information to arkouda server output. 
