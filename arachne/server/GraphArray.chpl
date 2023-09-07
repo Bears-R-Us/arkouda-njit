@@ -58,21 +58,21 @@ module GraphArray {
         RANGES,         // Keeps the range of the vertices the edge list stores per locale
         EDGE_WEIGHT,    // Stores the edge weights of the graph, if applicable
         NODE_MAP,       // Doing an index of NODE_MAP[u] gives you the original value of u
-        RELATIONSHIPS,  // The relationships that belong to specific edges
-        NODE_LABELS,    // Any labels that belong to a specific node
-        NODE_PROPS,     // Any properties that belong to a specific node
+        VERTEX_LABELS,    // Any labels that belong to a specific node
+        EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
+        VERTEX_PROPS,     // Any properties that belong to a specific node
         EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_SLL_RELATIONSHIPS,  // The relationships that belong to specific edges
-        DIP_SLL_NODE_LABELS,    // Any labels that belong to a specific node
-        DIP_SLL_NODE_PROPS,     // Any properties that belong to a specific node
+        DIP_SLL_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
+        DIP_SLL_VERTEX_LABELS,    // Any labels that belong to a specific node
+        DIP_SLL_VERTEX_PROPS,     // Any properties that belong to a specific node
         DIP_SLL_EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_DLL_RELATIONSHIPS,  // The relationships that belong to specific edges
-        DIP_DLL_NODE_LABELS,    // Any labels that belong to a specific node
-        DIP_DLL_NODE_PROPS,     // Any properties that belong to a specific node
+        DIP_DLL_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
+        DIP_DLL_VERTEX_LABELS,    // Any labels that belong to a specific node
+        DIP_DLL_VERTEX_PROPS,     // Any properties that belong to a specific node
         DIP_DLL_EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_ARR_RELATIONSHIPS,  // The relationships that belong to specific edges
-        DIP_ARR_NODE_LABELS,    // Any labels that belong to a specific node
-        DIP_ARR_NODE_PROPS,     // Any properties that belong to a specific node
+        DIP_ARR_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
+        DIP_ARR_VERTEX_LABELS,    // Any labels that belong to a specific node
+        DIP_ARR_VERTEX_PROPS,     // Any properties that belong to a specific node
         DIP_ARR_EDGE_PROPS,     // Any properties that belong to a specific edge
         DIP_ARR_LBL_INDICES,    // Maintains index value for the row of the two-dimensional array
         DIP_ARR_REL_INDICES,    // Maintains index value for the row of the two-dimensional array
