@@ -59,7 +59,9 @@ module GraphArray {
         EDGE_WEIGHT,    // Stores the edge weights of the graph, if applicable
         NODE_MAP,       // Doing an index of NODE_MAP[u] gives you the original value of u
         VERTEX_LABELS,    // Any labels that belong to a specific node
+        VERTEX_LABELS_MAP, // Sorted array of vertex labels to integer id (array index)
         EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
+        EDGE_RELATIONSHIPS_MAP, //Sorted array of edge relationships to integer id (array index)
         VERTEX_PROPS,     // Any properties that belong to a specific node
         EDGE_PROPS,     // Any properties that belong to a specific edge
         DIP_SLL_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges

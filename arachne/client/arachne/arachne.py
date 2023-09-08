@@ -145,7 +145,7 @@ class Graph:
         args = {"GraphName" : self.name}
         repMsg = generic_msg(cmd=cmd, args=args)
         returned_vals = (cast(str, repMsg).split('+'))
-        
+
         return create_pdarray(returned_vals[0])
 
     def edges(self) -> Tuple[pdarray, pdarray]:
@@ -554,8 +554,8 @@ class PropGraph(DiGraph):
                 oriname = cast(str, args[4])
                 self.name = oriname.strip()
                 self.directed = 1
-        except Exception as e:
-            raise RuntimeError(e)
+        except Exception as err:
+            raise RuntimeError(err)
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
@@ -597,9 +597,6 @@ class PropGraph(DiGraph):
         gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
         vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
         vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
-
-        print("vertex_ids = ", vertex_ids)
-        print("vertex_labels = ", vertex_labels)
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
         args = { "GraphName" : self.name,
@@ -655,11 +652,6 @@ class PropGraph(DiGraph):
 
         # 5. Generate internal edge indices.
         internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
-
-        print("src_vertex_ids = ", src_vertex_ids)
-        print("dst_vertex_ids = ", dst_vertex_ids)
-        print("edge_relationships = ", edge_relationships)
-        print("internal_edge_indices = ", internal_edge_indices)
 
         arrays = internal_edge_indices.name + " " + edge_relationships.name + " " + relationship_mapper.name
         args = {  "GraphName" : self.name,
@@ -720,10 +712,48 @@ class PropGraph(DiGraph):
                   "Columns" : columns }
         repMsg = generic_msg(cmd=cmd, args=args)
 
+    def get_node_labels(self) -> ak.Strings:
+        """Returns the sorted object of node labels stored for the property graph.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Strings
+            The original labels inputted as strings.
+        """
+        cmd = "getNodeLabels"
+        args = { "GraphName" : self.name }
+        repMsg = generic_msg(cmd=cmd, args=args)
+        returned_vals = (cast(str, repMsg).split('+'))
+
+        return create_pdarray(returned_vals[0])
+    
+    def get_edge_relationships(self) -> ak.Strings:
+        """Returns the sorted object of edge relationships stored for the property graph.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Strings
+            The original relationships inputted as strings.
+        """
+        cmd = "getEdgeRelationships"
+        args = { "GraphName" : self.name }
+        repMsg = generic_msg(cmd=cmd, args=args)
+        returned_vals = (cast(str, repMsg).split('+'))
+
+        return create_pdarray(returned_vals[0])
+
     def query(self,
-              cmd_type:str, 
-              nodes_to_find:pdarray = None, 
-              edges_to_find:Tuple(pdarray,pdarray) = None, 
+              cmd_type:str,
+              nodes_to_find:pdarray = None,
+              edges_to_find:Tuple(pdarray,pdarray) = None,
               relationships_to_find:pdarray = None,
               labels_to_find:pdarray = None,
               node_properties_to_find:pdarray = None,
