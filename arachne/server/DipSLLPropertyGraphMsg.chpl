@@ -78,10 +78,10 @@ module DipSLLPropertyGraphMsg {
             vertex_labels[u] += lbl; // remote
         }
         timer.stop();
-        writeln("$$$$$ vertex_labels = ", vertex_labels);
 
-        // Add the component for the node labels for the graph. 
+        // Add the component for the node labels for the graph.
         graph.withComp(new shared SymEntry(vertex_labels):GenSymEntry, "VERTEX_LABELS");
+        graph.withComp(new shared SegStringSymEntry(label_mapper.offsets, label_mapper.values, string):GenSymEntry, "VERTEX_LABELS_MAP");
         var repMsg = "labels added";
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
@@ -140,10 +140,10 @@ module DipSLLPropertyGraphMsg {
             var ind = input_internal_edge_indices[i];
             edge_relationships[ind] += rel;
         }
-        writeln("$$$$$ edge_relationships = ", edge_relationships);
         
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "EDGE_RELATIONSHIPS");
+        graph.withComp(new shared SegStringSymEntry(relationship_mapper.offsets, relationship_mapper.values, string):GenSymEntry, "EDGE_RELATIONSHIPS_MAP");
         timer.stop();
         var repMsg = "edge relationships added";
         outMsg = "DipSLLaddEdgeRelationships took " + timer.elapsed():string + " sec";
@@ -289,6 +289,44 @@ module DipSLLPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of DipSLLaddEdgePropertiesMsg
+
+    proc getNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract the needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+
+        // Get graph for usage and the node label mapper. 
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var label_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_LABELS_MAP"));
+
+        // Add new copies of each to the symbol table.
+        var repMsg = "";
+        var attrName = st.nextName();
+        var attrEntry = new shared SegStringSymEntry(label_mapper_entry.offsetsEntry, label_mapper_entry.bytesEntry, string);
+        st.addEntry(attrName, attrEntry);
+        repMsg += "created " + st.attrib(attrName) + "+ ";
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
+
+    proc getEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract the needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+
+        // Get graph for usage and the edge relationship mapper. 
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var relationship_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_RELATIONSHIPS_MAP"));
+
+        // Add new copies of each to the symbol table.
+        var repMsg = "";
+        var attrName = st.nextName();
+        var attrEntry = new shared SegStringSymEntry(relationship_mapper_entry.offsetsEntry, relationship_mapper_entry.bytesEntry, string);
+        st.addEntry(attrName, attrEntry);
+        repMsg += "created " + st.attrib(attrName) + "+ ";
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
 
     /**
     * Queries the property graph and returns either arrays of strings or arrays of integer values
@@ -517,5 +555,7 @@ module DipSLLPropertyGraphMsg {
     registerFunction("DipSLLaddEdgeRelationships", DipSLLaddEdgeRelationshipsMsg, getModuleName());
     registerFunction("DipSLLaddNodeProperties", DipSLLaddNodePropertiesMsg, getModuleName());
     registerFunction("DipSLLaddEdgeProperties", DipSLLaddEdgePropertiesMsg, getModuleName());
+    registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
+    registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());
     registerFunction("DipSLLquery", DipSLLqueryMsg, getModuleName());
 }
