@@ -726,10 +726,9 @@ class PropGraph(DiGraph):
         """
         cmd = "getNodeLabels"
         args = { "GraphName" : self.name }
-        repMsg = generic_msg(cmd=cmd, args=args)
-        returned_vals = (cast(str, repMsg).split('+'))
+        rep_msg = generic_msg(cmd=cmd, args=args)
 
-        return create_pdarray(returned_vals[0])
+        return ak.Strings.from_return_msg(rep_msg)
     
     def get_edge_relationships(self) -> ak.Strings:
         """Returns the sorted object of edge relationships stored for the property graph.
@@ -745,81 +744,70 @@ class PropGraph(DiGraph):
         """
         cmd = "getEdgeRelationships"
         args = { "GraphName" : self.name }
-        repMsg = generic_msg(cmd=cmd, args=args)
-        returned_vals = (cast(str, repMsg).split('+'))
+        rep_msg = generic_msg(cmd=cmd, args=args)
 
-        return create_pdarray(returned_vals[0])
+        return ak.Strings.from_return_msg(rep_msg)
 
-    def query(self,
-              cmd_type:str,
-              nodes_to_find:pdarray = None,
-              edges_to_find:Tuple(pdarray,pdarray) = None,
-              relationships_to_find:pdarray = None,
-              labels_to_find:pdarray = None,
-              node_properties_to_find:pdarray = None,
-              edge_properties_to_find:pdarray = None) -> dict:
-        """Given pdarrays specifiying a subset of nodes, edges, or attributes, this function 
-        finds them within the nodes and returns to the user pdarrays with either attributes, nodes,
-        or edges that satisfy the query.
+    def query_labels(   self,
+                        cmd_type:str,
+                        labels_to_find ) -> pdarray:
+        """Given pdarrays specifiying a subset of node labels, this function returns to the user a 
+        pdarray with the nodes that contain any of the labels. 
 
         Parameters
         ----------
-        nodes_to_find
-            A pdarray of nodes (vertices) whose labels or properties are to be found and returned.
-        edges_to_find
-            A pdarray of edges whose relationships or properties are to be found and returned.
-        relationships_to_find
-            A pdarray with edge relationships whose edges are to be returned.
-        labels_to_find
+        labels_to_find : pdarray
             A pdarray with node labels whose nodes are to be returned.
-        node_properties_to_find
-            A pdarray with node properties whose nodes are to be returned.
-        edge_properties_to_find
-            A pdarray with edge properties whose edges are to be returned.
         
         Returns
         -------
-        None
+        pdarray : int64
+            Vertex names that contain the specified nodes.
         """
         cmd = cmd_type
-        arrays = ""
-
-        if nodes_to_find is not None: 
-            arrays += nodes_to_find.name + " "
-        else:
-            arrays += "no_nodes_to_find" + " "
-
-        if edges_to_find is not None:
-            arrays += edges_to_find[0].name + " "
-            arrays += edges_to_find[1].name + " "
-        else:
-            arrays += "no_edges_to_find_src" + " "
-            arrays += "no_edges_to_find_dst" + " "
-
-        if labels_to_find is not None:
-            arrays += labels_to_find.name + " "
-        else:
-            arrays += "no_labels_to_find" + " "
+        labels_to_find = ak.find(labels_to_find, self.get_node_labels())
         
-        if relationships_to_find is not None:
-            arrays += relationships_to_find.name + " "
-        else:
-            arrays += "no_relationships_to_find" + " "
-        
-        if node_properties_to_find is not None:
-            arrays += node_properties_to_find.name + " "
-        else: 
-            arrays += "no_node_properties_to_find" + " "
-        
-        if edge_properties_to_find is not None:
-            arrays += edge_properties_to_find.name + " "
-        else:
-            arrays += "no_edge_properties_to_find" + " "
-
-
         args = {  "GraphName" : self.name,
-                  "Arrays" : arrays }
-        repMsg = generic_msg(cmd=cmd, args=args)
+                  "LabelsToFindName" : labels_to_find.name }
+        
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        vertices_bool = create_pdarray(rep_msg)
+
+        return self.nodes()[vertices_bool]
+
+    def query_relationships(    self,
+                                cmd_type:str,
+                                relationships_to_find ) -> pdarray:
+        """Given a pdarray specifiying a subset of edge relationships, this function returns to the 
+        user a pdarray with the edges that contain any of the relationships. 
+
+        Parameters
+        ----------
+        relationships_to_find : pdarray
+            A pdarray with edge relationships whose edges are to be returned.
+        
+        Returns
+        -------
+        (pdarray,pdarray)
+            Source and destination vertex pairs that contain the specified edges.
+        """
+        cmd = cmd_type
+        relationships_to_find_to_find = ak.find(relationships_to_find,self.get_edge_relationships())
+        
+        args = {  "GraphName" : self.name,
+                  "RelationshipsToFindName" : relationships_to_find_to_find.name }
+        
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        edges_bool = create_pdarray(rep_msg)
+        edges = self.edges()
+        nodes = self.nodes()
+        src = edges[0]
+        dst = edges[1]
+
+        src = nodes[src]
+        dst = nodes[dst]
+
+        return (src[edges_bool], dst[edges_bool])
 
 @typechecked
 def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
