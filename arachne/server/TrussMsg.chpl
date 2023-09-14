@@ -9,7 +9,7 @@ module TrussMsg {
   use MultiTypeSymEntry;
   use IO;
 
-  use SymArrayDmap;
+  use SymArrayDmapCompat;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -1159,7 +1159,7 @@ module TrussMsg {
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    var maxKAry = makeDistArray(2, int);
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);

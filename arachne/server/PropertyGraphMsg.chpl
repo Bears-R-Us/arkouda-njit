@@ -1,20 +1,24 @@
-module PropertyGraphMsg {
+module DipSLLPropertyGraphMsg {
     // Chapel modules.
     use Reflection;
     use Set;
     use Time; 
     use Sort; 
     use List;
+    use CopyAggregation;
+    use CommDiagnostics;
     
     // Arachne Modules.
     use Utils; 
     use GraphArray;
-    use SegmentedString;
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
     use ServerConfig;
+    use ServerErrors;
+    use ServerErrorStrings;
+    use SegmentedString;
     use ArgSortMsg;
     use AryUtil;
     use Logging;
@@ -39,45 +43,49 @@ module PropertyGraphMsg {
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var arrays = msgArgs.getValueOf("Arrays");
 
-        // Extract the names of the arrays storing the nodeIDs and labels.
+        // Extract the names of the arrays storing the vertices and their labels.
         var arrays_list = arrays.split();
-        var nodes_name = arrays_list[0];
-        var labels_name = arrays_list[1];
+        var input_vertices_name = arrays_list[0];
+        var input_labels_name = arrays_list[1];
+        var label_mapper_name = arrays_list[2];
         
-        // Extract the nodes array that is an integer array.
-        var nodes_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_name, st);
-        var nodes_sym = toSymEntry(nodes_entry, int);
-        var nodes_arr = nodes_sym.a;
+        // Extract the vertices containing labels to be inputted.
+        var input_vertices_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_vertices_name, st);
+        var input_vertices_sym = toSymEntry(input_vertices_entry, int);
+        var input_vertices = input_vertices_sym.a;
 
-        // Extract the labels array which is a string array aka a segmented string.
-        var labels_arr:SegString = getSegString(labels_name, st);
+        // Extract the labels to be inputted for each of the vertices.
+        var input_labels_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_labels_name, st);
+        var input_labels_sym = toSymEntry(input_labels_entry, int);
+        var input_labels = input_labels_sym.a;
 
-        // Create array of lists. 
-        var node_labels: [nodes_arr.domain] list(string, parSafe=true);
+        // Extract the label mapper to be sent to each locale.
+        var label_mapper:SegString = getSegString(label_mapper_name, st);
 
-        // Get graph for usage.
+        // Extract the graph we are operating with from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         
-        // Extract the revesred node_map to see what each original node value maps to.
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
+        // Extract the node_map array to get the internal vertex values for our graph.
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+
+        // Create the array of domains that will store the labels for our vertices.
+        var vertex_labels: [node_map.domain] domain(int);
 
         var timer:stopwatch;
         timer.start();
-        // Add label to the array of linked lists for each node. 
-        forall i in nodes_arr.domain {
-            var labels = labels_arr[i].split();
-            for lbl in labels {
-                node_labels[node_map_r[nodes_arr[i]]].append(lbl);
-            }
-        } 
-
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_labels):GenSymEntry, "NODE_LABELS");
+        forall i in input_vertices.domain { // for each input vertex, update its label list. 
+            var lbl = input_labels[i]; // local
+            var u = input_vertices[i]; // local
+            vertex_labels[u] += lbl; // remote
+        }
         timer.stop();
-        
+
+        // Add the component for the node labels for the graph.
+        graph.withComp(new shared SymEntry(vertex_labels):GenSymEntry, "VERTEX_LABELS");
+        graph.withComp(new shared SegStringSymEntry(label_mapper.offsets, label_mapper.values, string):GenSymEntry, "VERTEX_LABELS_MAP");
         var repMsg = "labels added";
-        outMsg = "Adding node labels to property graph takes " + timer.elapsed():string;
+        outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -102,55 +110,45 @@ module PropertyGraphMsg {
 
         // Extract the names of the arrays passed to the function.
         var arrays_list = arrays.split();
-        var src_name = arrays_list[0];
-        var dst_name = arrays_list[1];
-        var rel_name = arrays_list[2];
+        var input_internal_edge_indices_name = arrays_list[0];
+        var input_relationships_name = arrays_list[1];
+        var relationship_mapper_name = arrays_list[2];
         
         // Extract the actual arrays for each of the names above.
-        var src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var src_sym = toSymEntry(src_entry, int);
-        var src = src_sym.a;
-        
-        var dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var dst_sym = toSymEntry(dst_entry, int);
-        var dst = dst_sym.a;
+        var input_internal_edge_indices_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_internal_edge_indices_name, st);
+        var input_internal_edge_indices_sym = toSymEntry(input_internal_edge_indices_entry, int);
+        var input_internal_edge_indices = input_internal_edge_indices_sym.a;
 
-        var rel_arr:SegString = getSegString(rel_name, st);
+        var input_relationships_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(input_relationships_name, st);
+        var input_relationships_sym = toSymEntry(input_relationships_entry, int);
+        var input_relationships = input_relationships_sym.a;
 
-        var timer:stopwatch;
-        timer.start();
-        
+        var relationship_mapper:SegString = getSegString(relationship_mapper_name, st);
+
         // Get graph for usage and needed arrays.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
-        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
         var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
         var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
+        var segments = toSymEntry(graph.getComp("SEGMENTS"), int).a;
 
         // Create array of lists to store relationships and populate it. 
-        var relationships: [src_actual.domain] list(string, parSafe=true);
-
-        forall (i,j) in zip(src.domain, dst.domain) with (ref relationships, ref rel_arr){
-            var u = node_map_r[src[i]];
-            var v = node_map_r[dst[j]];
-
-            var start = start_idx[u];
-            var end = start + neighbor[u];
-
-            var neighborhood = dst_actual[start..end-1];
-            var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-            relationships[ind].append(rel_arr[i]); // or j
+        var edge_relationships: [src_actual.domain] domain(int);
+        
+        var timer:stopwatch;
+        timer.start();
+        forall i in input_internal_edge_indices.domain {
+            var rel = input_relationships[i];
+            var ind = input_internal_edge_indices[i];
+            edge_relationships[ind] += rel;
         }
-        writeln("relationships = ", relationships);
         
         // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(relationships):GenSymEntry, "RELATIONSHIPS");
+        graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "EDGE_RELATIONSHIPS");
+        graph.withComp(new shared SegStringSymEntry(relationship_mapper.offsets, relationship_mapper.values, string):GenSymEntry, "EDGE_RELATIONSHIPS_MAP");
         timer.stop();
-        var repMsg = "relationships added";
-        outMsg = "Adding relationships to property graph takes " + timer.elapsed():string;
+        var repMsg = "edge relationships added";
+        outMsg = "DipSLLaddEdgeRelationships took " + timer.elapsed():string + " sec";
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -159,7 +157,7 @@ module PropertyGraphMsg {
     } // end of addEdgeRelationshipsMsg
 
     /**
-    * Adds properties to the nodes of a property graph.
+    * Gets node labels of the property graph.
     *
     * cmd: operation to perform. 
     * msgArgs: arugments passed to backend. 
@@ -167,59 +165,24 @@ module PropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
+    proc getNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract the needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
-        var arrays = msgArgs.getValueOf("Arrays");
-        var columns = msgArgs.getValueOf("Columns");
 
-        // Extract the names of the arrays storing the nodeIDs and labels.
-        var arrays_list = arrays.split();
-        var nodes_name = arrays_list[0];
-
-        // Extract the column names.
-        var cols_list = columns.split();
-        
-        // Extract the nodes array that is an integer array.
-        var nodes_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_name, st);
-        var nodes_sym = toSymEntry(nodes_entry, int);
-        var nodes_arr = nodes_sym.a;
-
-        // Get graph for usage.
+        // Get graph for usage and the node label mapper. 
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        
-        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-        var node_props: [node_map.domain] list((string,string), parSafe=true);
-        if graph.hasComp("NODE_PROPS") {
-            node_props = toSymEntry(graph.getComp("NODE_PROPS"), list((string,string), parSafe=true)).a;
-        }
+        var label_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_LABELS_MAP"));
 
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var timer:stopwatch;
-        timer.start();
-        forall i in 1..arrays_list.size - 1 {
-            var curr_prop_arr:SegString = getSegString(arrays_list[i], st);
-            forall j in nodes_arr.domain {
-                node_props[node_map_r[nodes_arr[j]]].append((cols_list[i],curr_prop_arr[j]));
-            }   
-        }
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_props):GenSymEntry, "NODE_PROPS");
-        timer.stop();
-        
-        var repMsg = "node properties added";
-        outMsg = "Adding node properties to property graph takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        // Add new copies of each to the symbol table.
+        var label_mapper = assembleSegStringFromParts(label_mapper_entry.offsetsEntry, label_mapper_entry.bytesEntry, st);
+        var repMsg = 'created ' + st.attrib(label_mapper.name) + '+created bytes.size %t'.format(label_mapper.nBytes);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of addNodePropertiesMsg
+    } // end of getNodeLabelsMsg
 
     /**
-    * Adds properties to the edges of a property graph.
+    * Gets edge relationships of the property graph.
     *
     * cmd: operation to perform. 
     * msgArgs: arugments passed to backend. 
@@ -227,75 +190,194 @@ module PropertyGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
+    proc getEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract the needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
-        var arrays = msgArgs.getValueOf("Arrays");
-        var columns = msgArgs.getValueOf("Columns");
 
-        // Extract the names of the arrays passed to the function.
-        var arrays_list = arrays.split();
-        var cols_list = columns.split();
-        var src_name = arrays_list[0];
-        var dst_name = arrays_list[1];
-        
-        // Extract the actual arrays for each of the names above.
-        var src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var src_sym = toSymEntry(src_entry, int);
-        var src = src_sym.a;
-        
-        var dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var dst_sym = toSymEntry(dst_entry, int);
-        var dst = dst_sym.a;
-
-        var timer:stopwatch;
-        timer.start();
-        
-        // Get graph for usage and needed arrays.
+        // Get graph for usage and the edge relationship mapper. 
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
-        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
-        var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
-        var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
+        var relationship_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_RELATIONSHIPS_MAP"));
 
-        // Create array of lists to store edge_props and populate it. 
-        var edge_props: [src_actual.domain] list((string,string), parSafe=true);
-        if(graph.hasComp("EDGE_PROPS")) {
-            edge_props = toSymEntry(graph.getComp("EDGE_PROPS"), list((string,string), parSafe=true)).a;
+        // Add new copies of each to the symbol table.
+        var relationship_mapper = assembleSegStringFromParts(relationship_mapper_entry.offsetsEntry, relationship_mapper_entry.bytesEntry, st);
+        var repMsg = 'created ' + st.attrib(relationship_mapper.name) + '+created bytes.size %t'.format(relationship_mapper.nBytes);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of getEdgeRelationshipsMsg
+
+    /**
+    * Queries the property graph and returns a boolean array indicating which nodes contain the 
+    * given labels.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc queryLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
+        // Parse the message from Python to extract needed data.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var labelsToFindName = msgArgs.getValueOf("LabelsToFindName");
+        var op = msgArgs.getValueOf("Op");
+
+        // Extract graph data for usage in this function.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var node_labels = toSymEntry(graph.getComp("VERTEX_LABELS"), domain(int)).a;
+
+        // Extract the array that contains the labels we are looking for.
+        var labels_to_find_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(labelsToFindName, st);
+        var labels_to_find_sym = toSymEntry(labels_to_find_entry, int);
+        var labels_to_find = labels_to_find_sym.a;
+
+        // Convert array to associative domain to maintain the labels to find.
+        var labels_to_find_set : domain(int);
+        forall lbl_id in labels_to_find with (ref labels_to_find_set) do labels_to_find_set += lbl_id;
+        var return_array : [node_labels.domain] bool;
+
+        // Distribute the labels_to_find_set to each locale.
+        var labels_to_find_set_dist = makeDistArray(numLocales, domain(int));
+        coforall loc in Locales do on loc {
+            labels_to_find_set_dist[here.id] = labels_to_find_set;
         }
 
-        forall x in 2..arrays_list.size - 1 {
-            var curr_prop_arr:SegString = getSegString(arrays_list[x], st);
-            forall (i,j) in zip(src.domain, dst.domain) {
-                var u = node_map_r[src[i]];
-                var v = node_map_r[dst[j]];
-
-                var start = start_idx[u];
-                var end = start + neighbor[u];
-
-                var neighborhood = dst_actual[start..end-1];
-                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-                edge_props[ind].append((cols_list[x],curr_prop_arr[i])); // or j
+        // Search in parallel for the nodes that have the labels to find.
+        var timer:stopwatch;
+        timer.start();
+        select op {
+            when "or" {
+                forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_array) {
+                    if u_label_set.size != 0 {
+                        var label_set_here = labels_to_find_set_dist[here.id];
+                        for lbl in u_label_set {
+                            if label_set_here.contains(lbl) {
+                                return_array[u] = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            when "and" {
+                forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_array) {
+                    var label_set_here = labels_to_find_set_dist[here.id];
+                    if u_label_set.contains(label_set_here) {
+                        return_array[u] = true;
+                    }
+                }
+            }
+            otherwise {
+                var errorMsg = notImplementedError(pn, op);
+                smLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                return new MsgTuple(errorMsg, MsgType.ERROR);
             }
         }
-        
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(edge_props):GenSymEntry, "EDGE_PROPS");
         timer.stop();
-        var repMsg = "edge properties added";
-        outMsg = "Adding edge properties to property graph takes " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        var time_msg = "label query DIP-SLL took " + timer.elapsed():string + " sec";
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+
+        var retName = st.nextName();
+        var retEntry = new shared SymEntry(return_array);
+        st.addEntry(retName, retEntry);
+        var repMsg = 'created ' + st.attrib(retName);
+
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of addEdgePropertiesMsg
+    } //end of queryLabelsMsg
+
+    /**
+    * Queries the property graph and returns a boolean array indicating which edges contain the 
+    * given relationships.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc queryRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
+        // Parse the message from Python to extract needed data.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var relationshipsToFindName = msgArgs.getValueOf("RelationshipsToFindName");
+        var op = msgArgs.getValueOf("Op");
+
+        // Extract graph data for usage in this function.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var edge_relationships = toSymEntry(graph.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
+
+        // Extract the array that contains the relationships we are looking for.
+        var relationships_to_find_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(relationshipsToFindName, st);
+        var relationships_to_find_sym = toSymEntry(relationships_to_find_entry, int);
+        var relationships_to_find = relationships_to_find_sym.a;
+
+        // Convert array to associative domain to maintain the relationships to find.
+        var relationships_to_find_set : domain(int);
+        forall rel_id in relationships_to_find with (ref relationships_to_find_set) do relationships_to_find_set += rel_id;
+        var return_array : [edge_relationships.domain] bool;
+
+        // Distribute the relationships_to_find_set to each locale.
+        var relationships_to_find_set_dist = makeDistArray(numLocales, domain(int));
+        coforall loc in Locales do on loc {
+            relationships_to_find_set_dist[here.id] = relationships_to_find_set;
+        }
+        
+        // Search in parallel for the nodes that have the labesl to find.
+        var timer:stopwatch;
+        timer.start();
+        select op {
+            when "or" {
+                forall (u, u_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_array) {
+                    if u_relationship_set.size != 0 {
+                        var relationship_set_here = relationships_to_find_set_dist[here.id];
+                        for rel in u_relationship_set {
+                            if relationship_set_here.contains(rel) {
+                                return_array[u] = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            when "and" {
+                forall (u, u_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_array) {
+                    var relationship_set_here = relationships_to_find_set_dist[here.id];
+                    if u_relationship_set.contains(relationship_set_here) {
+                        return_array[u] = true;
+                    }
+                }
+            }
+            otherwise {
+                var errorMsg = notImplementedError(pn, op);
+                smLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                return new MsgTuple(errorMsg, MsgType.ERROR);
+            }
+        }
+
+        timer.stop();
+        var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+
+        var retName = st.nextName();
+        var retEntry = new shared SymEntry(return_array);
+        st.addEntry(retName, retEntry);
+        var repMsg = 'created ' + st.attrib(retName);
+
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } //end of queryRelationshipsMsg
+
     use CommandMap;
     registerFunction("addNodeLabels", addNodeLabelsMsg, getModuleName());
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
-    registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
-    registerFunction("addEdgeProperties", addEdgePropertiesMsg, getModuleName());
+    registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
+    registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());
+    registerFunction("queryLabels", queryLabelsMsg, getModuleName());
+    registerFunction("queryRelationships", queryRelationshipsMsg, getModuleName());
 }
