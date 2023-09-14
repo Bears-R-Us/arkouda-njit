@@ -10,7 +10,7 @@ module CCMsg {
   use RandArray;
   use IO;
 
-  use SymArrayDmap;
+  use SymArrayDmapCompat;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
