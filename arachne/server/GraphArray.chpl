@@ -13,43 +13,6 @@ module GraphArray {
     private config const logLevel = LogLevel.DEBUG;
     const graphLogger = new Logger(logLevel);
 
-    class Node {
-        var data : int;
-        var vertex : int;
-        var prev : borrowed Node?;
-        var next : shared Node?;
-
-        proc init() {
-            data = "";
-            vertex = -1;
-            prev = nil; 
-            next = nil;
-        }
-
-        proc init(value: int, v: int) {
-            data = value; 
-            vertex = v;
-            prev = nil; 
-            next = nil;
-        }
-
-        proc append(node: shared Node) {
-            this.next = node;
-            node.prev = this;
-        }
-
-        override proc writeThis(f) throws {
-            if(prev == nil) {
-                f.write("{ data = ", data, ", vertex = ", vertex, ", prev = nil",            ", loc = ", this.locale.id, " }");
-            } else {
-                f.write("{ data = ", data, ", vertex = ", vertex, ", prev = ", prev!.vertex, ", loc = ", this.locale.id, " }");
-            }
-        }
-    }
-
-    var last_label_tracker = new map(int, shared Node/*, parSafe=true*/);
-    var last_relationship_tracker = new map(int, shared Node/*, parSafe=true*/);
-
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
         SRC,            // The source array of every edge in the graph
@@ -64,20 +27,6 @@ module GraphArray {
         EDGE_RELATIONSHIPS_MAP, //Sorted array of edge relationships to integer id (array index)
         VERTEX_PROPS,     // Any properties that belong to a specific node
         EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_SLL_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
-        DIP_SLL_VERTEX_LABELS,    // Any labels that belong to a specific node
-        DIP_SLL_VERTEX_PROPS,     // Any properties that belong to a specific node
-        DIP_SLL_EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_DLL_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
-        DIP_DLL_VERTEX_LABELS,    // Any labels that belong to a specific node
-        DIP_DLL_VERTEX_PROPS,     // Any properties that belong to a specific node
-        DIP_DLL_EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_ARR_EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
-        DIP_ARR_VERTEX_LABELS,    // Any labels that belong to a specific node
-        DIP_ARR_VERTEX_PROPS,     // Any properties that belong to a specific node
-        DIP_ARR_EDGE_PROPS,     // Any properties that belong to a specific edge
-        DIP_ARR_LBL_INDICES,    // Maintains index value for the row of the two-dimensional array
-        DIP_ARR_REL_INDICES,    // Maintains index value for the row of the two-dimensional array
     }
 
     /**

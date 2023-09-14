@@ -561,7 +561,7 @@ class PropGraph(DiGraph):
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
     
-    def add_node_labels(self, labels:ak.DataFrame, cmd_type:str) -> None:
+    def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below.
         
@@ -574,7 +574,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = cmd_type
+        cmd = "addNodeLabels"
 
         ### Preprocessing steps for faster back-end array population.
         # 0. Extract the vertex ids and vertex labels from the dataframe.
@@ -619,7 +619,7 @@ class PropGraph(DiGraph):
 
         return (label_id_time, internal_id_time, dedup_and_sort_time, add_into_data_structure_time)
 
-    def add_edge_relationships(self, relationships:ak.DataFrame, cmd_type:str) -> None:
+    def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
         should follow the same format specified in the Parameters section below.
         
@@ -632,7 +632,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = cmd_type
+        cmd = "addEdgeRelationships"
 
         ### Preprocessing steps for faster back-end array population. 
         # 0. Extract the source and destination vertex ids and the relationships from the dataframe.
@@ -642,16 +642,12 @@ class PropGraph(DiGraph):
 
         # 1. Broadcast string relationship names to int values and extract the relationship str to
         #    int id map.
-        start = time.time()
         gb_relationships = ak.GroupBy(edge_relationships)
         new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
         edge_relationships = gb_relationships.broadcast(new_relationship_ids)
         relationship_mapper = gb_relationships.unique_keys
-        end = time.time()
-        relationship_id_time = round(end-start,2)
 
         # 2. Convert the source and destination vertex ids to the internal vertex_ids.
-        start = time.time()
         vertex_map = self.nodes()
         src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
         dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
@@ -662,87 +658,20 @@ class PropGraph(DiGraph):
         src_vertex_ids = src_vertex_ids[edge_inds]
         dst_vertex_ids = dst_vertex_ids[edge_inds]
         edge_relationships = edge_relationships[edge_inds]
-        end = time.time()
-        internal_vertex_id_time = round(end-start,2)
 
         # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
-        start = time.time()
         gb_edges_and_relationships = ak.GroupBy([src_vertex_ids,dst_vertex_ids,edge_relationships])
         src_vertex_ids = gb_edges_and_relationships.unique_keys[0]
         dst_vertex_ids = gb_edges_and_relationships.unique_keys[1]
         edge_relationships = gb_edges_and_relationships.unique_keys[2]
-        end = time.time()
-        dedup_time = round(end-start,2)
 
         # 5. Generate internal edge indices.
-        start = time.time()
         internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
-        end = time.time()
-        internal_edge_index_gen_time = round(end-start,2)
 
         arrays = internal_edge_indices.name + " " + edge_relationships.name + " " + relationship_mapper.name
-        start = time.time()
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
         rep_msg = generic_msg(cmd=cmd, args=args)
-        end = time.time()
-        internal_time = round (end-start,2)
-
-        return (relationship_id_time, internal_vertex_id_time, dedup_time, internal_edge_index_gen_time, internal_time)
-
-    def add_node_properties(self, properties:ak.DataFrame, cmd_type:str) -> None:
-        """Populates the graph object with node properties from a dataframe. Passed dataframe should follow
-        this same format for key names below:
-        
-        Parameters
-        ----------
-        node_properties
-            ak.DataFrame({"nodeIDs" : nodes, "prop1" : prop1, ... , "propN" : propN})
-
-        Returns
-        -------
-        None
-        """
-        cmd = cmd_type
-        arrays = properties["nodeIDs"].name + " " 
-        columns = "nodeIDs" + " "
-
-        for column in properties.columns:
-            if column != "nodeIDs":
-                arrays += properties[column].name + " "
-                columns += column + " "
-
-        args = {  "GraphName" : self.name,
-                  "Arrays" : arrays,
-                  "Columns" : columns }
-        repMsg = generic_msg(cmd=cmd, args=args)
-
-    def add_edge_properties(self, properties:ak.DataFrame, cmd_type:str) -> None:
-        """Populates the graph object with edge properties from a dataframe. Passed dataframe should follow
-        this same format for key names below:
-        
-        Parameters
-        ----------
-        edge_properties
-            ak.DataFrame({"src" : src, "dst" : dst, "prop1" : prop1, ... , "propM" : propM})
-
-        Returns
-        -------
-        None
-        """
-        cmd = cmd_type
-        arrays = properties["src"].name + " " + properties["dst"].name + " "
-        columns = "src" + " " + "dst" + " "
-
-        for column in properties.columns:
-            if column != "src" and column != "dst":
-                arrays += properties[column].name + " "
-                columns += column + " "
-
-        args = {  "GraphName" : self.name,
-                  "Arrays" : arrays,
-                  "Columns" : columns }
-        repMsg = generic_msg(cmd=cmd, args=args)
 
     def get_node_labels(self) -> ak.Strings:
         """Returns the sorted object of node labels stored for the property graph.
@@ -781,84 +710,75 @@ class PropGraph(DiGraph):
         return ak.Strings.from_return_msg(rep_msg)
 
     def query_labels(   self,
-                        cmd_type:str,
-                        labels_to_find ) -> pdarray:
+                        labels_to_find:pdarray,
+                        op:str = "and" ) -> pdarray:
         """Given pdarrays specifiying a subset of node labels, this function returns to the user a 
-        pdarray with the nodes that contain any of the labels. 
+        pdarray with the nodes that contain any of the labels. The operator specifies the operation
+        to be conducted at the back-end. If the vertex should contain all of the labels specified
+        in `labels_to_find` then the operaator to use should be "and" otherwise use "or".
 
         Parameters
         ----------
         labels_to_find : pdarray
             A pdarray with node labels whose nodes are to be returned.
+        op : str
+            Operator to apply to the search, either "and" or "or". 
         
         Returns
         -------
         pdarray : int64
             Vertex names that contain the specified nodes.
         """
-        cmd = cmd_type
+        cmd = "queryLabels"
         labels_to_find = ak.find(labels_to_find, self.get_node_labels())
         
         args = {  "GraphName" : self.name,
-                  "LabelsToFindName" : labels_to_find.name }
+                  "LabelsToFindName" : labels_to_find.name,
+                  "Op" : op }
         
-        start = time.time()
         rep_msg = generic_msg(cmd=cmd, args=args)
-        end = time.time()
-        internal_time = round(end-start,2)
-
-        start = time.time()
         vertices_bool = create_pdarray(rep_msg)
         final_vertices = self.nodes()[vertices_bool]
-        end = time.time()
-        boolean_time = round(end-start,2)
 
-        return (final_vertices, (internal_time, boolean_time))
+        return final_vertices
 
     def query_relationships(    self,
-                                cmd_type:str,
-                                relationships_to_find ) -> pdarray:
+                                relationships_to_find:pdarray,
+                                op:str = "and" ) -> pdarray:
         """Given a pdarray specifiying a subset of edge relationships, this function returns to the 
-        user a pdarray with the edges that contain any of the relationships. 
+        user a pdarray with the edges that contain any of the relationships. The operator specifies
+        the operation to be conducted at the back-end. If the vertex should contain all of the
+        relationships specified in `relationships_to_find` then the operayor should be "and"
+        otherwise use "or".
 
         Parameters
         ----------
         relationships_to_find : pdarray
             A pdarray with edge relationships whose edges are to be returned.
+        op : str
+            Operator to apply to the search, either "and" or "or". 
         
         Returns
         -------
-        (pdarray,pdarray)
+        (pdarray,pdarray) : Tuple(int64, int64)
             Source and destination vertex pairs that contain the specified edges.
         """
-        cmd = cmd_type
+        cmd = "queryRelationships"
         relationships_to_find_to_find = ak.find(relationships_to_find,self.get_edge_relationships())
 
         args = {  "GraphName" : self.name,
-                  "RelationshipsToFindName" : relationships_to_find_to_find.name }
+                  "RelationshipsToFindName" : relationships_to_find_to_find.name,
+                  "Op" : op }
 
-        start = time.time()
         rep_msg = generic_msg(cmd=cmd, args=args)
-        end = time.time()
-        internal_time = round(end-start,2)
 
-        start = time.time()
         edges_bool = create_pdarray(rep_msg)
-        edges = self.edges()
-        nodes = self.nodes()
-        src = edges[0]
-        dst = edges[1]
-        src = nodes[src]
-        dst = nodes[dst]
-        end = time.time()
-        original_id_gen_time = round(end-start,2)
-
-        start = time.time()
+        edges, nodes = self.edges(), self.nodes()
+        src, dst = edges[0], edges[1]
+        src, dst = nodes[src], nodes[dst]
         final_edges = (src[edges_bool], dst[edges_bool])
-        end = time.time()
-        boolean_indexing_time = round(end-start,2)
 
-        return (final_edges, (internal_time, original_id_gen_time, boolean_indexing_time))
+        return final_edges
 
 @typechecked
 def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
