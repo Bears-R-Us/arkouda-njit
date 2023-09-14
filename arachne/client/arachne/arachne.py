@@ -5,6 +5,7 @@ information.
 from __future__ import annotations
 from typing import cast, Tuple, Union
 from typeguard import typechecked
+import time
 import arkouda as ak
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
@@ -581,28 +582,42 @@ class PropGraph(DiGraph):
         vertex_labels = labels["vertex_labels"]
 
         # 1. Broadcast string label names to int values and extract the label str to int id map.
+        start = time.time()
         gb_labels = ak.GroupBy(vertex_labels)
         new_label_ids = ak.arange(gb_labels.unique_keys.size)
         vertex_labels = gb_labels.broadcast(new_label_ids)
         label_mapper = gb_labels.unique_keys
+        end = time.time()
+        label_id_time = round(end-start,2)
 
         # 2. Convert the vertex_ids to internal vertex_ids.
+        start = time.time()
         vertex_map = self.nodes()
         inds = ak.in1d(vertex_ids, vertex_map)
         vertex_ids = vertex_ids[inds]
         vertex_labels = vertex_labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map)
+        end = time.time()
+        internal_id_time = round(end-start,2)
 
         # 3. GroupBy of the vertex ids and labels.
+        start = time.time()
         gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
         vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
         vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
+        end = time.time()
+        dedup_and_sort_time = round(end-start,2)
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
+        start = time.time()
         args = { "GraphName" : self.name,
                  "Arrays" : arrays,
                }
-        repMsg = generic_msg(cmd=cmd, args=args)
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        end = time.time()
+        add_into_data_structure_time = round(end-start,2)
+
+        return (label_id_time, internal_id_time, dedup_and_sort_time, add_into_data_structure_time)
 
     def add_edge_relationships(self, relationships:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
@@ -627,12 +642,16 @@ class PropGraph(DiGraph):
 
         # 1. Broadcast string relationship names to int values and extract the relationship str to
         #    int id map.
+        start = time.time()
         gb_relationships = ak.GroupBy(edge_relationships)
         new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
         edge_relationships = gb_relationships.broadcast(new_relationship_ids)
         relationship_mapper = gb_relationships.unique_keys
+        end = time.time()
+        relationship_id_time = round(end-start,2)
 
         # 2. Convert the source and destination vertex ids to the internal vertex_ids.
+        start = time.time()
         vertex_map = self.nodes()
         src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
         dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
@@ -643,20 +662,33 @@ class PropGraph(DiGraph):
         src_vertex_ids = src_vertex_ids[edge_inds]
         dst_vertex_ids = dst_vertex_ids[edge_inds]
         edge_relationships = edge_relationships[edge_inds]
+        end = time.time()
+        internal_vertex_id_time = round(end-start,2)
 
         # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
+        start = time.time()
         gb_edges_and_relationships = ak.GroupBy([src_vertex_ids,dst_vertex_ids,edge_relationships])
         src_vertex_ids = gb_edges_and_relationships.unique_keys[0]
         dst_vertex_ids = gb_edges_and_relationships.unique_keys[1]
         edge_relationships = gb_edges_and_relationships.unique_keys[2]
+        end = time.time()
+        dedup_time = round(end-start,2)
 
         # 5. Generate internal edge indices.
+        start = time.time()
         internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+        end = time.time()
+        internal_edge_index_gen_time = round(end-start,2)
 
         arrays = internal_edge_indices.name + " " + edge_relationships.name + " " + relationship_mapper.name
+        start = time.time()
         args = {  "GraphName" : self.name,
                   "Arrays" : arrays }
-        repMsg = generic_msg(cmd=cmd, args=args)
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        end = time.time()
+        internal_time = round (end-start,2)
+
+        return (relationship_id_time, internal_vertex_id_time, dedup_time, internal_edge_index_gen_time, internal_time)
 
     def add_node_properties(self, properties:ak.DataFrame, cmd_type:str) -> None:
         """Populates the graph object with node properties from a dataframe. Passed dataframe should follow
@@ -770,10 +802,18 @@ class PropGraph(DiGraph):
         args = {  "GraphName" : self.name,
                   "LabelsToFindName" : labels_to_find.name }
         
+        start = time.time()
         rep_msg = generic_msg(cmd=cmd, args=args)
-        vertices_bool = create_pdarray(rep_msg)
+        end = time.time()
+        internal_time = round(end-start,2)
 
-        return self.nodes()[vertices_bool]
+        start = time.time()
+        vertices_bool = create_pdarray(rep_msg)
+        final_vertices = self.nodes()[vertices_bool]
+        end = time.time()
+        boolean_time = round(end-start,2)
+
+        return (final_vertices, (internal_time, boolean_time))
 
     def query_relationships(    self,
                                 cmd_type:str,
@@ -793,21 +833,32 @@ class PropGraph(DiGraph):
         """
         cmd = cmd_type
         relationships_to_find_to_find = ak.find(relationships_to_find,self.get_edge_relationships())
-        
+
         args = {  "GraphName" : self.name,
                   "RelationshipsToFindName" : relationships_to_find_to_find.name }
-        
+
+        start = time.time()
         rep_msg = generic_msg(cmd=cmd, args=args)
+        end = time.time()
+        internal_time = round(end-start,2)
+
+        start = time.time()
         edges_bool = create_pdarray(rep_msg)
         edges = self.edges()
         nodes = self.nodes()
         src = edges[0]
         dst = edges[1]
-
         src = nodes[src]
         dst = nodes[dst]
+        end = time.time()
+        original_id_gen_time = round(end-start,2)
 
-        return (src[edges_bool], dst[edges_bool])
+        start = time.time()
+        final_edges = (src[edges_bool], dst[edges_bool])
+        end = time.time()
+        boolean_indexing_time = round(end-start,2)
+
+        return (final_edges, (internal_time, original_id_gen_time, boolean_indexing_time))
 
 @typechecked
 def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:

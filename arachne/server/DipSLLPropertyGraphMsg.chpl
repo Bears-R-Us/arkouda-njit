@@ -154,142 +154,6 @@ module DipSLLPropertyGraphMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of DipSLLaddEdgeRelationshipsMsg
 
-    /**
-    * Adds properties to the nodes of a property graph.
-    *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
-    *
-    * returns: message back to Python.
-    */
-    proc DipSLLaddNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var arrays = msgArgs.getValueOf("Arrays");
-        var columns = msgArgs.getValueOf("Columns");
-
-        // Extract the names of the arrays storing the nodeIDs and labels.
-        var arrays_list = arrays.split();
-        var nodes_name = arrays_list[0];
-
-        // Extract the column names.
-        var cols_list = columns.split();
-        
-        // Extract the nodes array that is an integer array.
-        var nodes_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodes_name, st);
-        var nodes_sym = toSymEntry(nodes_entry, int);
-        var nodes_arr = nodes_sym.a;
-
-        // Get graph for usage.
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
-        
-        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-        var node_props: [node_map.domain] list((string,string), parSafe=true);
-        if graph.hasComp("DIP_SLL_NODE_PROPS") {
-            node_props = toSymEntry(graph.getComp("DIP_SLL_NODE_PROPS"), list((string,string), parSafe=true)).a;
-        }
-
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var timer:stopwatch;
-        timer.start();
-        forall j in nodes_arr.domain {
-            for i in 1..arrays_list.size -1 {
-                var curr_prop_arr:SegString = getSegString(arrays_list[i], st);
-                node_props[node_map_r[nodes_arr[j]]].pushBack((cols_list[i],curr_prop_arr[j]));
-            }
-        }
-
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(node_props):GenSymEntry, "DIP_SLL_NODE_PROPS");
-        timer.stop();
-        var repMsg = "node properties added";
-        outMsg = "DipSLLaddNodeProperties took " + timer.elapsed():string + " sec";
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-
-        return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipSLLaddNodePropertiesMsg
-
-    /**
-    * Adds properties to the edges of a property graph.
-    *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
-    *
-    * returns: message back to Python.
-    */
-    proc DipSLLaddEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var arrays = msgArgs.getValueOf("Arrays");
-        var columns = msgArgs.getValueOf("Columns");
-
-        // Extract the names of the arrays passed to the function.
-        var arrays_list = arrays.split();
-        var cols_list = columns.split();
-        var src_name = arrays_list[0];
-        var dst_name = arrays_list[1];
-        
-        // Extract the actual arrays for each of the names above.
-        var src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var src_sym = toSymEntry(src_entry, int);
-        var src = src_sym.a;
-        
-        var dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var dst_sym = toSymEntry(dst_entry, int);
-        var dst = dst_sym.a;
-
-        var timer:stopwatch;
-        timer.start();
-        
-        // Get graph for usage and needed arrays.
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
-        var node_map_r = toSymEntryAD(graph.getComp("NODE_MAP_R")).a;
-        var start_idx = toSymEntry(graph.getComp("START_IDX"), int).a;
-        var neighbor = toSymEntry(graph.getComp("NEIGHBOR"), int).a;
-        var src_actual = toSymEntry(graph.getComp("SRC"), int).a;
-        var dst_actual = toSymEntry(graph.getComp("DST"), int).a;
-
-        // Create array of lists to store edge_props and populate it. 
-        var edge_props: [src_actual.domain] list((string,string), parSafe=true);
-        if(graph.hasComp("DIP_SLL_EDGE_PROPS")) {
-            edge_props = toSymEntry(graph.getComp("DIP_SLL_EDGE_PROPS"), list((string,string), parSafe=true)).a;
-        }
-
-        forall (i,j) in zip(src.domain, dst.domain) {
-            for x in 2..arrays_list.size - 1 {
-                var u = node_map_r[src[i]];
-                var v = node_map_r[dst[j]];
-
-                var start = start_idx[u];
-                var end = start + neighbor[u];
-
-                var neighborhood = dst_actual[start..end - 1];
-                var ind = bin_search_v(neighborhood, neighborhood.domain.lowBound, neighborhood.domain.highBound, v);
-
-                var curr_prop_arr:SegString = getSegString(arrays_list[x], st);
-                edge_props[ind].pushBack((cols_list[x],curr_prop_arr[i])); // or j
-            }
-        }
-        
-        // Add the component for the node labels for the graph. 
-        graph.withComp(new shared SymEntry(edge_props):GenSymEntry, "DIP_SLL_EDGE_PROPS");
-        timer.stop();
-        var repMsg = "edge properties added";
-        outMsg = "DipSLLaddEdgeProperties took " + timer.elapsed():string;
-        
-        // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-        return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of DipSLLaddEdgePropertiesMsg
-
     proc getNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract the needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
@@ -352,12 +216,18 @@ module DipSLLPropertyGraphMsg {
         forall lbl_id in labels_to_find with (ref labels_to_find_set) do labels_to_find_set += lbl_id;
         var return_array : [node_labels.domain] bool;
 
+        // Distribute the labels_to_find_set to each locale.
+        var labels_to_find_set_dist = makeDistArray(numLocales, domain(int));
+        coforall loc in Locales do on loc {
+            labels_to_find_set_dist[here.id] = labels_to_find_set;
+        }
+
         // Search in parallel for the nodes that have the labels to find.
         var timer:stopwatch;
         timer.start();
         forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_array) {
             for lbl in u_label_set {
-                if labels_to_find_set.contains(lbl) {
+                if labels_to_find_set_dist[here.id].contains(lbl) {
                     return_array[u] = true;
                     break;
                 }
@@ -406,12 +276,18 @@ module DipSLLPropertyGraphMsg {
         forall rel_id in relationships_to_find with (ref relationships_to_find_set) do relationships_to_find_set += rel_id;
         var return_array : [edge_relationships.domain] bool;
 
+        // Distribute the relationships_to_find_set to each locale.
+        var relationships_to_find_set_dist = makeDistArray(numLocales, domain(int));
+        coforall loc in Locales do on loc {
+            relationships_to_find_set_dist[here.id] = relationships_to_find_set;
+        }
+        
         // Search in parallel for the nodes that have the labesl to find.
         var timer:stopwatch;
         timer.start();
         forall (u, u_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_array) {
             for rel in u_relationship_set {
-                if relationships_to_find_set.contains(rel) {
+                if relationships_to_find_set_dist[here.id].contains(rel) {
                     return_array[u] = true;
                     break;
                 }
@@ -433,8 +309,6 @@ module DipSLLPropertyGraphMsg {
     use CommandMap;
     registerFunction("DipSLLaddNodeLabels", DipSLLaddNodeLabelsMsg, getModuleName());
     registerFunction("DipSLLaddEdgeRelationships", DipSLLaddEdgeRelationshipsMsg, getModuleName());
-    registerFunction("DipSLLaddNodeProperties", DipSLLaddNodePropertiesMsg, getModuleName());
-    registerFunction("DipSLLaddEdgeProperties", DipSLLaddEdgePropertiesMsg, getModuleName());
     registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
     registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());
     registerFunction("DipSLLqueryLabel", DipSLLqueryLabelMsg, getModuleName());
