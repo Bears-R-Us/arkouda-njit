@@ -14,7 +14,7 @@ module GraphArray {
     const graphLogger = new Logger(logLevel);
 
     class Node {
-        var data : string;
+        var data : int;
         var vertex : int;
         var prev : borrowed Node?;
         var next : shared Node?;
@@ -26,7 +26,7 @@ module GraphArray {
             next = nil;
         }
 
-        proc init(value: string, v: int) {
+        proc init(value: int, v: int) {
             data = value; 
             vertex = v;
             prev = nil; 
@@ -47,8 +47,8 @@ module GraphArray {
         }
     }
 
-    var last_label_tracker = new map(string, shared Node/*, parSafe=true*/);
-    var last_relationship_tracker = new map(string, shared Node/*, parSafe=true*/);
+    var last_label_tracker = new map(int, shared Node/*, parSafe=true*/);
+    var last_relationship_tracker = new map(int, shared Node/*, parSafe=true*/);
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
