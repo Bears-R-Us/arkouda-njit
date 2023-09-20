@@ -33,8 +33,10 @@ module SubgraphIsomorphism {
         var srcH = toSymEntry(H.getComp("SRC"), int).a;
         var dstH = toSymEntry(H.getComp("DST"), int).a;
         var segH = toSymEntry(H.getComp("SEGMENTS"), int).a;
-
+        
+        writeln("\n\n****************** We reached isIsomorphic 1 ", "to check v= ", v ," mapping= ", mapping);
         // Check if the node labels are the same
+        writeln("isIso returned= ", nodeLabelsH[v] != nodeLabelsG[i]);
         if nodeLabelsH[v] != nodeLabelsG[i] {
             return false;
         }
@@ -42,12 +44,18 @@ module SubgraphIsomorphism {
         // Check if the in-degree + out-degree of every vertex in H is less than or equal to 
         // the corresponding vertex in G
         for u in 0..v-1 {
-            if mapping[u] > 0 {  // If u in H is mapped to some vertex in G
+            writeln("$$$$$$$$$ We reached isIsomorphic 2");
+            writeln(" u= ",u, " mapping[u]= ", mapping[u]);
+
+            if mapping[u] > -1 {  // If u in H is mapped to some vertex in G
                 // Check if there is an edge from u to v in H
                 var adj_list_of_u_from_H_start = segH[u];
                 var adj_list_of_u_from_H_end = segH[u+1];
                 var v_found = bin_search_v(dstH, adj_list_of_u_from_H_start, adj_list_of_u_from_H_end, v);
-                if v_found {
+
+                writeln("$$$$$$$$$ We reached isIsomorphic 3");
+                writeln("v_found= ", v_found);
+                if v_found>= 0 {
                     // Check if there is an edge from mapping[u] to mapping[v] in G
                     // And check if the edge labels are the same
                     var um = mapping[u];
@@ -56,8 +64,15 @@ module SubgraphIsomorphism {
                     var adj_list_of_um_from_G_start = segG[um];
                     var adj_list_of_um_from_G_end = segG[um+1];
                     var vm_found = bin_search_v(dstG, adj_list_of_um_from_G_start, adj_list_of_um_from_G_end, vm);
-
-                    if !vm_found || edgeRelationshipsH[v_found] != edgeRelationshipsG[vm_found] {
+                    writeln("u = ", u , " um = mapping[u] = ", mapping[u]);
+                    writeln("v = ", u , " vm = mapping[v] = ", mapping[v]);
+                    
+                    writeln(" vm_found = ",  vm_found);
+                    writeln("$$$$$$$$$ We reached isIsomorphic 4");
+                    writeln("edgeRelationshipsH[",v_found,"]= ",edgeRelationshipsH[v_found]);
+                    writeln("edgeRelationshipsG[",vm_found,"]= ",edgeRelationshipsG[vm_found]);
+                    if vm_found <0 || edgeRelationshipsH[v_found] != edgeRelationshipsG[vm_found] {
+                        writeln("$$$$$$$$$ We reached isIsomorphic 5");
                         return false;
                     }
                 }
@@ -66,7 +81,8 @@ module SubgraphIsomorphism {
                 var adj_list_of_v_from_H_start = segH[v];
                 var adj_list_of_v_from_H_end = segH[v+1];
                 var u_found = bin_search_v(dstH, adj_list_of_v_from_H_start, adj_list_of_v_from_H_end, u);
-                if u_found {
+                writeln("u_found = ", u_found);
+                if u_found >=0 {
                     // Check if there is an edge from mapping[u] to mapping[v] in G
                     // And check if the edge labels are the same
                     var um = mapping[u];
@@ -75,8 +91,11 @@ module SubgraphIsomorphism {
                     var adj_list_of_vm_from_G_start = segG[vm];
                     var adj_list_of_vm_from_G_end = segG[vm+1];
                     var um_found = bin_search_v(dstG, adj_list_of_vm_from_G_start, adj_list_of_vm_from_G_end, um);
-
+                    writeln("$$$$$$$$$ We reached isIsomorphic 6");
+                    writeln("um_found= ", um_found, " edgeRelationshipsH[",u_found,"]= ",edgeRelationshipsH[u_found], " edgeRelationshipsG[",um_found,"]= ",edgeRelationshipsG[um_found] );
+                    writeln("$$$$$$$$$ We reached isIsomorphic 7");
                     if !um_found || edgeRelationshipsH[u_found] != edgeRelationshipsG[um_found] {
+                        writeln("$$$$$$$$$ We reached isIsomorphic 8");
                         return false;
                     }
                 }
@@ -96,16 +115,22 @@ module SubgraphIsomorphism {
 
         for i in 0..G.n_vertices-1 {
             writeln("$$$$$$ WE GET HERE 4");
+            writeln("i =",i);
             if (!visited[i] && graphDegree[i] >= 1) { 
                 visited[i] = true;  // Mark the vertex as visited
                 mapping[v] = i;  // Add the vertex to the current mapping
+                writeln("visited[",i,"] = ", visited[i]);
+                writeln("mapping[",v,"] = ", i);
+                writeln("now mapping is: ",mapping);
                 // If the vertex can be added to the current mapping
                 if (isIsomorphic(G, H, v, mapping)) {
                     // If all vertices in H have been visited
                     if (v >= H.n_vertices-1) {
                         var isComplete = true;  // Check if all vertices in the subgraph have been mapped
                         for j in 0..H.n_vertices-1 {
-                            if (mapping[j] < 1) {
+                            if (mapping[j] < 0) {
+                                writeln("$$$$$$ WE GET HERE 5");
+                                writeln("mapping[",j,"]= ", mapping[j]);
                                 isComplete = false;
                                 break;
                             }
@@ -113,6 +138,7 @@ module SubgraphIsomorphism {
                         // If the mapping is complete, add the current mapping to the isomorphism list
                         if (isComplete) {
                             localIsoList.pushBack(mapping);
+                            writeln("$$$$$$ WE GET HERE 6");
                         }
                     }
                     else {
@@ -126,17 +152,19 @@ module SubgraphIsomorphism {
                         }
                     }
                 }
-                writeln("$$$$$$ WE GET HERE 5");
+                writeln("$$$$$$ WE GET HERE 7");
                 // Backtrack: unvisit the vertex and remove it from the mapping
                 visited[i] = false;
                 mapping[v] = -1;
             }
         }
+        writeln("localIsoList= ", localIsoList);
         return localIsoList;  // Return the list of isomorphisms found in the current branch
     } // end of ullmannSubgraphIsomorphism11Helper
 
     // Ullmann's subgraph isomorphism algorithm
-    proc ullmannSubgraphIsomorphism11(G: SegGraph, H: SegGraph, subGraphVerticesSortedByDegree: [?D1] int, graphDegree: [?D2] int) throws {
+    proc ullmannSubgraphIsomorphism11(G: SegGraph, H: SegGraph, subGraphVerticesSortedByDegree: [?D1] int, 
+                                       graphDegree: [?D2] int) throws {
         // // Create an array to hold the vertices sorted by degree
         // var subGraphVerticesSortedByDegree: [1..H.numVertices] int;
         // for v in 1..H.numVertices {
@@ -156,16 +184,23 @@ module SubgraphIsomorphism {
 
         // Parallelize over the vertices of subGraph based on degree order!
         // Check it realy changes the running time? I have doubt because of parallelism!
-        coforall idx in 0..H.n_vertices-1 {
+        for idx in 0..H.n_vertices-1 {
             var v = subGraphVerticesSortedByDegree[idx];
             var visited: [0..G.n_vertices-1] bool;  // Array to keep track of visited vertices
             var mapping: [0..H.n_vertices-1] int;  // Array for the current mapping
+           
             mapping = -1;  // Initialize the mapping array to -1 (indicating no mapping)
             visited = false;  // Initialize all vertices as unvisited
             // Find isomorphisms for the current vertex v
             writeln("$$$$$$ WE GET HERE 1");
+            writeln("Calling Ullmann with these parameters: ");
+            writeln("subGraphVerticesSortedByDegree = ", v);
+            writeln("visited = ", visited);
+            writeln("mapping = ", mapping, "\n\n");
+
             var subIsoList = ullmannSubgraphIsomorphism11Helper(G, H, v, visited, mapping, graphDegree);
             writeln("$$$$$$ WE GET HERE 2");
+            writeln(subIsoList);
             if (subIsoList.size > 0) {
                 // Print isomorphisms found by the current task without merging
                 //writeln("Isomorphisms found by task ", v, ":");
