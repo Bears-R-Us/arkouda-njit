@@ -15,22 +15,27 @@ Sample usage: python3 breadth_first_search.py n1 5555 5000 20000 5
 import argparse
 import time
 import statistics as st
-import arkouda as ak
 import arachne as ar
+import arkouda as ak
 
 def create_parser():
     """Creates the command line parser for this script"""
-    script_parser = argparse.ArgumentParser(
-        description="Simple script showcasing all the functionality of Arachne on a random graph of\
-                     size specified by the user."
+    parser = argparse.ArgumentParser(
+        description="Simple benchmark for breadth-first search on randomly generated sample graphs."
     )
-    script_parser.add_argument("hostname", help="Hostname of arkouda server")
-    script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
-    script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
-    script_parser.add_argument("m", type=int, default=2000, help="Number of edges for graph")
-    script_parser.add_argument("trials", type=int, default=5, help="Number of times to run BFS")
+    parser.add_argument( "hostname", "-h", "--host",
+                          help = "Hostname of the arkouda server"
+                          )
+    parser.add_argument( "port", "-p", "port", type = int, default = 5555,
+                         help = "Port used by the arkouda server"
+                         )
+    parser.add_argument( "-n", type = int, default = 1000, help = "Number of vertices for graph")
+    parser.add_argument( "-m", type = int, default = 2000, help = "Number of edges for graph")
+    parser.add_argument( "-t", "--trials", type = int, default = 5,
+                         help = " Number of trials for BFS"
+                         )
 
-    return script_parser
+    return parser
 
 if __name__ == "__main__":
     # Command line parser and extraction.
@@ -47,6 +52,7 @@ if __name__ == "__main__":
     dst = ak.randint(0, args.n, args.m)
 
     # 2. Build undirected graph.
+    print()
     print("### Arachne Graph Building")
     start = time.time()
     graph = ar.Graph()
@@ -64,7 +70,7 @@ if __name__ == "__main__":
           f"edges took {round(end-start,2)} seconds")
     print()
 
-    print("Arachne Breadth-First Search")
+    print("### Arachne Breadth-First Search")
     ### Run Arachne breadth-first search on the input graphs.
     # 1. BFS on undirected graph.
     undirected_bfs_trials = []
@@ -76,7 +82,7 @@ if __name__ == "__main__":
         undirected_bfs_trials.append(end-start)
     avg_runtime_undirected = round(st.mean(undirected_bfs_trials),2)
     print(f"Running breadth-first search on undirected graph took on average "
-          f"{avg_runtime_undirected} seconds.")
+          f"{avg_runtime_undirected} seconds")
 
     # 2. BFS on directed graph.
     directed_bfs_trials = []
@@ -88,7 +94,14 @@ if __name__ == "__main__":
         directed_bfs_trials.append(end-start)
     avg_runtime_directed = round(st.mean(directed_bfs_trials),2)
     print(f"Running breadth-first search on directed graph took on average {avg_runtime_directed} "
-          f"seconds.")
+          f"seconds")
     print()
 
-    ak.shutdown()
+    # 3. Print out times in comma-delimited manner.
+    print("### Full Timings")
+    undirected_bfs_trials = [round(x,2) for x in undirected_bfs_trials]
+    directed_bfs_trials = [round(x,2) for x in directed_bfs_trials]
+    print(f"undirected_bfs_trials = {undirected_bfs_trials}")
+    print(f"directed_bfs_trials   = {directed_bfs_trials}")
+
+    # ak.shutdown()
