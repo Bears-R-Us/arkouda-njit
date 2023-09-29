@@ -172,7 +172,7 @@ module DipSLLPropertyGraphMsg {
         // Get graph for usage and the node label mapper. 
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var label_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_LABELS_MAP"));
+        const ref label_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_LABELS_MAP"));
 
         // Add new copies of each to the symbol table.
         var label_mapper = assembleSegStringFromParts(label_mapper_entry.offsetsEntry, label_mapper_entry.bytesEntry, st);
@@ -197,7 +197,7 @@ module DipSLLPropertyGraphMsg {
         // Get graph for usage and the edge relationship mapper. 
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var relationship_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_RELATIONSHIPS_MAP"));
+        const ref relationship_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_RELATIONSHIPS_MAP"));
 
         // Add new copies of each to the symbol table.
         var relationship_mapper = assembleSegStringFromParts(relationship_mapper_entry.offsetsEntry, relationship_mapper_entry.bytesEntry, st);
