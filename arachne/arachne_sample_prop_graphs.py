@@ -153,7 +153,7 @@ if __name__ == "__main__":
     print(f"Querying {len(relationships_to_find)} edge relationships with AND took "
           f"{round(and_query_relationships_time, 2)} seconds and returned array of size "
           f"{len(queried_edges_and[0])}.")
-    
+
     start = time.time()
     queried_edges_or = prop_graph.query_relationships(relationships_to_find, op = "or")
     end = time.time()

@@ -690,7 +690,7 @@ class PropGraph(DiGraph):
         rep_msg = generic_msg(cmd=cmd, args=args)
 
         return ak.Strings.from_return_msg(rep_msg)
-    
+
     def get_edge_relationships(self) -> ak.Strings:
         """Returns the sorted object of edge relationships stored for the property graph.
 
@@ -709,13 +709,13 @@ class PropGraph(DiGraph):
 
         return ak.Strings.from_return_msg(rep_msg)
 
-    def query_labels(   self,
-                        labels_to_find:pdarray,
-                        op:str = "and" ) -> pdarray:
+    def query_labels( self,
+                      labels_to_find:pdarray,
+                      op:str = "and" ) -> pdarray:
         """Given pdarrays specifiying a subset of node labels, this function returns to the user a 
-        pdarray with the nodes that contain any of the labels. The operator specifies the operation
-        to be conducted at the back-end. If the vertex should contain all of the labels specified
-        in `labels_to_find` then the operaator to use should be "and" otherwise use "or".
+        pdarray with the nodes that contain the labels. The operator specifies the operation to be
+        conducted at the back-end. If the vertex should contain all of the labels specified in
+        `labels_to_find` then the operaator to use should be "and" otherwise use "or".
 
         Parameters
         ----------
@@ -726,29 +726,36 @@ class PropGraph(DiGraph):
         
         Returns
         -------
-        pdarray : int64
+        final_vertices : pdarray
             Vertex names that contain the specified nodes.
         """
         cmd = "queryLabels"
+
+        # Get internal representation of the labels to find.
         labels_to_find = ak.find(labels_to_find, self.get_node_labels())
-        
+
         args = {  "GraphName" : self.name,
                   "LabelsToFindName" : labels_to_find.name,
                   "Op" : op }
-        
+
         rep_msg = generic_msg(cmd=cmd, args=args)
+
+        ### Manipulate data to return the external vertex representations of the found nodes.
+        # 1. Convert Boolean array to actual pdarray.
         vertices_bool = create_pdarray(rep_msg)
-        final_vertices = self.nodes()[vertices_bool]
+
+        # 2. Use Boolean array to index original vertex names.
+        final_vertices:pdarray = self.nodes()[vertices_bool]
 
         return final_vertices
 
-    def query_relationships(    self,
-                                relationships_to_find:pdarray,
-                                op:str = "and" ) -> pdarray:
+    def query_relationships( self,
+                             relationships_to_find:pdarray,
+                             op:str = "and" ) -> (pdarray,pdarray):
         """Given a pdarray specifiying a subset of edge relationships, this function returns to the 
-        user a pdarray with the edges that contain any of the relationships. The operator specifies
-        the operation to be conducted at the back-end. If the vertex should contain all of the
-        relationships specified in `relationships_to_find` then the operayor should be "and"
+        user a tuple of pdarrays with the edges that contain the relationships. The operator 
+        specifies the operation to be conducted at the back-end. If the edge should contain all of 
+        the relationships specified in `relationships_to_find` then the operator should be "and"
         otherwise use "or".
 
         Parameters
@@ -760,25 +767,76 @@ class PropGraph(DiGraph):
         
         Returns
         -------
-        (pdarray,pdarray) : Tuple(int64, int64)
+        (src,dst) : (pdarray,pdarray)
             Source and destination vertex pairs that contain the specified edges.
         """
         cmd = "queryRelationships"
-        relationships_to_find_to_find = ak.find(relationships_to_find,self.get_edge_relationships())
+
+        # Get internal representation of the relationships to find.
+        relationships_to_find = ak.find(relationships_to_find,self.get_edge_relationships())
 
         args = {  "GraphName" : self.name,
-                  "RelationshipsToFindName" : relationships_to_find_to_find.name,
+                  "RelationshipsToFindName" : relationships_to_find.name,
                   "Op" : op }
 
         rep_msg = generic_msg(cmd=cmd, args=args)
 
-        edges_bool = create_pdarray(rep_msg)
+        ### Manipulate data to turn internal vertex names to external ones.
+        # 1. Convert Boolean array to actual pdarray.
+        edges_bool:pdarray = create_pdarray(rep_msg)
+
+        # 2. Extract edges and nodes of the graph and convert them to original vertex names.
         edges, nodes = self.edges(), self.nodes()
         src, dst = edges[0], edges[1]
-        src, dst = nodes[src], nodes[dst]
-        final_edges = (src[edges_bool], dst[edges_bool])
+        src:pdarray = nodes[src]
+        dst:pdarray = nodes[dst]
+        src, dst = src[edges_bool], dst[edges_bool]
 
-        return final_edges
+        return (src,dst)
+
+    def one_path( self,
+                  labels_to_find:pdarray, relationships_to_find:pdarray, 
+                  lbl_op:str = "and", rel_op:str = "and") -> (pdarray,pdarray):
+        """Given two pdarrays specifying labels and relationship to find, this function returns to
+        the user a tuple of pdarrays with the edges that are length one paths with the node and
+        edge types specified. The operations `lbl_op` and `rel_op` specify the operation to be
+        conducted at the back-end. If the operation is `and` then the returned edges and nodes will
+        have all of the specified attributes, if it is `or` then at least one of the attributes
+        has to match. These can mix and matched. 
+
+        Parameters
+        ----------
+        labels_to_find : pdarray
+            A pdarray with node labels whose nodes are to be returned.
+        lbl_op : str
+            Operator to apply to the search, either "and" or "or".
+        relationships_to_find : pdarray
+            A pdarray with edge relationships whose edges are to be returned.
+        rel_op : str
+            Operator to apply to the search, either "and" or "or".
+
+        Returns
+        -------
+        (src, dst) : (pdarray,pdarray)
+            Source and destination vertex pairs that contain the length one paths.
+        """
+        # 1. Get the nodes and edges that contain the specified labels and relationships.
+        nodes = self.query_labels(labels_to_find, lbl_op)
+        edges = self.query_relationships(relationships_to_find, rel_op)
+
+        # 2. Find the overlap of returned edges and returned nodes.
+        src = ak.in1d(edges[0], nodes)
+        dst = ak.in1d(edges[1], nodes)
+
+        # 3. Perform a Boolean and operation to keep only the edges where nodes were also returned
+        #    in a query.
+        kept_edges = src & dst
+
+        # 4. Extract the actual edges with original node names.
+        src = edges[0][kept_edges]
+        dst = edges[1][kept_edges]
+
+        return (src, dst)
 
 @typechecked
 def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
