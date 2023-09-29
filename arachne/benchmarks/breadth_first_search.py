@@ -9,9 +9,6 @@ The values of n and m are accepted from command line input. As well as the numbe
 executing breadth-first search.
 
 Assumes Arkouda server is running. It will shutdown the Arkouda server upon completion.
-
-Sample usage: python3 breadth_first_search.py n1 5555 5000 20000 5
-
 """
 import argparse
 import os
@@ -148,7 +145,8 @@ if __name__ == "__main__":
         run_rand_benchmark(in_args)
 
     if in_args.mtx:
-        print("\n##### MTX BENCHMARK")
+        filename = in_args.filepath.split("/")[-1]
+        print(f"\n##### MTX BENCHMARK FOR GRAPH {filename}")
         run_mtx_benchmark(in_args)
 
     if not in_args.rand and not in_args.mtx:
