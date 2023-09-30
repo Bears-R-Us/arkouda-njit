@@ -4,24 +4,22 @@ information.
 """
 from __future__ import annotations
 from typing import cast, Tuple, Union
-from typeguard import typechecked
 import time
+from typeguard import typechecked
 import arkouda as ak
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 from arkouda.logger import getArkoudaLogger
 from arkouda.dtypes import int64 as akint
 
-__all__ = ["Graph",
-           "DiGraph",
-           "PropGraph",
+__all__ = ["Graph", "DiGraph", "PropGraph",
+           "read_matrix_market_file",
            "bfs_layers",
            "subgraph_isomorphism",
            "triangles",
            "k_truss",
            "triangle_centrality",
            "connected_components",
-           "read_matrix_market_file"
            ]
 
 class Graph:
@@ -795,7 +793,7 @@ class PropGraph(DiGraph):
         return (src,dst)
 
     def one_path( self,
-                  labels_to_find:pdarray, relationships_to_find:pdarray, 
+                  labels_to_find:pdarray, relationships_to_find:pdarray,
                   lbl_op:str = "and", rel_op:str = "and") -> (pdarray,pdarray):
         """Given two pdarrays specifying labels and relationship to find, this function returns to
         the user a tuple of pdarrays with the edges that are length one paths with the node and
