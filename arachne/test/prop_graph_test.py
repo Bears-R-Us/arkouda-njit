@@ -111,6 +111,10 @@ class PropGraphTest(ArkoudaTest):
         one_path_or_and = graph.one_path(l_to_find_or, r_to_find_and, "or", "and")
         one_path_or_or = graph.one_path(l_to_find_or, r_to_find_or, "or", "or")
 
+        # NOTE: Compares strings instead of lists. During the writing of this function there was a
+        #       weird bug where or_query was being turned into an integer when calling to_list() on
+        #       it, making all list functions such as sort uncallable. Converting them to strinks
+        #       was the workaround.
         all_actual = str([2]) + " " + str([3])
         one_path_and_and = str(one_path_and_and[0]) + " " + str(one_path_and_and[1])
         one_path_and_or = str(one_path_and_or[0]) + " " + str(one_path_and_or[1])
