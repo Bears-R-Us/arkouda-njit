@@ -3,7 +3,8 @@ import arkouda as ak
 import arachne as ar
 import networkx as nx
 
-class AlgorithmTest(ArkoudaTest):    
+class AlgorithmTest(ArkoudaTest):
+    """Test graph algorithm methods."""
     def build_undirected_graph(self):
         """Builds undirected and weighted graphs in both Arachne and NetworkX for tests."""
         src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
