@@ -62,7 +62,6 @@ if __name__ == "__main__":
     prop_graph.add_edges_from(src, dst)
     end = time.time()
     build_time = end - start
-    print()
     print(f"Building property graph with {len(prop_graph)} vertices and {prop_graph.size()} "
           f"edges took {round(build_time,2)} seconds.")
 
@@ -88,7 +87,6 @@ if __name__ == "__main__":
     prop_graph.add_node_labels(label_df)
     end = time.time()
     add_labels_time = end - start
-    print()
     print(f"Populating property graph with {len(random_labels)} labels took "
           f"{round(add_labels_time,2)} seconds.")
 
@@ -99,7 +97,7 @@ if __name__ == "__main__":
     relationships = ak.array(relationships_list)
 
     # 2. Generate random array of edges with original vertex values.
-    edges_with_relationships = ak.randint(0, len(src), len(src), seed=128)
+    edges_with_relationships = ak.randint(0, prop_graph.size(), prop_graph.size(), seed=128)
     src_vertices_with_relationships = src[edges_with_relationships]
     dst_vertices_with_relationships = dst[edges_with_relationships]
 
@@ -108,27 +106,25 @@ if __name__ == "__main__":
     random_relationships = relationships[random_relationships]
 
     # 4. Pack the values into a dataframe and populate them into the graph.
-    relationships_df = ak.DataFrame({"src" : src_vertices_with_relationships, 
-                                     "dst" : dst_vertices_with_relationships, 
+    relationships_df = ak.DataFrame({"src" : src_vertices_with_relationships,
+                                     "dst" : dst_vertices_with_relationships,
                                      "edge_relationships" : random_relationships})
 
     start = time.time()
     prop_graph.add_edge_relationships(relationships_df)
     end = time.time()
     add_relationships_time = end - start
-    print()
     print(f"Populating property graph with {len(random_relationships)} relationships took "
           f"{round(add_relationships_time,2)} seconds.")
 
     ### Run property graph query functions.
-    # 1. Query node labels with only the edge relationship at index 1.
+    # 1. Query node labels only with the first three labels.
     labels_to_find = ak.array(labels_list[1:4])
 
     start = time.time()
     queried_nodes_and = prop_graph.query_labels(labels_to_find, op = "and")
     end = time.time()
     and_query_labels_time = end - start
-    print()
     print(f"Querying {len(labels_to_find)} node labels took with AND "
           f"{round(and_query_labels_time, 2)} seconds and returned array of size "
           f"{len(queried_nodes_and)}.")
@@ -137,19 +133,17 @@ if __name__ == "__main__":
     queried_nodes_or = prop_graph.query_labels(labels_to_find, op = "or")
     end = time.time()
     or_query_labels_time = end - start
-    print()
     print(f"Querying {len(labels_to_find)} node labels with OR took "
           f"{round(or_query_labels_time, 2)} seconds and returned array of size "
           f"{len(queried_nodes_or)}.")
 
-    # 2. Query edge relationships with only the edge relationship at index 1.
+    # 2. Query edge relationships with only the first three edges.
     relationships_to_find = ak.array(relationships_list[1:4])
 
     start = time.time()
     queried_edges_and = prop_graph.query_relationships(relationships_to_find, op = "and")
     end = time.time()
     and_query_relationships_time = end - start
-    print()
     print(f"Querying {len(relationships_to_find)} edge relationships with AND took "
           f"{round(and_query_relationships_time, 2)} seconds and returned array of size "
           f"{len(queried_edges_and[0])}.")
@@ -158,7 +152,6 @@ if __name__ == "__main__":
     queried_edges_or = prop_graph.query_relationships(relationships_to_find, op = "or")
     end = time.time()
     or_query_relationships_time = end - start
-    print()
     print(f"Querying {len(relationships_to_find)} edge relationships with OR took "
           f"{round(or_query_relationships_time, 2)} seconds and returned array of size "
           f"{len(queried_edges_or[1])}.")
