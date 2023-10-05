@@ -1,11 +1,9 @@
 module DipSLLPropertyGraphMsg {
     // Chapel modules.
     use Reflection;
-    use Set;
     use Time; 
-    use Sort; 
-    use List;
-    use CopyAggregation;
+    use Sort;
+    use BlockDist;
     use CommDiagnostics;
     
     // Arachne Modules.
@@ -15,6 +13,7 @@ module DipSLLPropertyGraphMsg {
     // Arkouda modules.
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
+    use NumPyDType;
     use ServerConfig;
     use ServerErrors;
     use ServerErrorStrings;
@@ -28,6 +27,16 @@ module DipSLLPropertyGraphMsg {
     private config const logLevel = LogLevel.DEBUG;
     const smLogger = new Logger(logLevel);
     var outMsg:string;
+
+    class GenProperty {
+        var fromColumn: int;
+    }
+    
+    class Property: GenProperty {
+        type etype;
+        var D_properties: domain(int);
+        var properties: [D_properties] etype;
+    }
 
     /**
     * Adds node labels to the nodes of a property graph.
@@ -74,15 +83,11 @@ module DipSLLPropertyGraphMsg {
 
         var timer:stopwatch;
         timer.start();
-        resetCommDiagnostics();
-        startCommDiagnostics();
         forall i in input_vertices.domain { // for each input vertex, update its label list. 
             var lbl = input_labels[i]; // local
             var u = input_vertices[i]; // local
             vertex_labels[u] += lbl; // remote
         }
-        stopCommDiagnostics();
-        printCommDiagnosticsTable();
         timer.stop();
 
         // Add the component for the node labels for the graph.
@@ -90,6 +95,102 @@ module DipSLLPropertyGraphMsg {
         graph.withComp(new shared SegStringSymEntry(label_mapper.offsets, label_mapper.values, string):GenSymEntry, "VERTEX_LABELS_MAP");
         var repMsg = "labels added";
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
+        
+        // Print out debug information to arkouda server output. 
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of addNodeLabelsMsg
+
+    /**
+    * Adds node properties to the nodes of a property graph.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var vertexIdsName = msgArgs.getValueOf("VertexIdsName");
+        var propertyMapperNames = msgArgs.getValueOf("PropertyMapperNames");
+        var dataArrayNames = msgArgs.getValueOf("DataArrayNames");
+
+        // Extract the graph we are operating with from the symbol table.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+
+        // Extract the vertices containing labels to be inputted.
+        var input_vertices_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexIdsName, st);
+        var input_vertices_sym = toSymEntry(input_vertices_entry, int);
+        var input_vertices = input_vertices_sym.a;
+
+        // Extract property mappers from message, the first one contains column names in their
+        // regular order, the second contains the internal mapping for the property names.
+        var propertyMapperArrayNames = propertyMapperNames.split();
+        var columns:SegString = getSegString(propertyMapperArrayNames[0], st);
+        var propertyMapper:SegString = getSegString(propertyMapperArrayNames[1], st);
+
+        // Extract the data array names and number of datatypes.
+        var dataArrays = dataArrayNames.split();
+        var dataTypeSet: domain(string);
+        for dataArray in dataArrays do dataTypeSet += dtype2str(getGenericTypedArrayEntry(dataArrays, st).dtype);
+        var dataTypeMap: [dataTypeSet] int;
+        var ind = 0;
+        for val in dataTypeMap do dataTypeMap = ind; ind += 0;
+
+        // Create the array of domains that will store the labels for our vertices.
+        // var vertex_props: [node_map.domain] [0..<dataTypeSet.size] shared GenProperty?;
+        var vertex_props = blockDist.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
+
+        writeln("vertex_props:");
+        writeln(vertex_props);
+
+        var timer:stopwatch;
+        timer.start();
+        for i in 0..<columns.size {
+            writeln("column name ", columns[i], " mapped to ", dataArrays[i]);
+        }
+
+        for i in 0..<dataArrays.size {
+            var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArrays[i], st);
+            var etype = dataArrayEntry.dtype;
+            var etypeStr = dtype2str(etype);
+            select etype {
+                when (DType.Int64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, int);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMap[etypeStr];
+                    forall j in input_vertices.domain {
+                        if vertex_props[j,etypeInd] == nil{
+                            vertex_props[j,etypeInd] = new shared Property(i, int);
+                        }
+                        writeln("vertex is ", input_vertices[j], " and data is ", dataArray[j], " and property storage is ", vertex_props[j,etypeInd], " on locale ", here.id);
+                        // vertex_props[j,etypeInd]!.D_properties += i;
+                        // vertex_props[j,etypeInd]!.properties[j] = dataArray[j];
+                    }
+                }
+            }
+            writeln();
+        }
+        
+        
+        // forall i in input_vertices.domain { // for each input vertex, update its label list. 
+        //     var lbl = input_labels[i]; // local
+        //     var u = input_vertices[i]; // local
+        //     vertex_labels[u] += lbl; // remote
+        // }
+        timer.stop();
+
+        // Add the component for the node labels for the graph.
+        // graph.withComp(new shared SymEntry(vertex_props):GenSymEntry, "VERTEX_PROPS");
+        graph.withComp(new shared SegStringSymEntry(propertyMapper.offsets, propertyMapper.values, string):GenSymEntry, "VERTEX_PROPS_MAP");
+        var repMsg = "node properties added";
+        outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -141,15 +242,11 @@ module DipSLLPropertyGraphMsg {
         
         var timer:stopwatch;
         timer.start();
-        resetCommDiagnostics();
-        startCommDiagnostics();
         forall i in input_internal_edge_indices.domain {
             var rel = input_relationships[i];
             var ind = input_internal_edge_indices[i];
             edge_relationships[ind] += rel;
         }
-        stopCommDiagnostics();
-        printCommDiagnosticsTable();
         
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "EDGE_RELATIONSHIPS");
@@ -378,6 +475,7 @@ module DipSLLPropertyGraphMsg {
 
     use CommandMap;
     registerFunction("addNodeLabels", addNodeLabelsMsg, getModuleName());
+    registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
     registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
     registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());

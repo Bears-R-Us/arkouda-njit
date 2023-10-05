@@ -15,18 +15,20 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,            // The source array of every edge in the graph
-        DST,            // The destination array of every edge in the graph
-        SEGMENTS,       // The segments of adjacency lists for each vertex in DST
-        RANGES,         // Keeps the range of the vertices the edge list stores per locale
-        EDGE_WEIGHT,    // Stores the edge weights of the graph, if applicable
-        NODE_MAP,       // Doing an index of NODE_MAP[u] gives you the original value of u
-        VERTEX_LABELS,    // Any labels that belong to a specific node
-        VERTEX_LABELS_MAP, // Sorted array of vertex labels to integer id (array index)
-        EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
-        EDGE_RELATIONSHIPS_MAP, //Sorted array of edge relationships to integer id (array index)
-        VERTEX_PROPS,     // Any properties that belong to a specific node
-        EDGE_PROPS,     // Any properties that belong to a specific edge
+        SRC,                    // The source array of every edge in the graph
+        DST,                    // The destination array of every edge in the graph
+        SEGMENTS,               // The segments of adjacency lists for each vertex in DST
+        RANGES,                 // Keeps the range of the vertices the edge list stores per locale
+        EDGE_WEIGHT,            // Stores the edge weights of the graph, if applicable
+        NODE_MAP,               // Doing an index of NODE_MAP[u] gives you the original value of u
+        VERTEX_LABELS,          // Any labels that belong to a specific node
+        VERTEX_LABELS_MAP,      // Sorted array of vertex labels to integer id (array index)
+        EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
+        EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
+        VERTEX_PROPS,           // Any properties that belong to a specific node
+        VERTEX_PROPS_MAP,       // Sorted array of vertex property to integer id (array index)
+        EDGE_PROPS,             // Any properties that belong to a specific edge
+        EDGE_PROPS_MAP,         // Sorted array of edge property to integer id (array index)
     }
 
     /**

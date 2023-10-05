@@ -558,14 +558,14 @@ class PropGraph(DiGraph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
-    
+
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below.
         
         Parameters
         ----------
-        labels
+        labels : ak.DataFrame
             `ak.DataFrame({"vertex_ids" : vertices, "vertex_labels" : labels})`
 
         Returns
@@ -576,46 +576,88 @@ class PropGraph(DiGraph):
 
         ### Preprocessing steps for faster back-end array population.
         # 0. Extract the vertex ids and vertex labels from the dataframe.
-        vertex_ids = labels["vertex_ids"]
-        vertex_labels = labels["vertex_labels"]
+        columns = labels.columns
+        vertex_ids = labels[columns[0]]
+        vertex_labels = labels[columns[1]]
 
         # 1. Broadcast string label names to int values and extract the label str to int id map.
-        start = time.time()
         gb_labels = ak.GroupBy(vertex_labels)
         new_label_ids = ak.arange(gb_labels.unique_keys.size)
         vertex_labels = gb_labels.broadcast(new_label_ids)
         label_mapper = gb_labels.unique_keys
-        end = time.time()
-        label_id_time = round(end-start,2)
 
         # 2. Convert the vertex_ids to internal vertex_ids.
-        start = time.time()
         vertex_map = self.nodes()
         inds = ak.in1d(vertex_ids, vertex_map)
         vertex_ids = vertex_ids[inds]
         vertex_labels = vertex_labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map)
-        end = time.time()
-        internal_id_time = round(end-start,2)
 
         # 3. GroupBy of the vertex ids and labels.
-        start = time.time()
         gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
         vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
         vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
-        end = time.time()
-        dedup_and_sort_time = round(end-start,2)
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
-        start = time.time()
         args = { "GraphName" : self.name,
                  "Arrays" : arrays,
                }
         rep_msg = generic_msg(cmd=cmd, args=args)
-        end = time.time()
-        add_into_data_structure_time = round(end-start,2)
 
-        return (label_id_time, internal_id_time, dedup_and_sort_time, add_into_data_structure_time)
+    def add_node_properties(self, node_properties:ak.DataFrame) -> None:
+        """Populates the graph object with properties derived from the columns of a dataframe. Node
+        proprties are different from node labels where labels are always strings and can be 
+        considered an extra identifier for different types of nodes. On the other hand, properties
+        are key-value pairs more akin to storing the columns of a dataframe.
+        
+        Parameters
+        ----------
+        properties : ak.DataFrame
+            `ak.DataFrame({"vertex_ids" : vertex_ids,
+                           "property1" : property1, ..., "property2" : property2})`
+
+        See Also
+        --------
+        add_node_labels, add_edge_relationships, add_edge_properties
+
+        Notes
+        -----
+        
+        Returns
+        -------
+        None
+        """
+        cmd = "addNodeProperties"
+
+        ### Preprocessing steps for faster back-end array population.
+        # 0. Extract the vertex ids and property names from the dataframe.
+        columns = node_properties.columns
+        vertex_ids = node_properties[columns[0]]
+        vertex_properties_akarray = ak.array(columns)
+
+        # 1. Convert property names to integer values.
+        gb_vertex_properties = ak.GroupBy(vertex_properties_akarray)
+        vertex_property_mapper = gb_vertex_properties.unique_keys
+
+        # 2. Convert the vertex_ids to internal vertex_ids.
+        vertex_map = self.nodes()
+        inds = ak.in1d(vertex_ids, vertex_map)
+        node_properties = node_properties[inds]
+        vertex_ids = node_properties[columns[0]]
+        vertex_ids = ak.find(vertex_ids, vertex_map)
+
+        vertex_ids_name = vertex_ids.name
+        property_mapper_names = vertex_properties_akarray.name + " " + vertex_property_mapper.name
+        data_array_names = ""
+        for column in node_properties.columns:
+            data_array_names += node_properties[column].name + " "
+
+        args = { "GraphName" : self.name,
+                 "VertexIdsName" : vertex_ids_name,
+                 "PropertyMapperNames" : property_mapper_names,
+                 "DataArrayNames" : data_array_names
+               }
+        rep_msg = generic_msg(cmd=cmd, args=args)
 
     def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
@@ -623,7 +665,7 @@ class PropGraph(DiGraph):
         
         Parameters
         ----------
-        relationships
+        relationships : ak.DataFrame
             `ak.DataFrame({"src" : src, "dst" : dst, "edge_relationships" : edge_relationships})`
 
         Returns
@@ -632,11 +674,12 @@ class PropGraph(DiGraph):
         """
         cmd = "addEdgeRelationships"
 
-        ### Preprocessing steps for faster back-end array population. 
+        ### Preprocessing steps for faster back-end array population.
         # 0. Extract the source and destination vertex ids and the relationships from the dataframe.
-        src_vertex_ids = relationships["src"]
-        dst_vertex_ids = relationships["dst"]
-        edge_relationships = relationships["edge_relationships"]
+        columns = relationships.columns
+        src_vertex_ids = relationships[columns[0]]
+        dst_vertex_ids = relationships[columns[1]]
+        edge_relationships = relationships[columns[2]]
 
         # 1. Broadcast string relationship names to int values and extract the relationship str to
         #    int id map.
