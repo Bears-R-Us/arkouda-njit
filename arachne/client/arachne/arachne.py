@@ -630,31 +630,31 @@ class PropGraph(DiGraph):
         cmd = "addNodeProperties"
 
         ### Preprocessing steps for faster back-end array population.
-        # 0. Extract the vertex ids and property names from the dataframe.
+        # 0. Extract the column names of the dataframe.
         columns = node_properties.columns
-        vertex_ids = node_properties[columns[0]]
-        vertex_properties_akarray = ak.array(columns)
 
-        # 1. Convert property names to integer values.
-        gb_vertex_properties = ak.GroupBy(vertex_properties_akarray)
-        vertex_property_mapper = gb_vertex_properties.unique_keys
-
-        # 2. Convert the vertex_ids to internal vertex_ids.
+        # 1. Convert the vertex_ids to internal vertex_ids.
         vertex_map = self.nodes()
+        vertex_ids = node_properties[columns[0]]
         inds = ak.in1d(vertex_ids, vertex_map)
         node_properties = node_properties[inds]
         vertex_ids = node_properties[columns[0]]
         vertex_ids = ak.find(vertex_ids, vertex_map)
 
+        # 2. Remove the first column name, vertex ids, since those are sent separately.
+        columns.remove(columns[0])
+        vertex_properties_akarray = ak.array(columns)
+
+        # 3. Extract symbol table names of arrays to use in the back-end.
         vertex_ids_name = vertex_ids.name
-        property_mapper_names = vertex_properties_akarray.name + " " + vertex_property_mapper.name
+        property_mapper_name = vertex_properties_akarray.name
         data_array_names = ""
-        for column in node_properties.columns:
+        for column in columns:
             data_array_names += node_properties[column].name + " "
 
         args = { "GraphName" : self.name,
                  "VertexIdsName" : vertex_ids_name,
-                 "PropertyMapperNames" : property_mapper_names,
+                 "PropertyMapperName" : property_mapper_name,
                  "DataArrayNames" : data_array_names
                }
         rep_msg = generic_msg(cmd=cmd, args=args)
