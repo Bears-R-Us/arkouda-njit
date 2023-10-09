@@ -119,16 +119,16 @@ if __name__ == "__main__":
     """
     prop_graph = ar.PropGraph()
     
-    src= ak.array([1, 2, 4, 4, 4, 5, 5,  5, 6, 8])
-    dst= ak.array([4, 5, 0, 5, 8, 1, 6, 9, 2, 7])
+    src= ak.array([101, 102, 104, 104, 104, 105, 105, 105, 106, 108])
+    dst= ak.array([104, 105, 100, 105, 108, 101, 106, 109, 102, 107])
     
     prop_graph.add_edges_from(src,dst)
-    node_labels = ak.DataFrame({"vertex_ids" : ak.array([0,1,2,3,4,5,6,7,8,9]), 
+    node_labels = ak.DataFrame({"vertex_ids" : ak.array([100,101,102,103,104,105,106,107,108,109]), 
                                 "vertex_labels" : ak.array(["label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1"])})
     
-    edge_relationships = ak.DataFrame({"src" : ak.array([1, 2, 4, 4, 4, 5, 5,  5, 6, 8]), "dst" : 
-        ak.array([4, 5, 0, 5, 8, 1, 6, 9, 2, 7]), "edge_relationships" : 
-        ak.array(["Y", "Y", "B", "R", "W", "G", "R", "W", "G", "B"])})
+    edge_relationships = ak.DataFrame({"src" : ak.array([101, 102, 104, 104, 104, 105, 105, 105, 106, 108]), 
+                                       "dst" : ak.array([104, 105, 100, 105, 108, 101, 106, 109, 102, 107]), "edge_relationships" : 
+        ak.array(["Y1", "Y1", "Y4", "Y2", "Y4", "Y3", "Y1", "Y1", "Y1", "Y1"])})
     
     prop_graph.add_node_labels(node_labels)
     prop_graph.add_edge_relationships(edge_relationships)
@@ -136,15 +136,15 @@ if __name__ == "__main__":
     ### Test subgraph isomorphism.
     subgraph = ar.PropGraph()
     
-    src1= ak.array([0, 1, 1, 2])
-    dst1= ak.array([1, 2, 3 ,0])
+    src1= ak.array([20, 21, 21, 22])
+    dst1= ak.array([21, 22, 23 ,20])
     
     subgraph.add_edges_from(src1,dst1)
-    node_labels = ak.DataFrame({"vertex_ids" : ak.array([0, 1, 2, 3]), 
+    node_labels = ak.DataFrame({"vertex_ids" : ak.array([20, 21, 22, 23]), 
                                 "vertex_labels" : ak.array(["label1", "label1", "label1", "label1"])})
-    edge_relationships = ak.DataFrame({"src" : ak.array([0, 1, 1, 2]), 
-                                       "dst" : ak.array([1, 2, 3 ,0]), 
-                                       "edge_relationships" : ak.array(["Y", "R", "W", "G"])})
+    edge_relationships = ak.DataFrame({"src" : ak.array([20, 21, 21, 22]), 
+                                       "dst" : ak.array([21, 22, 23 ,20]), 
+                    "edge_relationships" : ak.array(["Y1", "Y2", "Y4", "Y3"])})
     subgraph.add_node_labels(node_labels)
     subgraph.add_edge_relationships(edge_relationships)
     

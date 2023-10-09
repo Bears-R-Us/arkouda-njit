@@ -16,6 +16,8 @@ module SubgraphIsomorphismMsg {
     use AryUtil;
     use Logging;
     use Message;
+    use SegStringSort;
+    use SegmentedString;
     
     // Server message logger. 
     private config const logLevel = ServerConfig.logLevel;
@@ -64,20 +66,29 @@ module SubgraphIsomorphismMsg {
         var subgraph_internal_vertices_degree_sorted_sym = toSymEntry(subgraph_internal_vertices_degree_sorted_entry, int);
         var subgraph_internal_vertices_degree_sorted = subgraph_internal_vertices_degree_sorted_sym.a;
 
+        writeln("$$$$$ graph_degree        = ", graph_degree);
         writeln("$$$$$ subgraph_degree        = ", subgraph_degree);
         writeln("$$$$$ degree sorted subgraph = ", subgraph_internal_vertices_degree_sorted);
        
         // Pull out our graph from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var g = gEntry.graph;
-
+        //var relationship_mapper_g_entry = toSegStringSymEntry(g.getComp("EDGE_RELATIONSHIPS_MAP"));
+        //var relationship_mapper_g = assembleSegStringFromParts(relationship_mapper_g_entry.offsetsEntry, 
+                                                               //relationship_mapper_g_entry.bytesEntry, st); 
+        
+        //writeln("relationship_mapper_g= ", relationship_mapper_g);
         // Pull out our subgraph from the symbol table.
         var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
         var h = hEntry.graph;
-
+        //var relationship_mapper_h_entry = toSegStringSymEntry(g.getComp("EDGE_RELATIONSHIPS_MAP"));
+        //var relationship_mapper_h = assembleSegStringFromParts(relationship_mapper_h_entry.offsetsEntry, 
+                                                               //relationship_mapper_h_entry.bytesEntry, st); 
         var timer:stopwatch;
         timer.start();
-        ullmannSubgraphIsomorphism11(g, h, subgraph_internal_vertices_degree_sorted, graph_degree);
+        //ullmannSubgraphIsomorphism11(g, h, subgraph_internal_vertices_degree_sorted, graph_degree);
+        ullmannSubgraphIsomorphism11(g, h, subgraph_degree, graph_degree, st);
+        
         timer.stop();
         outMsg = "Subgraph Isomorphism took " + timer.elapsed():string + " sec";
 
