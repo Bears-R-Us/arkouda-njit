@@ -9,12 +9,32 @@ module SquareCount {
     use AryUtil;
 
     /** 
+    * Total degree order operator u << v compares the degrees of the two nodes and returns
+    * true if the degree of u is less than the degree of v, or if equal, if the integer specifier
+    * of u is less than that of v. 
+    *
+    * :arg u: vertex u
+    * :type u: int
+    * :arg v: vertex v
+    * :type v: int
+    * :arg degree: array containing degrees
+    * :type degree: [?D] int
+    *
+    * :returns: bool */ 
+    inline proc nodeCompare(u: int, v: int, ref degree): bool {
+        if degree[u] < degree[v] then return true;
+        else if degree[u] == degree[v] && u < v then return true; 
+        else return false;
+    }
+    
+    /** 
     * Sequential square counting for an undirected graph. 
     *
-    * graph: SegGraph to run square counting on. 
+    * :arg graph: SegGraph to run square counting on. 
+    * :type graph: SegGraph
     *
-    * returns: integer square count. */
-    proc square_count_sequential_kernel(graph:SegGraph, degree:[?D1] int):int throws {
+    * :returns: int */
+    proc squareCountSequential(graph:SegGraph, degree:[?D1] int):int throws {
         var src = toSymEntry(graph.getComp("SRC"),int).a;
         var dst = toSymEntry(graph.getComp("DST"),int).a;
         var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
@@ -28,12 +48,12 @@ module SquareCount {
             var v_adj_list_end = seg[v+1] - 1;
             ref v_neighborhood = dst.localSlice(v_adj_list_start..v_adj_list_end);
             for u in v_neighborhood {
-                if degree[u] < degree[v] {
+                if nodeCompare(u,v,degree) {
                     var u_adj_list_start = seg[u];
                     var u_adj_list_end = seg[u+1] - 1;
                     ref u_neighborhood = dst.localSlice(u_adj_list_start..u_adj_list_end);
                     for y in u_neighborhood {
-                        if degree[y] < degree[v] {
+                        if nodeCompare(y,v,degree) {
                             square_count += L[y];
                             L[y] += 1;  
                         }
@@ -41,7 +61,7 @@ module SquareCount {
                 }
             }
             for u in v_neighborhood {
-                if degree[u] < degree[v] {
+                if (nodeCompare(u,v,degree)) {
                     var u_adj_list_start = seg[u];
                     var u_adj_list_end = seg[u+1] - 1;
                     ref u_neighborhood = dst.localSlice(u_adj_list_start..u_adj_list_end);

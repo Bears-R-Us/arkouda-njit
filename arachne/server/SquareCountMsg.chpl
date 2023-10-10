@@ -55,8 +55,9 @@ module SquareCountMsg {
 
         // Run the square counting.
         var timer:stopwatch;
+        var sc:int;
         timer.start();
-        var sc = square_count_sequential_kernel(g, degree);
+        sc = squareCountSequential(g, degree);
         timer.stop();
         outMsg = "Sequential square counting took " + timer.elapsed():string + " sec";
         repMsg = sc:string;
