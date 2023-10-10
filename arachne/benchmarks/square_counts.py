@@ -93,7 +93,7 @@ def run_mtx_benchmark(args):
     print()
     print("### Arachne Square Count")
     ### Run Arachne square count on the input graph.
-    # 1. Square count on undirected graph.
+    # 1a. Sequential square count on undirected graph.
     square_count_trials = []
     for _ in range(args.trials):
         start = time.time()
@@ -101,10 +101,10 @@ def run_mtx_benchmark(args):
         end = time.time()
         square_count_trials.append(end-start)
     avg_runtime = round(st.mean(square_count_trials),2)
-    print(f"Running square count on undirected graph took on average {avg_runtime} seconds and "
-          f"counted {square_count} squares with max degree {ak.max(graph.degree())}")
+    print(f"Running sequential square count on undirected graph took on average {avg_runtime} "
+          f"seconds and counted {square_count} squares with max degree {ak.max(graph.degree())}")
 
-    # 3. Print out times in comma-delimited manner.
+    # 1b. Print out times in comma-delimited manner.
     print("### Full Timings")
     square_count_trials = [round(x,2) for x in square_count_trials]
     print(f"square_count_trials = {square_count_trials}")

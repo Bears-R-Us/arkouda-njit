@@ -559,7 +559,7 @@ class PropGraph(DiGraph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
-    
+
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below.
@@ -980,7 +980,7 @@ def squares(graph: Graph) -> int:
     degree = graph.degree()
     cmd = "segmentedGraphSquares"
     args = { "GraphName" : graph.name,
-             "DegreeName" : degree.name}
+             "DegreeName" : degree.name }
     rep_msg = generic_msg(cmd=cmd,args=args)
     return int(rep_msg)
 
