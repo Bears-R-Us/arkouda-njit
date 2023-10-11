@@ -129,7 +129,7 @@ dmypy.json
 .pyre/
 
 # MacBook Stuff
-.DS_Store
+**/.DS_Store
 
 # Old Arkouda-NJIT stuff
 GraphServerModules.cfg.*

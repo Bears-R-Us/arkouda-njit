@@ -74,11 +74,15 @@ module DipSLLPropertyGraphMsg {
 
         var timer:stopwatch;
         timer.start();
+        resetCommDiagnostics();
+        startCommDiagnostics();
         forall i in input_vertices.domain { // for each input vertex, update its label list. 
             var lbl = input_labels[i]; // local
             var u = input_vertices[i]; // local
             vertex_labels[u] += lbl; // remote
         }
+        stopCommDiagnostics();
+        printCommDiagnosticsTable();
         timer.stop();
 
         // Add the component for the node labels for the graph.
@@ -137,11 +141,15 @@ module DipSLLPropertyGraphMsg {
         
         var timer:stopwatch;
         timer.start();
+        resetCommDiagnostics();
+        startCommDiagnostics();
         forall i in input_internal_edge_indices.domain {
             var rel = input_relationships[i];
             var ind = input_internal_edge_indices[i];
             edge_relationships[ind] += rel;
         }
+        stopCommDiagnostics();
+        printCommDiagnosticsTable();
         
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(edge_relationships):GenSymEntry, "EDGE_RELATIONSHIPS");
@@ -172,7 +180,7 @@ module DipSLLPropertyGraphMsg {
         // Get graph for usage and the node label mapper. 
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var label_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_LABELS_MAP"));
+        const ref label_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_LABELS_MAP"));
 
         // Add new copies of each to the symbol table.
         var label_mapper = assembleSegStringFromParts(label_mapper_entry.offsetsEntry, label_mapper_entry.bytesEntry, st);
@@ -197,7 +205,7 @@ module DipSLLPropertyGraphMsg {
         // Get graph for usage and the edge relationship mapper. 
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
-        var relationship_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_RELATIONSHIPS_MAP"));
+        const ref relationship_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_RELATIONSHIPS_MAP"));
 
         // Add new copies of each to the symbol table.
         var relationship_mapper = assembleSegStringFromParts(relationship_mapper_entry.offsetsEntry, relationship_mapper_entry.bytesEntry, st);
@@ -251,22 +259,20 @@ module DipSLLPropertyGraphMsg {
         select op {
             when "or" {
                 forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_array) {
-                    if u_label_set.size != 0 {
+                    if u_label_set.size > 0 {
                         var label_set_here = labels_to_find_set_dist[here.id];
-                        for lbl in u_label_set {
-                            if label_set_here.contains(lbl) {
-                                return_array[u] = true;
-                                break;
-                            }
-                        }
+                        var intersection = u_label_set & label_set_here;
+                        if intersection.size > 0 then return_array[u] = true;
                     }
                 }
             }
             when "and" {
                 forall (u, u_label_set) in zip(node_labels.domain, node_labels) with (ref return_array) {
                     var label_set_here = labels_to_find_set_dist[here.id];
-                    if u_label_set.contains(label_set_here) {
-                        return_array[u] = true;
+                    if u_label_set.size > 0 {
+                        if u_label_set.contains(label_set_here) {
+                            return_array[u] = true;
+                        }
                     }
                 }
             }
@@ -336,20 +342,18 @@ module DipSLLPropertyGraphMsg {
                 forall (u, u_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_array) {
                     if u_relationship_set.size != 0 {
                         var relationship_set_here = relationships_to_find_set_dist[here.id];
-                        for rel in u_relationship_set {
-                            if relationship_set_here.contains(rel) {
-                                return_array[u] = true;
-                                break;
-                            }
-                        }
+                        var intersection = u_relationship_set & relationship_set_here;
+                        if intersection.size > 0 then return_array[u] = true;
                     }
                 }
             }
             when "and" {
                 forall (u, u_relationship_set) in zip(edge_relationships.domain, edge_relationships) with (ref return_array) {
                     var relationship_set_here = relationships_to_find_set_dist[here.id];
-                    if u_relationship_set.contains(relationship_set_here) {
-                        return_array[u] = true;
+                    if u_relationship_set.size > 0 {
+                        if u_relationship_set.contains(relationship_set_here) {
+                            return_array[u] = true;
+                        }
                     }
                 }
             }
@@ -359,7 +363,6 @@ module DipSLLPropertyGraphMsg {
                 return new MsgTuple(errorMsg, MsgType.ERROR);
             }
         }
-
         timer.stop();
         var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
