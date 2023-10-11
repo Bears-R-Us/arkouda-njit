@@ -17,6 +17,7 @@ __all__ = ["Graph", "DiGraph", "PropGraph",
            "bfs_layers",
            "subgraph_isomorphism",
            "triangles",
+           "squares",
            "k_truss",
            "triangle_centrality",
            "connected_components",
@@ -558,7 +559,7 @@ class PropGraph(DiGraph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
-    
+
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below.
@@ -724,7 +725,7 @@ class PropGraph(DiGraph):
         
         Returns
         -------
-        final_vertices : pdarray
+        pdarray
             Vertex names that contain the specified nodes.
         """
         cmd = "queryLabels"
@@ -765,7 +766,7 @@ class PropGraph(DiGraph):
         
         Returns
         -------
-        (src,dst) : (pdarray,pdarray)
+        (pdarray,pdarray)
             Source and destination vertex pairs that contain the specified edges.
         """
         cmd = "queryRelationships"
@@ -815,7 +816,7 @@ class PropGraph(DiGraph):
 
         Returns
         -------
-        (src, dst) : (pdarray,pdarray)
+        (pdarray,pdarray)
             Source and destination vertex pairs that contain the length one paths.
         """
         # 1. Get the nodes and edges that contain the specified labels and relationships.
@@ -952,6 +953,36 @@ def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
+
+@typechecked
+def squares(graph: Graph) -> int:
+    """
+    This function will return the number of squares in an undirected graph.
+
+    Parameters
+    ----------
+    graph : Graph
+        An undirected graph whose number of squares are to be returned
+    
+    Returns
+    -------
+    int
+        The total number of squares
+    
+    See Also
+    --------
+    triangles
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    degree = graph.degree()
+    cmd = "segmentedGraphSquares"
+    args = { "GraphName" : graph.name,
+             "DegreeName" : degree.name }
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return int(rep_msg)
 
 @typechecked
 def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pdarray:

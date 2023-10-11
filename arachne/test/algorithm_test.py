@@ -104,6 +104,16 @@ class AlgorithmTest(ArkoudaTest):
             nx_all_layers.append(nx_layers)
 
         return self.assertEqual(ar_all_layers, nx_all_layers)
+    
+    def test_square_count(self):
+        """Tests Arachne squares() and compares it against base case."""
+        # Read in graph with Arachne.
+        ar_graph,_,_,_ = self.build_undirected_graph()
+
+        # Get the square count.
+        sc = ar.squares(ar_graph)
+
+        return self.assertEqual(2, sc)
 
     # FUNCTIONS BELOW ARE CURRENTLY NOT WORKING AND HAVE TO BE FIXED.
     # def test_triangles(self):
