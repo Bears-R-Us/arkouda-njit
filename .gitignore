@@ -133,3 +133,6 @@ dmypy.json
 
 # Old Arkouda-NJIT stuff
 GraphServerModules.cfg.*
+
+# Random server things
+(nil)
