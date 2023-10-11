@@ -73,7 +73,7 @@ module SubgraphIsomorphism {
         if StringLabelValue.size > 0 then {
            BoolValue = true;
         } // If there is at least 1 label, print out the string representation of the one at index 0.
-        if PropGraph.hasComp("NODE_MAP"){
+        /*if PropGraph.hasComp("NODE_MAP"){
            var NodeMaplVAr = toSymEntry(PropGraph.getComp("NODE_MAP"));
            writeln("*********************55555555555555555555555***********************");
            writeln("NodeMaplVAr = ", NodeMaplVAr );
@@ -81,7 +81,7 @@ module SubgraphIsomorphism {
         else 
         {
            writeln("WE HAVE NOTHING HERE"); 
-        }    
+        } */   
         
         return (BoolValue, StringLabelValue);
     }
