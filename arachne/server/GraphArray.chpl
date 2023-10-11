@@ -26,7 +26,8 @@ module GraphArray {
         EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
         EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
         VERTEX_PROPS,           // Any properties that belong to a specific node
-        VERTEX_PROPS_MAP,       // Sorted array of vertex property to integer id (array index)
+        VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
+        VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
         EDGE_PROPS,             // Any properties that belong to a specific edge
         EDGE_PROPS_MAP,         // Sorted array of edge property to integer id (array index)
     }

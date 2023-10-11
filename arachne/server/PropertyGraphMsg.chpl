@@ -26,7 +26,7 @@ module DipSLLPropertyGraphMsg {
     
     // Server message logger. 
     private config const logLevel = LogLevel.DEBUG;
-    const smLogger = new Logger(logLevel);
+    const pgmLogger = new Logger(logLevel);
     var outMsg:string;
 
     /* Wrapper concrete class for generic class. */
@@ -100,8 +100,8 @@ module DipSLLPropertyGraphMsg {
         outMsg = "DipSLLaddNodeLabels took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addNodeLabelsMsg
@@ -116,6 +116,8 @@ module DipSLLPropertyGraphMsg {
     * returns: message back to Python.
     */
     proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var vertexIdsName = msgArgs.getValueOf("VertexIdsName");
@@ -139,15 +141,32 @@ module DipSLLPropertyGraphMsg {
         // Extract the data array names and the data types for those arrays. 
         var dataArrays = dataArrayNames.split();
         var dataTypeSet: domain(string);
-        for dataArray in dataArrays do dataTypeSet += dtype2str(getGenericTypedArrayEntry(dataArrays, st).dtype);
+        for dataArray in dataArrays {
+            var dataType = dtype2str(getGenericTypedArrayEntry(dataArray, st).dtype);
+            select dataType {
+                when "uint8" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+                when "bigint" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+                when "UNDEF" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+            }
+            dataTypeSet += dataType;
+        }
 
         // Create a mapping for the string names of the data types to their integer identifier.
         var dataTypeMapStrToInt: [dataTypeSet] int;
         var ind = 0;
-        for val in dataTypeMapStrToInt {
-            val = ind; 
-            ind += 1;
-        } 
+        for val in dataTypeMapStrToInt { val = ind; ind += 1; } 
 
         // Create a mapping for the interger identifier values to their string representation.
         var dataTypeMapIntToStr: [0..<ind] string;
@@ -163,35 +182,32 @@ module DipSLLPropertyGraphMsg {
         var vertex_props = blockDist.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
         forall (v,d) in vertex_props.domain {
             var datatype:string = dataTypeMapIntToStr[d];
-            if datatype == "int64" || datatype == "int" {
-                var newDom: domain(int);
-                var newArr: [newDom] int;
-                vertex_props[v,d] = new shared Property(d, int, newDom, newArr);
-            }
-            if datatype == "uint64" || datatype == "uint64" {
-                var newDom: domain(int);
-                var newArr: [newDom] uint;
-                vertex_props[v,d] = new shared Property(d, uint, newDom, newArr);
-            }
-            if datatype == "float64" {
-                var newDom: domain(int);
-                var newArr: [newDom] real;
-                vertex_props[v,d] = new shared Property(d, real, newDom, newArr);
-            }
-            if datatype == "bool" {
-                var newDom: domain(int);
-                var newArr: [newDom] bool;
-                vertex_props[v,d] = new shared Property(d, bool, newDom, newArr);
-            }
-            if datatype == "uint8" {
-                var newDom: domain(int);
-                var newArr: [newDom] uint(8);
-                vertex_props[v,d] = new shared Property(d, uint(8), newDom, newArr);
-            }
-            if datatype == "str" {
-                var newDom: domain(int);
-                var newArr: [newDom] string;
-                vertex_props[v,d] = new shared Property(d, string, newDom, newArr);
+            select datatype {
+                when "int64", "int" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] int;
+                    vertex_props[v,d] = new shared Property(d, int, newDom, newArr);
+                }
+                when "uint64", "uint" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] uint;
+                    vertex_props[v,d] = new shared Property(d, uint, newDom, newArr);
+                }
+                when "float64" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] real;
+                    vertex_props[v,d] = new shared Property(d, real, newDom, newArr);
+                }
+                when "bool" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] bool;
+                    vertex_props[v,d] = new shared Property(d, bool, newDom, newArr);
+                }
+                when "str" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] string;
+                    vertex_props[v,d] = new shared Property(d, string, newDom, newArr);
+                }
             }
         }
 
@@ -248,17 +264,6 @@ module DipSLLPropertyGraphMsg {
                         currentProperty!.propertyValue[i] = dataArray[j];
                     }
                 }
-                when (DType.UInt8) {
-                    var dataArraySym = toSymEntry(dataArrayEntry, uint(8));
-                    var dataArray = dataArraySym.a;
-                    var etypeInd = dataTypeMapStrToInt[etypeStr];
-                    forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(uint(8))));
-                        currentProperty!.dataType = etypeInd;
-                        currentProperty!.propertyIdentifier += i;
-                        currentProperty!.propertyValue[i] = dataArray[j];
-                    }
-                }
                 when (DType.Strings) {
                     var dataArraySym = toSegStringSymEntry(dataArrayEntry);
                     var dataArray = getSegString(dataArraySym.name, st);
@@ -276,13 +281,14 @@ module DipSLLPropertyGraphMsg {
 
         // Add the component for the node labels for the graph.
         graph.withComp(new shared SymEntry2D(vertex_props):GenSymEntry, "VERTEX_PROPS");
-        graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "VERTEX_PROPS_MAP");
+        graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "VERTEX_PROPS_COL_MAP");
+        graph.withComp(new shared SymEntry(dataTypeMapIntToStr):GenSymEntry, "VERTEX_PROPS_DTYPE_MAP");
         var repMsg = "node properties added";
         outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addNodePropertiesMsg
@@ -344,8 +350,8 @@ module DipSLLPropertyGraphMsg {
         outMsg = "DipSLLaddEdgeRelationships took " + timer.elapsed():string + " sec";
         
         // Print out debug information to arkouda server output. 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addEdgeRelationshipsMsg
 
@@ -463,20 +469,20 @@ module DipSLLPropertyGraphMsg {
             }
             otherwise {
                 var errorMsg = notImplementedError(pn, op);
-                smLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
                 return new MsgTuple(errorMsg, MsgType.ERROR);
             }
         }
         timer.stop();
         var time_msg = "label query DIP-SLL took " + timer.elapsed():string + " sec";
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
 
         var retName = st.nextName();
         var retEntry = new shared SymEntry(return_array);
         st.addEntry(retName, retEntry);
         var repMsg = 'created ' + st.attrib(retName);
 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } //end of queryLabelsMsg
 
@@ -544,20 +550,20 @@ module DipSLLPropertyGraphMsg {
             }
             otherwise {
                 var errorMsg = notImplementedError(pn, op);
-                smLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
                 return new MsgTuple(errorMsg, MsgType.ERROR);
             }
         }
         timer.stop();
         var time_msg = "relationship query DIP-SLL took " + timer.elapsed():string + " sec";
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
 
         var retName = st.nextName();
         var retEntry = new shared SymEntry(return_array);
         st.addEntry(retName, retEntry);
         var repMsg = 'created ' + st.attrib(retName);
 
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } //end of queryRelationshipsMsg
 
