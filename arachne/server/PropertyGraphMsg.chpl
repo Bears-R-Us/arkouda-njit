@@ -32,10 +32,6 @@ module DipSLLPropertyGraphMsg {
     /* Wrapper concrete class for generic class. */
     class GenProperty {
         var dataType: int;
-
-        inline proc toProperty(type etype) {
-            return try! this :borrowed Property(etype);
-        }
     }
 
     /* Wrapped generic class to hold arrays of variable size and type. */
@@ -43,10 +39,6 @@ module DipSLLPropertyGraphMsg {
         type etype;
         var propertyIdentifier: domain(int);
         var propertyValue: [propertyIdentifier] etype;
-    }
-
-    inline proc toProperty(gp: borrowed GenProperty, type etype) {
-        return gp.toProperty(etype);
     }
 
     /**
@@ -217,7 +209,7 @@ module DipSLLPropertyGraphMsg {
                     var dataArray = dataArraySym.a;
                     var etypeInd = dataTypeMapStrToInt[etypeStr];
                     forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = toProperty(vertex_props[v,etypeInd]!, int);
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(int)));
                         currentProperty!.dataType = etypeInd;
                         currentProperty!.propertyIdentifier += i;
                         currentProperty!.propertyValue[i] = dataArray[j];
@@ -228,7 +220,7 @@ module DipSLLPropertyGraphMsg {
                     var dataArray = dataArraySym.a;
                     var etypeInd = dataTypeMapStrToInt[etypeStr];
                     forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = toProperty(vertex_props[v,etypeInd]!, uint);
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(uint)));
                         currentProperty!.dataType = etypeInd;
                         currentProperty!.propertyIdentifier += i;
                         currentProperty!.propertyValue[i] = dataArray[j];
@@ -239,7 +231,7 @@ module DipSLLPropertyGraphMsg {
                     var dataArray = dataArraySym.a;
                     var etypeInd = dataTypeMapStrToInt[etypeStr];
                     forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = toProperty(vertex_props[v,etypeInd]!, real);
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(real)));
                         currentProperty!.dataType = etypeInd;
                         currentProperty!.propertyIdentifier += i;
                         currentProperty!.propertyValue[i] = dataArray[j];
@@ -250,7 +242,7 @@ module DipSLLPropertyGraphMsg {
                     var dataArray = dataArraySym.a;
                     var etypeInd = dataTypeMapStrToInt[etypeStr];
                     forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = toProperty(vertex_props[v,etypeInd]!, bool);
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(bool)));
                         currentProperty!.dataType = etypeInd;
                         currentProperty!.propertyIdentifier += i;
                         currentProperty!.propertyValue[i] = dataArray[j];
@@ -261,7 +253,7 @@ module DipSLLPropertyGraphMsg {
                     var dataArray = dataArraySym.a;
                     var etypeInd = dataTypeMapStrToInt[etypeStr];
                     forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = toProperty(vertex_props[v,etypeInd]!, uint(8));
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(uint(8))));
                         currentProperty!.dataType = etypeInd;
                         currentProperty!.propertyIdentifier += i;
                         currentProperty!.propertyValue[i] = dataArray[j];
@@ -272,7 +264,7 @@ module DipSLLPropertyGraphMsg {
                     var dataArray = getSegString(dataArraySym.name, st);
                     var etypeInd = dataTypeMapStrToInt[etypeStr];
                     forall (v,j) in zip(inputVertices,inputVertices.domain) {
-                        var currentProperty = toProperty(vertex_props[v,etypeInd]!, string);
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(string)));
                         currentProperty!.dataType = etypeInd;
                         currentProperty!.propertyIdentifier += i;
                         currentProperty!.propertyValue[i] = dataArray[j];
@@ -293,7 +285,7 @@ module DipSLLPropertyGraphMsg {
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of addNodeLabelsMsg
+    } // end of addNodePropertiesMsg
 
     /**
     * Adds edge relationships to the edges of a property graph.
