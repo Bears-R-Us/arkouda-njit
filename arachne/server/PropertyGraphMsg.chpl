@@ -3,6 +3,7 @@ module DipSLLPropertyGraphMsg {
     use Reflection;
     use Time; 
     use Sort;
+    use Map;
     use BlockDist;
     use CommDiagnostics;
     
@@ -44,11 +45,14 @@ module DipSLLPropertyGraphMsg {
     /**
     * Adds node labels to the nodes of a property graph.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc addNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
@@ -109,11 +113,14 @@ module DipSLLPropertyGraphMsg {
     /**
     * Adds node properties to the nodes of a property graph.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
@@ -138,11 +145,15 @@ module DipSLLPropertyGraphMsg {
         // regular order, the second contains the internal mapping for the property names.
         var columns:SegString = getSegString(propertyMapperName, st);
 
-        // Extract the data array names and the data types for those arrays. 
-        var dataArrays = dataArrayNames.split();
+        // Create map of column name to its datatype.
+        var col2dtype = new map(string, string);
+
+        // Extract the data array names and the data types for those arrays.
+        var dataArrays = getSegString(dataArrayNames, st);
         var dataTypeSet: domain(string);
-        for dataArray in dataArrays {
-            var dataType = dtype2str(getGenericTypedArrayEntry(dataArray, st).dtype);
+        for i in 0..<dataArrays.size {
+            var dataType = dtype2str(getGenericTypedArrayEntry(dataArrays[i], st).dtype);
+            col2dtype.add(columns[i], dataType);
             select dataType {
                 when "uint8" {
                     var errorMsg = notImplementedError(pn, dataType);
@@ -283,6 +294,7 @@ module DipSLLPropertyGraphMsg {
         graph.withComp(new shared SymEntry2D(vertex_props):GenSymEntry, "VERTEX_PROPS");
         graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "VERTEX_PROPS_COL_MAP");
         graph.withComp(new shared SymEntry(dataTypeMapIntToStr):GenSymEntry, "VERTEX_PROPS_DTYPE_MAP");
+        graph.withComp(new shared MapSymEntry(col2dtype):GenSymEntry, "VERTEX_PROPS_COL2DTYPE");
         var repMsg = "node properties added";
         outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
@@ -296,11 +308,14 @@ module DipSLLPropertyGraphMsg {
     /**
     * Adds edge relationships to the edges of a property graph.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc addEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
@@ -358,11 +373,14 @@ module DipSLLPropertyGraphMsg {
     /**
     * Gets node labels of the property graph.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc getNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract the needed data. 
@@ -381,13 +399,44 @@ module DipSLLPropertyGraphMsg {
     } // end of getNodeLabelsMsg
 
     /**
+    * Message parser for getting node properties of the property graph.
+    *
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
+    *
+    * :returns: MsgTuple
+    */
+    proc getNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract the needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+
+        // Get graph for usage and the node label mapper. 
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        const ref property_mapper_entry = toSegStringSymEntry(graph.getComp("VERTEX_PROPS_COL_MAP"));
+
+        // Add new copies of each to the symbol table.
+        var property_mapper = assembleSegStringFromParts(property_mapper_entry.offsetsEntry, property_mapper_entry.bytesEntry, st);
+        var repMsg = 'created ' + st.attrib(property_mapper.name) + '+created bytes.size %t'.format(property_mapper.nBytes);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of getNodePropertiesMsg
+
+    /**
     * Gets edge relationships of the property graph.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc getEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract the needed data. 
@@ -409,11 +458,14 @@ module DipSLLPropertyGraphMsg {
     * Queries the property graph and returns a boolean array indicating which nodes contain the 
     * given labels.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc queryLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
@@ -487,14 +539,88 @@ module DipSLLPropertyGraphMsg {
     } //end of queryLabelsMsg
 
     /**
+    * Queries the property graph and returns a boolean array indicating which nodes match the query
+    * operation.
+    *
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
+    *
+    * :returns: MsgTuple
+    */
+    proc queryNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
+        // Parse the message from Python to extract needed data.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var column = msgArgs.getValueOf("Column");
+        var value = msgArgs.getValueOf("Value");
+        var op = msgArgs.getValueOf("Op");
+
+        // Extract graph data for usage in this function.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var vertex_props = toSymEntry2D(graph.getComp("VERTEX_PROPS"), shared GenProperty?).a;
+        const ref entry = toSegStringSymEntry(graph.getComp("VERTEX_PROPS_COL_MAP"));
+        var vertex_props_col_map = assembleSegStringFromParts(entry.offsetsEntry, entry.bytesEntry, st);
+        var vertex_props_dtype_map = toSymEntry(graph.getComp("VERTEX_PROPS_DTYPE_MAP"), string).a;
+        var vertex_props_col2dtype = toMapSymEntry(graph.getComp("VERTEX_PROPS_COL2DTYPE")).stored_map;
+        var return_array : [makeDistDom(graph.n_vertices)] bool;
+        var dtype = vertex_props_col2dtype[column];
+
+        var colId = 0;
+        for i in 0..<vertex_props_col_map.size do if vertex_props_col_map[i] == column then colId = i;
+        var dtypeId = 0; 
+        for i in 0..<vertex_props_dtype_map.size do if vertex_props_dtype_map[i] == dtype then dtypeId = i;
+        
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+        for vertex in vertex_props {
+            writeln(vertex);
+        }
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+        writeln("querying ", column, " with id ", colId, " datatype ", dtype, " which has id ", dtypeId, " with op ", op, " ", value);
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+
+        // Perform the querying operation in parallel.
+        var timer:stopwatch;
+        timer.start();
+        forall (node, dtype) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array) {
+            var currentProperty = vertex_props[node,dtype].borrow():(borrowed Property(real));
+            if currentProperty.propertyValue.size > 0 {
+                if currentProperty.propertyValue[colId] > value:real then return_array[node] = true; 
+            }
+        }
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+        writeln(return_array);
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+        timer.stop();
+        var time_msg = "node properties query took " + timer.elapsed():string + " sec";
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+
+        var retName = st.nextName();
+        var retEntry = new shared SymEntry(return_array);
+        st.addEntry(retName, retEntry);
+        var repMsg = 'created ' + st.attrib(retName);
+
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } //end of queryLabelsMsg
+
+    /**
     * Queries the property graph and returns a boolean array indicating which edges contain the 
     * given relationships.
     *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
     *
-    * returns: message back to Python.
+    * :returns: MsgTuple
     */
     proc queryRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
@@ -572,7 +698,9 @@ module DipSLLPropertyGraphMsg {
     registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
     registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
+    registerFunction("getNodeProperties", getNodePropertiesMsg, getModuleName());
     registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());
     registerFunction("queryLabels", queryLabelsMsg, getModuleName());
+    registerFunction("queryNodeProperties", queryNodePropertiesMsg, getModuleName());
     registerFunction("queryRelationships", queryRelationshipsMsg, getModuleName());
 }
