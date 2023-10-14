@@ -28,6 +28,7 @@ module GraphArray {
         VERTEX_PROPS,           // Any properties that belong to a specific node
         VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
         VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
+        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column. 
         EDGE_PROPS,             // Any properties that belong to a specific edge
         EDGE_PROPS_MAP,         // Sorted array of edge property to integer id (array index)
     }
@@ -105,6 +106,19 @@ module GraphArray {
             this.aD = associative_domain;
             this.a = associative_array;
         }
+    }
+
+    class MapSymEntry : GenSymEntry {
+        var stored_map: map(string, string);
+        
+        proc init(ref map_to_store: map(string, string)) {
+            super.init(string);
+            this.stored_map = map_to_store;
+        }
+    }
+
+    proc toMapSymEntry(e) {
+        return try! e : borrowed MapSymEntry;
     }
 
     proc toSymEntryAD(e) {

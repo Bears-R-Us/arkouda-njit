@@ -644,19 +644,22 @@ class PropGraph(DiGraph):
 
         # 2. Remove the first column name, vertex ids, since those are sent separately.
         columns.remove(columns[0])
-        vertex_properties_akarray = ak.array(columns)
+        vertex_properties = ak.array(columns)
 
         # 3. Extract symbol table names of arrays to use in the back-end.
-        vertex_ids_name = vertex_ids.name
-        property_mapper_name = vertex_properties_akarray.name
-        data_array_names = ""
+        data_array_names = []
         for column in columns:
-            data_array_names += node_properties[column].name + " "
+            data_array_names.append(node_properties[column].name)
+        data_array_names = ak.array(data_array_names)
+
+        perm = ak.GroupBy(vertex_properties).permutation
+        vertex_properties = vertex_properties[perm]
+        data_array_names = data_array_names[perm]
 
         args = { "GraphName" : self.name,
-                 "VertexIdsName" : vertex_ids_name,
-                 "PropertyMapperName" : property_mapper_name,
-                 "DataArrayNames" : data_array_names
+                 "VertexIdsName" : vertex_ids.name,
+                 "PropertyMapperName" : vertex_properties.name,
+                 "DataArrayNames" : data_array_names.name
                }
         rep_msg = generic_msg(cmd=cmd, args=args)
 
@@ -733,6 +736,24 @@ class PropGraph(DiGraph):
 
         return ak.Strings.from_return_msg(rep_msg)
 
+    def get_node_properties(self) -> ak.Strings:
+        """Returns the node properties of the 
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Strings
+            The original labels inputted as strings.
+        """
+        cmd = "getNodeProperties"
+        args = { "GraphName" : self.name }
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        return ak.Strings.from_return_msg(rep_msg)
+
     def get_edge_relationships(self) -> ak.Strings:
         """Returns the sorted object of edge relationships stored for the property graph.
 
@@ -769,7 +790,7 @@ class PropGraph(DiGraph):
         Returns
         -------
         pdarray
-            Vertex names that contain the specified nodes.
+            Vertex names that contain the nodes that match the query.
         """
         cmd = "queryLabels"
 
@@ -778,6 +799,41 @@ class PropGraph(DiGraph):
 
         args = {  "GraphName" : self.name,
                   "LabelsToFindName" : labels_to_find.name,
+                  "Op" : op }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        ### Manipulate data to return the external vertex representations of the found nodes.
+        # 1. Convert Boolean array to actual pdarray.
+        vertices_bool = create_pdarray(rep_msg)
+
+        # 2. Use Boolean array to index original vertex names.
+        final_vertices:pdarray = self.nodes()[vertices_bool]
+
+        return final_vertices
+
+    def query_node_properties( self,
+                               column:str, value,
+                               op:str = "<" ) -> pdarray:
+        """TODO: FILL IN. 
+
+        Parameters
+        ----------
+        column : str
+            String specifying the column being search within.
+        op : str
+            Operator to apply to the search. Candidates are "<", ">", "<=", ">=", "==", "<>". 
+        
+        Returns
+        -------
+        pdarray
+            Vertex names that contain the nodes that match the query.
+        """
+        cmd = "queryNodeProperties"
+
+        args = {  "GraphName" : self.name,
+                  "Column" : column,
+                  "Value" : value,
                   "Op" : op }
 
         rep_msg = generic_msg(cmd=cmd, args=args)
