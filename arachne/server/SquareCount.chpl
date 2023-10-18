@@ -32,6 +32,8 @@ module SquareCount {
     *
     * :arg graph: SegGraph to run square counting on. 
     * :type graph: SegGraph
+    * :arg degree: degree sequence for each vertex u in the graph. 
+    * :type degree: [?D] int
     *
     * :returns: int */
     proc squareCountSequential(graph:SegGraph, degree:[?D1] int):int throws {

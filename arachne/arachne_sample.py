@@ -17,6 +17,7 @@ Sample usage: python3 arachne_simple_tests.py n25 5555 1000 1000000 10 10
 
 """
 import argparse
+import statistics as st
 import time
 import arkouda as ak
 import arachne as ar
@@ -33,6 +34,7 @@ def create_parser():
     parser.add_argument("m", type=int, default=1000000, help="Number of edges for graph")
     parser.add_argument("x", type=int, default=10, help="Number of labels for graph")
     parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
+    parser.add_argument("s", type=int, default=2, help="Random seed to persist results.")
 
     return parser
 
@@ -53,8 +55,8 @@ if __name__ == "__main__":
 
     ### Build graph from randomly generated source and destination arrays.
     # 1. Use Arkouda's randint to generate the random edge arrays.
-    src = ak.randint(0, args.n, args.m)
-    dst = ak.randint(0, args.n, args.m)
+    src = ak.randint(0, args.n, args.m, seed=args.s*2)
+    dst = ak.randint(0, args.n, args.m, seed=args.s*4)
 
     # 2. Build property graph from randomly generated edges.
     print()
@@ -75,11 +77,11 @@ if __name__ == "__main__":
 
     # 2. Generate random array of vertices with original vertex values.
     vertices = prop_graph.nodes()
-    vertices_with_labels = ak.randint(0, len(prop_graph), len(prop_graph), seed=512)
+    vertices_with_labels = ak.randint(0, len(prop_graph), len(prop_graph), seed=args.s*8)
     vertices_with_labels = vertices[vertices_with_labels]
 
     # 3. Generate random array of labels of the same size as the random array of vertices above.
-    random_labels = ak.randint(0, len(labels), len(vertices_with_labels), seed=256)
+    random_labels = ak.randint(0, len(labels), len(vertices_with_labels), seed=args.s*16)
     random_labels = labels[random_labels]
 
     # 4. Pack the values into a dataframe and populate them into the graph.
@@ -99,12 +101,12 @@ if __name__ == "__main__":
     relationships = ak.array(relationships_list)
 
     # 2. Generate random array of edges with original vertex values.
-    edges_with_relationships = ak.randint(0, prop_graph.size(), prop_graph.size(), seed=128)
+    edges_with_relationships = ak.randint(0, prop_graph.size(), prop_graph.size(), seed=args.s*32)
     src_vertices_with_relationships = src[edges_with_relationships]
     dst_vertices_with_relationships = dst[edges_with_relationships]
 
     # 3. Generate random array of relationships of the same size as the random array of edges above.
-    random_relationships = ak.randint(0, len(relationships), len(edges_with_relationships), seed=64)
+    random_relationships = ak.randint(0, len(relationships), len(edges_with_relationships), seed=args.s*64)
     random_relationships = relationships[random_relationships]
 
     # 4. Pack the values into a dataframe and populate them into the graph.
@@ -160,7 +162,7 @@ if __name__ == "__main__":
     print()
     print("### BUILD NEW DIGRAPH FROM ONE_PATH EDGE RESULTS AND RUN BREADTH-FIRST SEARCH ON IT.")
     # 1. Build the graph first.
-    graph = ar.DiGraph()
+    graph = ar.Graph()
     start = time.time()
     graph.add_edges_from(queried_edges[0], queried_edges[1])
     end = time.time()
@@ -168,13 +170,26 @@ if __name__ == "__main__":
     print(f"Building graph with {len(graph)} vertices and {graph.size()} edges took "
           f"{round(build_time,2)} seconds.")
 
-    # 2. Run breadth-first search on the graph from highest out degree node.
-    highest_out_degree = ak.argmax(graph.out_degree())
-    start = time.time()
-    depths = ar.bfs_layers(graph, int(graph.nodes()[highest_out_degree]))
-    end = time.time()
-    bfs_time = round(end-start,2)
-    print(f"Running breadth-first search on directed graph took {bfs_time} seconds.")
+    # 2. Run breadth-first search on the graph from highest five degree nodes.
+    five_highest_out_degrees = ak.argsort(graph.degree())[:5]
+    node_map = graph.nodes()
+    bfs_times = []
+    for internal_node_index in five_highest_out_degrees.to_list():
+        u = node_map[internal_node_index]
+        start = time.time()
+        depths = ar.bfs_layers(graph, int(u))
+        end = time.time()
+        bfs_time = round(end-start,2)
+        bfs_times.append(bfs_time)
+        value_count = ak.value_counts(depths)
+        if value_count[0][0] == -1:
+            reachable_nodes = len(depths) - value_count[1][0]
+        else:
+            reachable_nodes = len(depths)
+        avg_runtime = round(st.mean(bfs_times),2)
+        print(f"Running breadth-first search from {u} took {bfs_time} seconds and reaches "
+              f"{reachable_nodes} nodes.")
+    print(f"Running breadth-first search took on average {avg_runtime} seconds")
 
     # 3. Use depth to return one of the vertices with highest depth.
     print(f"One of the vertices with highest depth was: {graph.nodes()[ak.argmax(depths)]}.")
