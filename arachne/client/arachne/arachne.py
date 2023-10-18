@@ -815,14 +815,19 @@ class PropGraph(DiGraph):
     def query_node_properties( self,
                                column:str, value,
                                op:str = "<" ) -> pdarray:
-        """TODO: FILL IN. 
+        """Given a property name, value, and operator, performs a query and returns the nodes that
+        match the query. Adhere to the operators accepted and ensure the values passed match the
+        same type of the property.
 
         Parameters
         ----------
         column : str
             String specifying the column being search within.
         op : str
-            Operator to apply to the search. Candidates are "<", ">", "<=", ">=", "==", "<>". 
+            Operator to apply to the search. Candidates vary and are listed below:
+            `int64`, `uint64`, `float64`: "<", ">", "<=", ">=", "==", "<>". 
+            `bool`: "==", "<>".
+            `str`: "contains".
         
         Returns
         -------
