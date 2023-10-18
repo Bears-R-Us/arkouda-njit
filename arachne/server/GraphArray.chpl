@@ -15,18 +15,22 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,            // The source array of every edge in the graph
-        DST,            // The destination array of every edge in the graph
-        SEGMENTS,       // The segments of adjacency lists for each vertex in DST
-        RANGES,         // Keeps the range of the vertices the edge list stores per locale
-        EDGE_WEIGHT,    // Stores the edge weights of the graph, if applicable
-        NODE_MAP,       // Doing an index of NODE_MAP[u] gives you the original value of u
-        VERTEX_LABELS,    // Any labels that belong to a specific node
-        VERTEX_LABELS_MAP, // Sorted array of vertex labels to integer id (array index)
-        EDGE_RELATIONSHIPS,  // The relationships that belong to specific edges
-        EDGE_RELATIONSHIPS_MAP, //Sorted array of edge relationships to integer id (array index)
-        VERTEX_PROPS,     // Any properties that belong to a specific node
-        EDGE_PROPS,     // Any properties that belong to a specific edge
+        SRC,                    // The source array of every edge in the graph
+        DST,                    // The destination array of every edge in the graph
+        SEGMENTS,               // The segments of adjacency lists for each vertex in DST
+        RANGES,                 // Keeps the range of the vertices the edge list stores per locale
+        EDGE_WEIGHT,            // Stores the edge weights of the graph, if applicable
+        NODE_MAP,               // Doing an index of NODE_MAP[u] gives you the original value of u
+        VERTEX_LABELS,          // Any labels that belong to a specific node
+        VERTEX_LABELS_MAP,      // Sorted array of vertex labels to integer id (array index)
+        EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
+        EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
+        VERTEX_PROPS,           // Any properties that belong to a specific node
+        VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
+        VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
+        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column. 
+        EDGE_PROPS,             // Any properties that belong to a specific edge
+        EDGE_PROPS_MAP,         // Sorted array of edge property to integer id (array index)
     }
 
     /**
@@ -102,6 +106,19 @@ module GraphArray {
             this.aD = associative_domain;
             this.a = associative_array;
         }
+    }
+
+    class MapSymEntry : GenSymEntry {
+        var stored_map: map(string, string);
+        
+        proc init(ref map_to_store: map(string, string)) {
+            super.init(string);
+            this.stored_map = map_to_store;
+        }
+    }
+
+    proc toMapSymEntry(e) {
+        return try! e : borrowed MapSymEntry;
     }
 
     proc toSymEntryAD(e) {
