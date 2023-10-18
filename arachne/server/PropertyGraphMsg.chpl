@@ -587,15 +587,197 @@ module DipSLLPropertyGraphMsg {
         // Perform the querying operation in parallel.
         var timer:stopwatch;
         timer.start();
-        forall (node, dtype) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array) {
-            var currentProperty = vertex_props[node,dtype].borrow():(borrowed Property(real));
-            if currentProperty.propertyValue.size > 0 {
-                if currentProperty.propertyValue[colId] > value:real then return_array[node] = true; 
+        select dtype {
+            when "float64" {
+                select op {
+                    when ">" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] > value:real then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] < value:real then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<=" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] <= value:real then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when ">=" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] >= value:real then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "==" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:real then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:real then return_array[u] = true; 
+                            }
+                        }
+                    }
+                }
+            }
+            when "int64" {
+                select op {
+                    when ">" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] > value:int then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] < value:int then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<=" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] <= value:int then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when ">=" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] >= value:int then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "==" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:int then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:int then return_array[u] = true; 
+                            }
+                        }
+                    }
+                }
+            }
+            when "uint64" {
+                select op {
+                    when ">" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] > value:uint then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] < value:uint then return_array[u] = true;
+                            }
+                        }
+                    }
+                    when "<=" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] <= value:uint then return_array[u] = true;
+                            }
+                        }
+                    }
+                    when ">=" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] >= value:uint then return_array[u] = true;
+                            }
+                        }
+                    }
+                    when "==" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:uint then return_array[u] = true; 
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:uint then return_array[u] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            when "bool" {
+                var value = value.toLower():bool;
+                select op {
+                    when "==" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(bool));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:bool then return_array[u] = true;
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(bool));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:bool then return_array[u] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            when "str" {
+                select op {
+                    when "contains" {
+                        forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = vertex_props[u,d].borrow():(borrowed Property(string));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId].find(value:string) != -1 then return_array[u] = true;
+                            }
+                        }
+                    }
+                }
             }
         }
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-        writeln(return_array);
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
         timer.stop();
         var time_msg = "node properties query took " + timer.elapsed():string + " sec";
         pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
