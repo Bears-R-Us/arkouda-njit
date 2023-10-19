@@ -272,6 +272,109 @@ class Graph:
         oriname = rep_msg
         self.name = oriname.strip()
 
+    def add_edges_from_compat(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+        """
+        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
+        reading version, is here to provide compatibility with the original algorithmic 
+        implementations for triangle counting, triangle centrality, k-truss, and connected
+        components.
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgesFromCompat"
+        src, dst = akarray_src, akarray_dst
+        srcR, dstR = akarray_dst, akarray_src
+
+        ### Remove self-loops from both the regular arrays and the reversed arrays.
+        self_loops = src == dst
+        src = src[~self_loops]
+        dst = dst[~self_loops]
+        srcR = srcR[~self_loops]
+        dstR = dstR[~self_loops]
+
+        ### Remove dupllicated edges from the graph.
+        # 1. First, for the regular edges.
+        regular_edges_gb = ak.GroupBy([src, dst])
+        src = regular_edges_gb.unique_keys[0]
+        dst = regular_edges_gb.unique_keys[1]
+
+        # 2. Secondly, for the reversed edges.
+        reversed_edges_gb = ak.GroupBy([srcR, dstR])
+        srcR = reversed_edges_gb.unique_keys[0]
+        dstR = reversed_edges_gb.unique_keys[1]
+
+        ### Remap the vertex names to a one-up mapping.
+        # 1. Get the vertex mapping.
+        vertices_gb = ak.GroupBy(ak.concatenate([src,dst]))
+        vertices = vertices_gb.unique_keys
+
+        # 2. Concatenate all the arrays and broadcast new values to them.
+        new_vertex_range = ak.arange(vertices.size)
+        all_vertices = ak.concatenate([src,dst,srcR,dstR])
+        all_vertices_gb = ak.GroupBy(all_vertices)
+        vmap = all_vertices_gb.unique_keys
+        all_vertices = all_vertices_gb.broadcast(new_vertex_range)
+
+        # 3. Extract the high ranges for each array in the big concatenated GroupBy.
+        src_high = src.size
+        dst_high = src_high + src.size
+        srcR_high = dst_high + src.size
+        dstR_high = srcR_high + src.size
+
+        # 4. Extract the actual arrays with slicing.
+        src = all_vertices[0:src_high]
+        dst = all_vertices[src_high:dst_high]
+        srcR = all_vertices[dst_high:srcR_high]
+        dstR = all_vertices[srcR_high:dstR_high]
+
+        ### Create vertex index arrays.
+        # 1. Create full arrays of the size of the vertex set.
+        nei = ak.full(vmap.size, 0, int)
+        neiR = ak.full(vmap.size, 0, int)
+        start_i = ak.full(vmap.size, -1, int)
+        start_iR = ak.full(vmap.size, -1, int)
+
+        # 2. Extract the neighbor count by doing a count on the number of times each vertex appears
+        #    in src.
+        gb_src = ak.GroupBy(src)
+        gb_src_indices, gb_src_neighbors = gb_src.count()
+        nei[gb_src_indices] = gb_src_neighbors
+
+        # 2a. Same as 2 but for srcR.
+        gb_srcR = ak.GroupBy(srcR)
+        gb_srcR_indices, gb_srcR_neighbors = gb_srcR.count()
+        neiR[gb_srcR_indices] = gb_srcR_neighbors
+
+        # 3. Find where each vertex starts inside of src and srcR.
+        start_i = ak.find(new_vertex_range, src)
+        start_iR = ak.find(new_vertex_range, srcR)
+
+        # 4. Extract vertex and edge number information.
+        self.n_vertices = int(vmap.size)
+        self.n_edges = int(src.size)
+        self.weighted = 0
+
+        ### Store everything in a graph object in the Chapel server.
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
+                 "AkArraySrcR" : srcR,
+                 "AkArrayDstR" : dstR,
+                 "AkArrayNei" : nei,
+                 "AkArrayNeiR" : neiR,
+                 "AkArrayStartIdx" : start_i,
+                 "AkArrayStartIdxR" : start_iR,
+                 "AkArrayVmap" : vmap,
+                 "Directed": bool(self.directed),
+                 "Weighted" : bool(self.weighted),
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
+
 class DiGraph(Graph):
     """Base class for directed graphs. Inherits from Graph.
 
@@ -1066,7 +1169,7 @@ class PropGraph(DiGraph):
         return (src, dst)
 
 @typechecked
-def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
+def read_matrix_market_file(filepath: str, directed = False, only_edges = False) -> Graph | DiGraph | Tuple:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -1092,6 +1195,9 @@ def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
 
     src = create_pdarray(returned_vals[0])
     dst = create_pdarray(returned_vals[1])
+
+    if only_edges:
+        return (src,dst)
 
     wgt = ak.array([-1])
     weighted = False
@@ -1317,11 +1423,7 @@ def connected_components(graph: Graph) -> pdarray:
     RuntimeError
     """
     cmd = "segmentedGraphCC"
-    args = { "NumOfVertices":graph.n_vertices,
-             "NumOfEdges":graph.n_edges,
-             "Directed":graph.directed,
-             "Weighted":graph.weighted,
-             "GraphName":graph.name}
+    args = { "GraphName":graph.name }
     
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
@@ -1347,13 +1449,13 @@ def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
     ------  
     RuntimeError
     """
-    cmd="segmentedTruss"
+    cmd = "segmentedTruss"
     args = { "KValue":kTrussValue,
              "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
              "Directed":graph.directed,
              "Weighted": graph.weighted,
-            "GraphName":graph.name}
+             "GraphName":graph.name }
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
