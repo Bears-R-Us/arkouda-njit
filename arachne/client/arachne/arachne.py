@@ -615,7 +615,7 @@ class PropGraph(DiGraph):
         ----------
         properties : ak.DataFrame
             `ak.DataFrame({"vertex_ids" : vertex_ids,
-                           "property1" : property1, ..., "property2" : property2})`
+                           "property1" : property1, ..., "propertyN" : propertyN})`
 
         See Also
         --------
@@ -718,6 +718,68 @@ class PropGraph(DiGraph):
                   "Arrays" : arrays }
         rep_msg = generic_msg(cmd=cmd, args=args)
 
+    def add_edge_properties(self, edge_properties:ak.DataFrame) -> None:
+        """Populates the graph object with properties derived from the columns of a dataframe. Edge
+        properties are different from edge relationships where relationships are always strings and
+        can be considered an extra identifier for different types of edges. On the other hand, 
+        properties are key-value pairs more akin to storing the columns of a dataframe.
+        
+        Parameters
+        ----------
+        properties : ak.DataFrame
+            `ak.DataFrame({"src_vertex_ids" : src_vertex_ids, "dst_vertex_ids" : dst_vertex_ids,
+                           "property1" : property1, ..., "propertyN" : propertyN})`
+
+        See Also
+        --------
+        add_node_labels, add_edge_relationships, add_node_properties
+
+        Notes
+        -----
+        
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgeProperties"
+
+        ### Preprocessing steps for faster back-end array population.
+        # 0. Extract the column names of the dataframe.
+        columns = edge_properties.columns
+        src_vertex_ids = edge_properties[columns[0]]
+        dst_vertex_ids = edge_properties[columns[1]]
+
+        # 1. Convert the source and destination vertex ids to the internal vertex_ids.
+        vertex_map = self.nodes()
+        src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
+        dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
+
+        # 2. Generate the internal edge indices.
+        edges = self.edges()
+        internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+
+        # 3. Remove the first two column names, edge ids, since those are sent separately.
+        columns.remove(columns[0])
+        columns.remove(columns[0])
+        edge_property_names = ak.array(columns)
+
+        # 4. Extract symbol table names of arrays to use in the back-end.
+        data_array_names = []
+        for column in columns:
+            data_array_names.append(edge_properties[column].name)
+        data_array_names = ak.array(data_array_names)
+
+        perm = ak.GroupBy(edge_property_names).permutation
+        edge_property_names = edge_property_names[perm]
+        data_array_names = data_array_names[perm]
+
+        args = { "GraphName" : self.name,
+                 "EdgeIdsName" : internal_edge_indices.name,
+                 "PropertyMapperName" : edge_property_names.name,
+                 "DataArrayNames" : data_array_names.name
+               }
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
     def get_node_labels(self) -> ak.Strings:
         """Returns the sorted object of node labels stored for the property graph.
 
@@ -737,7 +799,7 @@ class PropGraph(DiGraph):
         return ak.Strings.from_return_msg(rep_msg)
 
     def get_node_properties(self) -> ak.Strings:
-        """Returns the node properties of the 
+        """Returns the node properties of the property graph.
 
         Parameters
         ----------
@@ -746,7 +808,7 @@ class PropGraph(DiGraph):
         Returns
         -------
         Strings
-            The original labels inputted as strings.
+            The original properties inputted as strings.
         """
         cmd = "getNodeProperties"
         args = { "GraphName" : self.name }
@@ -767,6 +829,24 @@ class PropGraph(DiGraph):
             The original relationships inputted as strings.
         """
         cmd = "getEdgeRelationships"
+        args = { "GraphName" : self.name }
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        return ak.Strings.from_return_msg(rep_msg)
+
+    def get_edge_properties(self) -> ak.Strings:
+        """Returns the edge properties of the property graph.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Strings
+            The original properties inputted as strings.
+        """
+        cmd = "getEdgeProperties"
         args = { "GraphName" : self.name }
         rep_msg = generic_msg(cmd=cmd, args=args)
 
@@ -880,6 +960,50 @@ class PropGraph(DiGraph):
 
         args = {  "GraphName" : self.name,
                   "RelationshipsToFindName" : relationships_to_find.name,
+                  "Op" : op }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        ### Manipulate data to turn internal vertex names to external ones.
+        # 1. Convert Boolean array to actual pdarray.
+        edges_bool:pdarray = create_pdarray(rep_msg)
+
+        # 2. Extract edges and nodes of the graph and convert them to original vertex names.
+        edges, nodes = self.edges(), self.nodes()
+        src, dst = edges[0], edges[1]
+        src:pdarray = nodes[src]
+        dst:pdarray = nodes[dst]
+        src, dst = src[edges_bool], dst[edges_bool]
+
+        return (src,dst)
+    
+    def query_edge_properties( self,
+                               column:str, value,
+                               op:str = "<" ) -> pdarray:
+        """Given a property name, value, and operator, performs a query and returns the edges that
+        match the query. Adhere to the operators accepted and ensure the values passed match the
+        same type of the property.
+
+        Parameters
+        ----------
+        column : str
+            String specifying the column being search within.
+        op : str
+            Operator to apply to the search. Candidates vary and are listed below:
+            `int64`, `uint64`, `float64`: "<", ">", "<=", ">=", "==", "<>". 
+            `bool`: "==", "<>".
+            `str`: "contains".
+        
+        Returns
+        -------
+        pdarray
+            Source and destination node names that contain the edges that match the query.
+        """
+        cmd = "queryEdgeProperties"
+
+        args = {  "GraphName" : self.name,
+                  "Column" : column,
+                  "Value" : value,
                   "Op" : op }
 
         rep_msg = generic_msg(cmd=cmd, args=args)

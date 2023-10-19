@@ -371,6 +371,207 @@ module DipSLLPropertyGraphMsg {
     } // end of addEdgeRelationshipsMsg
 
     /**
+    * Adds edge properties to the internal edges of a property graph.
+    *
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
+    *
+    * :returns: MsgTuple
+    */
+    proc addEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+
+        // Parse the message from Python to extract needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var edgeIdsName = msgArgs.getValueOf("EdgeIdsName");
+        var propertyMapperName = msgArgs.getValueOf("PropertyMapperName");
+        var dataArrayNames = msgArgs.getValueOf("DataArrayNames");
+
+        // Extract the graph we are operating with from the symbol table.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var src = toSymEntry(graph.getComp("SRC"), int).a;
+
+        // Extract the vertices containing labels to be inputted.
+        var inputEdgesEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeIdsName, st);
+        var inputEdgesSym = toSymEntry(inputEdgesEntry, int);
+        var inputEdges = inputEdgesSym.a;
+
+        // Extract property mappers from message, the first one contains column names in their
+        // regular order, the second contains the internal mapping for the property names.
+        var columns:SegString = getSegString(propertyMapperName, st);
+
+        // Create map of column name to its datatype.
+        var col2dtype = new map(string, string);
+
+        // Extract the data array names and the data types for those arrays.
+        var dataArrays = getSegString(dataArrayNames, st);
+        var dataTypeSet: domain(string);
+        for i in 0..<dataArrays.size {
+            var dataType = dtype2str(getGenericTypedArrayEntry(dataArrays[i], st).dtype);
+            col2dtype.add(columns[i], dataType);
+            select dataType {
+                when "uint8" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+                when "bigint" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+                when "UNDEF" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+            }
+            dataTypeSet += dataType;
+        }
+
+        // Create a mapping for the string names of the data types to their integer identifier.
+        var dataTypeMapStrToInt: [dataTypeSet] int;
+        var ind = 0;
+        for val in dataTypeMapStrToInt { val = ind; ind += 1; } 
+
+        // Create a mapping for the interger identifier values to their string representation.
+        var dataTypeMapIntToStr: [0..<ind] string;
+        for (key,val) in zip(dataTypeMapStrToInt.domain,dataTypeMapStrToInt) do dataTypeMapIntToStr[val] = key;
+
+        var timer:stopwatch;
+        timer.start();
+        /** Create block distributed two-dimensional array where the row indices correspond to the edge
+        * being stored and the column indices to the datatype being stored. Each element of the array 
+        * is to store an object of class Property that contains an associative array where the domain
+        * is an integer identifier for the name of the property (column) being stored and the element 
+        * is the value for that edge in that column. */
+        var edge_props = blockDist.createArray({0..<src.size, 0..<dataTypeSet.size}, shared GenProperty?);
+        forall (e,d) in edge_props.domain {
+            var datatype:string = dataTypeMapIntToStr[d];
+            select datatype {
+                when "int64", "int" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] int;
+                    edge_props[e,d] = new shared Property(d, int, newDom, newArr);
+                }
+                when "uint64", "uint" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] uint;
+                    edge_props[e,d] = new shared Property(d, uint, newDom, newArr);
+                }
+                when "float64" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] real;
+                    edge_props[e,d] = new shared Property(d, real, newDom, newArr);
+                }
+                when "bool" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] bool;
+                    edge_props[e,d] = new shared Property(d, bool, newDom, newArr);
+                }
+                when "str" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] string;
+                    edge_props[e,d] = new shared Property(d, string, newDom, newArr);
+                }
+            }
+        }
+
+        /** Sequentially process each data array, where each array itself is picked apart in
+        * parallel and its values are stored in the appropriate locations of edge_props. Due to 
+        * Chapel being a statically-typed language, processing each datatype must be done 
+        * separately. */
+        for i in 0..<dataArrays.size {
+            var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArrays[i], st);
+            var etype = dataArrayEntry.dtype;
+            var etypeStr = dtype2str(etype);
+            select etype {
+                when (DType.Int64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, int);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
+                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(int)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.UInt64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, uint);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
+                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(uint)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.Float64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, real);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
+                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(real)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.Bool) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, bool);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
+                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(bool)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.Strings) {
+                    var dataArraySym = toSegStringSymEntry(dataArrayEntry);
+                    var dataArray = getSegString(dataArraySym.name, st);
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
+                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(string)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+            }
+        }
+        timer.stop();
+
+        // Add the component for the node labels for the graph.
+        graph.withComp(new shared SymEntry2D(edge_props):GenSymEntry, "EDGE_PROPS");
+        graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "EDGE_PROPS_COL_MAP");
+        graph.withComp(new shared SymEntry(dataTypeMapIntToStr):GenSymEntry, "EDGE_PROPS_DTYPE_MAP");
+        graph.withComp(new shared MapSymEntry(col2dtype):GenSymEntry, "EDGE_PROPS_COL2DTYPE");
+        var repMsg = "edge properties added";
+        outMsg = "addEdgeProperties took " + timer.elapsed():string + " sec ";
+
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+        for edge in edge_props {
+            writeln(edge);
+        }
+        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
+        
+        // Print out debug information to arkouda server output. 
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of addEdgePropertiesMsg
+
+    /**
     * Gets node labels of the property graph.
     *
     * :arg cmd: operation to perform. 
@@ -453,6 +654,34 @@ module DipSLLPropertyGraphMsg {
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of getEdgeRelationshipsMsg
+
+    /**
+    * Message parser for getting edge properties of the property graph.
+    *
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
+    *
+    * :returns: MsgTuple
+    */
+    proc getEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract the needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+
+        // Get graph for usage and the node label mapper. 
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        const ref property_mapper_entry = toSegStringSymEntry(graph.getComp("EDGE_PROPS_COL_MAP"));
+
+        // Add new copies of each to the symbol table.
+        var property_mapper = assembleSegStringFromParts(property_mapper_entry.offsetsEntry, property_mapper_entry.bytesEntry, st);
+        var repMsg = 'created ' + st.attrib(property_mapper.name) + '+created bytes.size %t'.format(property_mapper.nBytes);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of getEdgePropertiesMsg
 
     /**
     * Queries the property graph and returns a boolean array indicating which nodes contain the 
@@ -575,14 +804,6 @@ module DipSLLPropertyGraphMsg {
         for i in 0..<vertex_props_col_map.size do if vertex_props_col_map[i] == column then colId = i;
         var dtypeId = 0; 
         for i in 0..<vertex_props_dtype_map.size do if vertex_props_dtype_map[i] == dtype then dtypeId = i;
-        
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-        for vertex in vertex_props {
-            writeln(vertex);
-        }
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-        writeln("querying ", column, " with id ", colId, " datatype ", dtype, " which has id ", dtypeId, " with op ", op, " ", value);
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
 
         // Perform the querying operation in parallel.
         var timer:stopwatch;
@@ -789,7 +1010,7 @@ module DipSLLPropertyGraphMsg {
 
         pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } //end of queryLabelsMsg
+    } //end of queryNodePropertiesMsg
 
     /**
     * Queries the property graph and returns a boolean array indicating which edges contain the 
@@ -875,14 +1096,262 @@ module DipSLLPropertyGraphMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } //end of queryRelationshipsMsg
 
+    /**
+    * Queries the property graph and returns a boolean array indicating which edges match the query
+    * operation.
+    *
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
+    *
+    * :returns: MsgTuple
+    */
+    proc queryEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
+        // Parse the message from Python to extract needed data.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var column = msgArgs.getValueOf("Column");
+        var value = msgArgs.getValueOf("Value");
+        var op = msgArgs.getValueOf("Op");
+
+        // Extract graph data for usage in this function.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var edge_props = toSymEntry2D(graph.getComp("EDGE_PROPS"), shared GenProperty?).a;
+        const ref entry = toSegStringSymEntry(graph.getComp("EDGE_PROPS_COL_MAP"));
+        var edge_props_col_map = assembleSegStringFromParts(entry.offsetsEntry, entry.bytesEntry, st);
+        var edge_props_dtype_map = toSymEntry(graph.getComp("EDGE_PROPS_DTYPE_MAP"), string).a;
+        var edge_props_col2dtype = toMapSymEntry(graph.getComp("EDGE_PROPS_COL2DTYPE")).stored_map;
+        var return_array : [makeDistDom(graph.n_edges)] bool;
+        var dtype = edge_props_col2dtype[column];
+
+        var colId = 0;
+        for i in 0..<edge_props_col_map.size do if edge_props_col_map[i] == column then colId = i;
+        var dtypeId = 0; 
+        for i in 0..<edge_props_dtype_map.size do if edge_props_dtype_map[i] == dtype then dtypeId = i;
+
+        // Perform the querying operation in parallel.
+        var timer:stopwatch;
+        timer.start();
+        select dtype {
+            when "float64" {
+                select op {
+                    when ">" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] > value:real then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] < value:real then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<=" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] <= value:real then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when ">=" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] >= value:real then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "==" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:real then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(real));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:real then return_array[e] = true; 
+                            }
+                        }
+                    }
+                }
+            }
+            when "int64" {
+                select op {
+                    when ">" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] > value:int then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] < value:int then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<=" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] <= value:int then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when ">=" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] >= value:int then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "==" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:int then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(int));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:int then return_array[e] = true; 
+                            }
+                        }
+                    }
+                }
+            }
+            when "uint64" {
+                select op {
+                    when ">" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] > value:uint then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] < value:uint then return_array[e] = true;
+                            }
+                        }
+                    }
+                    when "<=" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] <= value:uint then return_array[e] = true;
+                            }
+                        }
+                    }
+                    when ">=" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] >= value:uint then return_array[e] = true;
+                            }
+                        }
+                    }
+                    when "==" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:uint then return_array[e] = true; 
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(uint));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:uint then return_array[e] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            when "bool" {
+                var value = value.toLower():bool;
+                select op {
+                    when "==" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(bool));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] == value:bool then return_array[e] = true;
+                            }
+                        }
+                    }
+                    when "<>" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(bool));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId] != value:bool then return_array[e] = true;
+                            }
+                        }
+                    }
+                }
+            }
+            when "str" {
+                select op {
+                    when "contains" {
+                        forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
+                            var currentProperty = edge_props[e,d].borrow():(borrowed Property(string));
+                            if currentProperty.propertyValue.size > 0 {
+                                if currentProperty.propertyValue[colId].find(value:string) != -1 then return_array[e] = true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        timer.stop();
+        var time_msg = "edge properties query took " + timer.elapsed():string + " sec";
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+
+        var retName = st.nextName();
+        var retEntry = new shared SymEntry(return_array);
+        st.addEntry(retName, retEntry);
+        var repMsg = 'created ' + st.attrib(retName);
+
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } //end of queryEdgePropertiesMsg
+
     use CommandMap;
     registerFunction("addNodeLabels", addNodeLabelsMsg, getModuleName());
     registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
+    registerFunction("addEdgeProperties", addEdgePropertiesMsg, getModuleName());
     registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
     registerFunction("getNodeProperties", getNodePropertiesMsg, getModuleName());
     registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());
+    registerFunction("getEdgeProperties", getEdgePropertiesMsg, getModuleName());
     registerFunction("queryLabels", queryLabelsMsg, getModuleName());
     registerFunction("queryNodeProperties", queryNodePropertiesMsg, getModuleName());
     registerFunction("queryRelationships", queryRelationshipsMsg, getModuleName());
+    registerFunction("queryEdgeProperties", queryEdgePropertiesMsg, getModuleName());
 }
