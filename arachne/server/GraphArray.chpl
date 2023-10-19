@@ -28,9 +28,11 @@ module GraphArray {
         VERTEX_PROPS,           // Any properties that belong to a specific node
         VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
         VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
-        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column. 
+        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column 
         EDGE_PROPS,             // Any properties that belong to a specific edge
-        EDGE_PROPS_MAP,         // Sorted array of edge property to integer id (array index)
+        EDGE_PROPS_COL_MAP,     // Sorted array of edge property to integer id (array index)
+        EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
+        EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
     }
 
     /**
