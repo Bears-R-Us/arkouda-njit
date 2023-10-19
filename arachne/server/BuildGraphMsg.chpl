@@ -171,6 +171,136 @@ module BuildGraphMsg {
     } // end of addEdgesFromMsg
 
     /**
+    * Convert akarrays to a graph object so it can be compatible with functionality that used the
+    * original graph data structure.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc addEdgesFromCompatMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
+        // Parse the message from the Python front-end.
+        var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
+        var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
+        var akarray_srcRS = msgArgs.getValueOf("AkArraySrcR");
+        var akarray_dstRS = msgArgs.getValueOf("AkArrayDstR");
+        var akarray_neiS = msgArgs.getValueOf("AkArrayNei");
+        var akarray_neiRS = msgArgs.getValueOf("AkArrayNeiR");
+        var akarray_start_iS = msgArgs.getValueOf("AkArrayStartIdx");
+        var akarray_start_iRS = msgArgs.getValueOf("AkArrayStartIdxR");
+        var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
+        var weightedS = msgArgs.getValueOf("Weighted");
+        var directedS = msgArgs.getValueOf("Directed");
+        var num_verticesS = msgArgs.getValueOf("NumVertices");
+        var num_edgesS = msgArgs.getValueOf("NumEdges");
+
+        var propertied:bool;
+        if msgArgs.contains("IsPropGraph") {
+            propertied = true;
+        }
+
+        // Extract the names of the arrays and the data for the non-array variables.
+        var src_name:string = (akarray_srcS:string);
+        var dst_name:string = (akarray_dstS:string);
+        var srcR_name:string = (akarray_srcRS:string);
+        var dstR_name:string = (akarray_dstRS:string);
+        var nei_name:string = (akarray_neiS:string);
+        var neiR_name:string = (akarray_neiRS:string);
+        var start_i_name:string = (akarray_start_iS:string);
+        var start_iR_name:string = (akarray_start_iRS:string);
+        var vmap_name:string = (akarray_vmapS:string);
+
+        var weighted:bool;
+        weightedS = weightedS.toLower();
+        weighted = weightedS:bool;
+
+        var directed:bool;
+        directedS = directedS.toLower();
+        directed = directedS:bool;
+
+        var num_vertices:int;
+        num_vertices = num_verticesS:int;
+
+        var num_edges:int;
+        num_edges = num_edgesS:int;
+
+        // Timer for populating the graph data structure. 
+        var timer:stopwatch;
+        timer.start();
+
+        // Get the symbol table entries for the edge, weight, and node map arrays.
+        var akarray_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
+        var akarray_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
+        var akarray_srcR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(srcR_name, st);
+        var akarray_dstR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dstR_name, st);
+        var akarray_nei_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nei_name, st);
+        var akarray_neiR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(neiR_name, st);
+        var akarray_start_i_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(start_i_name, st);
+        var akarray_start_iR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(start_iR_name, st);
+        var akarray_vmap_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vmap_name, st);
+
+        // Extract the data for use. 
+        var akarray_src_sym = toSymEntry(akarray_src_entry,int);
+        var src = akarray_src_sym.a;
+
+        var akarray_dst_sym = toSymEntry(akarray_dst_entry,int);
+        var dst = akarray_dst_sym.a;
+
+        var akarray_srcR_sym = toSymEntry(akarray_srcR_entry,int);
+        var srcR = akarray_srcR_sym.a;
+
+        var akarray_dstR_sym = toSymEntry(akarray_dstR_entry,int);
+        var dstR = akarray_dstR_sym.a;
+
+        var akarray_nei_sym = toSymEntry(akarray_nei_entry,int);
+        var nei = akarray_nei_sym.a;
+
+        var akarray_neiR_sym = toSymEntry(akarray_neiR_entry,int);
+        var neiR = akarray_neiR_sym.a;
+
+        var akarray_start_i_sym = toSymEntry(akarray_start_i_entry,int);
+        var start_i = akarray_start_i_sym.a;
+
+        var akarray_start_iR_sym = toSymEntry(akarray_start_iR_entry,int);
+        var start_iR = akarray_start_iR_sym.a;
+
+        var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
+        var vmap = akarray_vmap_sym.a;
+
+        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied);
+        graph.reversed = true;
+        graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
+            .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
+            .withComp(new shared SymEntry(srcR):GenSymEntry, "SRC_R")
+            .withComp(new shared SymEntry(dstR):GenSymEntry, "DST_R")
+            .withComp(new shared SymEntry(nei):GenSymEntry, "NEIGHBOR")
+            .withComp(new shared SymEntry(neiR):GenSymEntry, "NEIGHBOR_R")
+            .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
+            .withComp(new shared SymEntry(start_iR):GenSymEntry, "START_IDX_R")
+            .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
+
+        // Add graph to the specific symbol table entry. 
+        var graphEntryName = st.nextName();
+        var graphSymEntry = new shared GraphSymEntry(graph);
+        st.addEntry(graphEntryName, graphSymEntry);
+        var repMsg = graphEntryName;
+        
+        // Print out the length of time it takes to read in and build a known graph file.
+        timer.stop();
+        outMsg = "Building graph from two edge arrays COMPAT took " + timer.elapsed():string + " sec";
+        
+        // Print out debug information to arkouda server output. 
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of addEdgesFromCompatMsg
+
+    /**
     * Read in a matrix market file to pdarrays to eventually build a graph.
     *
     * cmd: operation to perform. 
@@ -290,5 +420,6 @@ module BuildGraphMsg {
 
     use CommandMap;
     registerFunction("addEdgesFrom", addEdgesFromMsg, getModuleName());
+    registerFunction("addEdgesFromCompat", addEdgesFromCompatMsg, getModuleName());
     registerFunction("readMatrixMarketFile", readMatrixMarketFileMsg, getModuleName());
 }
