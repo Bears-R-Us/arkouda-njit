@@ -33,6 +33,16 @@ module GraphArray {
         EDGE_PROPS_COL_MAP,     // Sorted array of edge property to integer id (array index)
         EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
         EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
+
+        // TEMPORARY COMPONENTS BELOW FOR UNDIRECTED GRAPHS TO ENSURE COMPATIBILTIY WITH OLD CODE.
+        // We want to phase out the need for reversed arrays in undirected graph algorithms.
+        // Includes: connected components, triangle counting, k-truss, and triangle centrality.
+        SRC_R,                  // DST array
+        DST_R,                  // SRC array
+        START_IDX,              // Starting indices of vertices in SRC
+        START_IDX_R,            // Starting indices of vertices in SRC_R
+        NEIGHBOR,               // Number of neighbors for a given vertex based off SRC and DST
+        NEIGHBOR_R,             // Number of neighbors for a given vertex based off SRC_R and DST_R
     }
 
     /**
@@ -52,14 +62,17 @@ module GraphArray {
         // Total number of edges
         var n_edges : int;
 
-        // The graph is directed (True) or undirected (False)
+        // The graph is directed (true) or undirected (false)
         var directed : bool;
 
-        // The graph is weighted (True) or unweighted (False)
+        // The graph is weighted (true) or unweighted (false)
         var weighted: bool;
 
-        // The graph is a property graph (True) or not (False)
+        // The graph is a property graph (true) or not (false)
         var propertied: bool;
+
+        // Undirected graphs are in the old format (true) or not (false)
+        var reversed: bool = false;
 
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
