@@ -190,7 +190,7 @@ module DipSLLPropertyGraphMsg {
         * is to store an object of class Property that contains an associative array where the domain
         * is an integer identifier for the name of the property (column) being stored and the element 
         * is the value for that vertex in that column. */
-        var vertex_props = blockDist.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
+        var vertex_props = Block.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
         forall (v,d) in vertex_props.domain {
             var datatype:string = dataTypeMapIntToStr[d];
             select datatype {
@@ -450,7 +450,7 @@ module DipSLLPropertyGraphMsg {
         * is to store an object of class Property that contains an associative array where the domain
         * is an integer identifier for the name of the property (column) being stored and the element 
         * is the value for that edge in that column. */
-        var edge_props = blockDist.createArray({0..<src.size, 0..<dataTypeSet.size}, shared GenProperty?);
+        var edge_props = Block.createArray({0..<src.size, 0..<dataTypeSet.size}, shared GenProperty?);
         forall (e,d) in edge_props.domain {
             var datatype:string = dataTypeMapIntToStr[d];
             select datatype {
@@ -966,13 +966,13 @@ module DipSLLPropertyGraphMsg {
                 }
             }
             when "bool" {
-                var value = value.toLower():bool;
+                var inner_value = value.toLower():bool;
                 select op {
                     when "==" {
                         forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
                             var currentProperty = vertex_props[u,d].borrow():(borrowed Property(bool));
                             if currentProperty.propertyValue.size > 0 {
-                                if currentProperty.propertyValue[colId] == value:bool then return_array[u] = true;
+                                if currentProperty.propertyValue[colId] == inner_value then return_array[u] = true;
                             }
                         }
                     }
@@ -980,7 +980,7 @@ module DipSLLPropertyGraphMsg {
                         forall (u,d) in vertex_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
                             var currentProperty = vertex_props[u,d].borrow():(borrowed Property(bool));
                             if currentProperty.propertyValue.size > 0 {
-                                if currentProperty.propertyValue[colId] != value:bool then return_array[u] = true;
+                                if currentProperty.propertyValue[colId] != inner_value then return_array[u] = true;
                             }
                         }
                     }
@@ -1295,13 +1295,13 @@ module DipSLLPropertyGraphMsg {
                 }
             }
             when "bool" {
-                var value = value.toLower():bool;
+                var inner_value = value.toLower():bool;
                 select op {
                     when "==" {
                         forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
                             var currentProperty = edge_props[e,d].borrow():(borrowed Property(bool));
                             if currentProperty.propertyValue.size > 0 {
-                                if currentProperty.propertyValue[colId] == value:bool then return_array[e] = true;
+                                if currentProperty.propertyValue[colId] == inner_value then return_array[e] = true;
                             }
                         }
                     }
@@ -1309,7 +1309,7 @@ module DipSLLPropertyGraphMsg {
                         forall (e,d) in edge_props.domain[.., dtypeId..dtypeId] with (ref return_array, ref dtypeId, ref colId) {
                             var currentProperty = edge_props[e,d].borrow():(borrowed Property(bool));
                             if currentProperty.propertyValue.size > 0 {
-                                if currentProperty.propertyValue[colId] != value:bool then return_array[e] = true;
+                                if currentProperty.propertyValue[colId] != inner_value then return_array[e] = true;
                             }
                         }
                     }
