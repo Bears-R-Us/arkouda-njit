@@ -557,12 +557,6 @@ module DipSLLPropertyGraphMsg {
         graph.withComp(new shared MapSymEntry(col2dtype):GenSymEntry, "EDGE_PROPS_COL2DTYPE");
         var repMsg = "edge properties added";
         outMsg = "addEdgeProperties took " + timer.elapsed():string + " sec ";
-
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-        for edge in edge_props {
-            writeln(edge);
-        }
-        writeln("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
         
         // Print out debug information to arkouda server output. 
         pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
