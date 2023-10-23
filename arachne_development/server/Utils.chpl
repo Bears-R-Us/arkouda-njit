@@ -1,126 +1,181 @@
-/*
-    Utilities we use for the different BFS implementations.
-
-    Main things are the defintion of a ragged array and the aggregation
-    for associative domains. 
-*/
-
-pragma "error mode fatal"
 module Utils {
-    use AggregationPrimitives;
-    use CopyAggregation;
-    use ReplicatedDist;
-    use BlockDist;
+    // Chapel modules.
+    use IO;
+    use Map;
+    use Sort;
+    use List;
+    use Set;
 
-    //###############################################################################
-    //###############################################################################
-    //###############################################################################
-    /*
-        Ragged array 
+    // Arachne modules.
+    use GraphArray;
+
+    // Arkouda modules. 
+    use Logging;
+    use MultiTypeSymEntry;
+    use MultiTypeSymbolTable;
+    use ServerConfig;
+    use ArgSortMsg;
+    use AryUtil;
+
+    // Allow graphs to be printed server-side? Defaulted to false. MUST BE MANUALLY CHANGED.
+    // TODO: make this a param instead of a set variable?
+    var debug_print = false; 
+
+    // Server message logger. 
+    private config const logLevel = LogLevel.DEBUG;
+    const smLogger = new Logger(logLevel);
+    private var outMsg:string;
+
+    /** 
+    * Helper procedure to parse ranges and return the locale(s) we must write to.
+    * 
+    * val: value for which we want to find the locale that owns it. 
+    * 
+    * returns: array of the locale names. */
+    proc find_locs(val:int, graph:SegGraph) throws {
+        var ranges = toSymEntry(graph.getComp("RANGES"), (int,locale)).a;
+        var locs = new list(locale);
+        for i in 1..numLocales - 1 {
+            if (val >= ranges[i-1][0] && val <= ranges[i][0]) {
+                locs.pushBack(ranges[i-1][1]);
+            }
+            if (i == numLocales - 1) {
+                if val >= ranges[i][0] {
+                    locs.pushBack(ranges[i][1]);
+                }
+            }
+        }
+        return locs.toArray();
+    }
+
+    /**
+    * Binary search for a given key, original version by Dr. Du.
+    *
+    * ary: int array
+    * l: low index bound
+    * h: high index bound
+    * key: value we are searching for
+    *
+    * returns: index if key is found, -1 if not found
     */
-    pragma "default intent is ref"
-    record RagArray {
-        var DO = {0..0};
-        var A : [DO] int;
-
-        proc new_dom(new_d : domain(1)) {
-            this.DO = new_d;
+    proc bin_search_v(ary: [?D] int, l: int, h: int, key: int): int throws {
+        if ( (l < D.lowBound) || (h > D.highBound) || (l < 0)) {
+            return -1;
         }
-
-        proc size() {
-            return A.size;
+        if ( (l > h) || ((l == h) &&  (ary[l] != key))) {
+            return -1;
         }
-    }
-
-    private const dstBuffSize = getEnvInt("CHPL_AGGREGATION_DST_BUFF_SIZE", 4096);
-    private const yieldFrequency = getEnvInt("CHPL_AGGREGATION_YIELD_FREQUENCY", 1024);
-
-    var block_locale_D : domain(1) dmapped Block(boundingBox = LocaleSpace) = LocaleSpace;
-    var curr_frontiers : [block_locale_D] domain(int);
-    var next_frontiers : [block_locale_D] domain(int);
-    
-    record DynamicAssociativeDomainDstAggregator {
-        const bufferSize = dstBuffSize; 
-        const myLocaleSpace = LocaleSpace; 
-        var opsUntilYield = yieldFrequency; 
-        var lBuffers: [myLocaleSpace][0..#bufferSize] int;
-        var rBuffers: [myLocaleSpace] remoteBuffer(int);
-        var bufferIdxs: [myLocaleSpace] int;
-
-        proc postinit() 
-        {
-            for loc in myLocaleSpace {
-                rBuffers[loc] = new remoteBuffer(int, bufferSize, loc);
+        if (ary[l] == key) {
+            return l;
+        }
+        if (ary[h] == key) {
+            return h;
+        }
+        
+        var m = (l + h) / 2: int;
+        
+        if ((m == l) ) {
+            return -1;
+        }
+        if (ary[m] == key ) {
+            return m;
+        } else {
+            if (ary[m] < key) {
+                return bin_search_v(ary, m+1, h, key);
             }
-        }
-
-        proc deinit() 
-        {
-            flush();
-        }
-
-        proc flush()
-        {
-            for loc in myLocaleSpace {
-                _flushBuffer(loc, bufferIdxs[loc], freeData=true);
-            }
-        }
-
-        inline proc copy(const loc, const in srcVal: int)
-        {
-            // Get our current index into the buffer for dst's locale
-            ref bufferIdx = bufferIdxs[loc];
-
-            // Buffer the desired value
-            lBuffers[loc][bufferIdx] = srcVal;
-            bufferIdx += 1;
-
-            // Flush our buffer if it's full. If it's been a while since we've let
-            // other tasks run, yield so that we're not blocking remote tasks from
-            // flushing their buffers.
-            if bufferIdx == bufferSize {
-                _flushBuffer(loc, bufferIdx, freeData=false);
-                opsUntilYield = yieldFrequency;
-            } 
-            else if opsUntilYield == 0 {
-                chpl_task_yield();
-                opsUntilYield = yieldFrequency;
-            } 
             else {
-                opsUntilYield -= 1;
+                return bin_search_v(ary, l, m-1, key);
             }
         }
+    }// end bin_search_v
 
-        // Flushes the buffer. This means doing a big append to the
-        // associative domain on that locale.
-        proc _flushBuffer(loc: int, ref bufferIdx, freeData) 
-        {
-            const myBufferIdx = bufferIdx;
-            if myBufferIdx == 0 then return;
+    /**
+    * Non-recursive, distributed-memory binary search for a given key.
+    *
+    * arr: int array
+    * key: value we are searching for
+    *
+    * returns: index if key is found, -1 if not found
+    */
+    proc bin_search(arr: [?D] int, key: int, lo: int, hi: int, comparator:?rec=defaultComparator): int throws {
+        var found:int = -1; // index of found key, -1 if not found.
+        coforall loc in Locales with (ref found) do on loc {
+            var start_loc:bool, end_loc:bool, mid_loc:bool, skip_loc:bool;
+            var l:int, h:int, local_lo:int, local_hi:int;
+            local_lo = arr.localSubdomain().lowBound;
+            local_hi = arr.localSubdomain().highBound;
 
-            // Allocate a remote buffer
-            ref rBuffer = rBuffers[loc];
-            const remBufferPtr = rBuffer.cachedAlloc();
+            // Check to see if loc is either a starting locale or an end locale.
+            if arr.localSubdomain().contains(lo) then start_loc = true;
+            else if arr.localSubdomain().contains(hi) then end_loc = true;
+            else if !start_loc && !end_loc && local_lo > lo && local_hi < hi then mid_loc = true;
+            else skip_loc = true;
 
-            // Copy local buffer to remote buffer
-            rBuffer.PUT(lBuffers[loc], myBufferIdx);
-
-            // Process remote buffer
-            on Locales[loc] {
-                ref q = next_frontiers[loc];
+            if !skip_loc {
+                // Start the search from the actual lo index stored on start_loc.
+                if start_loc {
+                    l = if arr.localSubdomain().lowBound < lo then lo
+                        else arr.localSubdomain().lowBound;
+                } else l = arr.localSubdomain().lowBound;
                 
-                for srcVal in rBuffer.localIter(remBufferPtr, myBufferIdx) {
-                    q += srcVal;
-                }
+                // End the search from the actual hi index stored on end_loc.
+                if end_loc {
+                    h = if arr.localSubdomain().highBound > hi then hi
+                        else arr.localSubdomain().highBound;
+                } else h = arr.localSubdomain().highBound;
 
-                if freeData {
-                    rBuffer.localFree(remBufferPtr);
+                // Actual binary search steps. 
+                while(l <= h) {
+                    if arr[l] == key {found = l; break;}
+                    if arr[h] == key {found = h; break;}
+                    
+                    const m = (l + h) / 2 : int;
+
+                    if m == l then break;
+                    if arr[m] == key {found = m; break;}
+                    
+                    if chpl_compare(key, arr[m], comparator=comparator) > 0 then l = m + 1;
+                    else h = m - 1;
                 }
             }
-            if freeData {
-                rBuffer.markFreed();
+        } // end of coforall
+        return found;
+    }// end bin_search
+
+    /**
+    * Print graph data structure server-side to visualize the raw array data.
+    *
+    * G: graph we want to print out. 
+    *
+    * returns: message back to Python.
+    */
+    proc print_graph_serverside(G: borrowed SegGraph) throws {
+        for comp in Component {
+            var curr_comp = comp:string;
+            if G.hasComp(curr_comp) {
+                select curr_comp {
+                    when "RELATIONSHIPS", "NODE_LABELS" {
+                        var X = toSymEntry(G.getComp(comp:string), list(string, parSafe=true)).a;
+                        writeln(comp:string, " = ", X);
+                    }
+                    when "NODE_PROPS", "EDGE_PROPS" {
+                        var X = toSymEntry(G.getComp(comp:string), list((string,string), parSafe=true)).a;
+                        writeln(comp:string, " = ", X);
+                    }
+                    when "EDGE_WEIGHT", "EDGE_WEIGHT_R" {
+                        var X = toSymEntry(G.getComp(comp:string), real).a;
+                        writeln(comp:string, " = ", X);
+                    }
+                    when "NODE_MAP_R" {
+                        var X = toSymEntryAD(G.getComp(comp:string)).a;
+                        writeln(comp:string, " = ", X);
+                    }
+                    otherwise {
+                        var X = toSymEntry(G.getComp(comp:string), int).a;
+                        writeln(comp:string, " = ", X);
+                    }
+                }
             }
-            bufferIdx = 0;
         }
-    }
+    } // end of print_graph_serverside
 }
