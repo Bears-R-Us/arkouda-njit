@@ -1,35 +1,59 @@
 module GraphArray {
 
-    use AryUtil;
+    // Chapel modules.
+    use Map;
+    use Reflection;
+    use Utils;
+
+    // Arkouda modules.
+    use Logging;
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
+
+    use AryUtil;
     use ServerConfig;
     use Reflection;
-    use Logging;
     use ServerErrors;
     use NumPyDType;
-    use Map;
-
+    // Server message logger.
     private config const logLevel = LogLevel.DEBUG;
     const graphLogger = new Logger(logLevel);
 
-    // These are the component Key names stored in our components map
+    // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC=1,          // The source of every edge in the graph,array value
-        SRC_R=2,        // Reverse of SRC
-        DST=3,          // The destination of every vertex in the graph,array value
-        DST_R=4,        // Reverse of DST
-        START_IDX,    // The starting index of every vertex in src and dst
-        START_IDX_R,  // Reverse of START_IDX
-        NEIGHBOR,     // Numer of neighbors for a vertex  
-        NEIGHBOR_R,   // Numer of neighbors for a vertex based on the reverse array
-        A_START_IDX,    // The starting index of every vertex in src and dst, aligned array based on src
-        A_START_IDX_R,  // Reverse of START_IDX, aligned array based on src
-        A_NEIGHBOR,     // Numer of neighbors for a vertex, aligned array based on src  
-        A_NEIGHBOR_R,   // Numer of neighbors for a vertex based on the reverse array, aligned array based on src
+        SRC,                    // The source array of every edge in the graph
+        DST,                    // The destination array of every edge in the graph
+        SEGMENTS,               // The segments of adjacency lists for each vertex in DST
+        RANGES,                 // Keeps the range of the vertices the edge list stores per locale
+        EDGE_WEIGHT,            // Stores the edge weights of the graph, if applicable
+        NODE_MAP,               // Doing an index of NODE_MAP[u] gives you the original value of u
+        VERTEX_LABELS,          // Any labels that belong to a specific node
+        VERTEX_LABELS_MAP,      // Sorted array of vertex labels to integer id (array index)
+        EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
+        EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
+        VERTEX_PROPS,           // Any properties that belong to a specific node
+        VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
+        VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
+        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column
+        EDGE_PROPS,             // Any properties that belong to a specific edge
+        EDGE_PROPS_COL_MAP,     // Sorted array of edge property to integer id (array index)
+        EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
+        EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
+
+        // TEMPORARY COMPONENTS BELOW FOR UNDIRECTED GRAPHS TO ENSURE COMPATIBILTIY WITH OLD CODE.
+        // We want to phase out the need for reversed arrays in undirected graph algorithms.
+        // Includes: connected components, triangle counting, k-truss, and triangle centrality.
+        SRC_R,                  // DST array
+        DST_R,                  // SRC array
+        START_IDX,              // Starting indices of vertices in SRC
+        START_IDX_R,            // Starting indices of vertices in SRC_R
+        NEIGHBOR,               // Number of neighbors for a given vertex based off SRC and DST
+        NEIGHBOR_R,             // Number of neighbors for a given vertex based off SRC_R and DST_R
+
+
+
         A_SRC_R,        // Reverse of SRC, aligned array based on srcR
         A_DST_R,        // Reverse of DST, aligned array based on dstR
-        EDGE_WEIGHT,  // Edge weight
         VERTEX_WEIGHT, // Vertex weight
         VTrack,        // track the vertex ID from the normalized ID to the original ID
         VP1,        // The first vertex property
@@ -70,11 +94,31 @@ module GraphArray {
         /* Total number of edges */
         var n_edges : int;
 
-        /* The graph is directed (True) or undirected (False)*/
+
+        // The graph is directed (true) or undirected (false)
         var directed : bool;
 
-        /* The graph is weighted (True) or unweighted (False)*/
-        //var weighted : bool;
+        // The graph is weighted (true) or unweighted (false)
+        var weighted: bool;
+
+        // The graph is a property graph (true) or not (false)
+        var propertied: bool;
+
+        // Undirected graphs are in the old format (true) or not (false)
+        var reversed: bool = false;
+
+        /**
+        * Init the basic graph object, we'll compose the pieces using the withComp method.
+        */
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool) {
+            this.n_vertices = num_v;
+            this.n_edges = num_e;
+            this.directed = directed;
+            this.weighted = weighted;
+            this.propertied = propertied;
+        }
+
+
 
         /**
         * Init the basic graph object, we'll compose the pieces in
@@ -86,7 +130,17 @@ module GraphArray {
             this.directed = directed;
         }
 
+
+
         proc isDirected():bool { return this.directed; }
+        proc isWeighted():bool { return this.weighted; }
+        proc isPropertied():bool { return this.propertied; }
+
+        proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
+        proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
+        proc getComp(atrname:string):GenSymEntry throws { return components[atrname:Component]; }
+
+
 
         /* Use the withCOMPONENT methods to compose the graph object */
         proc withEnumCom(a:shared GenSymEntry, atrname:Component):SegGraph { components.add(atrname, a); return this; }
@@ -94,16 +148,6 @@ module GraphArray {
         proc getEnumCom( atrname:Component){return components.getBorrowed(atrname); } 
         proc withATR(a:shared GenSymEntry, atrname:int):SegGraph { 
                     components.add(atrname, a); 
-/*
-            select atrname {
-                 when 1 do
-                    components.add(Component.SRC, a); 
-                 when 2 do
-                    components.add(Component.SRC_R, a); 
-                 when 3 do
-                    components.add(Component.DST, a); 
-            }
-*/
             return this; 
         }
         proc withSRC(a:shared GenSymEntry):SegGraph { components.add(Component.SRC, a); return this; }
@@ -213,6 +257,7 @@ module GraphArray {
     * GraphSymEntry is the wrapper class around SegGraph
     * so it may be stored in the Symbol Table (SymTab)
     */
+    /*
     class GraphSymEntry:CompositeSymEntry {
         //var dtype = NumPyDType.DType.UNDEF;
         //type etype = int;
@@ -232,20 +277,82 @@ module GraphArray {
 
 
     }
+    */
+
 
     /**
-     * Convenience proc to retrieve GraphSymEntry from SymTab
-     * Performs conversion from AbstractySymEntry to GraphSymEntry
-     */
+    * GraphSymEntry is the wrapper class around SegGraph so it may be stored in
+    * the Symbol Table (SymTab).
+    */
+    class GraphSymEntry : CompositeSymEntry {
+        var graph: shared SegGraph;
+
+        proc init(segGraph: shared SegGraph) {
+            super.init();
+            this.entryType = SymbolEntryType.CompositeSymEntry;
+            assignableTypes.add(this.entryType);
+            this.graph = segGraph;
+        }
+        override proc getSizeEstimate(): int {
+            return 1;
+        }
+    }
+
+
+    class SymEntryAD : GenSymEntry {
+        var aD: domain(int);
+        var a: [aD] int;
+
+        proc init(associative_array: [?associative_domain] int) {
+            super.init(int);
+            this.aD = associative_domain;
+            this.a = associative_array;
+        }
+    }
+
+    class MapSymEntry : GenSymEntry {
+        var stored_map: map(string, string);
+
+        proc init(ref map_to_store: map(string, string)) {
+            super.init(string);
+            this.stored_map = map_to_store;
+        }
+    }
+
+
+    proc toMapSymEntry(e) {
+        return try! e : borrowed MapSymEntry;
+    }
+
+    proc toSymEntryAD(e) {
+        return try! e : borrowed SymEntryAD();
+    }
+
+
+
+    /**
+    * Convenience proc to retrieve GraphSymEntry from SymTab.
+    * Performs conversion from AbstractySymEntry to GraphSymEntry.
+    */
     proc getGraphSymEntry(name:string, st: borrowed SymTab): borrowed GraphSymEntry throws {
         var abstractEntry:borrowed AbstractSymEntry = st.lookup(name);
-        if ! abstractEntry.isAssignableTo(SymbolEntryType.CompositeSymEntry) {
+        if !abstractEntry.isAssignableTo(SymbolEntryType.CompositeSymEntry) {
             var errorMsg = "Error: SymbolEntryType %s is not assignable to CompositeSymEntry".format(abstractEntry.entryType);
             graphLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);
             throw new Error(errorMsg);
         }
         return (abstractEntry: borrowed GraphSymEntry);
     }
+
+    /**
+    * Helper proc to cast AbstractSymEntry to GraphSymEntry.
+    */
+    proc toGraphSymEntry(entry: borrowed AbstractSymEntry): borrowed GraphSymEntry throws {
+        return (entry: borrowed GraphSymEntry);
+    }
+
+
+
 
     /**
      * Convenience proc to retrieve DomArraySymEntry from SymTab
@@ -266,13 +373,6 @@ module GraphArray {
     */
     proc toDomArraySymEntry(entry: borrowed AbstractSymEntry): borrowed DomArraySymEntry throws {
         return (entry: borrowed DomArraySymEntry);
-    }
-
-    /**
-    * Helper proc to cat AbstractSymEntry to GraphSymEntry
-    */
-    proc toGraphSymEntry(entry: borrowed AbstractSymEntry): borrowed GraphSymEntry throws {
-        return (entry: borrowed GraphSymEntry);
     }
 
 

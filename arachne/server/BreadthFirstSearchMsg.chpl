@@ -104,5 +104,5 @@ module BreadthFirstSearchMsg {
     }
 
     use CommandMap;
-    registerFunction("segmentedGraphBFS", segBFSMsg, getModuleName());
+    registerFunction("RsegmentedGraphBFS", segBFSMsg, getModuleName());
 }

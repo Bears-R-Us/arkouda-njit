@@ -4492,7 +4492,7 @@ module TrussMsg {
 //Begin of Max K-Truss Functions
       proc BatchMaxTrussNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int{ 
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int throws{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -4998,7 +4998,7 @@ module TrussMsg {
 
       proc BatchMaxTrussMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws { 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -5624,7 +5624,7 @@ module TrussMsg {
 
       proc BatchMaxTrussNonMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -6133,7 +6133,7 @@ module TrussMsg {
 
       proc BatchMaxTrussSeqMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -6651,7 +6651,7 @@ module TrussMsg {
 
       proc BatchMaxTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -7169,7 +7169,7 @@ module TrussMsg {
 
       proc BatchMaxTrussMix(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ 
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ 
 
 
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
