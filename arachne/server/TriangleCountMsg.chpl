@@ -579,5 +579,5 @@ module TriCntMsg {
   }// end of segTriMsg
 
    use CommandMap;
-   registerFunction("RsegmentedGraphTri", segTriCntMsg,getModuleName());
+   registerFunction("segmentedGraphTri", segTriCntMsg,getModuleName());
 }
