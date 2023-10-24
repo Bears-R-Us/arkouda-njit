@@ -128,7 +128,7 @@ if __name__ == "__main__":
     
     edge_relationships = ak.DataFrame({"src" : ak.array([101, 102, 104, 104, 104, 105, 105, 105, 106, 108]), 
                                        "dst" : ak.array([104, 105, 100, 105, 108, 101, 106, 109, 102, 107]), "edge_relationships" : 
-        ak.array(["Y1", "Y1", "Y4", "Y2", "Y4", "Y3", "Y1", "Y1", "Y1", "Y1"])})
+        ak.array(["Y1", "Y1", "Y4", "Y2", "Y4", "Y3", "Y1", "Y1", "Y1", "Y5"])})
     
     prop_graph.add_node_labels(node_labels)
     prop_graph.add_edge_relationships(edge_relationships)
@@ -149,6 +149,11 @@ if __name__ == "__main__":
     subgraph.add_edge_relationships(edge_relationships)
     
     
-    ar.subgraph_isomorphism(prop_graph, subgraph, "ullmann")
+    mappings_df = ar.subgraph_isomorphism(prop_graph, subgraph, "ullmann")
+    #print(type(mappings_df)) 
+
+    # Access the DataFrame data
+    print("subgraph_isomorphism run and this is the found ISOs")
+    print(mappings_df)
 
     ak.shutdown()

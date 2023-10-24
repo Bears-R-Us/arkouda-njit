@@ -189,7 +189,7 @@ module SubgraphIsomorphism {
         }
 
         
-        forall u in 0..v-1 {
+        for u in 0..v-1 {
             //writeln("$$$$$$$$$ We reached isIsomorphic 2");
             //writeln(" u= ",u, " mapping[u]= ", mapping[u],"\n\n");
 
@@ -332,7 +332,7 @@ module SubgraphIsomorphism {
         var localIsoList: list([1..H.n_vertices] int);  // List to store the isomorphisms found in the current branch
         var localIsoCounter = 0;  // Count the number of isomorphisms found in the current branch
         
-        forall i in 0..G.n_vertices-1 with(ref localIsoList){
+        for i in 0..G.n_vertices-1 {
             if (!visited[i] && graphDegree[i] >= 1) { 
                 visited[i] = true;  // Mark the vertex as visited
                 mapping[v] = i;  // Add the vertex to the current mapping
@@ -431,8 +431,8 @@ module SubgraphIsomorphism {
             var subIsoList = ullmannSubgraphIsomorphism11Helper(G, H, v, visited, mapping, graphDegree);
             //writeln("$$$$$$ WE GET HERE 2");
             //writeln("subIsoList =", subIsoList);
-            //writeln("subIsoList.size = ", subIsoList.size);
-            //writeln("subIsoList.type = ",subIsoList);
+            writeln("subIsoList.size = ", subIsoList.size);
+            writeln("subIsoList.type = ",subIsoList);
 
             
 
