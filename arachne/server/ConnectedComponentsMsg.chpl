@@ -81,5 +81,5 @@ module CCMsg {
   }
 
   use CommandMap;
-  registerFunction("RsegmentedGraphCC", segCCMsg,getModuleName());
+  registerFunction("segmentedGraphCC", segCCMsg,getModuleName());
 }
