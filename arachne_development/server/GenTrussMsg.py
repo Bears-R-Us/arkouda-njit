@@ -29,19 +29,19 @@ ParametersAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, 
 
 ParametersBool='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool{ '''
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool throws{ '''
 
 ParametersInt='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int{ '''
+                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int throws{ '''
 
 ParametersBoolAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool{ '''
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool throws{ '''
 
 ParametersIntAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int{ '''
+                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ '''
 
 ConditionEdgeRemove='''
                                if (EdgeDeleted[i]==-1) {

@@ -17,6 +17,7 @@ __all__ = ["Graph", "DiGraph", "PropGraph",
            "bfs_layers",
            "subgraph_isomorphism",
            "triangles",
+           "squares",
            "k_truss",
            "triangle_centrality",
            "connected_components",
@@ -261,6 +262,109 @@ class Graph:
                  "AkArrayDst" : dst,
                  "AkArraySeg" : segs,
                  "AkArrayWeight" : wgt,
+                 "AkArrayVmap" : vmap,
+                 "Directed": bool(self.directed),
+                 "Weighted" : bool(self.weighted),
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
+
+    def add_edges_from_compat(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+        """
+        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
+        reading version, is here to provide compatibility with the original algorithmic 
+        implementations for triangle counting, triangle centrality, k-truss, and connected
+        components.
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgesFromCompat"
+        src, dst = akarray_src, akarray_dst
+        srcR, dstR = akarray_dst, akarray_src
+
+        ### Remove self-loops from both the regular arrays and the reversed arrays.
+        self_loops = src == dst
+        src = src[~self_loops]
+        dst = dst[~self_loops]
+        srcR = srcR[~self_loops]
+        dstR = dstR[~self_loops]
+
+        ### Remove dupllicated edges from the graph.
+        # 1. First, for the regular edges.
+        regular_edges_gb = ak.GroupBy([src, dst])
+        src = regular_edges_gb.unique_keys[0]
+        dst = regular_edges_gb.unique_keys[1]
+
+        # 2. Secondly, for the reversed edges.
+        reversed_edges_gb = ak.GroupBy([srcR, dstR])
+        srcR = reversed_edges_gb.unique_keys[0]
+        dstR = reversed_edges_gb.unique_keys[1]
+
+        ### Remap the vertex names to a one-up mapping.
+        # 1. Get the vertex mapping.
+        vertices_gb = ak.GroupBy(ak.concatenate([src,dst]))
+        vertices = vertices_gb.unique_keys
+
+        # 2. Concatenate all the arrays and broadcast new values to them.
+        new_vertex_range = ak.arange(vertices.size)
+        all_vertices = ak.concatenate([src,dst,srcR,dstR])
+        all_vertices_gb = ak.GroupBy(all_vertices)
+        vmap = all_vertices_gb.unique_keys
+        all_vertices = all_vertices_gb.broadcast(new_vertex_range)
+
+        # 3. Extract the high ranges for each array in the big concatenated GroupBy.
+        src_high = src.size
+        dst_high = src_high + src.size
+        srcR_high = dst_high + src.size
+        dstR_high = srcR_high + src.size
+
+        # 4. Extract the actual arrays with slicing.
+        src = all_vertices[0:src_high]
+        dst = all_vertices[src_high:dst_high]
+        srcR = all_vertices[dst_high:srcR_high]
+        dstR = all_vertices[srcR_high:dstR_high]
+
+        ### Create vertex index arrays.
+        # 1. Create full arrays of the size of the vertex set.
+        nei = ak.full(vmap.size, 0, int)
+        neiR = ak.full(vmap.size, 0, int)
+        start_i = ak.full(vmap.size, -1, int)
+        start_iR = ak.full(vmap.size, -1, int)
+
+        # 2. Extract the neighbor count by doing a count on the number of times each vertex appears
+        #    in src.
+        gb_src = ak.GroupBy(src)
+        gb_src_indices, gb_src_neighbors = gb_src.count()
+        nei[gb_src_indices] = gb_src_neighbors
+
+        # 2a. Same as 2 but for srcR.
+        gb_srcR = ak.GroupBy(srcR)
+        gb_srcR_indices, gb_srcR_neighbors = gb_srcR.count()
+        neiR[gb_srcR_indices] = gb_srcR_neighbors
+
+        # 3. Find where each vertex starts inside of src and srcR.
+        start_i = ak.find(new_vertex_range, src)
+        start_iR = ak.find(new_vertex_range, srcR)
+
+        # 4. Extract vertex and edge number information.
+        self.n_vertices = int(vmap.size)
+        self.n_edges = int(src.size)
+        self.weighted = 0
+
+        ### Store everything in a graph object in the Chapel server.
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
+                 "AkArraySrcR" : srcR,
+                 "AkArrayDstR" : dstR,
+                 "AkArrayNei" : nei,
+                 "AkArrayNeiR" : neiR,
+                 "AkArrayStartIdx" : start_i,
+                 "AkArrayStartIdxR" : start_iR,
                  "AkArrayVmap" : vmap,
                  "Directed": bool(self.directed),
                  "Weighted" : bool(self.weighted),
@@ -558,14 +662,14 @@ class PropGraph(DiGraph):
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
-    
+
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below.
         
         Parameters
         ----------
-        labels
+        labels : ak.DataFrame
             `ak.DataFrame({"vertex_ids" : vertices, "vertex_labels" : labels})`
 
         Returns
@@ -576,46 +680,91 @@ class PropGraph(DiGraph):
 
         ### Preprocessing steps for faster back-end array population.
         # 0. Extract the vertex ids and vertex labels from the dataframe.
-        vertex_ids = labels["vertex_ids"]
-        vertex_labels = labels["vertex_labels"]
+        columns = labels.columns
+        vertex_ids = labels[columns[0]]
+        vertex_labels = labels[columns[1]]
 
         # 1. Broadcast string label names to int values and extract the label str to int id map.
-        start = time.time()
         gb_labels = ak.GroupBy(vertex_labels)
         new_label_ids = ak.arange(gb_labels.unique_keys.size)
         vertex_labels = gb_labels.broadcast(new_label_ids)
         label_mapper = gb_labels.unique_keys
-        end = time.time()
-        label_id_time = round(end-start,2)
 
         # 2. Convert the vertex_ids to internal vertex_ids.
-        start = time.time()
         vertex_map = self.nodes()
         inds = ak.in1d(vertex_ids, vertex_map)
         vertex_ids = vertex_ids[inds]
         vertex_labels = vertex_labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map)
-        end = time.time()
-        internal_id_time = round(end-start,2)
 
         # 3. GroupBy of the vertex ids and labels.
-        start = time.time()
         gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
         vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
         vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
-        end = time.time()
-        dedup_and_sort_time = round(end-start,2)
 
         arrays = vertex_ids.name + " " + vertex_labels.name + " " + label_mapper.name
-        start = time.time()
         args = { "GraphName" : self.name,
                  "Arrays" : arrays,
                }
         rep_msg = generic_msg(cmd=cmd, args=args)
-        end = time.time()
-        add_into_data_structure_time = round(end-start,2)
 
-        return (label_id_time, internal_id_time, dedup_and_sort_time, add_into_data_structure_time)
+    def add_node_properties(self, node_properties:ak.DataFrame) -> None:
+        """Populates the graph object with properties derived from the columns of a dataframe. Node
+        proprties are different from node labels where labels are always strings and can be 
+        considered an extra identifier for different types of nodes. On the other hand, properties
+        are key-value pairs more akin to storing the columns of a dataframe.
+        
+        Parameters
+        ----------
+        properties : ak.DataFrame
+            `ak.DataFrame({"vertex_ids" : vertex_ids,
+                           "property1" : property1, ..., "propertyN" : propertyN})`
+
+        See Also
+        --------
+        add_node_labels, add_edge_relationships, add_edge_properties
+
+        Notes
+        -----
+        
+        Returns
+        -------
+        None
+        """
+        cmd = "addNodeProperties"
+
+        ### Preprocessing steps for faster back-end array population.
+        # 0. Extract the column names of the dataframe.
+        columns = node_properties.columns
+
+        # 1. Convert the vertex_ids to internal vertex_ids.
+        vertex_map = self.nodes()
+        vertex_ids = node_properties[columns[0]]
+        inds = ak.in1d(vertex_ids, vertex_map)
+        node_properties = node_properties[inds]
+        vertex_ids = node_properties[columns[0]]
+        vertex_ids = ak.find(vertex_ids, vertex_map)
+
+        # 2. Remove the first column name, vertex ids, since those are sent separately.
+        columns.remove(columns[0])
+        vertex_properties = ak.array(columns)
+
+        # 3. Extract symbol table names of arrays to use in the back-end.
+        data_array_names = []
+        for column in columns:
+            data_array_names.append(node_properties[column].name)
+        data_array_names = ak.array(data_array_names)
+
+        perm = ak.GroupBy(vertex_properties).permutation
+        vertex_properties = vertex_properties[perm]
+        data_array_names = data_array_names[perm]
+
+        args = { "GraphName" : self.name,
+                 "VertexIdsName" : vertex_ids.name,
+                 "PropertyMapperName" : vertex_properties.name,
+                 "DataArrayNames" : data_array_names.name
+               }
+        rep_msg = generic_msg(cmd=cmd, args=args)
 
     def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
@@ -623,7 +772,7 @@ class PropGraph(DiGraph):
         
         Parameters
         ----------
-        relationships
+        relationships : ak.DataFrame
             `ak.DataFrame({"src" : src, "dst" : dst, "edge_relationships" : edge_relationships})`
 
         Returns
@@ -632,11 +781,12 @@ class PropGraph(DiGraph):
         """
         cmd = "addEdgeRelationships"
 
-        ### Preprocessing steps for faster back-end array population. 
+        ### Preprocessing steps for faster back-end array population.
         # 0. Extract the source and destination vertex ids and the relationships from the dataframe.
-        src_vertex_ids = relationships["src"]
-        dst_vertex_ids = relationships["dst"]
-        edge_relationships = relationships["edge_relationships"]
+        columns = relationships.columns
+        src_vertex_ids = relationships[columns[0]]
+        dst_vertex_ids = relationships[columns[1]]
+        edge_relationships = relationships[columns[2]]
 
         # 1. Broadcast string relationship names to int values and extract the relationship str to
         #    int id map.
@@ -671,6 +821,68 @@ class PropGraph(DiGraph):
                   "Arrays" : arrays }
         rep_msg = generic_msg(cmd=cmd, args=args)
 
+    def add_edge_properties(self, edge_properties:ak.DataFrame) -> None:
+        """Populates the graph object with properties derived from the columns of a dataframe. Edge
+        properties are different from edge relationships where relationships are always strings and
+        can be considered an extra identifier for different types of edges. On the other hand, 
+        properties are key-value pairs more akin to storing the columns of a dataframe.
+        
+        Parameters
+        ----------
+        properties : ak.DataFrame
+            `ak.DataFrame({"src_vertex_ids" : src_vertex_ids, "dst_vertex_ids" : dst_vertex_ids,
+                           "property1" : property1, ..., "propertyN" : propertyN})`
+
+        See Also
+        --------
+        add_node_labels, add_edge_relationships, add_node_properties
+
+        Notes
+        -----
+        
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgeProperties"
+
+        ### Preprocessing steps for faster back-end array population.
+        # 0. Extract the column names of the dataframe.
+        columns = edge_properties.columns
+        src_vertex_ids = edge_properties[columns[0]]
+        dst_vertex_ids = edge_properties[columns[1]]
+
+        # 1. Convert the source and destination vertex ids to the internal vertex_ids.
+        vertex_map = self.nodes()
+        src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
+        dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
+
+        # 2. Generate the internal edge indices.
+        edges = self.edges()
+        internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+
+        # 3. Remove the first two column names, edge ids, since those are sent separately.
+        columns.remove(columns[0])
+        columns.remove(columns[0])
+        edge_property_names = ak.array(columns)
+
+        # 4. Extract symbol table names of arrays to use in the back-end.
+        data_array_names = []
+        for column in columns:
+            data_array_names.append(edge_properties[column].name)
+        data_array_names = ak.array(data_array_names)
+
+        perm = ak.GroupBy(edge_property_names).permutation
+        edge_property_names = edge_property_names[perm]
+        data_array_names = data_array_names[perm]
+
+        args = { "GraphName" : self.name,
+                 "EdgeIdsName" : internal_edge_indices.name,
+                 "PropertyMapperName" : edge_property_names.name,
+                 "DataArrayNames" : data_array_names.name
+               }
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
     def get_node_labels(self) -> ak.Strings:
         """Returns the sorted object of node labels stored for the property graph.
 
@@ -684,6 +896,24 @@ class PropGraph(DiGraph):
             The original labels inputted as strings.
         """
         cmd = "getNodeLabels"
+        args = { "GraphName" : self.name }
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        return ak.Strings.from_return_msg(rep_msg)
+
+    def get_node_properties(self) -> ak.Strings:
+        """Returns the node properties of the property graph.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Strings
+            The original properties inputted as strings.
+        """
+        cmd = "getNodeProperties"
         args = { "GraphName" : self.name }
         rep_msg = generic_msg(cmd=cmd, args=args)
 
@@ -707,6 +937,24 @@ class PropGraph(DiGraph):
 
         return ak.Strings.from_return_msg(rep_msg)
 
+    def get_edge_properties(self) -> ak.Strings:
+        """Returns the edge properties of the property graph.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        Strings
+            The original properties inputted as strings.
+        """
+        cmd = "getEdgeProperties"
+        args = { "GraphName" : self.name }
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        return ak.Strings.from_return_msg(rep_msg)
+
     def query_labels( self,
                       labels_to_find:pdarray,
                       op:str = "and" ) -> pdarray:
@@ -724,8 +972,8 @@ class PropGraph(DiGraph):
         
         Returns
         -------
-        final_vertices : pdarray
-            Vertex names that contain the specified nodes.
+        pdarray
+            Vertex names that contain the nodes that match the query.
         """
         cmd = "queryLabels"
 
@@ -734,6 +982,46 @@ class PropGraph(DiGraph):
 
         args = {  "GraphName" : self.name,
                   "LabelsToFindName" : labels_to_find.name,
+                  "Op" : op }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        ### Manipulate data to return the external vertex representations of the found nodes.
+        # 1. Convert Boolean array to actual pdarray.
+        vertices_bool = create_pdarray(rep_msg)
+
+        # 2. Use Boolean array to index original vertex names.
+        final_vertices:pdarray = self.nodes()[vertices_bool]
+
+        return final_vertices
+
+    def query_node_properties( self,
+                               column:str, value,
+                               op:str = "<" ) -> pdarray:
+        """Given a property name, value, and operator, performs a query and returns the nodes that
+        match the query. Adhere to the operators accepted and ensure the values passed match the
+        same type of the property.
+
+        Parameters
+        ----------
+        column : str
+            String specifying the column being search within.
+        op : str
+            Operator to apply to the search. Candidates vary and are listed below:
+            `int64`, `uint64`, `float64`: "<", ">", "<=", ">=", "==", "<>". 
+            `bool`: "==", "<>".
+            `str`: "contains".
+        
+        Returns
+        -------
+        pdarray
+            Vertex names that contain the nodes that match the query.
+        """
+        cmd = "queryNodeProperties"
+
+        args = {  "GraphName" : self.name,
+                  "Column" : column,
+                  "Value" : value,
                   "Op" : op }
 
         rep_msg = generic_msg(cmd=cmd, args=args)
@@ -765,7 +1053,7 @@ class PropGraph(DiGraph):
         
         Returns
         -------
-        (src,dst) : (pdarray,pdarray)
+        (pdarray,pdarray)
             Source and destination vertex pairs that contain the specified edges.
         """
         cmd = "queryRelationships"
@@ -775,6 +1063,50 @@ class PropGraph(DiGraph):
 
         args = {  "GraphName" : self.name,
                   "RelationshipsToFindName" : relationships_to_find.name,
+                  "Op" : op }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        ### Manipulate data to turn internal vertex names to external ones.
+        # 1. Convert Boolean array to actual pdarray.
+        edges_bool:pdarray = create_pdarray(rep_msg)
+
+        # 2. Extract edges and nodes of the graph and convert them to original vertex names.
+        edges, nodes = self.edges(), self.nodes()
+        src, dst = edges[0], edges[1]
+        src:pdarray = nodes[src]
+        dst:pdarray = nodes[dst]
+        src, dst = src[edges_bool], dst[edges_bool]
+
+        return (src,dst)
+    
+    def query_edge_properties( self,
+                               column:str, value,
+                               op:str = "<" ) -> pdarray:
+        """Given a property name, value, and operator, performs a query and returns the edges that
+        match the query. Adhere to the operators accepted and ensure the values passed match the
+        same type of the property.
+
+        Parameters
+        ----------
+        column : str
+            String specifying the column being search within.
+        op : str
+            Operator to apply to the search. Candidates vary and are listed below:
+            `int64`, `uint64`, `float64`: "<", ">", "<=", ">=", "==", "<>". 
+            `bool`: "==", "<>".
+            `str`: "contains".
+        
+        Returns
+        -------
+        pdarray
+            Source and destination node names that contain the edges that match the query.
+        """
+        cmd = "queryEdgeProperties"
+
+        args = {  "GraphName" : self.name,
+                  "Column" : column,
+                  "Value" : value,
                   "Op" : op }
 
         rep_msg = generic_msg(cmd=cmd, args=args)
@@ -815,7 +1147,7 @@ class PropGraph(DiGraph):
 
         Returns
         -------
-        (src, dst) : (pdarray,pdarray)
+        (pdarray,pdarray)
             Source and destination vertex pairs that contain the length one paths.
         """
         # 1. Get the nodes and edges that contain the specified labels and relationships.
@@ -837,7 +1169,7 @@ class PropGraph(DiGraph):
         return (src, dst)
 
 @typechecked
-def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
+def read_matrix_market_file(filepath: str, directed = False, only_edges = False) -> Graph | DiGraph | Tuple:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -863,6 +1195,9 @@ def read_matrix_market_file(filepath: str, directed = False) -> Graph | DiGraph:
 
     src = create_pdarray(returned_vals[0])
     dst = create_pdarray(returned_vals[1])
+
+    if only_edges:
+        return (src,dst)
 
     wgt = ak.array([-1])
     weighted = False
@@ -952,6 +1287,36 @@ def triangles(graph: Graph, vertexArray: pdarray = None) -> pdarray:
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
+
+@typechecked
+def squares(graph: Graph) -> int:
+    """
+    This function will return the number of squares in an undirected graph.
+
+    Parameters
+    ----------
+    graph : Graph
+        An undirected graph whose number of squares are to be returned
+    
+    Returns
+    -------
+    int
+        The total number of squares
+    
+    See Also
+    --------
+    triangles
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    degree = graph.degree()
+    cmd = "segmentedGraphSquares"
+    args = { "GraphName" : graph.name,
+             "DegreeName" : degree.name }
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return int(rep_msg)
 
 @typechecked
 def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pdarray:
@@ -1058,11 +1423,7 @@ def connected_components(graph: Graph) -> pdarray:
     RuntimeError
     """
     cmd = "segmentedGraphCC"
-    args = { "NumOfVertices":graph.n_vertices,
-             "NumOfEdges":graph.n_edges,
-             "Directed":graph.directed,
-             "Weighted":graph.weighted,
-             "GraphName":graph.name}
+    args = { "GraphName":graph.name }
     
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
@@ -1088,13 +1449,13 @@ def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
     ------  
     RuntimeError
     """
-    cmd="segmentedTruss"
+    cmd = "segmentedTruss"
     args = { "KValue":kTrussValue,
              "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
              "Directed":graph.directed,
              "Weighted": graph.weighted,
-            "GraphName":graph.name}
+             "GraphName":graph.name }
 
     repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
