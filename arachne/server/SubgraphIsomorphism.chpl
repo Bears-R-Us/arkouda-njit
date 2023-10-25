@@ -165,7 +165,6 @@ module SubgraphIsomorphism {
             // Find isomorphisms for the current vertex v
             writeln("$$$$$$ WE GET HERE 1");
             var subIsoList = ullmannSubgraphIsomorphism11Helper(G, H, v, visited, mapping, graphDegree);
-            writeln("$$$$$$ WE GET HERE 2");
             if (subIsoList.size > 0) {
                 // Print isomorphisms found by the current task without merging
                 //writeln("Isomorphisms found by task ", v, ":");
