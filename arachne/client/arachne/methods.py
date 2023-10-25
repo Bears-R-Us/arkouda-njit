@@ -101,12 +101,15 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def triangles(graph: Graph, vertices: pdarray = None) -> pdarray:
+def triangles(graph: Graph, vertices: pdarray = None) -> int | pdarray:
     """
     Returns the number of triangles in a graph. If `vertices` exists and is nonempty, it returns the
     number of triangles that each vertex in `vertices` takes a part of. For example, if the input
     `vertices` contains `[0, 10, 40]` and it returns `[3, 20, 5]` then it means that 3 triangles
     contain vertex 0, 20 contain vertex 10, and 5 contain vertex 40.
+
+    Note: Keeps in line with NetworkX triangles function where the returned value has to be divided
+    3.
 
     Parameters
     ----------
@@ -131,20 +134,17 @@ def triangles(graph: Graph, vertices: pdarray = None) -> pdarray:
     ------  
     RuntimeError
     """
-    cmd="segmentedGraphTri"
+    cmd = "segmentedGraphTri"
+    placeholder = ak.array([-1])
+    vertices_name = vertices.name if vertices is not None else placeholder.name
 
-    if vertices is None:
-        vertices = ak.array([-1])
+    args = { "GraphName":graph.name,
+             "VerticesName":vertices_name}
 
-    args = { "NumOfVertices":graph.n_vertices,
-             "NumOfEdges":graph.n_edges,
-             "Directed":graph.directed,
-             "Weighted": graph.weighted,
-             "GraphName":graph.name,
-             "VertexArray":vertices}
-
-    repMsg = generic_msg(cmd=cmd,args=args)
-    return create_pdarray(repMsg)
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    if rep_msg.find("created") == -1:
+        return int(rep_msg)
+    return create_pdarray(rep_msg)
 
 @typechecked
 def squares(graph: Graph) -> int:
