@@ -135,11 +135,16 @@ def triangles(graph: Graph, vertices: pdarray = None) -> int | pdarray:
     RuntimeError
     """
     cmd = "segmentedGraphTri"
-    placeholder = ak.array([-1])
-    vertices_name = vertices.name if vertices is not None else placeholder.name
+
+    if vertices is not None:
+        vertices = ak.find(vertices, graph.nodes())
+        not_found = vertices == -1
+        vertices = vertices[~not_found]
+    else:
+        vertices = ak.array([-1])
 
     args = { "GraphName":graph.name,
-             "VerticesName":vertices_name}
+             "VerticesName":vertices.name}
 
     rep_msg = generic_msg(cmd=cmd,args=args)
     if rep_msg.find("created") == -1:
