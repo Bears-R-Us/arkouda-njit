@@ -58,7 +58,7 @@ module Utils {
     *
     * returns: index if key is found, -1 if not found
     */
-    proc bin_search_v(ary: [?D] int, l: int, h: int, key: int): int throws {
+    proc bin_search_v(ref ary: [?D] int, l: int, h: int, key: int): int throws {
         if ( (l < D.lowBound) || (h > D.highBound) || (l < 0)) {
             return -1;
         }
