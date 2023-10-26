@@ -104,7 +104,7 @@ class AlgorithmTest(ArkoudaTest):
             nx_all_layers.append(nx_layers)
 
         return self.assertEqual(ar_all_layers, nx_all_layers)
-    
+
     def test_square_count(self):
         """Tests Arachne squares() and compares it against base case."""
         # Read in graph with Arachne.
@@ -115,27 +115,26 @@ class AlgorithmTest(ArkoudaTest):
 
         return self.assertEqual(2, sc)
 
+    def test_triangles(self):
+        """Tests Arachne triangles() and compares it against NetworkX."""
+        # Read in the graph with Arachne and NetworkX.
+        ar_graph, nx_graph,_,_ = self.build_undirected_graph()
+        nodes = [0,2,3,4]
+
+        # Get triangle counts with Arachne.
+        ar_tri_full = ar.triangles(ar_graph)
+        ar_tri_partial = ar.triangles(ar_graph, ak.array(nodes))
+
+        # Get triangle counts with NetworkX.
+        nx_tri_full = nx.triangles(nx_graph)
+        nx_tri_partial = nx.triangles(nx_graph, nodes)
+
+        ret = [nx_tri_partial[v] for v in nodes]
+        self.assertEqual(ret, ar_tri_partial.to_list())
+        self.assertEqual(sum(nx_tri_full.values())/3, ar_tri_full/3)
+        return True
+
     # FUNCTIONS BELOW ARE CURRENTLY NOT WORKING AND HAVE TO BE FIXED.
-    # def test_triangles(self):
-    #     # Process graph with Arachne.
-    #     filepath,directed,weighted,only_extension = self.get_graph_file_and_attributes()
-    #     ar_graph = ar.read_edgelist(filepath, directed=directed, weighted=weighted, filetype=only_extension)
-    #     ar_tri_full = ar.triangles(ar_graph)
-    #     ar_tri_partial = ar.triangles(ar_graph, ak.array([x for x in range(34)]))
-
-    #     # Process graph with NetworkX.
-    #     nx_file = open(filepath, "rb")
-    #     nx_graph = nx.from_scipy_sparse_array(sp.io.mmread(nx_file))
-    #     nx_tri_full = nx.triangles(nx_graph)
-    #     nx_tri_partial = nx.triangles(nx_graph, (x for x in range(34)))
-
-    #     ret = [x for x in range(34)]
-    #     for i in range(34):
-    #         ret[i] = nx_tri_partial[i]
-        
-    #     partial = self.assertEqual(ret, ar_tri_partial.to_list())
-    #     complete = self.assertEqual(sum(nx_tri_full.values())/3, ar_tri_full[0])
-    #     return self.assertEqual(partial, complete)
     # def test_connected_components(self):
     #     # Process graph with Arachne.
     #     filepath,directed,weighted,only_extension = self.get_graph_file_and_attributes()
