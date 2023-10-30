@@ -13,7 +13,6 @@ module JaccardMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -75,7 +74,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
 
@@ -211,7 +210,7 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-Original"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var mw = wf.writer(kind=Serializers);
           for i in 0..(Nv-2) {
               for j in (i+1)..(Nv-1) {
                  if JaccCoeff[i*Nv+j]>0.0 {
@@ -524,7 +523,7 @@ module JaccardMsg {
               }
           }
           var wf = open("Jaccard-Aligned"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var mw = wf.writer(kind=Serializers);
           for i in 0..Nv*Nv-1 {
                  mw.writeln("%7.3dr".format(JaccCoeff[i]));
           }
@@ -620,7 +619,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
       var uvNames: domain(int);
@@ -868,7 +867,7 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-Hash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var mw = wf.writer(kind=Serializers);
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -952,7 +951,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
       var uvNames: domain(int);
@@ -1126,7 +1125,7 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-DistHash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var mw = wf.writer(kind=Serializers);
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -1277,7 +1276,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
       var D=makeDistArray(numLocales,domain(2*int));
 
@@ -1443,7 +1442,7 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-DistHash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var mw = wf.writer(kind=Serializers);
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {

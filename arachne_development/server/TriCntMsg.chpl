@@ -14,7 +14,6 @@ module TriCntMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -79,7 +78,7 @@ module TriCntMsg {
 
       var directed=false:bool;
       var weighted=false:bool;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag=false:bool;
       var DegreeSortFlag=false:bool;
 
@@ -139,7 +138,7 @@ module TriCntMsg {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
                   var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var r = f.reader(kind=Serializers);
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -455,7 +454,7 @@ module TriCntMsg {
           Weighted=true;
       }
       var countName:string;
-      var timer:Timer;
+      var timer:stopwatch;
       timer.start();
 
       var TotalCnt:[0..0] int;
@@ -924,9 +923,9 @@ module TriCntMsg {
                 return eid;
             }// end of  proc exatEdge(u:int,v:int)
 
-            var timer:Timer;
+            var timer:stopwatch;
             timer.start();
-            var tmptimer:Timer;
+            var tmptimer:stopwatch;
             tmptimer.start();
             coforall loc in Locales {
                 on loc {
@@ -1190,9 +1189,9 @@ module TriCntMsg {
             subTriSum=0;	
                             
 
-            var timer:Timer;
+            var timer:stopwatch;
             timer.start();
-            var tmptimer:Timer;
+            var tmptimer:stopwatch;
             tmptimer.start();
 
 
@@ -1645,7 +1644,7 @@ module TriCntMsg {
       if ((DirectedS:int)==1) {
           directed=true;
       }
-      var timer: Timer;
+      var timer: stopwatch;
       if NumCol>2 {
            weighted=true;
       }
@@ -1707,7 +1706,7 @@ module TriCntMsg {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
                   var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var r = f.reader(kind=Serializers);
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -2354,7 +2353,7 @@ module TriCntMsg {
       var NumCol=ColS:int;
       var directed=DirectedS:int;
       var weighted=0:int;
-      var timer: Timer;
+      var timer: stopwatch;
       if NumCol>2 {
            weighted=1;
       }
@@ -2470,7 +2469,7 @@ module TriCntMsg {
            coforall loc in Locales  {
               on loc {
                   var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var r = f.reader(kind=Serializers);
                   defer {
                         closeFinally(r);
                         closeFinally(f);

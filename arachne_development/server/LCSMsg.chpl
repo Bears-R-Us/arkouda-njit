@@ -12,7 +12,6 @@ module JCSMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
