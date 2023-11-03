@@ -124,6 +124,7 @@ module DipSLLPropertyGraphMsg {
     */
     proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
+        var time_profile_timer:stopwatch;
 
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
@@ -151,6 +152,7 @@ module DipSLLPropertyGraphMsg {
         // Extract the data array names and the data types for those arrays.
         var dataArrays = getSegString(dataArrayNames, st);
         var dataTypeSet: domain(string);
+        time_profile_timer.start();
         for i in 0..<dataArrays.size {
             var dataType = dtype2str(getGenericTypedArrayEntry(dataArrays[i], st).dtype);
             col2dtype.add(columns[i], dataType);
@@ -173,6 +175,9 @@ module DipSLLPropertyGraphMsg {
             }
             dataTypeSet += dataType;
         }
+        time_profile_timer.stop();
+        var timer1 = time_profile_timer.elapsed();
+        time_profile_timer.reset();
 
         // Create a mapping for the string names of the data types to their integer identifier.
         var dataTypeMapStrToInt: [dataTypeSet] int;
@@ -190,6 +195,7 @@ module DipSLLPropertyGraphMsg {
         * is to store an object of class Property that contains an associative array where the domain
         * is an integer identifier for the name of the property (column) being stored and the element 
         * is the value for that vertex in that column. */
+        timer.start();
         var vertex_props = Block.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
         forall (v,d) in vertex_props.domain {
             var datatype:string = dataTypeMapIntToStr[d];
@@ -221,11 +227,15 @@ module DipSLLPropertyGraphMsg {
                 }
             }
         }
+        time_profile_timer.stop();
+        var timer2 = time_profile_timer.elapsed();
+        time_profile_timer.reset();
 
         /** Sequentially process each data array, where each array itself is picked apart in
         * parallel and its values are stored in the appropriate locations of vertex_props. Due to 
         * Chapel being a statically-typed language, processing each datatype must be done 
         * separately. */
+        timer.start();
         for i in 0..<dataArrays.size {
             var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArrays[i], st);
             var etype = dataArrayEntry.dtype;
@@ -289,13 +299,17 @@ module DipSLLPropertyGraphMsg {
             }
         }
         timer.stop();
+        time_profile_timer.stop();
+        var timer3 = time_profile_timer.elapsed();
+        time_profile_timer.reset();
 
         // Add the component for the node labels for the graph.
         graph.withComp(new shared SymEntry2D(vertex_props):GenSymEntry, "VERTEX_PROPS");
         graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "VERTEX_PROPS_COL_MAP");
         graph.withComp(new shared SymEntry(dataTypeMapIntToStr):GenSymEntry, "VERTEX_PROPS_DTYPE_MAP");
         graph.withComp(new shared MapSymEntry(col2dtype):GenSymEntry, "VERTEX_PROPS_COL2DTYPE");
-        var repMsg = "node properties added";
+        // var repMsg = "node properties added";
+        var repMsg = timer1:string + "+" + timer2:string + "+" + timer3:string;
         outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
