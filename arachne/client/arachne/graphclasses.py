@@ -6,6 +6,7 @@ properties on vertices and edges.
 
 from __future__ import annotations
 from typing import cast, Tuple, Union
+import time
 import arkouda as ak
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
@@ -729,12 +730,15 @@ class PropGraph(DiGraph):
         columns = node_properties.columns
 
         # 1. Convert the vertex_ids to internal vertex_ids.
+        start = time.time()
         vertex_map = self.nodes()
         vertex_ids = node_properties[columns[0]]
         inds = ak.in1d(vertex_ids, vertex_map)
         node_properties = node_properties[inds]
         vertex_ids = node_properties[columns[0]]
         vertex_ids = ak.find(vertex_ids, vertex_map)
+        end = time.time()
+        print(f"Generating internal indices took {end-start} secs")
 
         # 2. Remove the first column name, vertex ids, since those are sent separately.
         columns.remove(columns[0])
@@ -755,7 +759,15 @@ class PropGraph(DiGraph):
                  "PropertyMapperName" : vertex_properties.name,
                  "DataArrayNames" : data_array_names.name
                }
+        start = time.time()
         rep_msg = generic_msg(cmd=cmd, args=args)
+        end = time.time()
+
+        internal_timings = rep_msg.split("+")
+        print(f"Extracting datatypes per column took {internal_timings[0]} secs")
+        print(f"Initializaing entire two-dimensional array took {internal_timings[1]} secs")
+        print(f"Processing every column sequentially took {internal_timings[2]} secs")
+        print(f"Cumulatively running Chapel code took {end-start} secs")
 
     def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
