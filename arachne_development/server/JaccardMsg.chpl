@@ -974,7 +974,7 @@ module JaccardMsg {
       }
 
       var myMapper = new MyMapper();
-      var D: domain(2*int) dmapped Hashed(idxType=2*int, mapper=myMapper);
+      var D: domain(2*int) dmapped hashedDist(idxType=2*int, mapper=myMapper);
       var HashJaccGamma:[D] atomic int;
       var JaccCoeff:[D] real;
 

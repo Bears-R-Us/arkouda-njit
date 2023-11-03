@@ -138,7 +138,7 @@ module BuildGraphMsg {
 
         // Create the ranges array that keeps track of the vertices the edge arrays store on each
         // locale.
-        var D_sbdmn = {0..numLocales-1} dmapped Replicated();
+        var D_sbdmn = {0..numLocales-1} dmapped replicatedDist();
         var ranges : [D_sbdmn] (int,locale);
 
         // Write the local subdomain low value to the ranges array.
@@ -331,7 +331,7 @@ module BuildGraphMsg {
     
         // Start parsing through the file.
         var f = open(path, ioMode.r);
-        var r = f.reader(kind = ionative);
+        var r = f.reader(kind = Serializers);
         var line:string;
         var a,b,c:string;
 
