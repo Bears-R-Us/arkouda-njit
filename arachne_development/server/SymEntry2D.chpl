@@ -66,10 +66,10 @@ module SymEntry2D {
         }
         when Dmap.blockDist {
           if m > 0 && n > 0 {
-            return {0..#m, 0..#n} dmapped Block(boundingBox={0..#m, 0..#n});
+            return {0..#m, 0..#n} dmapped blockDist(boundingBox={0..#m, 0..#n});
           }
           // fix the annoyance about boundingBox being enpty
-          else {return {0..#0, 0..#0} dmapped Block(boundingBox={0..0, 0..0});}
+          else {return {0..#0, 0..#0} dmapped blockDist(boundingBox={0..0, 0..0});}
         }
         when Dmap.cyclicDist {
           return {0..#m, 0..#n} dmapped Cyclic(startIdx=0);

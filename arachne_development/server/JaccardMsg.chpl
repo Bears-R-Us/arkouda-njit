@@ -209,8 +209,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-Original"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=Serializers);
+          var wf = open("Jaccard-Original"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           for i in 0..(Nv-2) {
               for j in (i+1)..(Nv-1) {
                  if JaccCoeff[i*Nv+j]>0.0 {
@@ -522,8 +522,8 @@ module JaccardMsg {
                  }
               }
           }
-          var wf = open("Jaccard-Aligned"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=Serializers);
+          var wf = open("Jaccard-Aligned"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(kind=S(erializers);
           for i in 0..Nv*Nv-1 {
                  mw.writeln("%7.3dr".format(JaccCoeff[i]));
           }
@@ -866,8 +866,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-Hash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=Serializers);
+          var wf = open("Jaccard-Hash"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -1124,8 +1124,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=Serializers);
+          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -1441,8 +1441,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=Serializers);
+          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {

@@ -1,4 +1,4 @@
-module CCMsg {
+module RCCMsg {
   use Reflection;
   use ServerErrors;
   use Logging;
@@ -9,7 +9,7 @@ module CCMsg {
   use MultiTypeSymEntry;
   use RandArray;
   use IO;
-  use ConnectedComponents;
+  use RConnectedComponents;
 
   use SymArrayDmapCompat;
   use RadixSortLSD;

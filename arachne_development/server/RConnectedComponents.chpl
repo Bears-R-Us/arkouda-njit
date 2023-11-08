@@ -1,4 +1,4 @@
-module ConnectedComponents {
+module RConnectedComponents {
     // Chapel modules.
     use Reflection;
     use Set;

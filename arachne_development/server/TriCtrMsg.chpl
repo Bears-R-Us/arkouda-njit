@@ -642,7 +642,7 @@ module TriCtrMsg {
 
               var tmptimer:stopwatch;
               tmptimer.start();
-              coforall loc in Locales {
+              coforall loc in Locales with (ref TriNum){
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -743,7 +743,7 @@ module TriCtrMsg {
           writeln("Elapsed time for triangle Counting minimum search ="+(tmptimer.elapsed()):string);
 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref NeiTriNum, ref NeiNonTriNum){
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;

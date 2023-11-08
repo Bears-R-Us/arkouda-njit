@@ -1100,5 +1100,5 @@ module BFSMsgAgg {
     } // end of SegBFSMsg
 
     use CommandMap;
-    registerFunction("segmentedGraphBFS", segBFSMsg);
+    registerFunction("RsegmentedGraphBFS", segBFSMsg);
 }

@@ -123,7 +123,7 @@ module TriCntMsg {
 
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -137,8 +137,9 @@ module TriCntMsg {
            coforall loc in Locales  {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=Serializers);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -1692,7 +1693,7 @@ module TriCntMsg {
       LocalAccessTimes=0;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -1705,8 +1706,9 @@ module TriCntMsg {
            coforall loc in Locales  {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=Serializers);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -2466,10 +2468,11 @@ module TriCntMsg {
       LocalAccessTimes3=0;
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with(ref src1, ref dst1,ref src2, ref dst2, ref src3, ref dst3, ref srcR1, ref dstR1, ref e_weight1, ref e_weight1) {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=Serializers);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   defer {
                         closeFinally(r);
                         closeFinally(f);

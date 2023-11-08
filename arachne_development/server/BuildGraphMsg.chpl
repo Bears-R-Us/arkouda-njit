@@ -331,7 +331,8 @@ module BuildGraphMsg {
     
         // Start parsing through the file.
         var f = open(path, ioMode.r);
-        var r = f.reader(kind = Serializers);
+        //var r = f.reader(serializer = new defaultSerializer());
+        var r = f.reader(kind=iokind.dynamic );
         var line:string;
         var a,b,c:string;
 
