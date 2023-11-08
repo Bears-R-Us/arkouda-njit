@@ -856,6 +856,7 @@ class PropGraph(DiGraph):
         dst_vertex_ids = edge_properties[columns[1]]
 
         # 1. Convert the source and destination vertex ids to the internal vertex_ids.
+        start = time.time()
         vertex_map = self.nodes()
         src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
         dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
@@ -863,6 +864,8 @@ class PropGraph(DiGraph):
         # 2. Generate the internal edge indices.
         edges = self.edges()
         internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+        end = time.time()
+        print(f"Generating internal indices took {end-start} secs")
 
         # 3. Remove the first two column names, edge ids, since those are sent separately.
         columns.remove(columns[0])
@@ -884,7 +887,14 @@ class PropGraph(DiGraph):
                  "PropertyMapperName" : edge_property_names.name,
                  "DataArrayNames" : data_array_names.name
                }
+        start = time.time()
         rep_msg = generic_msg(cmd=cmd, args=args)
+        end = time.time()
+        internal_timings = rep_msg.split("+")
+        print(f"Extracting datatypes per column took {internal_timings[0]} secs")
+        print(f"Initializaing entire two-dimensional array took {internal_timings[1]} secs")
+        print(f"Processing every column sequentially took {internal_timings[2]} secs")
+        print(f"Cumulatively running Chapel code took {end-start} secs")
 
     def get_node_labels(self) -> ak.Strings:
         """Returns the sorted object of node labels stored for the property graph.
