@@ -197,22 +197,22 @@ module GraphArray {
         proc hasA_NEIGHBOR_R():bool { return acomponents.contains(Component.A_NEIGHBOR_R); }
         
 
-        proc getSRC() { return components[(Component.SRC)]; }
-        proc getSRC_R() { return components[(Component.SRC_R)]; }
-        proc getDST() { return components[Component.DST)]; }
-        proc getDST_R() { return components[Component.DST_R)]; }
-        proc getSTART_IDX() { return components[Component.START_IDX)]; }
-        proc getSTART_IDX_R() { return components[Component.START_IDX_R)]; }
-        proc getNEIGHBOR() { return components[Component.NEIGHBOR)]; }
-        proc getNEIGHBOR_R() { return components[Component.NEIGHBOR_R)]; }
-        proc getEDGE_WEIGHT() { return components[Component.EDGE_WEIGHT)]; }
-        proc getVERTEX_WEIGHT() { return components[Component.VERTEX_WEIGHT)]; }
-        proc getA_SRC_R() { return acomponents[Component.A_SRC_R)]; }
-        proc getA_DST_R() { return acomponents[Component.A_DST_R)]; }
-        proc getA_START_IDX() { return acomponents[Component.A_START_IDX)]; }
-        proc getA_START_IDX_R() { return acomponents[Component.A_START_IDX_R)]; }
-        proc getA_NEIGHBOR() { return acomponents[Component.A_NEIGHBOR)]; }
-        proc getA_NEIGHBOR_R() { return acomponents[Component.A_NEIGHBOR_R)]; }
+        proc getSRC() throws { return components[(Component.SRC)]; }
+        proc getSRC_R()  throws{ return components[(Component.SRC_R)]; }
+        proc getDST() throws { return components[Component.DST]; }
+        proc getDST_R() throws { return components[Component.DST_R]; }
+        proc getSTART_IDX() throws { return components[Component.START_IDX]; }
+        proc getSTART_IDX_R() throws { return components[Component.START_IDX_R]; }
+        proc getNEIGHBOR() throws { return components[Component.NEIGHBOR]; }
+        proc getNEIGHBOR_R() throws { return components[Component.NEIGHBOR_R]; }
+        proc getEDGE_WEIGHT() throws { return components[Component.EDGE_WEIGHT]; }
+        proc getVERTEX_WEIGHT() throws { return components[Component.VERTEX_WEIGHT]; }
+        proc getA_SRC_R() throws { return acomponents[Component.A_SRC_R]; }
+        proc getA_DST_R() throws { return acomponents[Component.A_DST_R]; }
+        proc getA_START_IDX() throws { return acomponents[Component.A_START_IDX]; }
+        proc getA_START_IDX_R() throws { return acomponents[Component.A_START_IDX_R]; }
+        proc getA_NEIGHBOR() throws { return acomponents[Component.A_NEIGHBOR]; }
+        proc getA_NEIGHBOR_R() throws { return acomponents[Component.A_NEIGHBOR_R]; }
 
         proc withVP1(a:shared GenSymEntry):SegGraph { components.add(Component.VP1, a); return this; }
         proc withVP2(a:shared GenSymEntry):SegGraph { components.add(Component.VP2, a); return this; }
@@ -222,15 +222,15 @@ module GraphArray {
         proc hasVP2():bool { return components.contains(Component.VP2); }
         proc hasEP1():bool { return components.contains(Component.EP1); }
         proc hasEP2():bool { return components.contains(Component.EP2); }
-        proc getVP1() { return components[Component.VP1)]; }
-        proc getVP2() { return components[Component.VP2)]; }
-        proc getEP1() { return components[Component.EP1)]; }
-        proc getEP2() { return components[Component.EP2)]; }
+        proc getVP1() throws { return components[Component.VP1]; }
+        proc getVP2() throws { return components[Component.VP2]; }
+        proc getEP1() throws { return components[Component.EP1]; }
+        proc getEP2() throws { return components[Component.EP2]; }
 
 
         proc withVTrack(a:shared GenSymEntry):SegGraph { components.add(Component.VTrack, a); return this; }
         proc hasVTrack():bool { return components.contains(Component.VTrack); }
-        proc getVTrack() { return components[Component.VTrack)]; }
+        proc getVTrack() throws { return components[Component.VTrack]; }
     }
 
     /**
