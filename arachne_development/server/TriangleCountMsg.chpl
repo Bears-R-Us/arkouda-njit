@@ -1,4 +1,4 @@
-module TriCntMsg {
+module RTriCntMsg {
     // Chapel modules.
     use Reflection;
     use Time;
@@ -7,7 +7,7 @@ module TriCntMsg {
     use GraphArray;
     use Utils;
     use Aggregators;
-    use TriangleCount;
+    use RTriangleCount;
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
@@ -579,5 +579,5 @@ module TriCntMsg {
   }// end of segTriMsg
 
    use CommandMap;
-   registerFunction("segmentedGraphTri", segTriCntMsg,getModuleName());
+   registerFunction("RsegmentedGraphTri", segTriCntMsg,getModuleName());
 }

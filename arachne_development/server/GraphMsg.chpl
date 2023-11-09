@@ -13,7 +13,6 @@ module GraphMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -1767,7 +1766,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -1882,7 +1881,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -1893,8 +1892,9 @@ module GraphMsg {
       proc readLinebyLine() throws {
            coforall loc in Locales  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -2152,8 +2152,9 @@ module GraphMsg {
                   }
               }
 
-                  var wf = open(FileName+".deg", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2176,8 +2177,9 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-                  wf = open(FileName+".sta", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  wf = open(FileName+".sta", ioMode.cw);
+                  //mw = wf.writer(serializer = new defaultSerializer());
+                  mw = wf.writer(kind=iokind.dynamic );
                   mw.writeln("%i %i %i".format(low,up, (ave/(max(NewNv-point,1))):int));
                   mw.close();
                   wf.close();
@@ -2197,8 +2199,9 @@ module GraphMsg {
               }  
 
 
-                  var wf = open(FileName+".deg", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2221,16 +2224,18 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-                  wf = open(FileName+".sta", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  wf = open(FileName+".sta", ioMode.cw);
+                  //mw = wf.writer(serializer = new defaultSerializer());
+                  mw = wf.writer(kind=iokind.dynamic );
                   mw.writeln("%i %i %i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
           if (WriteFlag) {
 
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
 
                   for i in 0..NewNe-1 {
                       mw.writeln("%i %i".format(mysrc[i],mydst[i]));
@@ -2244,8 +2249,9 @@ module GraphMsg {
       } else {
     
           if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   for i in 0..NewNe-1 {
                       mw.writeln("%i %i".format(src[i],dst[i]));
                   }
@@ -2253,8 +2259,9 @@ module GraphMsg {
                   mw.close();
                   wf.close();
           }
-                  var wf = open(FileName+".deg", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2281,8 +2288,9 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-                  wf = open(FileName+".sta", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  wf = open(FileName+".sta", ioMode.cw);
+                  //mw = wf.writer(serializer = new defaultSerializer());
+                  mw = wf.writer(kind=iokind.dynamic );
                   mw.writeln("%i %i %i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
@@ -2326,7 +2334,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -2440,7 +2448,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -2451,8 +2459,9 @@ module GraphMsg {
       proc readLinebyLine() throws {
            coforall loc in Locales  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -2701,8 +2710,9 @@ module GraphMsg {
                   }
               }
               if (WriteFlag) {
-                  var wf = open(FileName+".nde", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".nde", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,myneighbour[i]+myneighbourR[i]));
@@ -2729,8 +2739,9 @@ module GraphMsg {
 
               }  
               if (WriteFlag) {
-                  var wf = open(FileName+".nde", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".nde", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,myneighbour[i]));
@@ -2747,8 +2758,9 @@ module GraphMsg {
       } else {
 
           if (WriteFlag) {
-                  var wf = open(FileName+".nde", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".nde", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,neighbour[i]+neighbourR[i]));
@@ -2796,7 +2808,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -2874,7 +2886,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -2885,8 +2897,9 @@ module GraphMsg {
       proc readLinebyLine() throws {
            coforall loc in Locales  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(useIOSerializers=true,serializer = new defaultSerializer() );
+                  var r = f.reader(kind=iokind.dynamic );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -3234,8 +3247,9 @@ module GraphMsg {
         //}
       }//end of else
       if (WriteFlag) {
-                  var wf = open(FileName+".my.gr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".my.gr", ioMode.cw);
+                  var mw = wf.writer(kind=iokind.dynamic );
+                  //var mw = wf.writer(serializer = new defaultSerializer());
                   for i in 0..Ne-1 {
                       mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
                   }
@@ -3316,7 +3330,7 @@ module GraphMsg {
       var DirectedFlag:bool=false;
       var WeightedFlag:bool=false;
 
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -3647,8 +3661,9 @@ module GraphMsg {
 
               }
               if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   for i in 0..NewNe-1 {
                       mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
@@ -3800,8 +3815,9 @@ module GraphMsg {
 
               }
               if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   for i in 0..Ne-1 {
                       mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
@@ -3872,7 +3888,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -3950,7 +3966,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -3961,8 +3977,9 @@ module GraphMsg {
       proc readLinebyLine() throws {
            coforall loc in Locales  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -4323,8 +4340,9 @@ module GraphMsg {
         //}
       }//end of else
       if (WriteFlag) {
-                  var wf = open(FileName+".my.gr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".my.gr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  var mw = wf.writer(kind=iokind.dynamic );
                   for i in 0..Ne-1 {
                       mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
                   }
@@ -4406,7 +4424,7 @@ module GraphMsg {
       // number of edges
       var Ne = Ne_per_v * Nv:int;
 
-      var timer:Timer;
+      var timer:stopwatch;
       timer.clear();
       timer.start();
       var n_vertices=Nv;
@@ -4649,7 +4667,7 @@ module GraphMsg {
 
 
 
-      var timer:Timer;
+      var timer:stopwatch;
 
       timer.start();
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
@@ -4798,7 +4816,7 @@ module GraphMsg {
 
 
 
-      var timer:Timer;
+      var timer:stopwatch;
 
       timer.start();
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);

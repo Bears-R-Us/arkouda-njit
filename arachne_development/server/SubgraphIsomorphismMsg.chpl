@@ -1,11 +1,11 @@
-module SubgraphIsomorphismMsg {
+module RSubgraphIsomorphismMsg {
     // Chapel modules.
     use Reflection;
     use Time;
     
     // Arachne modules.
     use GraphArray;
-    use SubgraphIsomorphism;
+    use RSubgraphIsomorphism;
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
@@ -93,5 +93,5 @@ module SubgraphIsomorphismMsg {
     } // end of subgraphIsomorphismMsg
 
     use CommandMap;
-    registerFunction("subgraphIsomorphism", subgraphIsomorphismMsg, getModuleName());
+    registerFunction("RsubgraphIsomorphism", subgraphIsomorphismMsg, getModuleName());
 } // end of module

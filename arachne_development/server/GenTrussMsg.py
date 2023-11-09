@@ -3209,7 +3209,6 @@ module TrussMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -3305,7 +3304,7 @@ module TrussMsg {
       var kLow=3:int;
       var kUp:int;
       var kMid:int;
-      var maxtimer:Timer;
+      var maxtimer:stopwatch;
 
 
       // this can be a general procedure to check if x is in given range so we put it outside

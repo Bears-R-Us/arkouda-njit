@@ -10,7 +10,6 @@ module CCMsg {
   use RandArray;
   use IO;
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -81,7 +80,7 @@ module CCMsg {
     var visited = makeDistArray(Nv, int); 
     
     // Initialize the timer to track the execution of the implementation. 
-    // var timer:Timer;
+    // var timer:stopwatch;
 
     // Get our graph information. 
     var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
@@ -664,7 +663,7 @@ module CCMsg {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
@@ -785,7 +784,7 @@ module CCMsg {
       var gf = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
       var diff = makeDistArray(Nv, int);
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
@@ -1174,7 +1173,7 @@ module CCMsg {
     proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
@@ -1426,7 +1425,7 @@ module CCMsg {
     proc cc_11mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
 
       // Initialize f and f_low in distributed memory.
 
@@ -1593,7 +1592,7 @@ module CCMsg {
     proc cc_1m1m(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
@@ -1796,7 +1795,7 @@ module CCMsg {
     proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
@@ -2032,7 +2031,7 @@ module CCMsg {
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
       // Initialize f and f_low in distributed memory.
@@ -2132,7 +2131,7 @@ module CCMsg {
     proc cc_fs_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
       // Initialize f and f_low in distributed memory.
@@ -2215,7 +2214,7 @@ module CCMsg {
     proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
-      var localtimer:Timer;
+      var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
@@ -3664,7 +3663,7 @@ module CCMsg {
 
 
 
-    var timer:Timer;
+    var timer:stopwatch;
     // We only care for undirected graphs, they can be weighted or unweighted. 
     var f1 = makeDistArray(Nv, int);
     var f2 = makeDistArray(Nv, int);

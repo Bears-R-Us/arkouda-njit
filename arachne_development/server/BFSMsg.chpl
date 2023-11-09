@@ -14,7 +14,6 @@ module BFSMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -68,7 +67,7 @@ module BFSMsg {
       var Weighted=weightedN:int;
       var depthName:string;
       var RCMFlag=RCMs:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
 
