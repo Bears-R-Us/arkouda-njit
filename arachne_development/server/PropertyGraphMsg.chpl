@@ -190,7 +190,7 @@ module DipSLLPropertyGraphMsg {
         * is to store an object of class Property that contains an associative array where the domain
         * is an integer identifier for the name of the property (column) being stored and the element 
         * is the value for that vertex in that column. */
-        var vertex_props = Block.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
+        var vertex_props = blockDist.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
         forall (v,d) in vertex_props.domain {
             var datatype:string = dataTypeMapIntToStr[d];
             select datatype {
@@ -450,7 +450,7 @@ module DipSLLPropertyGraphMsg {
         * is to store an object of class Property that contains an associative array where the domain
         * is an integer identifier for the name of the property (column) being stored and the element 
         * is the value for that edge in that column. */
-        var edge_props = Block.createArray({0..<src.size, 0..<dataTypeSet.size}, shared GenProperty?);
+        var edge_props = blockDist.createArray({0..<src.size, 0..<dataTypeSet.size}, shared GenProperty?);
         forall (e,d) in edge_props.domain {
             var datatype:string = dataTypeMapIntToStr[d];
             select datatype {

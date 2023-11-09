@@ -15,7 +15,6 @@ module SuffixArrayMsg {
 
   private config const logLevel = ServerConfig.logLevel;
   const smLogger = new Logger(logLevel);
-  use SymArrayDmap;
   use SuffixArrayConstruction;
 
 
