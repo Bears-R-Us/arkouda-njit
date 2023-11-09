@@ -1446,11 +1446,11 @@ module CCMsg {
       lu=l;
       var count:int=0;
       
-        coforall loc in Locales with ( + reduce count) {
+        coforall loc in Locales {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+            forall x in edgeBegin..edgeEnd   {
                   src2[x*2]=src[x];
                   dst2[x*2]=dst[x];
                   src2[x*2+1]=dst[x];
@@ -1482,21 +1482,21 @@ module CCMsg {
                   lu[v]=min(lu[v],l[u]);
                   count+=1;
                   src2[2*x]=v;
-                  src2[2*x]=l[u];         
+                  dst2[2*x]=l[u];         
               } else {
                   src2[2*x]=v;
-                  src2[2*x]=u;         
+                  dst2[2*x]=u;         
               }
               u = src2[2*x+1];
               v = dst2[2*x+1];
               if (v!=l[u]) {
                   lu[v]=min(lu[v],l[u]);
                   src2[2*x+1]=v;
-                  src2[2*x+1]=l[u];         
+                  dst2[2*x+1]=l[u];         
                   count+=1;
               } else {
                   src2[2*x+1]=v;
-                  src2[2*x+1]=u;         
+                  dst2[2*x+1]=u;         
               }
 
             }//end of forall
