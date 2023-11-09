@@ -1440,6 +1440,18 @@ module CCMsg {
           var vertexEnd = l.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             l[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <l[i] ) {
+                     l[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <l[i] ) {
+                     l[i]=tmpv;
+                }
+            }
           }
         }
       }
