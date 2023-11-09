@@ -14,7 +14,6 @@ module TriCtrMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -63,7 +62,7 @@ module TriCtrMsg {
           Weighted=true;
       }
       var countName:string;
-      var timer:Timer;
+      var timer:stopwatch;
 
       var TotalCnt:[0..0] int;
       var subTriSum: [0..numLocales-1] int;
@@ -176,7 +175,7 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
           coforall loc in Locales {
                 on loc {
@@ -406,9 +405,9 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
-      var tmptimer:Timer;
+      var tmptimer:stopwatch;
       tmptimer.start();
           coforall loc in Locales {
                 on loc {
@@ -550,7 +549,7 @@ module TriCtrMsg {
 
       proc triCtr_kernelMST(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
-	  var timer:Timer;
+	  var timer:stopwatch;
           TriCtr=0.0;
           forall i in TriNum {
               i.write(0);
@@ -641,9 +640,9 @@ module TriCtrMsg {
               return eid;
           }// end of  proc exatEdge(u:int,v:int)
 
-              var tmptimer:Timer;
+              var tmptimer:stopwatch;
               tmptimer.start();
-              coforall loc in Locales {
+              coforall loc in Locales with (ref TriNum){
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -744,7 +743,7 @@ module TriCtrMsg {
           writeln("Elapsed time for triangle Counting minimum search ="+(tmptimer.elapsed()):string);
 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref NeiTriNum, ref NeiNonTriNum){
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -900,9 +899,9 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
-      var tmptimer:Timer;
+      var tmptimer:stopwatch;
       tmptimer.start();
               coforall loc in Locales {
                   on loc {
@@ -1263,7 +1262,7 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
               coforall loc in Locales {
                   on loc {
@@ -1516,7 +1515,7 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
               coforall loc in Locales  {
                   on loc {

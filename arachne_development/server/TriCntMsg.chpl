@@ -14,7 +14,6 @@ module TriCntMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -79,7 +78,7 @@ module TriCntMsg {
 
       var directed=false:bool;
       var weighted=false:bool;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag=false:bool;
       var DegreeSortFlag=false:bool;
 
@@ -124,7 +123,7 @@ module TriCntMsg {
 
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -138,8 +137,9 @@ module TriCntMsg {
            coforall loc in Locales  {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -455,7 +455,7 @@ module TriCntMsg {
           Weighted=true;
       }
       var countName:string;
-      var timer:Timer;
+      var timer:stopwatch;
       timer.start();
 
       var TotalCnt:[0..0] int;
@@ -924,9 +924,9 @@ module TriCntMsg {
                 return eid;
             }// end of  proc exatEdge(u:int,v:int)
 
-            var timer:Timer;
+            var timer:stopwatch;
             timer.start();
-            var tmptimer:Timer;
+            var tmptimer:stopwatch;
             tmptimer.start();
             coforall loc in Locales {
                 on loc {
@@ -1190,9 +1190,9 @@ module TriCntMsg {
             subTriSum=0;	
                             
 
-            var timer:Timer;
+            var timer:stopwatch;
             timer.start();
-            var tmptimer:Timer;
+            var tmptimer:stopwatch;
             tmptimer.start();
 
 
@@ -1645,7 +1645,7 @@ module TriCntMsg {
       if ((DirectedS:int)==1) {
           directed=true;
       }
-      var timer: Timer;
+      var timer: stopwatch;
       if NumCol>2 {
            weighted=true;
       }
@@ -1693,7 +1693,7 @@ module TriCntMsg {
       LocalAccessTimes=0;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -1706,8 +1706,9 @@ module TriCntMsg {
            coforall loc in Locales  {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -2354,7 +2355,7 @@ module TriCntMsg {
       var NumCol=ColS:int;
       var directed=DirectedS:int;
       var weighted=0:int;
-      var timer: Timer;
+      var timer: stopwatch;
       if NumCol>2 {
            weighted=1;
       }
@@ -2467,10 +2468,11 @@ module TriCntMsg {
       LocalAccessTimes3=0;
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with(ref src1, ref dst1,ref src2, ref dst2, ref src3, ref dst3, ref srcR1, ref dstR1, ref e_weight1, ref e_weight1) {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  var r = f.reader(kind=iokind.dynamic );
                   defer {
                         closeFinally(r);
                         closeFinally(f);
