@@ -1420,7 +1420,7 @@ module CCMsg {
 
 
 
-    // UPS: Paul's min update, label propogation and synmetrization method
+    // UPS: Paul's min update, label propogation and symmetrization method
     proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var l = makeDistArray(Nv, int); 
@@ -1480,7 +1480,9 @@ module CCMsg {
               var v = dst2[2*x];
               if (v!=l[u]) {
                   lu[v]=min(lu[v],l[u]);
-                  count+=1;
+                  if (l[v]>lu[v]) {
+                     count+=1;
+                  }
                   src2[2*x]=v;
                   dst2[2*x]=l[u];         
               } else {
@@ -1493,7 +1495,9 @@ module CCMsg {
                   lu[v]=min(lu[v],l[u]);
                   src2[2*x+1]=v;
                   dst2[2*x+1]=l[u];         
-                  count+=1;
+                  if (l[v]>lu[v]) {
+                     count+=1;
+                  }
               } else {
                   src2[2*x+1]=v;
                   dst2[2*x+1]=u;         
