@@ -1424,13 +1424,13 @@ module CCMsg {
     proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var l = makeDistArray(Nv, int); 
-      var lu=l;
       var src2 = makeDistArray(Ne*2, int); 
       var dst2 = makeDistArray(Ne*2, int); 
       var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
 
+      var lu = makeDistArray(Nv, atomic int); 
 
       localtimer.clear();
       localtimer.start(); 
@@ -1452,10 +1452,10 @@ module CCMsg {
                      l[i]=tmpv;
                 }
             }
+            lu[i].write(l[i]);
           }
         }
       }
-      lu=l;
       var count:int=0;
       
         coforall loc in Locales {
@@ -1491,9 +1491,12 @@ module CCMsg {
               var u = src2[2*x];
               var v = dst2[2*x];
               if (v!=l[u]) {
-                  lu[v]=min(lu[v],l[u]);
-                  if (l[v]>lu[v]) {
-                     count+=1;
+                  var old=lu[v].read();
+                  var tmp =min(old,l[u]);
+                  while (old>tmp) {
+                    lu[v].compareAndSwap(old,tmp);
+                    old=lu[v].read();
+                    count+=1;
                   }
                   src2[2*x]=v;
                   dst2[2*x]=l[u];         
@@ -1504,11 +1507,14 @@ module CCMsg {
               u = src2[2*x+1];
               v = dst2[2*x+1];
               if (v!=l[u]) {
-                  lu[v]=min(lu[v],l[u]);
                   src2[2*x+1]=v;
                   dst2[2*x+1]=l[u];         
-                  if (l[v]>lu[v]) {
-                     count+=1;
+                  var old=lu[v].read();
+                  var tmp =min(old,l[u]);
+                  while (old>tmp) {
+                    lu[v].compareAndSwap(old,tmp);
+                    old=lu[v].read();
+                    count+=1;
                   }
               } else {
                   src2[2*x+1]=v;
@@ -1526,9 +1532,17 @@ module CCMsg {
         else {
           converged = false;
           count=0;
-          l=lu;
+          coforall loc in Locales with ( + reduce count) {
+            on loc {
+                var VBegin = l.localSubdomain().lowBound;
+                var VEnd = l.localSubdomain().highBound;
 
-        }
+                    forall x in VBegin..VEnd   {
+                       l[x]=lu[x].read();
+                    }
+                }
+            }
+          }
         itera += 1;
         localtimer.stop(); 
         executime=localtimer.elapsed();
