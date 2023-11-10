@@ -5448,6 +5448,7 @@ module TrussMsg {
                 var aPlTriCount =makeDistArray(Ne,atomic int);
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 
 
                 forall i in 0..Ne-1 {
@@ -5581,7 +5582,7 @@ module TrussMsg {
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -5957,6 +5958,7 @@ module TrussMsg {
                 var aPlTriCount =makeDistArray(Ne,atomic int);
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 
 
                 forall i in 0..Ne-1 {
@@ -6090,7 +6092,7 @@ module TrussMsg {
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -6476,6 +6478,7 @@ module TrussMsg {
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
 
+                var maxKAry=makeDistArray(numLocales,int);
 
                 forall i in 0..Ne-1 {
                     aPTriCount[i].write(0);
@@ -6608,7 +6611,7 @@ module TrussMsg {
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -6993,6 +6996,7 @@ module TrussMsg {
                 var aPlTriCount =makeDistArray(Ne,atomic int);
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 
 
                 forall i in 0..Ne-1 {
@@ -7126,7 +7130,7 @@ module TrussMsg {
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -7513,6 +7517,7 @@ module TrussMsg {
                 var aPlTriCount =makeDistArray(Ne,atomic int);
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 
 
                 forall i in 0..Ne-1 {
@@ -7646,7 +7651,7 @@ module TrussMsg {
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);

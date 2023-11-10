@@ -4046,18 +4046,19 @@ module CCMsg {
     for x in f2 {
       comps.add(x);
     }
-    var num_comps = comps.size;
 
-    proc return_CC(): string throws {
+    var num_comps = makeDistArray(numLocales, int); 
+    num_comps[0] = comps.size;
+    proc return_CC(ary:[?d] int): string throws {
       CCName = st.nextName();
-      var CCEntry = new shared SymEntry([num_comps]);
+      var CCEntry = new shared SymEntry(ary);
       st.addEntry(CCName, CCEntry);
 
       var CCMsg =  'created ' + st.attrib(CCName);
       return CCMsg;
     }
 
-    var repMsg = return_CC();
+    var repMsg = return_CC(num_comps);
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 

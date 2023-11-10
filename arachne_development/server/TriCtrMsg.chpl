@@ -67,7 +67,8 @@ module TriCtrMsg {
       var TotalCnt:[0..0] int;
       var subTriSum: [0..numLocales-1] int;
       var NeiNonTriNum=makeDistArray(Nv,atomic int);
-      var TriCtr:[0..Nv-1] real;
+      //var TriCtr:[0..Nv-1] real;
+      var TriCtr=makeDistArray(Nv,real);
       var TriNum=makeDistArray(Nv,atomic int);
       var NeiTriNum=makeDistArray(Nv,atomic int);
       var NeiAry=makeDistArray(Ne,bool);

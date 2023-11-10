@@ -2302,7 +2302,9 @@ module TriCntMsg {
           //writeln("LocalRatio=", (totalLocal:real)/((totalRemote+totalLocal):real),", TotalTimes=",totalRemote+totalLocal);
           //writeln("LocalAccessTimes=", totalLocal,", RemoteAccessTimes=",totalRemote);
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TotalCnt);
+          var retval=makeDistArray(numLocales,int);
+          retval[0]=TotalCnt[0];
+          var countEntry = new shared SymEntry(retval);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -3183,7 +3185,9 @@ module TriCntMsg {
 
       //writeln("Combine three estimates together, triangles=",TotalCnt[0]);
       var countName = st.nextName();
-      var countEntry = new shared SymEntry(TotalCnt);
+      var retval=makeDistArray(numLocales,int);
+      retval[0]=TotalCnt[0];
+      var countEntry = new shared SymEntry(retval);
       st.addEntry(countName, countEntry);
       repMsg =  'created ' + st.attrib(countName);
 
