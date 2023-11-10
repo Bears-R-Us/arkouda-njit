@@ -261,7 +261,7 @@ module JaccardMsg {
           wf.close();
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
+          var JaccEntry = new shared SymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -533,7 +533,7 @@ module JaccardMsg {
 
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
+          var JaccEntry = new shared SymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -1497,7 +1497,7 @@ module JaccardMsg {
           wf.close();
          
           var JaccName = st.nextName();
-          //var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
+          //var JaccEntry = new shared SymEntry(JaccCoeff);
           var JaccEntry = new shared SymEntry(retresult);
           st.addEntry(JaccName, JaccEntry);
 

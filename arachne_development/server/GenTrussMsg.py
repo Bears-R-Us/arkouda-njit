@@ -2659,6 +2659,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                 ref aPTriCount=TriCount;
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 '''
 
 	print(variabledel0)
@@ -2766,7 +2767,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -2840,6 +2841,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                 var aPlTriCount =makeDistArray(Ne,atomic int);
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 '''
 	print(variabledel)
 
@@ -2975,7 +2977,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
