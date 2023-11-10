@@ -2014,9 +2014,9 @@ module BFSMsg {
           return "success";
       }//end of co_d1_bfs_kernel_u
 
-      proc return_depth(): string throws{
+      proc return_depth(depth:[?d] int): string throws{
           var depthName = st.nextName();
-          var depthEntry = new shared SymEntry([0]);
+          var depthEntry = new shared SymEntry(depth);
           st.addEntry(depthName, depthEntry);
           //try! st.addEntry(vertexName, vertexEntry);
 
@@ -2052,7 +2052,7 @@ module BFSMsg {
                   toSymEntry(ag.getDST(), int).a,
                   1, GivenRatio);
 
-               repMsg=return_depth();
+               repMsg=return_depth(depth);
 
       }
       else {
@@ -2104,7 +2104,7 @@ module BFSMsg {
                 //   );
                 //   outMsg= "graph BFS time= "+timer.elapsed():string+" for aligned_fo_bag version";
                 //   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                  repMsg=return_depth();
+                  repMsg=return_depth(depth);
  
               } else {// do batch test
                   depth=-1;
@@ -2285,7 +2285,7 @@ module BFSMsg {
                   writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Domain G version $$$$$$$$$$$$$$$$$$");
                   */
 
-                  repMsg=return_depth();
+                  repMsg=return_depth(depth);
               }//end of batch test
 
       }
