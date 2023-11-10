@@ -921,8 +921,8 @@ module CCMsg {
         itera += 1;
         localtimer.stop(); 
         executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera-1);
@@ -1169,7 +1169,7 @@ module CCMsg {
 
 
 
-    // Contour: a  mapping based connected components algorithm
+    // Contour: a minimum mapping based connected components algorithm
     proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
@@ -1251,8 +1251,8 @@ module CCMsg {
         writeln("My Order is 1"); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
 
@@ -1293,11 +1293,11 @@ module CCMsg {
 
 
         itera += 1;
-        writeln("My Order is 1"); 
+        //writeln("My Order is 1"); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
         if( (count==0) ) {
           converged = true;
           continue;
@@ -1407,8 +1407,8 @@ module CCMsg {
         writeln("My Order is ",ORDERH); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
 
@@ -1420,6 +1420,142 @@ module CCMsg {
 
 
 
+    // UPS: Paul's min update, label propogation and symmetrization method
+    proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var l = makeDistArray(Nv, int); 
+      var src2 = makeDistArray(Ne*2, int); 
+      var dst2 = makeDistArray(Ne*2, int); 
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+      var lu = makeDistArray(Nv, atomic int); 
+
+      localtimer.clear();
+      localtimer.start(); 
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = l.localSubdomain().lowBound;
+          var vertexEnd = l.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            l[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <l[i] ) {
+                     l[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <l[i] ) {
+                     l[i]=tmpv;
+                }
+            }
+            lu[i].write(l[i]);
+          }
+        }
+      }
+      var count:int=0;
+      
+        coforall loc in Locales {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+            forall x in edgeBegin..edgeEnd   {
+                  src2[x*2]=src[x];
+                  dst2[x*2]=dst[x];
+                  src2[x*2+1]=dst[x];
+                  dst2[x*2+1]=src[x];
+            }
+
+
+          }
+        }
+
+      localtimer.stop(); 
+      //executime=localtimer.elapsed();
+      //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+
+      var converged:bool = false;
+      var itera = 1;
+      while (!converged) {
+        localtimer.clear();
+        localtimer.start(); 
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src2[2*x];
+              var v = dst2[2*x];
+              if (v!=l[u]) {
+                  var old=lu[v].read();
+                  var tmp =min(old,l[u]);
+                  while (old>tmp) {
+                    lu[v].compareAndSwap(old,tmp);
+                    old=lu[v].read();
+                    count+=1;
+                  }
+                  src2[2*x]=v;
+                  dst2[2*x]=l[u];         
+              } else {
+                  src2[2*x]=v;
+                  dst2[2*x]=u;         
+              }
+              u = src2[2*x+1];
+              v = dst2[2*x+1];
+              if (v!=l[u]) {
+                  src2[2*x+1]=v;
+                  dst2[2*x+1]=l[u];         
+                  var old=lu[v].read();
+                  var tmp =min(old,l[u]);
+                  while (old>tmp) {
+                    lu[v].compareAndSwap(old,tmp);
+                    old=lu[v].read();
+                    count+=1;
+                  }
+              } else {
+                  src2[2*x+1]=v;
+                  dst2[2*x+1]=u;         
+              }
+
+            }//end of forall
+          }
+        }
+
+
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+          count=0;
+          coforall loc in Locales with ( + reduce count) {
+            on loc {
+                var VBegin = l.localSubdomain().lowBound;
+                var VEnd = l.localSubdomain().highBound;
+
+                    forall x in VBegin..VEnd   {
+                       l[x]=lu[x].read();
+                    }
+                }
+            }
+          }
+        itera += 1;
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+      }
+
+
+
+      writeln("Number of iterations = ", itera-1);
+
+      return l;
+    }
 
     // Contour variant: a  mapping based connected components algorithm
     proc cc_11mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
@@ -1500,11 +1636,11 @@ module CCMsg {
           converged = false;
           count=0;
         }
-        writeln("My Order is 1"); 
+        //writeln("My Order is 1"); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
       if (Ne/here.numPUs() < LargeScale) {
@@ -1571,11 +1707,11 @@ module CCMsg {
           count=0;
         }
         itera += 1;
-        writeln("My Order is ",ORDERH); 
+        //writeln("My Order is ",ORDERH); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
       writeln("Number of iterations = ", itera-1);
@@ -1660,11 +1796,11 @@ module CCMsg {
 
 
         itera += 1;
-        writeln("My Order is 1"); 
+        //writeln("My Order is 1"); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
         if( (count==0) ) {
           converged = true;
           continue;
@@ -1771,11 +1907,11 @@ module CCMsg {
           count=0;
         }
         itera += 1;
-        writeln("My Order is ",ORDERH); 
+        //writeln("My Order is ",ORDERH); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
 
@@ -1936,11 +2072,11 @@ module CCMsg {
           count=0;
         }
         itera += 1;
-        writeln("My Order is ",ORDERH); 
+        //writeln("My Order is ",ORDERH); 
         localtimer.stop(); 
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
       }
 
 
@@ -2026,7 +2162,7 @@ module CCMsg {
 
 
     // FastSpread: a  propogation based connected components algorithm
-    proc cc_fs_syn(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_syn(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
@@ -2116,7 +2252,7 @@ module CCMsg {
         localtimer.stop();
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
 
       }
       writeln("Number of iterations = ", itera-1);
@@ -2128,7 +2264,7 @@ module CCMsg {
 
 
     // distance=1;
-    proc cc_fs_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var localtimer:stopwatch;
@@ -2191,7 +2327,7 @@ module CCMsg {
         localtimer.stop(); 
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
 
         if( (count==0) ) {
           converged = true;
@@ -2211,7 +2347,7 @@ module CCMsg {
 
 
     // distance=2;
-    proc cc_fs_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var localtimer:stopwatch;
@@ -2294,7 +2430,7 @@ module CCMsg {
         localtimer.stop(); 
         executime=localtimer.elapsed();
         myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
         if( (count==0) ) {
           converged = true;
         }
@@ -3673,6 +3809,7 @@ module CCMsg {
     var f6 = makeDistArray(Nv, int);
     var f7 = makeDistArray(Nv, int);
     var f8 = makeDistArray(Nv, int);
+    var f9 = makeDistArray(Nv, int);
     if (Directed == 0) {
 
         timer.clear();
@@ -3707,7 +3844,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f3 = cc_contour(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f3 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3716,7 +3853,7 @@ module CCMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for Contour cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for 1m1m cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
@@ -3724,7 +3861,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f4 = cc_fs_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f4 = cc_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3738,7 +3875,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f5 = cc_fs_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f5 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3784,7 +3921,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f8 = cc_fs_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -3794,6 +3931,20 @@ module CCMsg {
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
         outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f9 = cc_ups(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for ups cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         /*
@@ -3877,6 +4028,10 @@ module CCMsg {
               }
               if ( (f1[i]!=f8[i]) ) {
                 var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f9[i]) ) {
+                var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
             }
