@@ -593,8 +593,10 @@ class PropGraph(DiGraph):
         The graph is directed (True) or undirected (False).
     weighted : int
         The graph is weighted (True) or unweighted (False).
+    multied : int
+        The graph is a multi graph (True) or not a multi graph (False).
     name : string
-        The name of the graph in the backend Chapel server. 
+        The name of the graph in the backend Chapel server.
     logger : ArkoudaLogger
         Used for all logging operations.
 
@@ -641,6 +643,7 @@ class PropGraph(DiGraph):
                 self.n_edges = 0
                 self.weighted = None
                 self.directed = 1
+                self.multied = 0
                 self.name = None
             else:
                 self.n_vertices = int (cast(int, args[0]))
@@ -649,11 +652,73 @@ class PropGraph(DiGraph):
                 oriname = cast(str, args[4])
                 self.name = oriname.strip()
                 self.directed = 1
+                self.multied = 0
         except Exception as err:
             raise RuntimeError(err)
 
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
+
+    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+        """
+        Populates the graph object with edges as defined by the akarrays.
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgesFrom"
+
+        ### Initialize the edge arrays.
+        src = akarray_src
+        dst = akarray_dst
+        wgt = ak.array([-1]) # just a placeholder for now
+
+        ### Vertex remapping.
+        # 1. Extract the unique vertex names of the graph.
+        all_vertices = ak.concatenate([src,dst])
+        gb_vertices = ak.GroupBy(all_vertices)
+        vmap = gb_vertices.unique_keys
+
+        # 2. Create evenly spaced array within the range of the size of unique keys and broadcast
+        #    the values of the new range to the original vertices.
+        new_vertex_range = ak.arange(gb_vertices.unique_keys.size)
+        all_vertices = gb_vertices.broadcast(new_vertex_range)
+        src = all_vertices[0:src.size]
+        dst = all_vertices[src.size:]
+
+        ### Create vertex index arrays.
+        # 1. Build the neighbors of the adjacency lists for each vertex.
+        gb_src = ak.GroupBy(src, assume_sorted = True)
+        gb_src_indices, gb_src_neighbors = gb_src.count()
+        neis = ak.full(gb_vertices.unique_keys.size, 0, dtype=ak.int64)
+        neis[gb_src_indices] = gb_src_neighbors
+
+        # 2. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
+        segs = ak.cumsum(neis)
+        first_seg = ak.array([0])
+        segs = ak.concatenate([first_seg, segs])
+
+        # 3. Extract the number of vertices, edges, and weighted flag from the graph.
+        self.n_vertices = int(vmap.size)
+        self.n_edges = int(src.size)
+
+        ### Store everything in a graph object in the Chapel server.
+        # 1. Store data into an Graph object in the Chapel server.
+        args = { "AkArraySrc" : src,
+                 "AkArrayDst" : dst,
+                 "AkArraySeg" : segs,
+                 "AkArrayWeight" : wgt,
+                 "AkArrayVmap" : vmap,
+                 "Directed": bool(self.directed),
+                 "Weighted" : bool(self.weighted),
+                 "Multied" : bool(self.multied),
+                 "NumVertices" : self.n_vertices,
+                 "NumEdges" : self.n_edges }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+        oriname = rep_msg
+        self.name = oriname.strip()
 
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
@@ -726,8 +791,14 @@ class PropGraph(DiGraph):
         cmd = "addNodeProperties"
 
         ### Preprocessing steps for faster back-end array population.
-        # 0. Extract the column names of the dataframe.
+        # 0. Perform a groupby and extract the sorted column names of the dataframe.
+        start = time.time()
         columns = node_properties.columns
+        node_properties_gb = node_properties.groupby([columns[0]])
+        new_rows = node_properties_gb.permutation[node_properties_gb.segments]
+        node_properties = node_properties[new_rows]
+        end = time.time()
+        print(f"Performing large groupby on input dataframe took {end-start} secs")
 
         # 1. Convert the vertex_ids to internal vertex_ids.
         start = time.time()
@@ -851,9 +922,15 @@ class PropGraph(DiGraph):
 
         ### Preprocessing steps for faster back-end array population.
         # 0. Extract the column names of the dataframe.
+        start = time.time()
         columns = edge_properties.columns
+        edge_properties_gb = edge_properties.groupby([columns[0],columns[1]])
+        new_rows = edge_properties_gb.permutation[edge_properties_gb.segments]
+        edge_properties = edge_properties[new_rows]
         src_vertex_ids = edge_properties[columns[0]]
         dst_vertex_ids = edge_properties[columns[1]]
+        end = time.time()
+        print(f"Performing large groupby on input dataframe took {end-start} secs")
 
         # 1. Convert the source and destination vertex ids to the internal vertex_ids.
         start = time.time()
@@ -895,6 +972,105 @@ class PropGraph(DiGraph):
         print(f"Initializaing entire two-dimensional array took {internal_timings[1]} secs")
         print(f"Processing every column sequentially took {internal_timings[2]} secs")
         print(f"Cumulatively running Chapel code took {end-start} secs")
+
+    def load_edge_attributes(self, edge_attributes:ak.DataFrame,
+                             source_column:str|None = None,
+                             destination_column:str|None = None,
+                             relationship_column:str|None = None) -> None:
+        """Populates the graph object with attributes derived from the columns of a dataframe. Edge
+        properties are different from edge relationships where relationships are used to tell apart
+        multiple edges. On the other hand, properties are key-value pairs more akin to storing the 
+        columns of a dataframe. The column to be used as the edge relationship can be denoted by 
+        setting the `relationship_column` parameter.
+        
+        Parameters
+        ----------
+        edge_attributes : ak.DataFrame
+            `ak.DataFrame({"src_vertex_ids" : src_vertex_ids, "dst_vertex_ids" : dst_vertex_ids,
+                           "attribute1" : attribute1, ..., "attributeN" : attributeN})`
+        source_column : str
+            The column denoting the values to be treated as the source vertices of an edge in 
+            a graph. If unset, the first column of `edge_attributes` is used. 
+        destination_column : str
+            The column denoting the values to be treated as the destination vertices of an edge in
+            a graph. If unset, the second column of `edge_attributes` is used.
+        relationship_column : str
+            Name of the column to be used to denote the relationships of each edge. If unset, no
+            column is used as relationships and multiple edges will be deleted.
+
+        See Also
+        --------
+        add_node_labels, add_edge_relationships, add_node_properties, add_edge_properties
+
+        Notes
+        -----
+        
+        Returns
+        -------
+        None
+        """
+        cmd = "loadEdgeAtrributes"
+        columns = edge_attributes.columns
+        source_column = columns[0] if source_column is None else source_column
+        destination_column = columns[1] if destination_column is None else destination_column
+        relationship_mapper = ak.array(["none"])
+
+        ### Process the dataframe to sort its edges and all of its columns.
+        # 1a. This will allow multiple edges by adding relationship as an extra identifier.
+        if relationship_column is not None:
+            gb_relationships = ak.GroupBy(edge_attributes[relationship_column])
+            new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
+            relationship_column = gb_relationships.broadcast(new_relationship_ids)
+            relationship_mapper = gb_relationships.unique_keys
+            edge_attributes_gb = edge_attributes.groupby( [ source_column,
+                                                            destination_column,
+                                                            relationship_column ] )
+            new_rows = edge_attributes_gb.permutation[edge_attributes_gb.segments]
+            edge_attributes = edge_attributes[new_rows]
+            self.multied = 1
+        # 1b. This will build a graph without multiple edges, since extra identification is required
+        #     by the property graph data model to distinguish multiple edges.
+        else:
+            edge_attributes_gb = edge_attributes.groupby( [ source_column, destination_column ] )
+            new_rows = edge_attributes_gb.permutation[edge_attributes_gb.segments]
+            edge_attributes = edge_attributes[new_rows]
+            self.multied = 0
+
+        # 2. Initialize our src and destination arrays.
+        src = edge_attributes[source_column]
+        dst = edge_attributes[destination_column]
+
+        ### Build the graph into memory.
+        # 1a. Multigraph uses the PropGraph add_edges_from() method.
+        if self.multied:
+            self.add_edges_from(src, dst)
+        # 1b. Simple graph uses the DiGraph add_edges_from() method.
+        else:
+            super().add_edges_from(src, dst)
+
+        ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
+        # 1. Remove the first two column names, edge ids, since those are sent separately.
+        columns.remove(source_column)
+        columns.remove(destination_column)
+        column_names = ak.array(columns)
+
+        # 2. Extract symbol table names of arrays to use in the back-end.
+        column_ids = []
+        for column in columns:
+            column_ids.append(edge_attributes[column].name)
+        column_ids = ak.array(column_ids)
+
+        # 3. Sort the strings in size and lexical order.
+        perm = ak.GroupBy(column_names).permutation
+        column_names = column_names[perm]
+        column_ids = column_ids[perm]
+
+        args = { "GraphName" : self.name,
+                 "ColumnNames" : column_names.name,
+                 "ColumnIds" : column_ids.name,
+                 "RelationshipMapperName" : relationship_mapper.name
+               }
+        rep_msg = generic_msg(cmd=cmd, args=args)
 
     def get_node_labels(self) -> ak.Strings:
         """Returns the sorted object of node labels stored for the property graph.

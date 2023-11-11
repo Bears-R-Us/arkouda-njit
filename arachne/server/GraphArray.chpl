@@ -71,6 +71,9 @@ module GraphArray {
         // The graph is a property graph (true) or not (false)
         var propertied: bool;
 
+        // The graph is a multigraph (true) or not (false)
+        var multied: bool = false;
+
         // Undirected graphs are in the old format (true) or not (false)
         var reversed: bool = false;
 
