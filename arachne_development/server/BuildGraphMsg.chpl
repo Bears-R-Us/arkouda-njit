@@ -321,6 +321,9 @@ module BuildGraphMsg {
         directedS = directedS.toLower();
         directed = (directedS:bool);
 
+        var outMsg="read file ="+pathS;
+        smLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
         // Check to see if the file can be opened correctly. 
         try {
             var f = open(path, ioMode.r);
