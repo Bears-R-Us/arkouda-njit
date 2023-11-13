@@ -2,23 +2,14 @@
 
 import time, argparse
 import numpy as np
-import arkouda as ak
+import os
 import random
 import string
-import arachne_development.graph as njit
-import arachne_development.methods as methods
 
+def packdata(NewDir):
 
-def time_ak_cc():
-
-    print("Graph Truss Analysis")
-    cfg = ak.get_config()
-
-    print("Number of Locales=",cfg["numLocales"])
-    print("number of PUs =",cfg["numPUs"])
-    print("Max Tasks =",cfg["maxTaskPar"])
-    print("Memory =",cfg["physicalMemory"])
-    HomeDir="/rhome/zhihui/"
+    OriginDir="/rhome/zhihui/"
+    HomeDir=""
 
     EdgeList=[ [28980,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.txt.gr"],\
             [51971,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.txt.gr"],\
@@ -35,8 +26,8 @@ def time_ak_cc():
             [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-youtube.ungraph.txt.gr"],\
             [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
-            [14855842,456626,2,0,HomeDir+"Adata/SNAP/higgs-social_network.edgelist"],\
-            [117185083,3072441,2,0,HomeDir+"Adata/ANSP/com-orkut.ungraph.txt.gr"],\
+            [14855842,456626,2,0,HomeDir+"Adata/higgs-social_network.edgelist"],\
+            [117185083,3072441,2,0,HomeDir+"Adata/com-orkut.ungraph.txt.gr"],\
             ]
     MtxEdgeList=[ [14496,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.mtx"],\
             [25998,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.mtx"],\
@@ -54,23 +45,6 @@ def time_ak_cc():
             [19753078,1634989,2,0,HomeDir+"Adata/SNAP/wikipedia-20051105.mtx"],\
             [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.mtx"],\
             [117185083,3072441,2,0,HomeDir+"Adata/SNAP/com-Orkut.mtx"],\
-            ]
-    MtxEdgeList=[ [14496,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.mtx"],\
-            [25998,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.mtx"],\
-            [93497,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.mtx"],\
-            [106762,31379,3,0,HomeDir+"Adata/SNAP/as-caida.mtx"],\
-            [118521,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.mtx"],\
-            [183831,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.mtx"],\
-            [198110,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.mtx"],\
-            [214078,58228,2,0,HomeDir+"Adata/SNAP/loc-Brightkite.mtx"],\
-            [508837,75888,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.mtx"],\
-            [1049866,317080,2,0,HomeDir+"Adata/SNAP/com-DBLP.mtx"],\
-            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-Youtube.mtx"],\
-            [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.mtx"],\
-            [14855842,456626,2,0,HomeDir+"Adata/higgs-twitter.mtx"],\
-            [19753078,1634989,2,0,HomeDir+"Adata/SNAP/wikipedia-20051105.mtx"],\
-            [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.mtx"],\
-            [117185083,3072441,2,0,HomeDir+"Adata/com-Orkut.mtx"],\
             ]
 
     MtxDelaunay=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
@@ -167,74 +141,37 @@ def time_ak_cc():
 
     start = time.time()
     for i in MtxEdgeList:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
         FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-#        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        Graph=methods.read_matrix_market_file( str(FileName),False,False)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
+        print("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
+        os.system("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
+    return
+
     for i in MtxOther:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
         FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-#        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        Graph=methods.read_matrix_market_file( str(FileName),False,False)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
+        print("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
+        os.system("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
     for i in BigMtxFile:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
         FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-#        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        Graph=methods.read_matrix_market_file( str(FileName),False,False)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
+        print("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
+        os.system("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
     for i in MtxDelaunay:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
         FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-#        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        Graph=methods.read_matrix_market_file( str(FileName),False,False)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
+        print("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
+        os.system("cp -r -f --parent "+OriginDir+FileName+" "+NewDir+"/") 
     return
 
 
 def create_parser():
-    parser = argparse.ArgumentParser(description="Measure the performance of suffix array building: C= suffix_array(V)")
-    parser.add_argument('hostname', help='Hostname of arkouda server')
-    parser.add_argument('port', type=int, help='Port of arkouda server')
-    parser.add_argument('-v', '--logvertices', type=int, default=5, help='Problem size: log number of vertices')
-    parser.add_argument('-e', '--vedges', type=int, default=2,help='Number of edges per vertex')
-    parser.add_argument('-p', '--possibility', type=float, default=0.01,help='Possibility ')
-    parser.add_argument('-t', '--trials', type=int, default=6, help='Number of times to run the benchmark')
-    parser.add_argument('-m', '--perm', type=int, default=0 , help='if permutation ')
-    parser.add_argument('--numpy', default=False, action='store_true', help='Run the same operation in NumPy to compare performance.')
-    parser.add_argument('--correctness-only', default=False, action='store_true', help='Only check correctness, not performance.')
+    parser = argparse.ArgumentParser(description="Copy Adata to another directory")
+    parser.add_argument('NewDir', help='Absolute dir')
     return parser
 
 
     
 if __name__ == "__main__":
     import sys
-    
     parser = create_parser()
     args = parser.parse_args()
-    ak.verbose = False
-    print("Truss batch test")
-    ak.connect(args.hostname, args.port)
-    time_ak_cc()
-    ak.shutdown()
+    
+    print(args.NewDir)
+    packdata(args.NewDir)
