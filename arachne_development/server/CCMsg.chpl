@@ -36,9 +36,6 @@ module CCMsg {
   var tmpmindegree=start_min_degree;
 
   const JumpSteps=6;
-  //const FirstOrderIters=4;
-  //const SecondOrderIters=7;
-  //const ORDERH=128;
   const FirstOrderIters=4;
   const SecondOrderIters=6;
   var  ORDERH:int=512;
@@ -86,576 +83,8 @@ module CCMsg {
     var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
     var ag = gEntry.graph;
 
-    // Implementation of the algorithm for undirected graphs, they can be 
-    // weighted or unweighted. 
-    proc cc_kernel_und(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws { 
-      // Look for the first instance of -1 and get the first vertex to
-      // start BFS at. The first component is obviously component 1. 
-
-      // Change the visited array to all -1. 
-      coforall loc in Locales {
-        on loc {
-          forall i in visited.localSubdomain() {
-            visited[i] = -1; 
-          }
-        }
-      }
-
-      var finder = visited.find(-1); 
-      var unvisited:bool = finder[0]; 
-      var nextVertex:int = finder[1];
-      var component:int = 0; 
-
-      // writeln("src=", src);
-      // writeln("dst=", dst);
-      // writeln("nei=", nei);
-      // writeln("start_i=", start_i);
-
-      // writeln("srcR=", srcR);
-      // writeln("dstR=", dstR);
-      // writeln("neiR=", neiR);
-      // writeln("start_iR=", start_iR);
-
-      while(unvisited) {
-        // Current level starts at 0.
-        var cur_level = 0; 
-
-        // Distributed bags used to keep the current and the next frontiers
-        // during the execution of the BFS steps. 
-        var SetCurF = new DistBag(int, Locales);
-        var SetNextF = new DistBag(int, Locales); 
-
-        // Initialize the current frontier. 
-        SetCurF.add(nextVertex); 
-
-        // Size of the current frontier. 
-        var numCurF:int = 1; 
-
-        // Top-down and bottom-up counters. 
-        var topdown:int = 0; 
-        var bottomup:int = 0; 
-
-        // Make the depth array. 
-        var depth = makeDistArray(Nv, int); 
-
-        // Initialize the depth array. 
-        coforall loc in Locales {
-          on loc {
-            forall i in visited.localSubdomain() {
-              depth[i] = -1; 
-            }
-          }
-        }
-
-        // The BFS loop for while the number of vertices in the current 
-        // frontier is greater than 0. 
-        while(numCurF > 0) {
-          coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
-            on loc {
-              // Get references to the arrays we will be using so 
-              // data is not copied.
-              ref srcf = src; 
-              ref df = dst; 
-              ref nf = nei; 
-              ref sf = start_i; 
-
-              ref srcfR = srcR; 
-              ref dfR = dstR; 
-              ref nfR = neiR; 
-              ref sfR = start_iR;
-
-              // Get from edge arrays the low and high indices. 
-              var edgeBegin = src.localSubdomain().lowBound; 
-              var edgeEnd = src.localSubdomain().highBound; 
-
-              // Test variables.
-              var arrBegin = nei.localSubdomain().lowBound; 
-              var arrEnd = nei.localSubdomain().highBound; 
-
-              // writeln("On loc ", loc, " src=", src[edgeBegin..edgeEnd]);
-              // writeln("On loc ", loc, " dst=", dst[edgeBegin..edgeEnd]); 
-              // writeln("On loc ", loc, " srcR=", srcR[edgeBegin..edgeEnd]);
-              // writeln("On loc ", loc, " dstR=", dstR[edgeBegin..edgeEnd]); 
-              // writeln("On loc ", loc, " nei=", nei[arrBegin..arrEnd]);
-              // writeln("On loc ", loc, " neiR=", neiR[arrBegin..arrEnd]); 
-              // writeln("On loc ", loc, " start_i=", start_i[arrBegin..arrEnd]);
-              // writeln("On loc ", loc, " start_iR=", start_iR[arrBegin..arrEnd]);
-                      
-              // Get the start and end vertices from the edge arrays.
-              var vertexBegin=src[edgeBegin];
-              var vertexEnd=src[edgeEnd];
-              var vertexBeginR=srcR[edgeBegin];
-              var vertexEndR=srcR[edgeEnd];
-
-              // Check to see if x is local, between low and high. 
-              // Helper method for the BFS traversal. 
-              proc xlocal(x:int, low:int, high:int) : bool {
-                if (low <= x && x <= high) {
-                  return true;
-                } 
-                else {
-                  return false;
-                }
-              }
-                      
-              // These steps I do manually here wheras in the BFS
-              // code they are done before the calling of the 
-              // procedure. This is a temporary workaround! 
-              var GivenRatio = -0.6 * -1;
-              var LF = 1; 
-                      
-              // If the ratio is ever greater than 0.6, bottom-up is
-              // activated. 
-              var switchratio = (numCurF:real) / nf.size:real;
-                      
-              /****************** TOP DOWN ********************/
-              if (switchratio < GivenRatio) {
-                topdown+=1;
-                forall i in SetCurF with (ref SetNextF) {
-                  // Current edge has the vertex. 
-                  if ((xlocal(i, vertexBegin, vertexEnd)) || (LF == 0)) {
-                    var numNF = nf[i];
-                    var edgeId = sf[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
-                    ref NF = df[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF){
-                      if (depth[j] == -1) {
-                        depth[j] = cur_level+1;
-                        SetNextF.add(j);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
-                      }
-                    }
-                  } 
-                  if ((xlocal(i, vertexBeginR, vertexEndR)) || (LF == 0))  {
-                    var numNF = nfR[i];
-                    var edgeId = sfR[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
-                    ref NF = dfR[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF) {
-                      if (depth[j] == -1) {
-                        depth[j] = cur_level+1;
-                        SetNextF.add(j);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
-                      }
-                    }
-                  }
-                }//end forall
-              } 
-              /****************** BOTTOM UP ********************/
-              else {
-                bottomup+=1;
-                forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
-                  if (depth[i] == -1) {
-                    var numNF = nf[i];
-                    var edgeId = sf[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId + numNF - 1);
-                    ref NF = df[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF){
-                      if (SetCurF.contains(j)) {
-                        depth[i] = cur_level+1;
-                        SetNextF.add(i);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
-                      }
-                    }
-
-                  }
-                }
-                forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
-                  if (depth[i] == -1) {
-                    var numNF = nfR[i];
-                    var edgeId = sfR[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId+numNF - 1);
-                    ref NF = dfR[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF)  {
-                      if (SetCurF.contains(j)) {
-                        depth[i] = cur_level+1;
-                        SetNextF.add(i);
-                      }
-                      if (visited[i] == -1) {
-                        visited[i] = component; 
-                      }
-                    }
-                  }
-                }
-              }
-            }//end on loc
-          }//end coforall loc
-          cur_level+=1;
-          numCurF=SetNextF.getSize();
-          SetCurF<=>SetNextF;
-          SetNextF.clear();
-        }//end while  
-
-        // Increase the component number to find the next component, if it exists.
-        finder = visited.find(-1);
-        unvisited = finder[0]; 
-        nextVertex = finder[1];
-        component += 1; 
-      } // end outermost while
-      // writeln("Serial visited = ", visited);
-
-      // var maxC = max reduce visited; 
-      // writeln("max value = ", maxC); 
-
-      // var hist = makeDistArray(maxC + 1, atomic int); 
-
-      // forall i in visited {
-      //   hist[i].fetchAdd(1);
-      // }
-      // writeln("hist = ", hist); 
-      return "success";
-    }//end of cc_kernel_und
 
 
-
-
-
-    // BFS method
-    proc cc_bfs(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws { 
-
-      var f = makeDistArray(Nv, int); 
-      var depth = makeDistArray(Nv, int); 
-      // Change the visited array to all -1. 
-      coforall loc in Locales {
-        on loc {
-          forall i in depth.localSubdomain() {
-            depth[i] = -1; 
-            f[i]=i;
-          }
-        }
-      }
-
-
-
-        // Current level starts at 0.
-      var cur_level = 0; 
-      var (unvisited,nextVertex) = depth.find(-1); 
-      var component:int = 0; 
-
-        var SetCurF = new DistBag(int, Locales);
-        var SetNextF = new DistBag(int, Locales); 
-
-
-        // Size of the current frontier. 
-        var numCurF:int = 1; 
-
-        // Top-down and bottom-up counters. 
-        var topdown:int = 0; 
-        var bottomup:int = 0; 
-
-        // Make the depth array. 
-
-
-        // The BFS loop for while the number of vertices in the current 
-        // frontier is greater than 0. 
-      while(unvisited) {
-        cur_level = 0; 
-        SetCurF.add(nextVertex); 
-        depth[nextVertex]=cur_level;
-        numCurF=1;
-        while(numCurF > 0) {
-          coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
-            on loc {
-              // Get references to the arrays we will be using so 
-              // data is not copied.
-              ref srcf = src; 
-              ref df = dst; 
-              ref nf = nei; 
-              ref sf = start_i; 
-
-              ref srcfR = srcR; 
-              ref dfR = dstR; 
-              ref nfR = neiR; 
-              ref sfR = start_iR;
-
-              // Get from edge arrays the low and high indices. 
-              var edgeBegin = src.localSubdomain().lowBound; 
-              var edgeEnd = src.localSubdomain().highBound; 
-
-              // Test variables.
-              var arrBegin = nei.localSubdomain().lowBound; 
-              var arrEnd = nei.localSubdomain().highBound; 
-
-              var vertexBegin=src[edgeBegin];
-              var vertexEnd=src[edgeEnd];
-              var vertexBeginR=srcR[edgeBegin];
-              var vertexEndR=srcR[edgeEnd];
-
-              proc xlocal(x:int, low:int, high:int) : bool {
-                if (low <= x && x <= high) {
-                  return true;
-                } 
-                else {
-                  return false;
-                }
-              }
-                      
-              // These steps I do manually here wheras in the BFS
-              // code they are done before the calling of the 
-              // procedure. This is a temporary workaround! 
-              var LF = 1; 
-                      
-              /****************** TOP DOWN ********************/
-              {
-                topdown+=1;
-                forall i in SetCurF with (ref SetNextF) {
-                  // Current edge has the vertex. 
-                  if ((xlocal(i, vertexBegin, vertexEnd)) || (LF == 0)) {
-                    var numNF = nf[i];
-                    var edgeId = sf[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
-                    ref NF = df[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF){
-                      if (depth[j] == -1) {
-                        depth[j] = cur_level+1;
-                        visited[j] = component; 
-                        SetNextF.add(j);
-                      }
-                    }
-                  } 
-                  if ((xlocal(i, vertexBeginR, vertexEndR)) || (LF == 0))  {
-                    var numNF = nfR[i];
-                    var edgeId = sfR[i];
-                    var nextStart = max(edgeId, edgeBegin);
-                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
-                    ref NF = dfR[nextStart..nextEnd];
-                    forall j in NF with (ref SetNextF) {
-                      if (depth[j] == -1) {
-                        depth[j] = cur_level+1;
-                        visited[j] = component; 
-                        SetNextF.add(j);
-                      }
-                    }
-                  }
-                }//end forall
-              } 
-            }//end on loc
-          }//end coforall loc
-          cur_level+=1;
-          numCurF=SetNextF.getSize();
-          SetCurF<=>SetNextF;
-          SetNextF.clear();
-        }//end while  
-        (unvisited,nextVertex)  = depth.find(-1);
-        if (cur_level!=0) {
-              writeln("Component=",component, " diameter=",cur_level, " unvisited=",unvisited," nextVertex=",nextVertex);
-        }
-        // Increase the component number to find the next component, if it exists.
-        component += 1; 
-      } // end outermost while
-
-
-      writeln("Total Number of Component=",component);
-      writeln("Number of iterations = 1");
-
-      return f;
-    }//end of  cc-bfs
-
-
-    // Implementation of a second algorithm for undirected graphs, 
-    // they can be weighted or unweighted. 
-    proc cc_kernel_und_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws { 
-      // Initialize the distributed loop over the locales. All the work is going to be split
-      // amongst how many locales are available in a cluster. 
-      var startVertex: [0..numLocales-1] int = 0;
-      var endVertex: [0..numLocales-1] int = 0;
-      var MaxComponent:int;
-      MaxComponent = 100;
-      var BeyondLevel = MaxComponent*(numLocales+1):int;
-      var ReplaceAry = makeDistArray(MaxComponent*numLocales, atomic int);
-      var depth = makeDistArray(Nv, atomic int);
-
-      proc minLevel(l):int {
-        var repv=ReplaceAry[l].read();
-        if (repv==-1) {
-          return l;
-        } else {
-          return minLevel(repv);
-        }
-      }
-
-      proc updateLevel(l: int, m:int) {
-        var repv=ReplaceAry[l].read();
-        ReplaceAry[l].write(m);
-        while (repv!=-1) {
-          var nextv=ReplaceAry[repv].read();
-          ReplaceAry[repv].write(m);
-          repv=nextv;
-        }
-      }
-
-      coforall loc in Locales {
-        on loc {
-          var low = src.localSubdomain().lowBound; 
-          var high = src.localSubdomain().highBound; 
-
-          //Firstly, we get the vertex based on partitioned edges.
-          startVertex[here.id]=src[low];
-          endVertex[here.id]=src[high];
-          if (here.id==0) {
-            startVertex[0]=0;
-          }
-          if (here.id==numLocales-1){
-            endVertex[numLocales-1]=Nv-1;
-          }
-          //Then, we modify the first and the last vertex 
-        }
-      }
-
-      coforall loc in Locales {
-        on loc {
-          if (here.id <numLocales-1) {
-            if (endVertex[here.id]<=startVertex[here.id+1]) {
-              endVertex[here.id]=startVertex[here.id+1]-1;  
-            }
-          }
-          var cur_level:int;
-          cur_level=here.id*MaxComponent;
-
-          forall i in depth.localSubdomain() {
-            depth[i].write(-1);
-          }
-
-          forall i in ReplaceAry.localSubdomain() {
-            ReplaceAry[i].write(-1);
-          }
-
-          var cur_vertex=startVertex[here.id];
-          var dlow = dst.localSubdomain().lowBound; 
-          var dhigh = dst.localSubdomain().highBound; 
-          var MergedAry:[0..MaxComponent*numLocales-1] int = -1;
-          while (cur_vertex<=endVertex[here.id]) {
-            var depcur=depth[cur_vertex].read();
-            cur_level=here.id*MaxComponent+cur_vertex-startVertex[here.id];
-            if (depcur!=-1 ){
-              cur_level=depcur;
-            }
-            var root = cur_vertex; 
-            
-
-            var SetCurF = new set(int, parSafe=true);
-            var SetNextF = new set(int, parSafe=true);
-
-            SetCurF.add(root); 
-
-	          var numCurF=1:int; 
-
-            while(numCurF > 0) {
-              ref srcf = src; 
-              ref df = dst; 
-              ref nf = nei; 
-              ref sf = start_i; 
-
-              ref srcfR = srcR; 
-              ref dfR = dstR; 
-              ref nfR = neiR; 
-              ref sfR = start_iR;
-
-              forall i in SetCurF with (ref SetNextF) {
-                var numNF = nf[i];
-                var edgeId = sf[i];
-                var nextStart = edgeId;
-                var nextEnd = edgeId+numNF-1;
-                ref NF = df[nextStart..nextEnd];
-                
-                forall j in NF with (ref SetNextF) {
-                  var depj=depth[j].read();
-                  if (depj == -1) {
-                    depth[j].write(cur_level);
-                    if ( (j>=startVertex[here.id]) && (j<=endVertex[here.id])) {
-                      SetNextF.add(j);
-                    }
-                  } 
-                  else {
-                    if ((BeyondLevel*here.id+cur_level !=depj) && (depj!=cur_level)) {
-                      // the visited vertex has been revisited from other component
-                      if (depj>=BeyondLevel) {
-                        depj=mod(depj,BeyondLevel);
-                      }
-                      var prepc=minLevel(cur_level);
-                      var prepj=minLevel(depj);
-                      if (prepc>prepj) {
-                        updateLevel(cur_level,prepj);
-                      } 
-                      else {
-                        if (prepj>prepc) {
-                          updateLevel(depj,prepc);
-                        }
-                      }
-                      depth[j].write(BeyondLevel*here.id+cur_level);
-                    }
-                  }
-                }
-                numNF = nfR[i];
-                edgeId = sfR[i];
-                nextStart = edgeId;
-                nextEnd = edgeId+numNF-1;
-                ref NF2 = dfR[nextStart..nextEnd];
-                forall j in NF2 with (ref SetNextF) {
-                  var depj=depth[j].read();
-                  if (depj == -1) {
-                    depth[j].write(cur_level);
-                    if ((j>=startVertex[here.id]) && (j<=endVertex[here.id])) {
-                      SetNextF.add(j);
-                    }
-                  }
-                  else {
-                    if ((BeyondLevel*here.id+cur_level !=depj) && (depj!=cur_level)) {
-                      // the visited vertex has been revisited from other component
-                      if (depj>=BeyondLevel) {
-                        depj=mod(depj,BeyondLevel);
-                      }  
-                      var prepc=minLevel(cur_level);
-                      var prepj=minLevel(depj);
-                      if (prepc > prepj) {
-                        updateLevel(cur_level,prepj);
-                      } 
-                      else {
-                        if (prepj>prepc) {
-                          updateLevel(depj,prepc);
-                        }
-                      }
-                      depth[j].write(BeyondLevel*here.id+cur_level);
-                    }
-                  }
-                }
-              }//end forall
-              numCurF=SetNextF.size;
-              SetCurF=SetNextF;
-              SetNextF.clear();
-            }//end while 
-            cur_vertex+=1;
-          }//end of visit
-          
-          forall i in depth.localSubdomain() {
-            var tmpvar1=depth[i].read();
-            tmpvar1=mod(tmpvar1,BeyondLevel);
-            var tmpvar2=ReplaceAry[tmpvar1].read();
-            if (tmpvar2!=-1) {
-              var tmpvar3=ReplaceAry[tmpvar2].read();
-              while (tmpvar3!=-1) {
-                tmpvar2=tmpvar3;
-                tmpvar3=ReplaceAry[tmpvar2].read();
-              }
-              depth[i].write(tmpvar2);
-            }
-          }
-        }//end on loc
-      }//end coforall
-      // writeln("Parallel visited = ", depth);
-      return "success";
-    }//end of cc_kernel_und_1
 
     // Third implemention of the fast shiloach-vishkin algorithm for connected components proposed 
     // by Yongzhe Zhang, Ariful Azad, and Zhenjiang Hu.
@@ -1014,8 +443,7 @@ module CCMsg {
 
 
 
-
-    // Contour: a minimum mapping based connected components algorithm
+    // Contour: a minimum mapping based connected components algorithm, a mixed method
     proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
@@ -1664,9 +1092,8 @@ module CCMsg {
                              while (!lconverged) {
 
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                    var u = src[x];
-                                    var v = dst[x];
-                                    {
+                                        var u = src[x];
+                                        var v = dst[x];
                                         var TmpMin:int;
                                         var fu=localf[u].read();
                                         var fv=localf[v].read();
@@ -1688,7 +1115,6 @@ module CCMsg {
                                               lcount+=1;
                                         }
 
-                                    }
                                 }
                                 writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
@@ -1833,9 +1259,8 @@ module CCMsg {
                              }
                              while (!lconverged) {
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                    var u = src[x];
-                                    var v = dst[x];
-                                    {
+                                        var u = src[x];
+                                        var v = dst[x];
                                         var TmpMin:int;
                                         var fu=localf[u].read();
                                         var fv=localf[v].read();
@@ -1876,8 +1301,7 @@ module CCMsg {
                                         }
 
 
-                                    }
-                                }
+                                }// forall
                                 writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
@@ -2048,10 +1472,8 @@ module CCMsg {
                                  localf[i].write(f[i]);
                              }
                              while (!lconverged) {
-                                var edgeBegin = src.localSubdomain().lowBound;
-                                var edgeEnd = src.localSubdomain().highBound;
 
-                                forall x in edgeBegin..edgeEnd  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain() with ( + reduce lcount)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     var TmpMin:int;
@@ -2110,11 +1532,6 @@ module CCMsg {
                  writeln(" outter iteration=", itera);
 
 
-                 //writeln("My Order is ",ORDERH); 
-                 localtimer.stop(); 
-                 executime=localtimer.elapsed();
-                 myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-                 //writeln("Efficiency is ", myefficiency, " time is ",executime);
            }//while
 
       } else {
@@ -2311,9 +1728,8 @@ module CCMsg {
                              while (!lconverged && litera<FirstOrderIters) {
 
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                    var u = src[x];
-                                    var v = dst[x];
-                                    {
+                                        var u = src[x];
+                                        var v = dst[x];
                                         var TmpMin:int;
                                         var fu=localf[u].read();
                                         var fv=localf[v].read();
@@ -2335,7 +1751,6 @@ module CCMsg {
                                               lcount+=1;
                                         }
                    
-                                    }
                                 }
                                 writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
@@ -2408,11 +1823,6 @@ module CCMsg {
                  writeln(" outter iteration=", itera);
 
 
-                 //writeln("My Order is ",ORDERH); 
-                 localtimer.stop(); 
-                 executime=localtimer.elapsed();
-                 myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-                 //writeln("Efficiency is ", myefficiency, " time is ",executime);
            }//while
 
       } else {
@@ -2623,9 +2033,8 @@ module CCMsg {
                              while (!lconverged ) {
 
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                    var u = src[x];
-                                    var v = dst[x];
-                                    {
+                                        var u = src[x];
+                                        var v = dst[x];
                                         var TmpMin:int;
                                         var fu=localf[u].read();
                                         var fv=localf[v].read();
@@ -2646,8 +2055,6 @@ module CCMsg {
                                               oldx=localf[v].read();
                                               lcount+=1;
                                         }
-                   
-                                    }
                                 }
 
                                 forall x in src.localSubdomain()   with ( + reduce lcount)  {
@@ -2708,12 +2115,6 @@ module CCMsg {
                  writeln(" -----------------------------------------------------------------");
                  writeln(" outter iteration=", itera);
 
-
-                 //writeln("My Order is ",ORDERH); 
-                 localtimer.stop(); 
-                 executime=localtimer.elapsed();
-                 myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-                 //writeln("Efficiency is ", myefficiency, " time is ",executime);
            }//while
 
       } else {
@@ -2938,24 +2339,23 @@ module CCMsg {
              
              coforall loc in Locales with ( + reduce count ) {
                      on loc {
-                             var localf:[0..Nv-1] atomic int;
+                             var localf:[0..Nv-1]  int;
                              var localfu:[0..Nv-1] atomic int;
                              var lconverged:bool = false;
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i].write(f[i]);
+                                 localf[i]=f[i];
                                  localfu[i].write(f[i]);
                              }
                              while (!lconverged) {
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                    var u = src[x];
-                                    var v = dst[x];
-                                    {
+                                        var u = src[x];
+                                        var v = dst[x];
                                         var TmpMin:int;
-                                        var fu=localf[u].read();
-                                        var fv=localf[v].read();
-                                        TmpMin=min(localf[fu].read(),localf[fv].read());
+                                        var fu=localf[u];
+                                        var fv=localf[v];
+                                        TmpMin=min(localf[fu],localf[fv]);
                                         var oldx=localfu[u].read();
                                         while (oldx>TmpMin) {
                                               if (localfu[u].compareAndSwap(oldx,TmpMin)) {
@@ -2991,9 +2391,7 @@ module CCMsg {
                                               lcount+=1;
                                         }
 
-
-                                    }
-                                }
+                                }//forall
                                 writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
@@ -3138,7 +2536,6 @@ module CCMsg {
           forall i in vertexBegin..vertexEnd {
             f_low[i].write(i);
             f[i]=i;
-            }
           }
         }
       }
@@ -3160,14 +2557,13 @@ module CCMsg {
              
              coforall loc in Locales with ( + reduce count ) {
                      on loc {
-                             var localf_low:[0..Nv-1] atomic int;
-                             var lconverged:bool = false;
-                             var litera = 1;
-                             var lcount:int=0;
-                             forall i in 0..Nv-1 {
-                                 localf_low[i].write(f[i]);
-                             }
-                             {
+                                var localf_low:[0..Nv-1] atomic int;
+                                var lconverged:bool = false;
+                                var litera = 1;
+                                var lcount:int=0;
+                                forall i in 0..Nv-1 {
+                                    localf_low[i].write(f[i]);
+                                }
 
                                 forall x in src.localSubdomain()    {
                                     var u = src[x];
@@ -3196,14 +2592,13 @@ module CCMsg {
 
                                 }//end of forall
 
-                             }// while
-                             writeln("Converge local ------------------------------------------");
-                             forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localf_low[i].read() {
-                                     f[i]=localf_low[i].read();
-                                     count+=1;
-                                 }
-                             }
+                                writeln("Converge local ------------------------------------------");
+                                forall i in 0..Nv-1 with (+ reduce count) {
+                                    if f[i]>localf_low[i].read() {
+                                        f[i]=localf_low[i].read();
+                                        count+=1;
+                                    }
+                                }
 
                      }// end of on loc 
                  }// end of coforall loc 
@@ -3219,12 +2614,6 @@ module CCMsg {
                  writeln(" -----------------------------------------------------------------");
                  writeln(" outter iteration=", itera);
 
-
-                 //writeln("My Order is ",ORDERH); 
-                 localtimer.stop(); 
-                 executime=localtimer.elapsed();
-                 myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-                 //writeln("Efficiency is ", myefficiency, " time is ",executime);
            }//while
 
       } else {
@@ -3280,6 +2669,10 @@ module CCMsg {
 
       return f;
     }
+
+
+
+
 
     // UPS: Paul's min update, label propogation and symmetrization method
     proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
@@ -3340,8 +2733,6 @@ module CCMsg {
 
       var converged:bool = false;
       var itera = 1;
-
-
 
       if (numLocales>1) {
 
@@ -3406,17 +2797,17 @@ module CCMsg {
                                 else {
                                     lconverged = false;
                                     lcount=0;
-                                    forall x in 0..Nv-1 with (+ reduce count)   {
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall x in 0..Nv-1 with (+ reduce count)   {
                                          var val=locallu[x].read();
                                          if l[x] >val {
                                              l[x]=val;
                                              count+=1;
                                          }
-                                    }
-                                }
-                                litera+=1;
-                             }// while
-                             writeln("Converge local ------------------------------------------");
+                             }
 
                      }// end of on loc 
                  }// end of coforall loc 
@@ -3509,6 +2900,855 @@ module CCMsg {
 
       return l;
     }
+
+
+
+
+    var timer:stopwatch;
+    // We only care for undirected graphs, they can be weighted or unweighted. 
+    var f1 = makeDistArray(Nv, int);
+    var f2 = makeDistArray(Nv, int);
+    var f3 = makeDistArray(Nv, int);
+    var f4 = makeDistArray(Nv, int);
+    var f5 = makeDistArray(Nv, int);
+    var f6 = makeDistArray(Nv, int);
+    var f7 = makeDistArray(Nv, int);
+    var f8 = makeDistArray(Nv, int);
+    var f9 = makeDistArray(Nv, int);
+    if (Directed == 0) {
+
+        timer.clear();
+        timer.start(); 
+        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
+                                toSymEntry(ag.getSTART_IDX(), int).a, 
+                                toSymEntry(ag.getSRC(), int).a, 
+                                toSymEntry(ag.getDST(), int).a, 
+                                toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                                toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                                toSymEntry(ag.getSRC_R(), int).a, 
+                                toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+        timer.clear();
+        timer.start();
+        f2 = cc_connectit(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f3 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for 1m1m cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
+        timer.clear();
+        timer.start();
+        f4 = cc_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f5 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
+        timer.clear();
+        timer.start();
+        f6 = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+        timer.clear();
+        timer.start();
+        f7 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for   11mm  cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f9 = cc_ups(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for ups cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        coforall loc in Locales {
+          on loc {
+            var vertexStart = f1.localSubdomain().lowBound;
+            var vertexEnd = f1.localSubdomain().highBound;
+            forall i in vertexStart..vertexEnd {
+              //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
+              if ((f1[i] != f2[i]) ) {
+                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ((f1[i] != f3[i]) ) {
+                var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f4[i]) ) {
+                var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f5[i]) ) {
+                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f6[i]) ) {
+                var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f7[i]) ) {
+                var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f8[i]) ) {
+                var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+              if ( (f1[i]!=f9[i]) ) {
+                var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+            }
+          }
+        } 
+
+    }
+   
+
+    // The message that is sent back to the Python front-end. 
+    var comps = new set(int);
+    for x in f2 {
+      comps.add(x);
+    }
+    var num_comps = makeDistArray(numLocales, int); 
+    num_comps[0] = comps.size;
+    proc return_CC(ary:[?d] int): string throws {
+      CCName = st.nextName();
+      var CCEntry = new shared SymEntry(ary);
+      st.addEntry(CCName, CCEntry);
+
+      var CCMsg =  'created ' + st.attrib(CCName);
+      return CCMsg;
+    }
+
+    var repMsg = return_CC(num_comps);
+    return new MsgTuple(repMsg, MsgType.NORMAL);
+  }
+
+  use CommandMap;
+  registerFunction("segmentedGraphCC", segCCMsg,getModuleName());
+}
+
+
+
+
+        /*
+        f5=f1;
+        f6=f1;
+
+        if (ag.hasA_START_IDX()) {
+                       timer.clear();
+                       timer.start();
+                       f5=cc_fs_aligned0(
+                           toSymEntry(ag.getNEIGHBOR(), int).a,
+                           toSymEntry(ag.getSTART_IDX(), int).a,
+                           toSymEntry(ag.getSRC(), int).a,
+                           toSymEntry(ag.getDST(), int).a,
+                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                           toSymEntry(ag.getSRC_R(), int).a,
+                           toSymEntry(ag.getDST_R(), int).a,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                       timer.stop();
+                       outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
+                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                       timer.clear();
+                       timer.start();
+                       f6=cc_fs_aligned1(
+                           toSymEntry(ag.getNEIGHBOR(), int).a,
+                           toSymEntry(ag.getSTART_IDX(), int).a,
+                           toSymEntry(ag.getSRC(), int).a,
+                           toSymEntry(ag.getDST(), int).a,
+                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                           toSymEntry(ag.getSRC_R(), int).a,
+                           toSymEntry(ag.getDST_R(), int).a,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                       timer.stop();
+                       outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
+                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        }
+        */
+
+
+/*
+
+
+    // Implementation of the algorithm for undirected graphs, they can be 
+    // weighted or unweighted. 
+    proc cc_kernel_und(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws { 
+      // Look for the first instance of -1 and get the first vertex to
+      // start BFS at. The first component is obviously component 1. 
+
+      // Change the visited array to all -1. 
+      coforall loc in Locales {
+        on loc {
+          forall i in visited.localSubdomain() {
+            visited[i] = -1; 
+          }
+        }
+      }
+
+      var finder = visited.find(-1); 
+      var unvisited:bool = finder[0]; 
+      var nextVertex:int = finder[1];
+      var component:int = 0; 
+
+      // writeln("src=", src);
+      // writeln("dst=", dst);
+      // writeln("nei=", nei);
+      // writeln("start_i=", start_i);
+
+      // writeln("srcR=", srcR);
+      // writeln("dstR=", dstR);
+      // writeln("neiR=", neiR);
+      // writeln("start_iR=", start_iR);
+
+      while(unvisited) {
+        // Current level starts at 0.
+        var cur_level = 0; 
+
+        // Distributed bags used to keep the current and the next frontiers
+        // during the execution of the BFS steps. 
+        var SetCurF = new DistBag(int, Locales);
+        var SetNextF = new DistBag(int, Locales); 
+
+        // Initialize the current frontier. 
+        SetCurF.add(nextVertex); 
+
+        // Size of the current frontier. 
+        var numCurF:int = 1; 
+
+        // Top-down and bottom-up counters. 
+        var topdown:int = 0; 
+        var bottomup:int = 0; 
+
+        // Make the depth array. 
+        var depth = makeDistArray(Nv, int); 
+
+        // Initialize the depth array. 
+        coforall loc in Locales {
+          on loc {
+            forall i in visited.localSubdomain() {
+              depth[i] = -1; 
+            }
+          }
+        }
+
+        // The BFS loop for while the number of vertices in the current 
+        // frontier is greater than 0. 
+        while(numCurF > 0) {
+          coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
+            on loc {
+              // Get references to the arrays we will be using so 
+              // data is not copied.
+              ref srcf = src; 
+              ref df = dst; 
+              ref nf = nei; 
+              ref sf = start_i; 
+
+              ref srcfR = srcR; 
+              ref dfR = dstR; 
+              ref nfR = neiR; 
+              ref sfR = start_iR;
+
+              // Get from edge arrays the low and high indices. 
+              var edgeBegin = src.localSubdomain().lowBound; 
+              var edgeEnd = src.localSubdomain().highBound; 
+
+              // Test variables.
+              var arrBegin = nei.localSubdomain().lowBound; 
+              var arrEnd = nei.localSubdomain().highBound; 
+
+              // writeln("On loc ", loc, " src=", src[edgeBegin..edgeEnd]);
+              // writeln("On loc ", loc, " dst=", dst[edgeBegin..edgeEnd]); 
+              // writeln("On loc ", loc, " srcR=", srcR[edgeBegin..edgeEnd]);
+              // writeln("On loc ", loc, " dstR=", dstR[edgeBegin..edgeEnd]); 
+              // writeln("On loc ", loc, " nei=", nei[arrBegin..arrEnd]);
+              // writeln("On loc ", loc, " neiR=", neiR[arrBegin..arrEnd]); 
+              // writeln("On loc ", loc, " start_i=", start_i[arrBegin..arrEnd]);
+              // writeln("On loc ", loc, " start_iR=", start_iR[arrBegin..arrEnd]);
+                      
+              // Get the start and end vertices from the edge arrays.
+              var vertexBegin=src[edgeBegin];
+              var vertexEnd=src[edgeEnd];
+              var vertexBeginR=srcR[edgeBegin];
+              var vertexEndR=srcR[edgeEnd];
+
+              // Check to see if x is local, between low and high. 
+              // Helper method for the BFS traversal. 
+              proc xlocal(x:int, low:int, high:int) : bool {
+                if (low <= x && x <= high) {
+                  return true;
+                } 
+                else {
+                  return false;
+                }
+              }
+                      
+              // These steps I do manually here wheras in the BFS
+              // code they are done before the calling of the 
+              // procedure. This is a temporary workaround! 
+              var GivenRatio = -0.6 * -1;
+              var LF = 1; 
+                      
+              // If the ratio is ever greater than 0.6, bottom-up is
+              // activated. 
+              var switchratio = (numCurF:real) / nf.size:real;
+                      
+              //  TOP DOWN 
+              if (switchratio < GivenRatio) {
+                topdown+=1;
+                forall i in SetCurF with (ref SetNextF) {
+                  // Current edge has the vertex. 
+                  if ((xlocal(i, vertexBegin, vertexEnd)) || (LF == 0)) {
+                    var numNF = nf[i];
+                    var edgeId = sf[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
+                    ref NF = df[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF){
+                      if (depth[j] == -1) {
+                        depth[j] = cur_level+1;
+                        SetNextF.add(j);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+                  } 
+                  if ((xlocal(i, vertexBeginR, vertexEndR)) || (LF == 0))  {
+                    var numNF = nfR[i];
+                    var edgeId = sfR[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
+                    ref NF = dfR[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF) {
+                      if (depth[j] == -1) {
+                        depth[j] = cur_level+1;
+                        SetNextF.add(j);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+                  }
+                }//end forall
+              } 
+              //  BOTTOM UP 
+              else {
+                bottomup+=1;
+                forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
+                  if (depth[i] == -1) {
+                    var numNF = nf[i];
+                    var edgeId = sf[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId + numNF - 1);
+                    ref NF = df[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF){
+                      if (SetCurF.contains(j)) {
+                        depth[i] = cur_level+1;
+                        SetNextF.add(i);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+
+                  }
+                }
+                forall i in vertexBeginR..vertexEndR  with (ref SetNextF) {
+                  if (depth[i] == -1) {
+                    var numNF = nfR[i];
+                    var edgeId = sfR[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF - 1);
+                    ref NF = dfR[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF)  {
+                      if (SetCurF.contains(j)) {
+                        depth[i] = cur_level+1;
+                        SetNextF.add(i);
+                      }
+                      if (visited[i] == -1) {
+                        visited[i] = component; 
+                      }
+                    }
+                  }
+                }
+              }
+            }//end on loc
+          }//end coforall loc
+          cur_level+=1;
+          numCurF=SetNextF.getSize();
+          SetCurF<=>SetNextF;
+          SetNextF.clear();
+        }//end while  
+
+        // Increase the component number to find the next component, if it exists.
+        finder = visited.find(-1);
+        unvisited = finder[0]; 
+        nextVertex = finder[1];
+        component += 1; 
+      } // end outermost while
+      // writeln("Serial visited = ", visited);
+
+      // var maxC = max reduce visited; 
+      // writeln("max value = ", maxC); 
+
+      // var hist = makeDistArray(maxC + 1, atomic int); 
+
+      // forall i in visited {
+      //   hist[i].fetchAdd(1);
+      // }
+      // writeln("hist = ", hist); 
+      return "success";
+    }//end of cc_kernel_und
+
+
+
+
+
+    // BFS method
+    proc cc_bfs(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws { 
+
+      var f = makeDistArray(Nv, int); 
+      var depth = makeDistArray(Nv, int); 
+      // Change the visited array to all -1. 
+      coforall loc in Locales {
+        on loc {
+          forall i in depth.localSubdomain() {
+            depth[i] = -1; 
+            f[i]=i;
+          }
+        }
+      }
+
+
+
+        // Current level starts at 0.
+      var cur_level = 0; 
+      var (unvisited,nextVertex) = depth.find(-1); 
+      var component:int = 0; 
+
+        var SetCurF = new DistBag(int, Locales);
+        var SetNextF = new DistBag(int, Locales); 
+
+
+        // Size of the current frontier. 
+        var numCurF:int = 1; 
+
+        // Top-down and bottom-up counters. 
+        var topdown:int = 0; 
+        var bottomup:int = 0; 
+
+        // Make the depth array. 
+
+
+        // The BFS loop for while the number of vertices in the current 
+        // frontier is greater than 0. 
+      while(unvisited) {
+        cur_level = 0; 
+        SetCurF.add(nextVertex); 
+        depth[nextVertex]=cur_level;
+        numCurF=1;
+        while(numCurF > 0) {
+          coforall loc in Locales with (ref SetNextF, + reduce topdown, + reduce bottomup) {
+            on loc {
+              // Get references to the arrays we will be using so 
+              // data is not copied.
+              ref srcf = src; 
+              ref df = dst; 
+              ref nf = nei; 
+              ref sf = start_i; 
+
+              ref srcfR = srcR; 
+              ref dfR = dstR; 
+              ref nfR = neiR; 
+              ref sfR = start_iR;
+
+              // Get from edge arrays the low and high indices. 
+              var edgeBegin = src.localSubdomain().lowBound; 
+              var edgeEnd = src.localSubdomain().highBound; 
+
+              // Test variables.
+              var arrBegin = nei.localSubdomain().lowBound; 
+              var arrEnd = nei.localSubdomain().highBound; 
+
+              var vertexBegin=src[edgeBegin];
+              var vertexEnd=src[edgeEnd];
+              var vertexBeginR=srcR[edgeBegin];
+              var vertexEndR=srcR[edgeEnd];
+
+              proc xlocal(x:int, low:int, high:int) : bool {
+                if (low <= x && x <= high) {
+                  return true;
+                } 
+                else {
+                  return false;
+                }
+              }
+                      
+              // These steps I do manually here wheras in the BFS
+              // code they are done before the calling of the 
+              // procedure. This is a temporary workaround! 
+              var LF = 1; 
+                      
+              {
+                topdown+=1;
+                forall i in SetCurF with (ref SetNextF) {
+                  // Current edge has the vertex. 
+                  if ((xlocal(i, vertexBegin, vertexEnd)) || (LF == 0)) {
+                    var numNF = nf[i];
+                    var edgeId = sf[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
+                    ref NF = df[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF){
+                      if (depth[j] == -1) {
+                        depth[j] = cur_level+1;
+                        visited[j] = component; 
+                        SetNextF.add(j);
+                      }
+                    }
+                  } 
+                  if ((xlocal(i, vertexBeginR, vertexEndR)) || (LF == 0))  {
+                    var numNF = nfR[i];
+                    var edgeId = sfR[i];
+                    var nextStart = max(edgeId, edgeBegin);
+                    var nextEnd = min(edgeEnd, edgeId+numNF-1);
+                    ref NF = dfR[nextStart..nextEnd];
+                    forall j in NF with (ref SetNextF) {
+                      if (depth[j] == -1) {
+                        depth[j] = cur_level+1;
+                        visited[j] = component; 
+                        SetNextF.add(j);
+                      }
+                    }
+                  }
+                }//end forall
+              } 
+            }//end on loc
+          }//end coforall loc
+          cur_level+=1;
+          numCurF=SetNextF.getSize();
+          SetCurF<=>SetNextF;
+          SetNextF.clear();
+        }//end while  
+        (unvisited,nextVertex)  = depth.find(-1);
+        if (cur_level!=0) {
+              writeln("Component=",component, " diameter=",cur_level, " unvisited=",unvisited," nextVertex=",nextVertex);
+        }
+        // Increase the component number to find the next component, if it exists.
+        component += 1; 
+      } // end outermost while
+
+
+      writeln("Total Number of Component=",component);
+      writeln("Number of iterations = 1");
+
+      return f;
+    }//end of  cc-bfs
+
+
+    // Implementation of a second algorithm for undirected graphs, 
+    // they can be weighted or unweighted. 
+    proc cc_kernel_und_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws { 
+      // Initialize the distributed loop over the locales. All the work is going to be split
+      // amongst how many locales are available in a cluster. 
+      var startVertex: [0..numLocales-1] int = 0;
+      var endVertex: [0..numLocales-1] int = 0;
+      var MaxComponent:int;
+      MaxComponent = 100;
+      var BeyondLevel = MaxComponent*(numLocales+1):int;
+      var ReplaceAry = makeDistArray(MaxComponent*numLocales, atomic int);
+      var depth = makeDistArray(Nv, atomic int);
+
+      proc minLevel(l):int {
+        var repv=ReplaceAry[l].read();
+        if (repv==-1) {
+          return l;
+        } else {
+          return minLevel(repv);
+        }
+      }
+
+      proc updateLevel(l: int, m:int) {
+        var repv=ReplaceAry[l].read();
+        ReplaceAry[l].write(m);
+        while (repv!=-1) {
+          var nextv=ReplaceAry[repv].read();
+          ReplaceAry[repv].write(m);
+          repv=nextv;
+        }
+      }
+
+      coforall loc in Locales {
+        on loc {
+          var low = src.localSubdomain().lowBound; 
+          var high = src.localSubdomain().highBound; 
+
+          //Firstly, we get the vertex based on partitioned edges.
+          startVertex[here.id]=src[low];
+          endVertex[here.id]=src[high];
+          if (here.id==0) {
+            startVertex[0]=0;
+          }
+          if (here.id==numLocales-1){
+            endVertex[numLocales-1]=Nv-1;
+          }
+          //Then, we modify the first and the last vertex 
+        }
+      }
+
+      coforall loc in Locales {
+        on loc {
+          if (here.id <numLocales-1) {
+            if (endVertex[here.id]<=startVertex[here.id+1]) {
+              endVertex[here.id]=startVertex[here.id+1]-1;  
+            }
+          }
+          var cur_level:int;
+          cur_level=here.id*MaxComponent;
+
+          forall i in depth.localSubdomain() {
+            depth[i].write(-1);
+          }
+
+          forall i in ReplaceAry.localSubdomain() {
+            ReplaceAry[i].write(-1);
+          }
+
+          var cur_vertex=startVertex[here.id];
+          var dlow = dst.localSubdomain().lowBound; 
+          var dhigh = dst.localSubdomain().highBound; 
+          var MergedAry:[0..MaxComponent*numLocales-1] int = -1;
+          while (cur_vertex<=endVertex[here.id]) {
+            var depcur=depth[cur_vertex].read();
+            cur_level=here.id*MaxComponent+cur_vertex-startVertex[here.id];
+            if (depcur!=-1 ){
+              cur_level=depcur;
+            }
+            var root = cur_vertex; 
+            
+
+            var SetCurF = new set(int, parSafe=true);
+            var SetNextF = new set(int, parSafe=true);
+
+            SetCurF.add(root); 
+
+	          var numCurF=1:int; 
+
+            while(numCurF > 0) {
+              ref srcf = src; 
+              ref df = dst; 
+              ref nf = nei; 
+              ref sf = start_i; 
+
+              ref srcfR = srcR; 
+              ref dfR = dstR; 
+              ref nfR = neiR; 
+              ref sfR = start_iR;
+
+              forall i in SetCurF with (ref SetNextF) {
+                var numNF = nf[i];
+                var edgeId = sf[i];
+                var nextStart = edgeId;
+                var nextEnd = edgeId+numNF-1;
+                ref NF = df[nextStart..nextEnd];
+                
+                forall j in NF with (ref SetNextF) {
+                  var depj=depth[j].read();
+                  if (depj == -1) {
+                    depth[j].write(cur_level);
+                    if ( (j>=startVertex[here.id]) && (j<=endVertex[here.id])) {
+                      SetNextF.add(j);
+                    }
+                  } 
+                  else {
+                    if ((BeyondLevel*here.id+cur_level !=depj) && (depj!=cur_level)) {
+                      // the visited vertex has been revisited from other component
+                      if (depj>=BeyondLevel) {
+                        depj=mod(depj,BeyondLevel);
+                      }
+                      var prepc=minLevel(cur_level);
+                      var prepj=minLevel(depj);
+                      if (prepc>prepj) {
+                        updateLevel(cur_level,prepj);
+                      } 
+                      else {
+                        if (prepj>prepc) {
+                          updateLevel(depj,prepc);
+                        }
+                      }
+                      depth[j].write(BeyondLevel*here.id+cur_level);
+                    }
+                  }
+                }
+                numNF = nfR[i];
+                edgeId = sfR[i];
+                nextStart = edgeId;
+                nextEnd = edgeId+numNF-1;
+                ref NF2 = dfR[nextStart..nextEnd];
+                forall j in NF2 with (ref SetNextF) {
+                  var depj=depth[j].read();
+                  if (depj == -1) {
+                    depth[j].write(cur_level);
+                    if ((j>=startVertex[here.id]) && (j<=endVertex[here.id])) {
+                      SetNextF.add(j);
+                    }
+                  }
+                  else {
+                    if ((BeyondLevel*here.id+cur_level !=depj) && (depj!=cur_level)) {
+                      // the visited vertex has been revisited from other component
+                      if (depj>=BeyondLevel) {
+                        depj=mod(depj,BeyondLevel);
+                      }  
+                      var prepc=minLevel(cur_level);
+                      var prepj=minLevel(depj);
+                      if (prepc > prepj) {
+                        updateLevel(cur_level,prepj);
+                      } 
+                      else {
+                        if (prepj>prepc) {
+                          updateLevel(depj,prepc);
+                        }
+                      }
+                      depth[j].write(BeyondLevel*here.id+cur_level);
+                    }
+                  }
+                }
+              }//end forall
+              numCurF=SetNextF.size;
+              SetCurF=SetNextF;
+              SetNextF.clear();
+            }//end while 
+            cur_vertex+=1;
+          }//end of visit
+          
+          forall i in depth.localSubdomain() {
+            var tmpvar1=depth[i].read();
+            tmpvar1=mod(tmpvar1,BeyondLevel);
+            var tmpvar2=ReplaceAry[tmpvar1].read();
+            if (tmpvar2!=-1) {
+              var tmpvar3=ReplaceAry[tmpvar2].read();
+              while (tmpvar3!=-1) {
+                tmpvar2=tmpvar3;
+                tmpvar3=ReplaceAry[tmpvar2].read();
+              }
+              depth[i].write(tmpvar2);
+            }
+          }
+        }//end on loc
+      }//end coforall
+      // writeln("Parallel visited = ", depth);
+      return "success";
+    }//end of cc_kernel_und_1
+
+
 
 
     proc cc_fs_atomic_bidirection(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
@@ -3860,100 +4100,6 @@ module CCMsg {
       }
 
 
-      /* 
-      while(!converged) {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-
-
-
-
-              var TmpMin:int;
-              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
-                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
-                     if(TmpMin < f_low[f_low[u].read()].read()) {
-                       f_low[f_low[u].read()].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[f_low[v].read()].read()) {
-                       f_low[f_low[v].read()].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[u].read()) {
-                       f_low[u].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[v].read()) {
-                       f_low[v].write(TmpMin);
-                       count+=1;
-                     }
-              } else {
-                  if ((itera % (JumpSteps*3) !=0) ) {
-                     TmpMin=min(f_low[u].read(),f_low[v].read());
-                     if(TmpMin < f_low[u].read()) {
-                       f_low[u].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[v].read()) {
-                       f_low[v].write(TmpMin);
-                       count+=1;
-                     }
-                  } else {
-                       //if ((itera % (JumpSteps*3) ==0) ) {
-                       TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                       if(TmpMin < f_low[f_low[f_low[u].read()].read()].read()) {
-                         f_low[f_low[f_low[u].read()].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[f_low[f_low[v].read()].read()].read()) {
-                         f_low[f_low[f_low[v].read()].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[f_low[u].read()].read()) {
-                         f_low[f_low[u].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[f_low[v].read()].read()) {
-                         f_low[f_low[v].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[u].read()) {
-                         f_low[u].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[v].read()) {
-                         f_low[v].write(TmpMin);
-                         count+=1;
-                       }
-                  }
-              }
-            }//end of forall
-
-
-
-          }
-        }
-
-        //writeln("After iteration ", itera," f=",f);
-        
-        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
-        if(  (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-      }
-      */
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera-1);
       coforall loc in Locales {
@@ -4073,146 +4219,6 @@ module CCMsg {
         }
         itera += 1;
       }
-      /*
-      while(!converged) {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-
-
-              var TmpMin:int;
-              var oldval:int;
-              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
-                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
-                     oldval=f_low[f_low[u].read()].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[u].read()].read();
-                        }
-                     }
-                     oldval=f_low[f_low[v].read()].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[v].read()].read();
-                        }
-                     }
-                     oldval=f_low[u].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[u].read();
-                        }
-                     }
-                     oldval=f_low[v].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[v].read();
-                        }
-                     }
-              } else {
-                  if ((itera % (JumpSteps*3) !=0) ) {
-                     TmpMin=min(f_low[u].read(),f_low[v].read());
-                     oldval=f_low[u].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[u].read();
-                        }
-                     }
-                     oldval=f_low[v].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[v].read();
-                        }
-                     }
-
-                  } else { 
-                      //if ((itera % (JumpSteps*3) ==0) ) {
-                       TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                       oldval=f_low[f_low[f_low[u].read()].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[f_low[u].read()].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[f_low[u].read()].read()].read();
-                            }
-                       }
-                       oldval=f_low[f_low[f_low[v].read()].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[f_low[v].read()].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[f_low[v].read()].read()].read();
-                            }
-                       }
-                       oldval=f_low[f_low[u].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[u].read()].read();
-                            }
-                       }
-                       oldval=f_low[f_low[v].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[v].read()].read();
-                            }
-                       }
-                       oldval=f_low[u].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[u].read();
-                            }
-                       }
-                       oldval=f_low[v].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[v].read();
-                            }
-                       }
-
-                  } 
-              }
-            }//end of forall
-          }
-        }
-
-        //writeln("After iteration ", itera," f=",f);
-        
-        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
-        if(  (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-      }
-      */
 
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera-1);
@@ -4716,23 +4722,6 @@ module CCMsg {
                 }//end of forall
 
 
-                /*
-                // here we update the neighbor area with the same vertex ID
-                if (here.id>0) {
-                 if ( (a_nei[here.id-1].DO.highBound >=vertexBegin) && (a_nei[here.id-1].DO.lowBound <=vertexBegin)) {
-                      if (f1_next[here.id-1].A[vertexBegin]>f1_next[here.id].A[vertexBegin]) {
-                            f1_next[here.id-1].A[vertexBegin]=f1_next[here.id].A[vertexBegin];
-                      }
-                 }
-                }
-                if (here.id<numLocales-1) {
-                 if ( (a_nei[here.id+1].DO.lowBound <=vertexEnd) && (a_nei[here.id+1].DO.highBound >=vertexEnd) ) {
-                      if (f1_next[here.id+1].A[vertexEnd]>f1_next[here.id].A[vertexEnd]) {
-                            f1_next[here.id+1].A[vertexEnd]=f1_next[here.id].A[vertexEnd];
-                      }
-                 }
-                }
-                */
 
 
 
@@ -4775,269 +4764,22 @@ module CCMsg {
 
 
 
-    var timer:stopwatch;
-    // We only care for undirected graphs, they can be weighted or unweighted. 
-    var f1 = makeDistArray(Nv, int);
-    var f2 = makeDistArray(Nv, int);
-    var f3 = makeDistArray(Nv, int);
-    var f4 = makeDistArray(Nv, int);
-    var f5 = makeDistArray(Nv, int);
-    var f6 = makeDistArray(Nv, int);
-    var f7 = makeDistArray(Nv, int);
-    var f8 = makeDistArray(Nv, int);
-    var f9 = makeDistArray(Nv, int);
-    if (Directed == 0) {
-
-        timer.clear();
-        timer.start(); 
-        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
-                                toSymEntry(ag.getSTART_IDX(), int).a, 
-                                toSymEntry(ag.getSRC(), int).a, 
-                                toSymEntry(ag.getDST(), int).a, 
-                                toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                                toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                                toSymEntry(ag.getSRC_R(), int).a, 
-                                toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-
-
-        timer.clear();
-        timer.start();
-        f2 = cc_connectit(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f3 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for 1m1m cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
 
 
-        timer.clear();
-        timer.start();
-        f4 = cc_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f5 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
 
 
-        timer.clear();
-        timer.start();
-        f6 = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
-        timer.clear();
-        timer.start();
-        f7 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for   11mm  cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        timer.clear();
-        timer.start();
-        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        timer.clear();
-        timer.start();
-        f9 = cc_ups(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for ups cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        /*
-        f5=f1;
-        f6=f1;
 
-        if (ag.hasA_START_IDX()) {
-                       timer.clear();
-                       timer.start();
-                       f5=cc_fs_aligned0(
-                           toSymEntry(ag.getNEIGHBOR(), int).a,
-                           toSymEntry(ag.getSTART_IDX(), int).a,
-                           toSymEntry(ag.getSRC(), int).a,
-                           toSymEntry(ag.getDST(), int).a,
-                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                           toSymEntry(ag.getSTART_IDX_R(), int).a,
-                           toSymEntry(ag.getSRC_R(), int).a,
-                           toSymEntry(ag.getDST_R(), int).a,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
-                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
-                           toDomArraySymEntry(ag.getA_DST_R()).domary);
-                       timer.stop();
-                       outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
-                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                       timer.clear();
-                       timer.start();
-                       f6=cc_fs_aligned1(
-                           toSymEntry(ag.getNEIGHBOR(), int).a,
-                           toSymEntry(ag.getSTART_IDX(), int).a,
-                           toSymEntry(ag.getSRC(), int).a,
-                           toSymEntry(ag.getDST(), int).a,
-                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                           toSymEntry(ag.getSTART_IDX_R(), int).a,
-                           toSymEntry(ag.getSRC_R(), int).a,
-                           toSymEntry(ag.getDST_R(), int).a,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
-                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
-                           toDomArraySymEntry(ag.getA_DST_R()).domary);
-                       timer.stop();
-                       outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
-                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        }
-        */
-        coforall loc in Locales {
-          on loc {
-            var vertexStart = f1.localSubdomain().lowBound;
-            var vertexEnd = f1.localSubdomain().highBound;
-            forall i in vertexStart..vertexEnd {
-              //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
-              if ((f1[i] != f2[i]) ) {
-                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ((f1[i] != f3[i]) ) {
-                var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f4[i]) ) {
-                var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f5[i]) ) {
-                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f6[i]) ) {
-                var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f7[i]) ) {
-                var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f8[i]) ) {
-                var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f9[i]) ) {
-                var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-            }
-          }
-        } 
 
-    }
-    
-    // The message that is sent back to the Python front-end. 
-    var comps = new set(int);
 
-    for x in f2 {
-      comps.add(x);
-    }
-
-    var num_comps = makeDistArray(numLocales, int); 
-    num_comps[0] = comps.size;
-    proc return_CC(ary:[?d] int): string throws {
-      CCName = st.nextName();
-      var CCEntry = new shared SymEntry(ary);
-      st.addEntry(CCName, CCEntry);
-
-      var CCMsg =  'created ' + st.attrib(CCName);
-      return CCMsg;
-    }
-
-    var repMsg = return_CC(num_comps);
-    return new MsgTuple(repMsg, MsgType.NORMAL);
-  }
-
-  use CommandMap;
-  registerFunction("segmentedGraphCC", segCCMsg,getModuleName());
-}
+*/
