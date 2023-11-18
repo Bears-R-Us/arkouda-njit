@@ -41,6 +41,7 @@ module CCMsg {
   var  ORDERH:int=512;
   const LargeScale=1000000;
   const LargeEdgeEfficiency=100;
+  const MultiLocale=1;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -431,8 +432,9 @@ module CCMsg {
                  return ru;
           } else {
                     var g_u=parents[p_ru].read();
-                    if (p_ru!=g_u) {
+                    while (p_ru>g_u) {
                          parents[ru].compareAndSwap(p_ru,g_u);
+                         p_ru=parents[ru].read();
                     }
                     ru=g_u;
                     p_ru = parents[ru].read();
@@ -799,7 +801,7 @@ module CCMsg {
       var converged:bool=false;
       var itera:int=1;
 
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            coforall loc in Locales {
                 on loc {
@@ -1066,7 +1068,7 @@ module CCMsg {
       var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
            coforall loc in Locales {
                 on loc {
                     forall i in f.localSubdomain() {
@@ -1233,7 +1235,7 @@ module CCMsg {
       var localtimer:stopwatch;
       var myefficiency:real;
       var executime:real;
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            coforall loc in Locales {
                 on loc {
@@ -1441,7 +1443,7 @@ module CCMsg {
       var myefficiency:real;
       var executime:real;
 
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            coforall loc in Locales {
               on loc {
@@ -1695,7 +1697,7 @@ module CCMsg {
       var executime:real;
 
 
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            coforall loc in Locales {
               on loc {
@@ -2000,7 +2002,7 @@ module CCMsg {
       var executime:real;
 
 
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            coforall loc in Locales {
               on loc {
@@ -2322,7 +2324,7 @@ module CCMsg {
       var myefficiency:real;
       var executime:real;
       var converged:bool=false;
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            coforall loc in Locales {
                 on loc {
@@ -2400,7 +2402,7 @@ module CCMsg {
                                     lconverged = false;
                                     lcount=0;
                                     forall i in 0..Nv-1 {
-                                        localf[i].write(localfu[i].read());
+                                        localf[i]=localfu[i].read();
                                     }
                                 }
                                 litera+=1;
@@ -2547,7 +2549,7 @@ module CCMsg {
       var count1:int=0;
 
 
-      if (numLocales>1) {
+      if (numLocales>1 && MultiLocale==1) {
 
            while( (!converged) ) {
              // In the second step, we employ high order mapping
@@ -2594,8 +2596,9 @@ module CCMsg {
 
                                 writeln("Converge local ------------------------------------------");
                                 forall i in 0..Nv-1 with (+ reduce count) {
-                                    if f[i]>localf_low[i].read() {
-                                        f[i]=localf_low[i].read();
+                                    var val=localf_low[i].read();
+                                    if f[i]>val {
+                                        f[i]=val;
                                         count+=1;
                                     }
                                 }
@@ -2641,7 +2644,7 @@ module CCMsg {
                     }
                     oldx=f_low[u].read();
               }
-              l=find_naive_atomic(v,f_low);
+              //l=find_naive_atomic(v,f_low);
               oldx=f_low[v].read();
               while (oldx>l) {
                     if (f_low[v].compareAndSwap(oldx,l)) {
@@ -2694,18 +2697,6 @@ module CCMsg {
           var vertexEnd = l.localSubdomain().highBound;
           forall i in vertexBegin..vertexEnd {
             l[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <l[i] ) {
-                     l[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <l[i] ) {
-                     l[i]=tmpv;
-                }
-            }
             lu[i].write(l[i]);
           }
         }
@@ -2734,8 +2725,7 @@ module CCMsg {
       var converged:bool = false;
       var itera = 1;
 
-      if (numLocales>1) {
-
+      if (numLocales>1 && MultiLocale==1) {
            while (!converged)  {
              localtimer.clear();
              localtimer.start(); 
@@ -2750,7 +2740,7 @@ module CCMsg {
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
                                  locall[i]=l[i];
-                                 locallu.write(locall[i]);
+                                 locallu[i].write(locall[i]);
                              }
                              while (!lconverged) {
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
@@ -2788,6 +2778,7 @@ module CCMsg {
                                         src2[2*x+1]=v;
                                         dst2[2*x+1]=u;
                                     }
+                                    //writeln("2 Myid=",here.id," <",u,",",v,">-><",src2[2*x+1],",",dst2[2*x+1],">", " L[",u,"]=",locall[u]," L[",v,"]=",locall[v], " Lu[",v,"]=",locallu[v].read());
 
                                 }//end forall
                                 writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
@@ -2797,12 +2788,19 @@ module CCMsg {
                                 else {
                                     lconverged = false;
                                     lcount=0;
+                                    forall x in 0..Nv-1    {
+                                         var val=locallu[x].read();
+                                         if locall[x]>val {
+                                             locall[x]=val;
+                                         }
+                                    }
                                 }
                                 litera+=1;
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall x in 0..Nv-1 with (+ reduce count)   {
-                                         var val=locallu[x].read();
+                                         var val=locall[x];
+                                         //writeln("After Myid=",here.id," Locall[",x,"]=",val," Global[",x,"]=",l[x]);
                                          if l[x] >val {
                                              l[x]=val;
                                              count+=1;
@@ -3057,38 +3055,45 @@ module CCMsg {
             var vertexStart = f1.localSubdomain().lowBound;
             var vertexEnd = f1.localSubdomain().highBound;
             forall i in vertexStart..vertexEnd {
-              //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
               if ((f1[i] != f2[i]) ) {
                 var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f2[",i,"]=",f2[i]);
               }
               if ((f1[i] != f3[i]) ) {
                 var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f3[",i,"]=",f3[i]);
               }
               if ( (f1[i]!=f4[i]) ) {
                 var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f4[",i,"]=",f4[i]);
               }
               if ( (f1[i]!=f5[i]) ) {
                 var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f5[",i,"]=",f5[i]);
               }
               if ( (f1[i]!=f6[i]) ) {
                 var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f6[",i,"]=",f6[i]);
               }
               if ( (f1[i]!=f7[i]) ) {
                 var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f7[",i,"]=",f7[i]);
               }
               if ( (f1[i]!=f8[i]) ) {
                 var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f8[",i,"]=",f8[i]);
               }
               if ( (f1[i]!=f9[i]) ) {
                 var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f9[",i,"]=",f9[i]);
               }
             }
           }
