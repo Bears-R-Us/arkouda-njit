@@ -879,9 +879,9 @@ module CCMsg {
                                     }
                                 }
                                 localf=localfu;
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -1127,9 +1127,9 @@ module CCMsg {
                                         }
 
                                 }
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -1320,9 +1320,9 @@ module CCMsg {
 
 
                                 }// forall
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -1524,9 +1524,9 @@ module CCMsg {
                                     }
                    
                                 }//end of forall
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -1784,9 +1784,9 @@ module CCMsg {
                                         }
                    
                                 }
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -1822,9 +1822,9 @@ module CCMsg {
                                     }
                    
                                 }//end of forall
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -2122,9 +2122,9 @@ module CCMsg {
                                     }
                    
                                 }//end of forall
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -2438,9 +2438,9 @@ module CCMsg {
                                         }
 
                                 }//forall
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
@@ -2841,9 +2841,9 @@ module CCMsg {
                                     //writeln("2 Myid=",here.id," <",u,",",v,">-><",src2[2*x+1],",",dst2[2*x+1],">", " L[",u,"]=",locall[u]," L[",v,"]=",locall[v], " Lu[",v,"]=",locallu[v].read());
 
                                 }//end forall
-                                writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 }
                                 else {
                                     lconverged = false;
