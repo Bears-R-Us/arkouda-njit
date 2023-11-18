@@ -2374,6 +2374,7 @@ module CCMsg {
                 on loc {
                     forall i in f.localSubdomain() {
                          af[i].write(i);
+                         f[i]=i;
                     }
                 }
            }
@@ -2392,7 +2393,7 @@ module CCMsg {
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
                                  localf[i]=af[i].read();
-                                 localfu[i].write(f[i]);
+                                 localfu[i].write(localf[i]);
                              }
                              while (!lconverged) {
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
@@ -2454,7 +2455,7 @@ module CCMsg {
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
                                  var old=af[i].read();
-                                 var newval=localf[i];
+                                 var newval=localfu[i].read();
                                  while old>newval {
                                      af[i].compareAndSwap(old,newval);
                                      old=af[i].read();
@@ -2589,6 +2590,7 @@ module CCMsg {
           forall i in vertexBegin..vertexEnd {
             f_low[i].write(i);
             f[i]=i;
+            af[i].write(i);
           }
         }
       }
