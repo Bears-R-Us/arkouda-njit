@@ -2454,7 +2454,7 @@ module CCMsg {
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
                                  var old=af[i].read();
-                                 var newval=localf[i].read();
+                                 var newval=localf[i];
                                  while old>newval {
                                      af[i].compareAndSwap(old,newval);
                                      old=af[i].read();
