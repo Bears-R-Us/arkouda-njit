@@ -2660,7 +2660,8 @@ module CCMsg {
       }
 
 
-      writeln("Number of iterations = ", itera);
+      //writeln("Number of iterations = ", itera);
+      itera+=1;
       coforall loc in Locales {
         on loc {
           forall i in f.localSubdomain() {
@@ -2670,6 +2671,7 @@ module CCMsg {
       }
       }
 
+      writeln("Number of iterations = ", itera-1);
       return f;
     }
 
