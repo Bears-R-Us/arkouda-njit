@@ -876,7 +876,7 @@ module CCMsg {
                                               lcount+=1;
                                     }
                                 }
-
+                                localf=localfu;
                                 writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
                                 if( (lcount==0) ) {
                                     lconverged = true;
