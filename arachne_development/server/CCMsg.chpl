@@ -791,6 +791,8 @@ module CCMsg {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var f_low = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+
       var gf = makeDistArray(Nv, int);
       var dup = makeDistArray(Nv, int);
       var diff = makeDistArray(Nv, int);
@@ -806,7 +808,7 @@ module CCMsg {
            coforall loc in Locales {
                 on loc {
                     forall i in f.localSubdomain() {
-                         f[i] = i;
+                         af[i].write(i);
                     }
                 }
            }
@@ -823,7 +825,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i]=f[i];
+                                 localf[i]=af[i].read();
                              }
                              var localfu=localf;
                              while (!lconverged) {
@@ -889,8 +891,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localfu[i] {
-                                     f[i]=localfu[i];
+                                 var old=af[i].read();
+                                 var newval=localfu[i];
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -910,6 +915,9 @@ module CCMsg {
                  writeln(" outter iteration=", itera);
 
            }//while
+           forall i in 0..Nv-1 with (+ reduce count) {
+                 f[i]=af[i].read();
+           }
 
       } else {
       // Initialize f and f_low in distributed memory.
@@ -1061,6 +1069,7 @@ module CCMsg {
     proc cc_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
       var converged:bool = false;
       var count:int=0;
       var count1:int=0;
@@ -1072,7 +1081,7 @@ module CCMsg {
            coforall loc in Locales {
                 on loc {
                     forall i in f.localSubdomain() {
-                         f[i] = i;
+                         af[i].write(i);
                     }
                 }
            }
@@ -1089,7 +1098,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i].write(f[i]);
+                                 localf[i].write(af[i].read());
                              }
                              while (!lconverged) {
 
@@ -1130,8 +1139,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localf[i].read() {
-                                     f[i]=localf[i].read();
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -1151,6 +1163,9 @@ module CCMsg {
                  writeln(" outter iteration=", itera);
 
            }//while
+           forall i in 0..Nv-1 with (+ reduce count) {
+                 f[i]=af[i].read();
+           }
       } else {
       // Initialize f and f_low in distributed memory.
           coforall loc in Locales {
@@ -1229,6 +1244,7 @@ module CCMsg {
     proc cc_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
       var converged:bool = false;
       var count:int=0;
       var itera = 1;
@@ -1240,7 +1256,7 @@ module CCMsg {
            coforall loc in Locales {
                 on loc {
                     forall i in f.localSubdomain() {
-                         f[i] = i;
+                         af[i].write(i);
                     }
                 }
            }
@@ -1257,7 +1273,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i].write(f[i]);
+                                 localf[i].write(af[i].read());
                              }
                              while (!lconverged) {
                                 forall x in src.localSubdomain()  with ( + reduce lcount)  {
@@ -1316,8 +1332,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localf[i].read() {
-                                     f[i]=localf[i].read();
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -1337,6 +1356,9 @@ module CCMsg {
                  writeln(" outter iteration=", itera);
 
            }//while
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
 
       } else {
 
@@ -1436,6 +1458,7 @@ module CCMsg {
     proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
       var converged:bool = false;
       var itera = 1;
       var count:int=0;
@@ -1448,7 +1471,7 @@ module CCMsg {
            coforall loc in Locales {
               on loc {
                 forall i in f.localSubdomain() {
-                  f[i] = i;
+                  af[i].write(i);
                 }
               }
            }
@@ -1471,7 +1494,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i].write(f[i]);
+                                 localf[i].write(af[i].read());
                              }
                              while (!lconverged) {
 
@@ -1513,8 +1536,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localf[i].read() {
-                                     f[i]=localf[i].read();
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -1536,6 +1562,9 @@ module CCMsg {
 
            }//while
 
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
       } else {
 
 
@@ -1689,6 +1718,7 @@ module CCMsg {
     proc cc_11mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv,atomic int); 
       var converged:bool = false;
       var itera = 1;
       var count:int=0;
@@ -1702,7 +1732,7 @@ module CCMsg {
            coforall loc in Locales {
               on loc {
                 forall i in f.localSubdomain() {
-                  f[i] = i;
+                  af[i].write(i);
                 }
               }
            }
@@ -1725,7 +1755,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i].write(f[i]);
+                                 localf[i].write(af[i].read());
                              }
                              while (!lconverged && litera<FirstOrderIters) {
 
@@ -1804,8 +1834,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localf[i].read() {
-                                     f[i]=localf[i].read();
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -1827,6 +1860,9 @@ module CCMsg {
 
            }//while
 
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
       } else {
 
           localtimer.clear();
@@ -1993,6 +2029,7 @@ module CCMsg {
     proc cc_1m1m(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv,atomic int); 
 
       var converged:bool = false;
       var itera = 1;
@@ -2007,7 +2044,7 @@ module CCMsg {
            coforall loc in Locales {
               on loc {
                 forall i in f.localSubdomain() {
-                  f[i] = i;
+                  af[i].write(i);
                 }
               }
            }
@@ -2030,7 +2067,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i].write(f[i]);
+                                 localf[i].write(af[i].read());
                              }
                              while (!lconverged ) {
 
@@ -2097,8 +2134,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localf[i].read() {
-                                     f[i]=localf[i].read();
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -2119,6 +2159,9 @@ module CCMsg {
 
            }//while
 
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
       } else {
 
 
@@ -2316,6 +2359,7 @@ module CCMsg {
     proc cc_syn(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
       var f_low = makeDistArray(Nv, int); 
 
       var count:int=0;
@@ -2329,7 +2373,7 @@ module CCMsg {
            coforall loc in Locales {
                 on loc {
                     forall i in f.localSubdomain() {
-                         f[i] = i;
+                         af[i].write(i);
                     }
                 }
            }
@@ -2347,7 +2391,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 localf[i]=f[i];
+                                 localf[i]=af[i].read();
                                  localfu[i].write(f[i]);
                              }
                              while (!lconverged) {
@@ -2409,8 +2453,11 @@ module CCMsg {
                              }// while
                              writeln("Converge local ------------------------------------------");
                              forall i in 0..Nv-1 with (+ reduce count) {
-                                 if f[i]>localfu[i].read() {
-                                     f[i]=localfu[i].read();
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
                                      count+=1;
                                  }
                              }
@@ -2431,6 +2478,9 @@ module CCMsg {
 
            }//while
 
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
       } else {
 
       coforall loc in Locales {
@@ -2525,6 +2575,7 @@ module CCMsg {
     proc cc_connectit(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
       var f_low = makeDistArray(Nv, atomic int); 
       var localtimer:stopwatch;
       var myefficiency:real;
@@ -2564,7 +2615,7 @@ module CCMsg {
                                 var litera = 1;
                                 var lcount:int=0;
                                 forall i in 0..Nv-1 {
-                                    localf_low[i].write(f[i]);
+                                    localf_low[i].write(af[i].read());
                                 }
 
                                 forall x in src.localSubdomain()    {
@@ -2596,9 +2647,11 @@ module CCMsg {
 
                                 writeln("Converge local ------------------------------------------");
                                 forall i in 0..Nv-1 with (+ reduce count) {
-                                    var val=localf_low[i].read();
-                                    if f[i]>val {
-                                        f[i]=val;
+                                    var old=af[i].read();
+                                    var newval=localf_low[i].read();
+                                    while old>newval {
+                                        af[i].compareAndSwap(old,newval);
+                                        old=af[i].read();
                                         count+=1;
                                     }
                                 }
@@ -2619,6 +2672,9 @@ module CCMsg {
 
            }//while
 
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
       } else {
 
       {
@@ -2683,6 +2739,7 @@ module CCMsg {
     proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
       // Initialize the parent vectors f that will form stars. 
       var l = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
       var src2 = makeDistArray(Ne*2, int); 
       var dst2 = makeDistArray(Ne*2, int); 
       var localtimer:stopwatch;
@@ -2700,6 +2757,7 @@ module CCMsg {
           forall i in vertexBegin..vertexEnd {
             l[i] = i;
             lu[i].write(l[i]);
+            af[i].write(l[i]);
           }
         }
       }
@@ -2741,7 +2799,7 @@ module CCMsg {
                              var litera = 1;
                              var lcount:int=0;
                              forall i in 0..Nv-1 {
-                                 locall[i]=l[i];
+                                 locall[i]=af[i].read();
                                  locallu[i].write(locall[i]);
                              }
                              while (!lconverged) {
@@ -2800,13 +2858,14 @@ module CCMsg {
                                 litera+=1;
                              }// while
                              writeln("Converge local ------------------------------------------");
-                             forall x in 0..Nv-1 with (+ reduce count)   {
-                                         var val=locall[x];
-                                         //writeln("After Myid=",here.id," Locall[",x,"]=",val," Global[",x,"]=",l[x]);
-                                         if l[x] >val {
-                                             l[x]=val;
-                                             count+=1;
-                                         }
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=locall[i];
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
                              }
 
                      }// end of on loc 
@@ -2825,6 +2884,9 @@ module CCMsg {
 
            }//while
 
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    l[i]=af[i].read();
+           }
       } else {
 
 
