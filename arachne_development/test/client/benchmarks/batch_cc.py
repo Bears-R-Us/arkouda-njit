@@ -52,6 +52,7 @@ def time_ak_cc():
             [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.mtx"],\
             [14855842,456626,2,0,HomeDir+"Adata/SNAP/higgs-twitter.mtx"],\
             [19753078,1634989,2,0,HomeDir+"Adata/SNAP/wikipedia-20051105.mtx"],\
+            [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.mtx"],\
             [117185083,3072441,2,0,HomeDir+"Adata/SNAP/com-Orkut.mtx"],\
             ]
@@ -71,8 +72,6 @@ def time_ak_cc():
             [12582869,4194304,2,0,HomeDir+"Adata/Delaunay/delaunay_n22/delaunay_n22.mtx"],\
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx"],\
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx"],\
-            ]
-    MtxOther=[[28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             ]
     BigMtxFile=[ 
             [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx"],\
@@ -157,17 +156,6 @@ def time_ak_cc():
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
 #        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        Graph=methods.read_matrix_market_file( str(FileName),False,False)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
-    for i in MtxOther:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
-        FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-#        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
         Graph=methods.read_matrix_market_file( str(FileName),False,False)
         cc = njit.graph_cc(Graph)
         print("Number of components=",cc)
