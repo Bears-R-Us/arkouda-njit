@@ -36,14 +36,12 @@ module CCMsg {
   var tmpmindegree=start_min_degree;
 
   const JumpSteps=6;
-  //const FirstOrderIters=4;
-  //const SecondOrderIters=7;
-  //const ORDERH=128;
   const FirstOrderIters=4;
   const SecondOrderIters=6;
   var  ORDERH:int=512;
   const LargeScale=1000000;
   const LargeEdgeEfficiency=100;
+  const MultiLocale=1;
 
   private proc xlocal(x :int, low:int, high:int):bool {
     return low<=x && x<=high;
@@ -85,6 +83,3171 @@ module CCMsg {
     // Get our graph information. 
     var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
     var ag = gEntry.graph;
+
+
+
+
+    // Third implemention of the fast shiloach-vishkin algorithm for connected components proposed 
+    // by Yongzhe Zhang, Ariful Azad, and Zhenjiang Hu.
+    proc cc_fast_sv(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_low = makeDistArray(Nv, int); 
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+      forall i in 0..Nv-1 {
+        f[i] = i;
+        f_low[i] = i;
+      }
+
+      // writeln("$$$$$ Iteration 0 $$$$$");
+      // writeln("f               = ", f);
+      // writeln("f_low          = ", f_low);
+
+      var converged = false;
+      var gf = f;
+      var itera = 1;
+      while(!converged) {
+        localtimer.clear();
+        localtimer.start(); 
+        // Duplicate of gf.
+        var dup = gf;
+
+        // Stochastic hooking.
+        // writeln("Stochastic hooking:");
+        forall x in 0..Ne-1 {
+          // Get edges from src, dst, srcR, and dstR.
+          var u = src[x];
+          var v = dst[x];
+
+          var uf = srcR[x];
+          var vf = dstR[x];
+          
+          if(f[f[v]] < f_low[f[u]]) {
+            // writeln("inner u v = ", u, " ", v);
+            f_low[f[u]] = f[f[v]];
+          }
+
+          if(f[f[vf]] < f_low[f[uf]]) {
+            // writeln("inner uf vf = ", uf, " ", vf);
+            f_low[f[uf]] = f[f[vf]];
+          }
+        }
+        // writeln();
+
+        // Aggresive hooking.
+        // writeln("Aggresive hooking:");
+        forall x in 0..Ne-1 {
+          var u = src[x];
+          var v = dst[x];
+
+          var uf = srcR[x];
+          var vf = dstR[x];
+
+          if(f[f[v]] < f_low[u]) {
+            // writeln("inner u v = ", u, " ", v);
+            f_low[u] = f[f[v]];
+          }
+
+          if(f[f[vf]] < f_low[uf]) {
+            // writeln("inner uf vf = ", uf, " ", vf);
+            f_low[uf] = f[f[vf]];
+          }
+        }
+        // writeln();
+
+        // Shortcutting.
+        // writeln("Shortcutting:");
+        forall u in 0..Nv-1 {
+          if(f[f[u]] < f_low[u]) {
+            // writeln("inner u v = ", u, " ", v);
+            f_low[u] = f[f[u]];
+          }
+        }
+        // writeln();
+
+        // writeln("$$$$$ Iteration ", itera," $$$$$");
+        // writeln("f               = ", f);
+        // writeln("f_low          = ", f_low);
+        
+        f = f_low; 
+
+        // Recompute gf.
+        forall x in 0..Nv-1 {
+          gf[x] = f[f[x]];
+        }
+
+        // Check if gf converged.
+        var diff = makeDistArray(Nv, int);
+        forall x in 0..Nv-1 {
+          diff[x] = gf[x] - dup[x];
+        }
+        var sum = + reduce diff;
+
+        // writeln("sum = ", sum);
+
+        if(sum == 0) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        writeln("Efficiency is ", myefficiency, " time is ",executime);
+      }
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+
+    inline proc find_split(u:int,  parents:[?D1] int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                parents[i]= w;
+                i = v;
+          }
+      }
+      return v;
+    }
+
+    inline proc find_naive(u:int,  parents:[?D1] int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                //parents[i]= w;
+                i = v;
+          }
+      }
+      return v;
+    }
+
+    inline proc find_naive_atomic(u:int,  parents:[?D1] atomic int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                //parents[i]= w;
+                i = v;
+          }
+      }
+      return v;
+    }
+
+
+
+    inline proc find_split_atomic(u:int,  parents:[?D1] atomic int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                parents[i].write(w);
+                i = v;
+          }
+      }
+      return v;
+    }
+
+
+    inline proc find_split_h(u:int,  parents:[?D1] int, h:int):int {
+       var  t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i];
+          w = parents[v];
+          if (v <= w) {
+                break;
+          } else {
+                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
+                parents[i]= w;
+                i = v;
+          }
+          t=t+1;
+      }
+      return v;
+    }
+    inline proc find_split_atomic_h(u:int,  parents:[?D1] atomic int, h:int):int {
+       var t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                parents[i].compareAndSwap(v, w);
+                i = v;
+          }
+          t=t+1;
+      }
+      return v;
+    }
+
+    proc find_half(u:int,  parents:[?D1] int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                parents[i]= w;
+                i = parents[i];
+          }
+       }
+       return v;
+    }
+    proc find_half_h(u:int,  parents:[?D1] int,h:int):int {
+       var t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i];
+          w = parents[v];
+          if (v == w) {
+                break;
+          } else {
+                parents[i]= w;
+                i = parents[i];
+          }
+          t=t+1;
+       }
+       return v;
+    }
+
+    proc find_half_atomic_h(u:int,  parents:[?D1] atomic int,h:int):int {
+       var t=0;
+       var i=u;
+       var v,w:int;
+       while (t<h) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                parents[i].compareAndSwap(v, w);
+                i = parents[i].read();
+          }
+          t=t+1;
+       }
+       return v;
+    }
+
+
+    proc find_half_atomic(u:int,  parents:[?D1] atomic int):int {
+       var i=u;
+       var v,w:int;
+       while (1) {
+          v = parents[i].read();
+          w = parents[v].read();
+          if (v == w) {
+                break;
+          } else {
+                parents[i].compareAndSwap(v, w);
+                i = parents[i].read();
+          }
+       }
+       return v;
+    }
+
+
+
+    proc unite(u:int, v:int,  parents:[?D1] int):int {
+       var rx=u;
+       var ry=v;
+       var p_ry = parents[ry];
+       var p_rx = parents[rx];
+       while (p_ry!=p_rx){
+          if (p_rx > p_ry) {
+               rx<=>ry;
+               p_rx<=> p_ry;
+          }
+          if (ry == p_ry ) {
+                 parents[ry]= p_rx;
+                 while (parents[parents[u]]<parents[u]) {
+                      parents[u]=parents[parents[u]];
+                 }
+                 while (parents[parents[v]]<parents[v]) {
+                      parents[v]=parents[parents[v]];
+                 }
+                 //compress(x, parents);
+                 //compress(y, parents);
+                 return rx;
+          } else {
+                    //rx = splice(rx, ry, parents);
+                    parents[ry]= p_ry;
+          }
+          p_ry = parents[ry];
+          p_rx = parents[rx];
+       }
+       return rx;
+    }
+
+
+
+    proc unite_atomic(u:int, v:int,  parents:[?D1] atomic int):int {
+       var ru=u;
+       var rv=v;
+       var p_rv = parents[rv].read() ;
+       var p_ru = parents[ru].read();
+       while (p_rv!=p_ru) {
+          if (p_ru < p_rv) {
+               ru<=>rv;
+               p_ru<=> p_rv;
+          }
+
+          if ( (ru == p_ru) && (parents[ru].compareAndSwap(p_ru,p_rv) ) ) {
+                 return ru;
+          } else {
+                    var g_u=parents[p_ru].read();
+                    while (p_ru>g_u) {
+                         parents[ru].compareAndSwap(p_ru,g_u);
+                         p_ru=parents[ru].read();
+                    }
+                    ru=g_u;
+                    p_ru = parents[ru].read();
+          }
+       }
+       return ru;
+    }
+
+
+
+    // Contour: a minimum mapping based connected components algorithm, a mixed method
+    proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+
+      localtimer.clear();
+      localtimer.start(); 
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+
+      localtimer.stop(); 
+      executime=localtimer.elapsed();
+      myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+
+      var converged:bool = false;
+      var itera = 1;
+      var count:int=0;
+      //we first check with order=1 mapping method
+      while( (!converged) && (itera<FirstOrderIters) && 
+               ( (Ne/here.numPUs() < LargeScale) )) {
+        localtimer.clear();
+        localtimer.start(); 
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+
+                         var TmpMin:int;
+                         TmpMin=min(f[u],f[v]);
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count=count+1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count=count+1;
+                         }
+                  
+            }//end of forall
+          }
+        }
+
+
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+          count=0;
+        }
+        itera += 1;
+        writeln("My Order is 1"); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+      }
+
+
+
+
+      if (Ne/here.numPUs() < LargeScale) {
+           ORDERH=2;
+      }else {
+           ORDERH=1024;
+      }  
+      // then we use 1m1m method
+      while( (!converged) ) {
+        localtimer.clear();
+        localtimer.start(); 
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+
+                         var TmpMin:int;
+                         TmpMin=min(f[u],f[v]);
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count=count+1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count=count+1;
+                         }
+                  
+            }//end of forall
+          }
+        }
+
+
+        itera += 1;
+        //writeln("My Order is 1"); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+        if( (count==0) ) {
+          converged = true;
+          continue;
+        }
+        else {
+          converged = false;
+          count=0;
+        }
+
+        // In the second step, we employ high order mapping
+        localtimer.clear();
+        localtimer.start(); 
+        if (ORDERH==2) {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+
+                  TmpMin=min(f[f[u]],f[f[v]]);
+                  if(TmpMin < f[f[u]]) {
+                     f[f[u]] = TmpMin;
+                  }
+                  if(TmpMin < f[f[v]]) {
+                     f[f[v]] = TmpMin;
+                  }
+                  if(TmpMin < f[u]) {
+                    f[u] = TmpMin;
+                  }
+                  if(TmpMin < f[v]) {
+                    f[v] = TmpMin;
+                  }
+                }//end of forall
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        } 
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+        } else {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+                  if (itera==1) {
+                      TmpMin=min(u,v);
+                  } else{
+                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
+                  }
+                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
+                      var myx=u;
+                      var lastx=u;
+                      while (f[myx] >TmpMin ) {
+                          lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                      myx=v;
+                      while (f[myx] >TmpMin ) {
+                          lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                  }
+                  
+                }//end of forall
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                        count=1;
+                    } 
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+
+        }
+
+
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+          count=0;
+        }
+        itera += 1;
+        writeln("My Order is ",ORDERH); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+      }
+
+
+
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    // union-find
+    proc cc_unionfind(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+
+      // Initialize f and f_low in distributed memory.
+
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+
+
+      var converged:bool = false;
+      var itera = 1;
+      {
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+              unite(u,v,f);
+            }//end of forall
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+              var l=find_half(u,f);
+              var t=u;
+              var ft=f[t];
+              while (f[t]>l) {
+                  ft=f[t];
+                  f[t]=l;
+                  t=ft;
+              }
+              l=find_half(v,f);
+              t=v;
+              while (f[t]>l) {
+                  ft=f[t];
+                  f[t]=l;
+                  t=ft;
+              }
+            }//end of forall
+          }
+        }
+      }
+      writeln("Number of iterations = ", itera);
+
+      return f;
+    }
+
+
+
+
+
+
+    // Fourth implemention of the fast shiloach-vishkin algorithm for connected components proposed 
+    // by Yongzhe Zhang, Ariful Azad, and Zhenjiang Hu. Made to be distributed.
+    proc cc_fast_sv_dist(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var f_low = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+
+      var gf = makeDistArray(Nv, int);
+      var dup = makeDistArray(Nv, int);
+      var diff = makeDistArray(Nv, int);
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+      var count:int=0;
+      var converged:bool=false;
+      var itera:int=1;
+
+      if (numLocales>1 && MultiLocale==1) {
+
+           coforall loc in Locales {
+                on loc {
+                    forall i in f.localSubdomain() {
+                         af[i].write(i);
+                    }
+                }
+           }
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1] int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i]=af[i].read();
+                             }
+                             var localfu=localf;
+                             while (!lconverged) {
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    if localfu[localf[u]]>localf[localf[v]] {
+                                         localfu[localf[u]]=localf[localf[v]];
+                                         lcount+=1;
+                                    }
+                                }
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    if localfu[localf[v]]>localf[localf[u]] {
+                                         localfu[localf[v]]=localf[localf[u]];
+                                         lcount+=1;
+                                    }
+                                }
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    if localfu[u]>localf[localf[v]] {
+                                         localfu[u]=localf[localf[v]];
+                                         lcount+=1;
+                                    }
+                                }
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    if localfu[v]>localf[localf[u]] {
+                                         localfu[v]=localf[localf[u]];
+                                         lcount+=1;
+                                    }
+                                }
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    if localfu[u]>localf[localf[u]] {
+                                         localfu[u]=localf[localf[u]];
+                                              lcount+=1;
+                                    }
+                                }
+
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    if localfu[v]>localf[localf[v]] {
+                                         localfu[v]=localf[localf[v]];
+                                              lcount+=1;
+                                    }
+                                }
+                                localf=localfu;
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localfu[i];
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+           forall i in 0..Nv-1 with (+ reduce count) {
+                 f[i]=af[i].read();
+           }
+
+      } else {
+      // Initialize f and f_low in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          forall i in f.localSubdomain() {
+            f[i] = i;
+            f_low[i] = i;
+          }
+        }
+      }
+
+      var converged = false;
+      var itera = 1;
+      gf = f;
+      while(!converged) {
+        localtimer.clear();
+        localtimer.start(); 
+        // Duplicate of gf.
+        dup = gf;
+
+        // Stochastic hooking.
+        // writeln("Stochastic hooking:");
+        coforall loc in Locales {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd {
+              // Get edges from src, dst, srcR, and dstR.
+              var u = src[x];
+              var v = dst[x];
+
+              var uf = srcR[x];
+              var vf = dstR[x];
+              var fu=f[u];
+              var fv=f[v];
+              var fuf=f[fu];
+              var fvf=f[fv];
+              
+              if(f[fv] < f_low[fu]) {
+                // writeln("inner u v = ", u, " ", v);
+                f_low[fu] = f[fv];
+              }
+
+              if(f[fvf] < f_low[fuf]) {
+                // writeln("inner uf vf = ", uf, " ", vf);
+                f_low[fuf] = f[fvf];
+              }
+            }
+          }
+        }
+        // writeln();
+
+        // Aggresive hooking.
+        // writeln("Aggresive hooking:");
+        coforall loc in Locales {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd {
+              var u = src[x];
+              var v = dst[x];
+
+              var uf = srcR[x];
+              var vf = dstR[x];
+
+              if(f[f[v]] < f_low[u]) {
+                // writeln("inner u v = ", u, " ", v);
+                f_low[u] = f[f[v]];
+              }
+
+              if(f[f[vf]] < f_low[uf]) {
+                // writeln("inner uf vf = ", uf, " ", vf);
+                f_low[uf] = f[f[vf]];
+              }
+            }
+          }
+        }
+        // writeln();
+
+        // Shortcutting.
+        // writeln("Shortcutting:");
+
+        coforall loc in Locales {
+          on loc {
+            var vertexBegin = f.localSubdomain().lowBound;
+            var vertexEnd = f.localSubdomain().highBound;
+            forall u in vertexBegin..vertexEnd {
+              if(f[f[u]] < f_low[u]) {
+                // writeln("inner u v = ", u, " ", v);
+                f_low[u] = f[f[u]];
+              }
+            }
+          }
+        }
+        // writeln();
+
+        // writeln("$$$$$ Iteration ", itera," $$$$$");
+        // writeln("f               = ", f);
+        // writeln("f_low          = ", f_low);
+        
+        f = f_low; 
+
+        // Recompute gf.
+        coforall loc in Locales {
+          on loc {
+            var vertexBegin = f.localSubdomain().lowBound;
+            var vertexEnd = f.localSubdomain().highBound;
+            forall x in vertexBegin..vertexEnd {
+              gf[x] = f[f[x]];
+            }
+          }
+        }
+
+        // Check if gf converged.
+        coforall loc in Locales {
+          on loc {
+            var vertexBegin = f.localSubdomain().lowBound;
+            var vertexEnd = f.localSubdomain().highBound;
+            forall x in vertexBegin..vertexEnd {
+              diff[x] = gf[x] - dup[x];
+            }
+          }
+        }
+        var sum = + reduce diff;
+
+        if(sum == 0) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+      }
+      }
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+    // distance=1;
+    proc cc_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var converged:bool = false;
+      var count:int=0;
+      var count1:int=0;
+      var itera = 1;
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+      if (numLocales>1 && MultiLocale==1) {
+           coforall loc in Locales {
+                on loc {
+                    forall i in f.localSubdomain() {
+                         af[i].write(i);
+                    }
+                }
+           }
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i].write(af[i].read());
+                             }
+                             while (!lconverged) {
+
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                        var u = src[x];
+                                        var v = dst[x];
+                                        var TmpMin:int;
+                                        var fu=localf[u].read();
+                                        var fv=localf[v].read();
+                                        TmpMin=min(fu,fv);
+                                        var oldx=localf[u].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localf[v].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  v=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                        }
+
+                                }
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+           forall i in 0..Nv-1 with (+ reduce count) {
+                 f[i]=af[i].read();
+           }
+      } else {
+      // Initialize f and f_low in distributed memory.
+          coforall loc in Locales {
+            on loc {
+              var vertexBegin = f.localSubdomain().lowBound;
+              var vertexEnd = f.localSubdomain().highBound;
+              forall i in vertexBegin..vertexEnd {
+                f[i] = i;
+                if (nei[i] >0) {
+                    var tmpv=dst[start_i[i]];
+                    if ( tmpv <i ) {
+                         f[i]=tmpv;
+                    }
+                }
+                if (neiR[i] >0) {
+                    var tmpv=dstR[start_iR[i]];
+                    if ( tmpv <f[i] ) {
+                         f[i]=tmpv;
+                    }
+                }
+              }
+            }
+          }  
+
+          while(!converged) {
+            localtimer.clear();
+            localtimer.start(); 
+            coforall loc in Locales with ( + reduce count, + reduce count1) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+  
+                forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if ((u!=0) || (v!=0)) {
+                     var TmpMin:int;
+                     TmpMin=min(f[u],f[v]);
+                     if(TmpMin < f[u]) {
+                        f[u] = TmpMin;
+                        count+=1;
+                     }  
+                     if(TmpMin < f[v]) {
+                        f[v] = TmpMin;
+                        count+=1;
+                     }
+                  }//end if       
+                }//end of forall
+              }
+            }
+
+            localtimer.stop(); 
+            executime=localtimer.elapsed();
+            myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+            //writeln("Efficiency is ", myefficiency, " time is ",executime);
+
+            if( (count==0) ) {
+              converged = true;
+            }
+            else {
+              converged = false;
+            }
+            itera += 1;
+          }
+      }
+      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+
+
+    // distance=2;
+    proc cc_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var converged:bool = false;
+      var count:int=0;
+      var itera = 1;
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+      if (numLocales>1 && MultiLocale==1) {
+
+           coforall loc in Locales {
+                on loc {
+                    forall i in f.localSubdomain() {
+                         af[i].write(i);
+                    }
+                }
+           }
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i].write(af[i].read());
+                             }
+                             while (!lconverged) {
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                        var u = src[x];
+                                        var v = dst[x];
+                                        var TmpMin:int;
+                                        var fu=localf[u].read();
+                                        var fv=localf[v].read();
+                                        TmpMin=min(localf[fu].read(),localf[fv].read());
+                                        var oldx=localf[u].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localf[v].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  v=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localf[fu].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[fu].compareAndSwap(oldx,TmpMin)) {
+                                                  fu=oldx;
+                                              }
+                                              oldx=localf[fu].read();
+                                              lcount+=1;
+                                        }
+
+
+                                        oldx=localf[fv].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[fv].compareAndSwap(oldx,TmpMin)) {
+                                                  fv=oldx;
+                                              }
+                                              oldx=localf[fv].read();
+                                              lcount+=1;
+                                        }
+
+
+                                }// forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
+
+      } else {
+
+      // Initialize f and f_low in distributed memory.
+
+          coforall loc in Locales {
+            on loc {
+              var vertexBegin = f.localSubdomain().lowBound;
+              var vertexEnd = f.localSubdomain().highBound;
+              forall i in vertexBegin..vertexEnd {
+                f[i] = i;
+                if (nei[i] >0) {
+                    var tmpv=dst[start_i[i]];
+                    if ( tmpv <i ) {
+                         f[i]=tmpv;
+                    }
+                }
+                if (neiR[i] >0) {
+                    var tmpv=dstR[start_iR[i]];
+                    if ( tmpv <f[i] ) {
+                         f[i]=tmpv;
+                    }
+                }
+              }
+            }
+          }
+
+
+          var converged:bool = false;
+          var itera = 1;
+          while(!converged) {
+            var count:int=0;
+            localtimer.clear();
+            localtimer.start(); 
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+                  if (itera==1) {
+                         TmpMin=min(u,v);
+                  } else {
+                    TmpMin=min(f[f[u]],f[f[v]]);
+                  }
+                  if(TmpMin < f[f[u]]) {
+                         f[f[u]] = TmpMin;
+                  }
+                  if(TmpMin < f[f[v]]) {
+                         f[f[v]] = TmpMin;
+                  }
+                  if(TmpMin < f[u]) {
+                    f[u] = TmpMin;
+                  }
+                  if(TmpMin < f[v]) {
+                    f[v] = TmpMin;
+                  }
+                }//end of forall
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        } 
+                  }
+                }
+              }
+            }
+
+
+
+            localtimer.stop(); 
+            executime=localtimer.elapsed();
+            myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+            //writeln("Efficiency is ", myefficiency, " time is ",executime);
+            if( (count==0) ) {
+              converged = true;
+            }
+            else {
+              converged = false;
+            }
+            itera += 1;
+          }
+      }
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+    // Contour variant: a  mapping based connected components algorithm
+    proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var converged:bool = false;
+      var itera = 1;
+      var count:int=0;
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+      if (numLocales>1 && MultiLocale==1) {
+
+           coforall loc in Locales {
+              on loc {
+                forall i in f.localSubdomain() {
+                  af[i].write(i);
+                }
+              }
+           }
+
+           if (Ne/here.numPUs() < LargeScale) {
+               ORDERH=2;
+           }else {
+                ORDERH=1024;
+           }  
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i].write(af[i].read());
+                             }
+                             while (!lconverged) {
+
+                                forall x in src.localSubdomain() with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    var TmpMin:int;
+
+                                    var fu=find_split_atomic_h(u,localf,ORDERH);
+                                    var fv=find_split_atomic_h(v,localf,ORDERH);
+                                    TmpMin=min(fu,fv);
+                                    var oldx=localf[u].read();
+                                    while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                    }
+                                    oldx=localf[v].read();
+                                    while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                    }
+                   
+                                }//end of forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
+      } else {
+
+
+          coforall loc in Locales {
+            on loc {
+              forall i in f.localSubdomain() {
+                f[i] = i;
+                if (nei[i] >0) {
+                    var tmpv=dst[start_i[i]];
+                    if ( tmpv <i ) {
+                         f[i]=tmpv;
+                    }
+                }
+                if (neiR[i] >0) {
+                    var tmpv=dstR[start_iR[i]];
+                    if ( tmpv <f[i] ) {
+                         f[i]=tmpv;
+                    }
+                }
+              }
+            }
+          }
+    
+    
+
+          if (Ne/here.numPUs() < LargeScale) {
+               ORDERH=2;
+          }else {
+               ORDERH=1024;
+          }  
+          //we first check with order=1 mapping method
+          while( (!converged) ) {
+            // In the second step, we employ high order mapping
+            localtimer.clear();
+            localtimer.start(); 
+
+
+
+
+            if (ORDERH==2) {
+                coforall loc in Locales with ( + reduce count ) {
+                  on loc {
+                    var edgeBegin = src.localSubdomain().lowBound;
+                    var edgeEnd = src.localSubdomain().highBound;
+
+                    forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                      var u = src[x];
+                      var v = dst[x];
+
+                      var TmpMin:int;
+
+                      TmpMin=min(f[f[u]],f[f[v]]);
+                      if(TmpMin < f[f[u]]) {
+                         f[f[u]] = TmpMin;
+                      }
+                      if(TmpMin < f[f[v]]) {
+                         f[f[v]] = TmpMin;
+                      }
+                      if(TmpMin < f[u]) {
+                        f[u] = TmpMin;
+                      }
+                      if(TmpMin < f[v]) {
+                        f[v] = TmpMin;
+                      }
+                    }//end of forall
+                    forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                      var u = src[x];
+                      var v = dst[x];
+                      if (count==0) {
+                            if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                                count=1;
+                            } 
+                      }
+                    }
+                  }// end of on loc 
+                }// end of coforall loc 
+            } else {
+                coforall loc in Locales with ( + reduce count ) {
+                  on loc {
+                    var edgeBegin = src.localSubdomain().lowBound;
+                    var edgeEnd = src.localSubdomain().highBound;
+    
+                    forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                      var u = src[x];
+                      var v = dst[x];
+    
+                      var TmpMin:int;
+                      if (itera==1) {
+                          TmpMin=min(u,v);
+                      } else{
+                          TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
+                      }
+                      if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
+                          var myx=u;
+                          var lastx=u;
+                          while (f[myx] >TmpMin ) {
+                              lastx=f[myx];
+                              f[myx]=TmpMin;
+                              myx=lastx;
+                          }
+                          myx=v;
+                          while (f[myx] >TmpMin ) {
+                              lastx=f[myx];
+                              f[myx]=TmpMin;
+                              myx=lastx;
+                          }
+                      }
+                  
+                    }//end of forall
+
+                    forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                      var u = src[x];
+                      var v = dst[x];
+                      if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        }     
+                      }
+                    }
+                  }// end of on loc 
+                }// end of coforall loc 
+
+            }
+
+
+            if( (count==0) ) {
+              converged = true;
+            }
+            else {
+              converged = false;
+              count=0;
+            }
+            itera += 1;
+            //writeln("My Order is ",ORDERH); 
+            localtimer.stop(); 
+            executime=localtimer.elapsed();
+            myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+            //writeln("Efficiency is ", myefficiency, " time is ",executime);
+          }
+
+      }
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+
+
+    // Contour variant: a  mapping based connected components algorithm
+    proc cc_11mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv,atomic int); 
+      var converged:bool = false;
+      var itera = 1;
+      var count:int=0;
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+
+      if (numLocales>1 && MultiLocale==1) {
+
+           coforall loc in Locales {
+              on loc {
+                forall i in f.localSubdomain() {
+                  af[i].write(i);
+                }
+              }
+           }
+
+           if (Ne/here.numPUs() < LargeScale) {
+               ORDERH=2;
+           }else {
+                ORDERH=1024;
+           }  
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i].write(af[i].read());
+                             }
+                             while (!lconverged && litera<FirstOrderIters) {
+
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                        var u = src[x];
+                                        var v = dst[x];
+                                        var TmpMin:int;
+                                        var fu=localf[u].read();
+                                        var fv=localf[v].read();
+                                        TmpMin=min(fu,fv);
+                                        var oldx=localf[u].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localf[v].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                        }
+                   
+                                }
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             while (!lconverged) {
+
+                                forall x in src.localSubdomain()   with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    var TmpMin:int;
+
+                                    var fu=find_split_atomic_h(u,localf,ORDERH);
+                                    var fv=find_split_atomic_h(v,localf,ORDERH);
+                                    TmpMin=min(fu,fv);
+                                    var oldx=localf[u].read();
+                                    while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                    }
+                                    oldx=localf[v].read();
+                                    while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                    }
+                   
+                                }//end of forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
+      } else {
+
+          localtimer.clear();
+          localtimer.start(); 
+          coforall loc in Locales {
+            on loc {
+              var vertexBegin = f.localSubdomain().lowBound;
+              var vertexEnd = f.localSubdomain().highBound;
+              forall i in vertexBegin..vertexEnd {
+                f[i] = i;
+                if (nei[i] >0) {
+                    var tmpv=dst[start_i[i]];
+                    if ( tmpv <i ) {
+                         f[i]=tmpv;
+                    }
+                }
+                if (neiR[i] >0) {
+                    var tmpv=dstR[start_iR[i]];
+                    if ( tmpv <f[i] ) {
+                         f[i]=tmpv;
+                    }
+                }
+              }
+            }
+          }
+
+
+
+          var converged:bool = false;
+          var itera = 1;
+          var count:int=0;
+          //we first check with order=1 mapping method
+          localtimer.stop(); 
+          var executime=localtimer.elapsed();
+          var myefficiency:real =(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+          while( (!converged) && 
+                 (itera<FirstOrderIters) && 
+                 ( (Ne/here.numPUs() < LargeScale) || (itera==1) || (myefficiency>LargeEdgeEfficiency)) ) {
+            localtimer.clear();
+            localtimer.start(); 
+            coforall loc in Locales with ( + reduce count) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                         var TmpMin:int;
+                         TmpMin=min(f[u],f[v]);
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count=count+1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count=count+1;
+                         }
+                  
+                }//end of forall
+              }
+            }
+
+
+            itera += 1;
+            if( (count==0) ) {
+              converged = true;
+            }
+            else {
+              converged = false;
+              count=0;
+            }
+            //writeln("My Order is 1"); 
+            localtimer.stop(); 
+            executime=localtimer.elapsed();
+            //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+            //writeln("Efficiency is ", myefficiency, " time is ",executime);
+          }
+
+          if (Ne/here.numPUs() < LargeScale) {
+               ORDERH=2;
+          }else {
+               ORDERH=1024;
+          }  
+          // In the second step, we employ high order mapping
+          while(!converged) {
+            //var count:int=0;
+            //var count1:int=0;
+            localtimer.clear();
+            localtimer.start(); 
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+                  if (itera==1) {
+                      TmpMin=min(u,v);
+                  } else{
+                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
+                  }
+                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
+                      var myx=u;
+                      var lastx=u;
+                      while (f[myx] >TmpMin ) {
+                          lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                      myx=v;
+                      while (f[myx] >TmpMin ) {
+                          lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                  }
+                  
+                }//end of forall
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        } 
+                  }
+                }
+              }
+            }
+
+
+            if( (count==0) ) {
+              converged = true;
+            }
+            else {
+              converged = false;
+              count=0;
+            }
+            itera += 1;
+            //writeln("My Order is ",ORDERH); 
+            localtimer.stop(); 
+            executime=localtimer.elapsed();
+            myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+            //writeln("Efficiency is ", myefficiency, " time is ",executime);
+          }
+      }
+
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+
+
+
+
+    // Contour variant: a  mapping based connected components algorithm
+    proc cc_1m1m(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv,atomic int); 
+
+      var converged:bool = false;
+      var itera = 1;
+      var count:int=0;
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+
+      if (numLocales>1 && MultiLocale==1) {
+
+           coforall loc in Locales {
+              on loc {
+                forall i in f.localSubdomain() {
+                  af[i].write(i);
+                }
+              }
+           }
+
+           if (Ne/here.numPUs() < LargeScale) {
+               ORDERH=2;
+           }else {
+                ORDERH=1024;
+           }  
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i].write(af[i].read());
+                             }
+                             while (!lconverged ) {
+
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                        var u = src[x];
+                                        var v = dst[x];
+                                        var TmpMin:int;
+                                        var fu=localf[u].read();
+                                        var fv=localf[v].read();
+                                        TmpMin=min(fu,fv);
+                                        var oldx=localf[u].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localf[v].read();
+                                        while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                        }
+                                }
+
+                                forall x in src.localSubdomain()   with ( + reduce lcount)  {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    var TmpMin:int;
+
+                                    var fu=find_split_atomic_h(u,localf,ORDERH);
+                                    var fv=find_split_atomic_h(v,localf,ORDERH);
+                                    TmpMin=min(fu,fv);
+                                    var oldx=localf[u].read();
+                                    while (oldx>TmpMin) {
+                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[u].read();
+                                              lcount+=1;
+                                    }
+                                    oldx=localf[v].read();
+                                    while (oldx>TmpMin) {
+                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localf[v].read();
+                                              lcount+=1;
+                                    }
+                   
+                                }//end of forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localf[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
+      } else {
+
+
+
+
+
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+
+
+      var converged:bool = false;
+      var itera = 1;
+      var count:int=0;
+      if (Ne/here.numPUs() < LargeScale) {
+           ORDERH=2;
+      }else {
+           ORDERH=1024;
+      }  
+      //we first check with order=1 mapping method
+      while( (!converged) ) {
+        localtimer.clear();
+        localtimer.start(); 
+        coforall loc in Locales with ( + reduce count) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+              var u = src[x];
+              var v = dst[x];
+
+                         var TmpMin:int;
+                         TmpMin=min(f[u],f[v]);
+                         if(TmpMin < f[u]) {
+                             f[u] = TmpMin;
+                             count=count+1;
+                         }
+                         if(TmpMin < f[v]) {
+                             f[v] = TmpMin;
+                             count=count+1;
+                         }
+                  
+            }//end of forall
+          }
+        }
+
+
+        itera += 1;
+        //writeln("My Order is 1"); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+        if( (count==0) ) {
+          converged = true;
+          continue;
+        }
+        else {
+          converged = false;
+          count=0;
+        }
+
+        // In the second step, we employ high order mapping
+        localtimer.clear();
+        localtimer.start(); 
+        if (ORDERH==2) {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+
+                  TmpMin=min(f[f[u]],f[f[v]]);
+                  if(TmpMin < f[f[u]]) {
+                     f[f[u]] = TmpMin;
+                  }
+                  if(TmpMin < f[f[v]]) {
+                     f[f[v]] = TmpMin;
+                  }
+                  if(TmpMin < f[u]) {
+                    f[u] = TmpMin;
+                  }
+                  if(TmpMin < f[v]) {
+                    f[v] = TmpMin;
+                  }
+                }//end of forall
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                            count=1;
+                        } 
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+        } else {
+            coforall loc in Locales with ( + reduce count ) {
+              on loc {
+                var edgeBegin = src.localSubdomain().lowBound;
+                var edgeEnd = src.localSubdomain().highBound;
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+
+                  var TmpMin:int;
+                  if (itera==1) {
+                      TmpMin=min(u,v);
+                  } else{
+                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
+                  }
+                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
+                      var myx=u;
+                      var lastx=u;
+                      while (f[myx] >TmpMin ) {
+                          lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                      myx=v;
+                      while (f[myx] >TmpMin ) {
+                          lastx=f[myx];
+                          f[myx]=TmpMin;
+                          myx=lastx;
+                      }
+                  }
+                  
+                }//end of forall
+
+                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                  var u = src[x];
+                  var v = dst[x];
+                  if (count==0) {
+                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
+                        count=1;
+                    } 
+                  }
+                }
+              }// end of on loc 
+            }// end of coforall loc 
+
+        }
+
+
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+          count=0;
+        }
+        itera += 1;
+        //writeln("My Order is ",ORDERH); 
+        localtimer.stop(); 
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+      }
+      }
+
+
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+    proc cc_syn(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var f_low = makeDistArray(Nv, int); 
+
+      var count:int=0;
+      var itera = 1;
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+      var converged:bool=false;
+      if (numLocales>1 && MultiLocale==1) {
+
+           coforall loc in Locales {
+                on loc {
+                    forall i in f.localSubdomain() {
+                         af[i].write(i);
+                         f[i]=i;
+                    }
+                }
+           }
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var localf:[0..Nv-1]  int;
+                             var localfu:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 localf[i]=af[i].read();
+                                 localfu[i].write(localf[i]);
+                             }
+                             while (!lconverged) {
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                        var u = src[x];
+                                        var v = dst[x];
+                                        var TmpMin:int;
+                                        var fu=localf[u];
+                                        var fv=localf[v];
+                                        TmpMin=min(localf[fu],localf[fv]);
+                                        var oldx=localfu[u].read();
+                                        while (oldx>TmpMin) {
+                                              if (localfu[u].compareAndSwap(oldx,TmpMin)) {
+                                                  u=oldx;
+                                              }
+                                              oldx=localfu[u].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localfu[v].read();
+                                        while (oldx>TmpMin) {
+                                              if (localfu[v].compareAndSwap(oldx,TmpMin)) {
+                                                  v=oldx;
+                                              }
+                                              oldx=localfu[v].read();
+                                              lcount+=1;
+                                        }
+                                        oldx=localfu[fu].read();
+                                        while (oldx>TmpMin) {
+                                              if (localfu[fu].compareAndSwap(oldx,TmpMin)) {
+                                                  fu=oldx;
+                                              }
+                                              oldx=localfu[fu].read();
+                                              lcount+=1;
+                                        }
+
+
+                                        oldx=localfu[fv].read();
+                                        while (oldx>TmpMin) {
+                                              if (localfu[fv].compareAndSwap(oldx,TmpMin)) {
+                                                  fv=oldx;
+                                              }
+                                              oldx=localfu[fv].read();
+                                              lcount+=1;
+                                        }
+
+                                }//forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                    forall i in 0..Nv-1 {
+                                        localf[i]=localfu[i].read();
+                                    }
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=localfu[i].read();
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
+      } else {
+
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f[i] = i;
+            f_low[i] = i;
+            if (nei[i] >0) {
+                var tmpv=dst[start_i[i]];
+                if ( tmpv <i ) {
+                     f[i]=tmpv;
+                     f_low[i]=tmpv;
+                }
+            }
+            if (neiR[i] >0) {
+                var tmpv=dstR[start_iR[i]];
+                if ( tmpv <f[i] ) {
+                     f[i]=tmpv;
+                     f_low[i]=tmpv;
+                }
+            }
+          }
+        }
+      }
+
+
+      var converged:bool = false;
+      var itera = 1;
+      while(!converged) {
+        localtimer.clear();
+        localtimer.start();
+
+        var count:int=0;
+        var count1:int=0;
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+
+            forall x in src.localSubdomain()   with ( + reduce count,+ reduce count1)  {
+              var u = src[x];
+              var v = dst[x];
+
+              var TmpMin:int;
+                  {
+                     TmpMin=min(f[f[u]],f[f[v]]);
+                     if(TmpMin < f_low[f[u]]) {
+                         f_low[f[u]] = TmpMin;
+                         count+=1;
+                     }
+                     if(TmpMin < f_low[f[v]]) {
+                         f_low[f[v]] = TmpMin;
+                         count+=1;
+                     }
+                     if(TmpMin < f_low[u]) {
+                         f_low[u] = TmpMin;
+                         count+=1;
+                     }
+                     if(TmpMin < f_low[v]) {
+                         f_low[v] = TmpMin;
+                         count+=1;
+                     }
+                  } 
+            }//end of forall
+          }
+        }
+        f=f_low;
+
+
+        if( (count==0) ) {
+          converged = true;
+        }
+        else {
+          converged = false;
+        }
+        itera += 1;
+        localtimer.stop();
+        executime=localtimer.elapsed();
+        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+        //writeln("Efficiency is ", myefficiency, " time is ",executime);
+
+      }
+      }
+      writeln("Number of iterations = ", itera-1);
+
+      return f;
+    }
+
+
+
+    // the atomic method for union find implementation
+    proc cc_connectit(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var f = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var f_low = makeDistArray(Nv, atomic int); 
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+      // Initialize f and f_low in distributed memory.
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = f.localSubdomain().lowBound;
+          var vertexEnd = f.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            f_low[i].write(i);
+            f[i]=i;
+            af[i].write(i);
+          }
+        }
+      }
+
+
+      var converged:bool = false;
+      var itera = 1;
+      var count:int=0;
+      var count1:int=0;
+
+
+      if (numLocales>1 && MultiLocale==1) {
+
+           while( (!converged) ) {
+             // In the second step, we employ high order mapping
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                                var localf_low:[0..Nv-1] atomic int;
+                                var lconverged:bool = false;
+                                var litera = 1;
+                                var lcount:int=0;
+                                forall i in 0..Nv-1 {
+                                    localf_low[i].write(af[i].read());
+                                }
+
+                                forall x in src.localSubdomain()    {
+                                    var u = src[x];
+                                    var v = dst[x];
+                                    unite_atomic(u,v,localf_low);
+                                }
+                                forall x in src.localSubdomain()    {
+                                     var u = src[x];
+                                     var v = dst[x];
+                                     var l=find_naive_atomic(u,localf_low);
+                                     var oldx=localf_low[u].read();
+                                     while (oldx>l) {
+                                           if (localf_low[u].compareAndSwap(oldx,l)) {
+                                               u=oldx;
+                                           }
+                                           oldx=localf_low[u].read();
+                                     }
+                                     //l=find_naive_atomic(v,localf_low);
+                                     oldx=localf_low[v].read();
+                                     while (oldx>l) {
+                                           if (localf_low[v].compareAndSwap(oldx,l)) {
+                                               v=oldx;
+                                           }
+                                           oldx=localf_low[v].read();
+                                     }
+
+                                }//end of forall
+
+                                writeln("Converge local ------------------------------------------");
+                                forall i in 0..Nv-1 with (+ reduce count) {
+                                    var old=af[i].read();
+                                    var newval=localf_low[i].read();
+                                    while old>newval {
+                                        af[i].compareAndSwap(old,newval);
+                                        old=af[i].read();
+                                        count+=1;
+                                    }
+                                }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    f[i]=af[i].read();
+           }
+      } else {
+
+      {
+        coforall loc in Locales with ( + reduce count, + reduce count1) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+
+              unite_atomic(u,v,f_low);
+            }
+            forall x in edgeBegin..edgeEnd    {
+              var u = src[x];
+              var v = dst[x];
+              var l=find_naive_atomic(u,f_low);
+              var oldx=f_low[u].read();
+              while (oldx>l) {
+                    if (f_low[u].compareAndSwap(oldx,l)) {
+                        u=oldx;
+                    }
+                    oldx=f_low[u].read();
+              }
+              //l=find_naive_atomic(v,f_low);
+              oldx=f_low[v].read();
+              while (oldx>l) {
+                    if (f_low[v].compareAndSwap(oldx,l)) {
+                        v=oldx;
+                    }
+                    oldx=f_low[v].read();
+              }
+
+            }//end of forall
+          }
+        }
+        
+      }
+
+
+      //writeln("Number of iterations = ", itera);
+      itera+=1;
+      coforall loc in Locales {
+        on loc {
+          forall i in f.localSubdomain() {
+            f[i] = f_low[i].read();
+          }
+        }
+      }
+      }
+
+      writeln("Number of iterations = ", itera-1);
+      return f;
+    }
+
+
+
+
+
+    // UPS: Paul's min update, label propogation and symmetrization method
+    proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var l = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var src2 = makeDistArray(Ne*2, int); 
+      var dst2 = makeDistArray(Ne*2, int); 
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+      var lu = makeDistArray(Nv, atomic int); 
+
+      localtimer.clear();
+      localtimer.start(); 
+      coforall loc in Locales {
+        on loc {
+          var vertexBegin = l.localSubdomain().lowBound;
+          var vertexEnd = l.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd {
+            l[i] = i;
+            lu[i].write(l[i]);
+            af[i].write(l[i]);
+          }
+        }
+      }
+      var count:int=0;
+      
+      coforall loc in Locales {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+            forall x in src.localSubdomain() {
+                  src2[x*2]=src[x];
+                  dst2[x*2]=dst[x];
+                  src2[x*2+1]=dst[x];
+                  dst2[x*2+1]=src[x];
+            }
+
+
+          }
+      }
+
+      localtimer.stop(); 
+      //executime=localtimer.elapsed();
+      //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+
+      var converged:bool = false;
+      var itera = 1;
+
+      if (numLocales>1 && MultiLocale==1) {
+           while (!converged)  {
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count ) {
+                     on loc {
+                             var locall:[0..Nv-1] int;
+                             var locallu:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 locall[i]=af[i].read();
+                                 locallu[i].write(locall[i]);
+                             }
+                             while (!lconverged) {
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src2[2*x];
+                                    var v = dst2[2*x];
+                                    if (v!=locall[u]) {
+                                        var old=locallu[v].read();
+                                        var tmp =min(old,locall[u]);
+                                        while (old>tmp) {
+                                          locallu[v].compareAndSwap(old,tmp);
+                                          old=locallu[v].read();
+                                          lcount+=1;
+                                        }
+                                        src2[2*x]=v;
+                                        dst2[2*x]=locall[u];
+                                    } else {
+                                        src2[2*x]=v;
+                                        dst2[2*x]=u;
+                                    }
+
+
+                                    u = src2[2*x+1];
+                                    v = dst2[2*x+1];
+                                    if (v!=locall[u]) {
+                                        var old=locallu[v].read();
+                                        var tmp =min(old,locall[u]);
+                                        while (old>tmp) {
+                                          locallu[v].compareAndSwap(old,tmp);
+                                          old=locallu[v].read();
+                                          lcount+=1;
+                                        }
+                                        src2[2*x+1]=v;
+                                        dst2[2*x+1]=locall[u];
+                                    } else {
+                                        src2[2*x+1]=v;
+                                        dst2[2*x+1]=u;
+                                    }
+                                    //writeln("2 Myid=",here.id," <",u,",",v,">-><",src2[2*x+1],",",dst2[2*x+1],">", " L[",u,"]=",locall[u]," L[",v,"]=",locall[v], " Lu[",v,"]=",locallu[v].read());
+
+                                }//end forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                    forall x in 0..Nv-1    {
+                                         var val=locallu[x].read();
+                                         if locall[x]>val {
+                                             locall[x]=val;
+                                         }
+                                    }
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=locall[i];
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    l[i]=af[i].read();
+           }
+      } else {
+
+
+          while (!converged) {
+                localtimer.clear();
+                localtimer.start(); 
+                coforall loc in Locales with ( + reduce count) {
+                  on loc {
+
+                    forall x in src.localSubdomain()  with ( + reduce count)  {
+                      var u = src2[2*x];
+                      var v = dst2[2*x];
+                      if (v!=l[u]) {
+                          var old=lu[v].read();
+                          var tmp =min(old,l[u]);
+                          while (old>tmp) {
+                            lu[v].compareAndSwap(old,tmp);
+                            old=lu[v].read();
+                            count+=1;
+                          }
+                          src2[2*x]=v;
+                          dst2[2*x]=l[u];         
+                      } else {
+                          src2[2*x]=v;
+                          dst2[2*x]=u;         
+                      }
+                      u = src2[2*x+1];
+                      v = dst2[2*x+1];
+                      if (v!=l[u]) {
+                          src2[2*x+1]=v;
+                          dst2[2*x+1]=l[u];         
+                          var old=lu[v].read();
+                          var tmp =min(old,l[u]);
+                          while (old>tmp) {
+                            lu[v].compareAndSwap(old,tmp);
+                            old=lu[v].read();
+                            count+=1;
+                          }
+                      } else {
+                          src2[2*x+1]=v;
+                          dst2[2*x+1]=u;         
+                      }
+
+                    }//end of forall
+                  }//loc
+                }//coforall
+
+
+                if( (count==0) ) {
+                  converged = true;
+                }
+                else {
+                  converged = false;
+                  count=0;
+                  coforall loc in Locales with ( + reduce count) {
+                    on loc {
+                        forall x in l.localSubdomain() {
+                           l[x]=lu[x].read();
+                        }
+                    }
+                  }
+                }
+                itera += 1;
+                localtimer.stop(); 
+                executime=localtimer.elapsed();
+                //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+                //writeln("Efficiency is ", myefficiency, " time is ",executime);
+          }//while
+      }//else
+
+
+      writeln("Number of iterations = ", itera-1);
+
+      return l;
+    }
+
+
+
+
+    var timer:stopwatch;
+    // We only care for undirected graphs, they can be weighted or unweighted. 
+    var f1 = makeDistArray(Nv, int);
+    var f2 = makeDistArray(Nv, int);
+    var f3 = makeDistArray(Nv, int);
+    var f4 = makeDistArray(Nv, int);
+    var f5 = makeDistArray(Nv, int);
+    var f6 = makeDistArray(Nv, int);
+    var f7 = makeDistArray(Nv, int);
+    var f8 = makeDistArray(Nv, int);
+    var f9 = makeDistArray(Nv, int);
+    if (Directed == 0) {
+
+        timer.clear();
+        timer.start(); 
+        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
+                                toSymEntry(ag.getSTART_IDX(), int).a, 
+                                toSymEntry(ag.getSRC(), int).a, 
+                                toSymEntry(ag.getDST(), int).a, 
+                                toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                                toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                                toSymEntry(ag.getSRC_R(), int).a, 
+                                toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+        timer.clear();
+        timer.start();
+        f2 = cc_connectit(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f3 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for 1m1m cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
+        timer.clear();
+        timer.start();
+        f4 = cc_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f5 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+
+
+        timer.clear();
+        timer.start();
+        f6 = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+
+        timer.clear();
+        timer.start();
+        f7 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for   11mm  cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        timer.clear();
+        timer.start();
+        f9 = cc_ups(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+                            toSymEntry(ag.getSTART_IDX(), int).a, 
+                            toSymEntry(ag.getSRC(), int).a, 
+                            toSymEntry(ag.getDST(), int).a, 
+                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
+                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
+                            toSymEntry(ag.getSRC_R(), int).a, 
+                            toSymEntry(ag.getDST_R(), int).a);
+        timer.stop(); 
+        outMsg = "Time elapsed for ups cc: " + timer.elapsed():string;
+        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        coforall loc in Locales {
+          on loc {
+            var vertexStart = f1.localSubdomain().lowBound;
+            var vertexEnd = f1.localSubdomain().highBound;
+            forall i in vertexStart..vertexEnd {
+              if ((f1[i] != f2[i]) ) {
+                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f2[",i,"]=",f2[i]);
+              }
+              if ((f1[i] != f3[i]) ) {
+                var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f3[",i,"]=",f3[i]);
+              }
+              if ( (f1[i]!=f4[i]) ) {
+                var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f4[",i,"]=",f4[i]);
+              }
+              if ( (f1[i]!=f5[i]) ) {
+                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f5[",i,"]=",f5[i]);
+              }
+              if ( (f1[i]!=f6[i]) ) {
+                var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f6[",i,"]=",f6[i]);
+              }
+              if ( (f1[i]!=f7[i]) ) {
+                var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f7[",i,"]=",f7[i]);
+              }
+              if ( (f1[i]!=f8[i]) ) {
+                var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f8[",i,"]=",f8[i]);
+              }
+              if ( (f1[i]!=f9[i]) ) {
+                var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
+                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                writeln("f1[",i,"]=",f1[i]," f9[",i,"]=",f9[i]);
+              }
+            }
+          }
+        } 
+
+    }
+   
+
+    // The message that is sent back to the Python front-end. 
+    var comps = new set(int);
+    for x in f2 {
+      comps.add(x);
+    }
+    var num_comps = makeDistArray(numLocales, int); 
+    num_comps[0] = comps.size;
+    proc return_CC(ary:[?d] int): string throws {
+      CCName = st.nextName();
+      var CCEntry = new shared SymEntry(ary);
+      st.addEntry(CCName, CCEntry);
+
+      var CCMsg =  'created ' + st.attrib(CCName);
+      return CCMsg;
+    }
+
+    var repMsg = return_CC(num_comps);
+    return new MsgTuple(repMsg, MsgType.NORMAL);
+  }
+
+  use CommandMap;
+  registerFunction("segmentedGraphCC", segCCMsg,getModuleName());
+}
+
+
+
+
+        /*
+        f5=f1;
+        f6=f1;
+
+        if (ag.hasA_START_IDX()) {
+                       timer.clear();
+                       timer.start();
+                       f5=cc_fs_aligned0(
+                           toSymEntry(ag.getNEIGHBOR(), int).a,
+                           toSymEntry(ag.getSTART_IDX(), int).a,
+                           toSymEntry(ag.getSRC(), int).a,
+                           toSymEntry(ag.getDST(), int).a,
+                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                           toSymEntry(ag.getSRC_R(), int).a,
+                           toSymEntry(ag.getDST_R(), int).a,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                       timer.stop();
+                       outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
+                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+                       timer.clear();
+                       timer.start();
+                       f6=cc_fs_aligned1(
+                           toSymEntry(ag.getNEIGHBOR(), int).a,
+                           toSymEntry(ag.getSTART_IDX(), int).a,
+                           toSymEntry(ag.getSRC(), int).a,
+                           toSymEntry(ag.getDST(), int).a,
+                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
+                           toSymEntry(ag.getSTART_IDX_R(), int).a,
+                           toSymEntry(ag.getSRC_R(), int).a,
+                           toSymEntry(ag.getDST_R(), int).a,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
+                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
+                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
+                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
+                           toDomArraySymEntry(ag.getA_DST_R()).domary);
+                       timer.stop();
+                       outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
+                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        }
+        */
+
+
+/*
+
 
     // Implementation of the algorithm for undirected graphs, they can be 
     // weighted or unweighted. 
@@ -208,7 +3371,7 @@ module CCMsg {
               // activated. 
               var switchratio = (numCurF:real) / nf.size:real;
                       
-              /****************** TOP DOWN ********************/
+              //  TOP DOWN 
               if (switchratio < GivenRatio) {
                 topdown+=1;
                 forall i in SetCurF with (ref SetNextF) {
@@ -247,7 +3410,7 @@ module CCMsg {
                   }
                 }//end forall
               } 
-              /****************** BOTTOM UP ********************/
+              //  BOTTOM UP 
               else {
                 bottomup+=1;
                 forall i in vertexBegin..vertexEnd  with (ref SetNextF) {
@@ -405,7 +3568,6 @@ module CCMsg {
               // procedure. This is a temporary workaround! 
               var LF = 1; 
                       
-              /****************** TOP DOWN ********************/
               {
                 topdown+=1;
                 forall i in SetCurF with (ref SetNextF) {
@@ -657,1792 +3819,6 @@ module CCMsg {
       return "success";
     }//end of cc_kernel_und_1
 
-    // Third implemention of the fast shiloach-vishkin algorithm for connected components proposed 
-    // by Yongzhe Zhang, Ariful Azad, and Zhenjiang Hu.
-    proc cc_fast_sv(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      forall i in 0..Nv-1 {
-        f[i] = i;
-        f_low[i] = i;
-      }
-
-      // writeln("$$$$$ Iteration 0 $$$$$");
-      // writeln("f               = ", f);
-      // writeln("f_low          = ", f_low);
-
-      var converged = false;
-      var gf = f;
-      var itera = 1;
-      while(!converged) {
-        localtimer.clear();
-        localtimer.start(); 
-        // Duplicate of gf.
-        var dup = gf;
-
-        // Stochastic hooking.
-        // writeln("Stochastic hooking:");
-        forall x in 0..Ne-1 {
-          // Get edges from src, dst, srcR, and dstR.
-          var u = src[x];
-          var v = dst[x];
-
-          var uf = srcR[x];
-          var vf = dstR[x];
-          
-          if(f[f[v]] < f_low[f[u]]) {
-            // writeln("inner u v = ", u, " ", v);
-            f_low[f[u]] = f[f[v]];
-          }
-
-          if(f[f[vf]] < f_low[f[uf]]) {
-            // writeln("inner uf vf = ", uf, " ", vf);
-            f_low[f[uf]] = f[f[vf]];
-          }
-        }
-        // writeln();
-
-        // Aggresive hooking.
-        // writeln("Aggresive hooking:");
-        forall x in 0..Ne-1 {
-          var u = src[x];
-          var v = dst[x];
-
-          var uf = srcR[x];
-          var vf = dstR[x];
-
-          if(f[f[v]] < f_low[u]) {
-            // writeln("inner u v = ", u, " ", v);
-            f_low[u] = f[f[v]];
-          }
-
-          if(f[f[vf]] < f_low[uf]) {
-            // writeln("inner uf vf = ", uf, " ", vf);
-            f_low[uf] = f[f[vf]];
-          }
-        }
-        // writeln();
-
-        // Shortcutting.
-        // writeln("Shortcutting:");
-        forall u in 0..Nv-1 {
-          if(f[f[u]] < f_low[u]) {
-            // writeln("inner u v = ", u, " ", v);
-            f_low[u] = f[f[u]];
-          }
-        }
-        // writeln();
-
-        // writeln("$$$$$ Iteration ", itera," $$$$$");
-        // writeln("f               = ", f);
-        // writeln("f_low          = ", f_low);
-        
-        f = f_low; 
-
-        // Recompute gf.
-        forall x in 0..Nv-1 {
-          gf[x] = f[f[x]];
-        }
-
-        // Check if gf converged.
-        var diff = makeDistArray(Nv, int);
-        forall x in 0..Nv-1 {
-          diff[x] = gf[x] - dup[x];
-        }
-        var sum = + reduce diff;
-
-        // writeln("sum = ", sum);
-
-        if(sum == 0) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-    // Fourth implemention of the fast shiloach-vishkin algorithm for connected components proposed 
-    // by Yongzhe Zhang, Ariful Azad, and Zhenjiang Hu. Made to be distributed.
-    proc cc_fast_sv_dist(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, int); 
-      var gf = makeDistArray(Nv, int);
-      var dup = makeDistArray(Nv, int);
-      var diff = makeDistArray(Nv, int);
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      // Initialize f and f_low in distributed memory.
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            f_low[i] = i;
-          }
-        }
-      }
-
-      var converged = false;
-      var itera = 1;
-      gf = f;
-      while(!converged) {
-        localtimer.clear();
-        localtimer.start(); 
-        // Duplicate of gf.
-        dup = gf;
-
-        // Stochastic hooking.
-        // writeln("Stochastic hooking:");
-        coforall loc in Locales {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd {
-              // Get edges from src, dst, srcR, and dstR.
-              var u = src[x];
-              var v = dst[x];
-
-              var uf = srcR[x];
-              var vf = dstR[x];
-              
-              if(f[f[v]] < f_low[f[u]]) {
-                // writeln("inner u v = ", u, " ", v);
-                f_low[f[u]] = f[f[v]];
-              }
-
-              if(f[f[vf]] < f_low[f[uf]]) {
-                // writeln("inner uf vf = ", uf, " ", vf);
-                f_low[f[uf]] = f[f[vf]];
-              }
-            }
-          }
-        }
-        // writeln();
-
-        // Aggresive hooking.
-        // writeln("Aggresive hooking:");
-        coforall loc in Locales {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd {
-              var u = src[x];
-              var v = dst[x];
-
-              var uf = srcR[x];
-              var vf = dstR[x];
-
-              if(f[f[v]] < f_low[u]) {
-                // writeln("inner u v = ", u, " ", v);
-                f_low[u] = f[f[v]];
-              }
-
-              if(f[f[vf]] < f_low[uf]) {
-                // writeln("inner uf vf = ", uf, " ", vf);
-                f_low[uf] = f[f[vf]];
-              }
-            }
-          }
-        }
-        // writeln();
-
-        // Shortcutting.
-        // writeln("Shortcutting:");
-
-        coforall loc in Locales {
-          on loc {
-            var vertexBegin = f.localSubdomain().lowBound;
-            var vertexEnd = f.localSubdomain().highBound;
-            forall u in vertexBegin..vertexEnd {
-              if(f[f[u]] < f_low[u]) {
-                // writeln("inner u v = ", u, " ", v);
-                f_low[u] = f[f[u]];
-              }
-            }
-          }
-        }
-        // writeln();
-
-        // writeln("$$$$$ Iteration ", itera," $$$$$");
-        // writeln("f               = ", f);
-        // writeln("f_low          = ", f_low);
-        
-        f = f_low; 
-
-        // Recompute gf.
-        coforall loc in Locales {
-          on loc {
-            var vertexBegin = f.localSubdomain().lowBound;
-            var vertexEnd = f.localSubdomain().highBound;
-            forall x in vertexBegin..vertexEnd {
-              gf[x] = f[f[x]];
-            }
-          }
-        }
-
-        // Check if gf converged.
-        coforall loc in Locales {
-          on loc {
-            var vertexBegin = f.localSubdomain().lowBound;
-            var vertexEnd = f.localSubdomain().highBound;
-            forall x in vertexBegin..vertexEnd {
-              diff[x] = gf[x] - dup[x];
-            }
-          }
-        }
-        var sum = + reduce diff;
-
-        if(sum == 0) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-    inline proc find_split(u:int,  parents:[?D1] int):int {
-       var i=u;
-       var v,w:int;
-       while (1) {
-          v = parents[i];
-          w = parents[v];
-          if (v == w) {
-                break;
-          } else {
-                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
-                parents[i]= w;
-                i = v;
-          }
-      }
-      return v;
-    }
-
-    inline proc find_naive(u:int,  parents:[?D1] int):int {
-       var i=u;
-       var v,w:int;
-       while (1) {
-          v = parents[i];
-          w = parents[v];
-          if (v == w) {
-                break;
-          } else {
-                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
-                //parents[i]= w;
-                i = v;
-          }
-      }
-      return v;
-    }
-
-    inline proc find_naive_atomic(u:int,  parents:[?D1] atomic int):int {
-       var i=u;
-       var v,w:int;
-       while (1) {
-          v = parents[i].read();
-          w = parents[v].read();
-          if (v == w) {
-                break;
-          } else {
-                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
-                //parents[i]= w;
-                i = v;
-          }
-      }
-      return v;
-    }
-
-
-
-    inline proc find_split_atomic(u:int,  parents:[?D1] atomic int):int {
-       var i=u;
-       var v,w:int;
-       while (1) {
-          v = parents[i].read();
-          w = parents[v].read();
-          if (v == w) {
-                break;
-          } else {
-                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
-                parents[i].write(w);
-                i = v;
-          }
-      }
-      return v;
-    }
-
-
-    inline proc find_split_h(u:int,  parents:[?D1] int, h:int):int {
-       var  t=0;
-       var i=u;
-       var v,w:int;
-       while (t<h) {
-          v = parents[i];
-          w = parents[v];
-          if (v == w) {
-                break;
-          } else {
-                //gbbs::atomic_compare_and_swap(&parents[i], v, w);
-                parents[i]= w;
-                i = v;
-          }
-          t=t+1;
-      }
-      return v;
-    }
-    inline proc find_split_atomic_h(u:int,  parents:[?D1] atomic int, h:int):int {
-       var t=0;
-       var i=u;
-       var v,w:int;
-       while (t<h) {
-          v = parents[i].read();
-          w = parents[v].read();
-          if (v == w) {
-                break;
-          } else {
-                parents[i].compareAndSwap(v, w);
-                i = v;
-          }
-          t=t+1;
-      }
-      return v;
-    }
-
-    proc find_half(u:int,  parents:[?D1] int):int {
-       var i=u;
-       var v,w:int;
-       while (1) {
-          v = parents[i];
-          w = parents[v];
-          if (v == w) {
-                break;
-          } else {
-                parents[i]= w;
-                i = parents[i];
-          }
-       }
-       return v;
-    }
-    proc find_half_h(u:int,  parents:[?D1] int,h:int):int {
-       var t=0;
-       var i=u;
-       var v,w:int;
-       while (t<h) {
-          v = parents[i];
-          w = parents[v];
-          if (v == w) {
-                break;
-          } else {
-                parents[i]= w;
-                i = parents[i];
-          }
-          t=t+1;
-       }
-       return v;
-    }
-
-    proc find_half_atomic_h(u:int,  parents:[?D1] atomic int,h:int):int {
-       var t=0;
-       var i=u;
-       var v,w:int;
-       while (t<h) {
-          v = parents[i].read();
-          w = parents[v].read();
-          if (v == w) {
-                break;
-          } else {
-                parents[i].compareAndSwap(v, w);
-                i = parents[i].read();
-          }
-          t=t+1;
-       }
-       return v;
-    }
-
-
-    proc find_half_atomic(u:int,  parents:[?D1] atomic int):int {
-       var i=u;
-       var v,w:int;
-       while (1) {
-          v = parents[i].read();
-          w = parents[v].read();
-          if (v == w) {
-                break;
-          } else {
-                parents[i].compareAndSwap(v, w);
-                i = parents[i].read();
-          }
-       }
-       return v;
-    }
-
-
-
-    proc unite(u:int, v:int,  parents:[?D1] int):int {
-       var rx=u;
-       var ry=v;
-       var p_ry = parents[ry];
-       var p_rx = parents[rx];
-       while (p_ry!=p_rx){
-          if (p_rx > p_ry) {
-               rx<=>ry;
-               p_rx<=> p_ry;
-          }
-          if (ry == p_ry ) {
-                 parents[ry]= p_rx;
-                 while (parents[parents[u]]<parents[u]) {
-                      parents[u]=parents[parents[u]];
-                 }
-                 while (parents[parents[v]]<parents[v]) {
-                      parents[v]=parents[parents[v]];
-                 }
-                 //compress(x, parents);
-                 //compress(y, parents);
-                 return rx;
-          } else {
-                    //rx = splice(rx, ry, parents);
-                    parents[ry]= p_ry;
-          }
-          p_ry = parents[ry];
-          p_rx = parents[rx];
-       }
-       return rx;
-    }
-
-
-
-    proc unite_atomic(u:int, v:int,  parents:[?D1] atomic int):int {
-       var ru=u;
-       var rv=v;
-       var p_rv = parents[rv].read() ;
-       var p_ru = parents[ru].read();
-       while (p_rv!=p_ru) {
-          if (p_ru < p_rv) {
-               ru<=>rv;
-               p_ru<=> p_rv;
-          }
-
-          if ( (ru == p_ru) && (parents[ru].compareAndSwap(p_ru,p_rv) ) ) {
-                 return ru;
-          } else {
-                    var g_u=parents[p_ru].read();
-                    if (p_ru!=g_u) {
-                         parents[ru].compareAndSwap(p_ru,g_u);
-                    }
-                    ru=g_u;
-                    p_ru = parents[ru].read();
-          }
-       }
-       return ru;
-    }
-
-
-
-
-    // Contour: a minimum mapping based connected components algorithm
-    proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-
-      localtimer.clear();
-      localtimer.start(); 
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-      localtimer.stop(); 
-      executime=localtimer.elapsed();
-      myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
-      //we first check with order=1 mapping method
-      while( (!converged) && (itera<FirstOrderIters) && 
-               ( (Ne/here.numPUs() < LargeScale) )) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        writeln("My Order is 1"); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-
-
-      if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=2;
-      }else {
-           ORDERH=1024;
-      }  
-      // then we use 1m1m method
-      while( (!converged) ) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        itera += 1;
-        //writeln("My Order is 1"); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-        if( (count==0) ) {
-          converged = true;
-          continue;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-
-        // In the second step, we employ high order mapping
-        localtimer.clear();
-        localtimer.start(); 
-        if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  if(TmpMin < f[f[u]]) {
-                     f[f[u]] = TmpMin;
-                  }
-                  if(TmpMin < f[f[v]]) {
-                     f[f[v]] = TmpMin;
-                  }
-                  if(TmpMin < f[u]) {
-                    f[u] = TmpMin;
-                  }
-                  if(TmpMin < f[v]) {
-                    f[v] = TmpMin;
-                  }
-                }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                            count=1;
-                        } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-        } else {
-            coforall loc in Locales with ( + reduce count ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                      TmpMin=min(u,v);
-                  } else{
-                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
-                  }
-                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
-                      var myx=u;
-                      var lastx=u;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                      myx=v;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                  }
-                  
-                }//end of forall
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        writeln("My Order is ",ORDERH); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-
-    // UPS: Paul's min update, label propogation and symmetrization method
-    proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var l = makeDistArray(Nv, int); 
-      var src2 = makeDistArray(Ne*2, int); 
-      var dst2 = makeDistArray(Ne*2, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      var lu = makeDistArray(Nv, atomic int); 
-
-      localtimer.clear();
-      localtimer.start(); 
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = l.localSubdomain().lowBound;
-          var vertexEnd = l.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            l[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <l[i] ) {
-                     l[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <l[i] ) {
-                     l[i]=tmpv;
-                }
-            }
-            lu[i].write(l[i]);
-          }
-        }
-      }
-      var count:int=0;
-      
-        coforall loc in Locales {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-            forall x in edgeBegin..edgeEnd   {
-                  src2[x*2]=src[x];
-                  dst2[x*2]=dst[x];
-                  src2[x*2+1]=dst[x];
-                  dst2[x*2+1]=src[x];
-            }
-
-
-          }
-        }
-
-      localtimer.stop(); 
-      //executime=localtimer.elapsed();
-      //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-
-      var converged:bool = false;
-      var itera = 1;
-      while (!converged) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src2[2*x];
-              var v = dst2[2*x];
-              if (v!=l[u]) {
-                  var old=lu[v].read();
-                  var tmp =min(old,l[u]);
-                  while (old>tmp) {
-                    lu[v].compareAndSwap(old,tmp);
-                    old=lu[v].read();
-                    count+=1;
-                  }
-                  src2[2*x]=v;
-                  dst2[2*x]=l[u];         
-              } else {
-                  src2[2*x]=v;
-                  dst2[2*x]=u;         
-              }
-              u = src2[2*x+1];
-              v = dst2[2*x+1];
-              if (v!=l[u]) {
-                  src2[2*x+1]=v;
-                  dst2[2*x+1]=l[u];         
-                  var old=lu[v].read();
-                  var tmp =min(old,l[u]);
-                  while (old>tmp) {
-                    lu[v].compareAndSwap(old,tmp);
-                    old=lu[v].read();
-                    count+=1;
-                  }
-              } else {
-                  src2[2*x+1]=v;
-                  dst2[2*x+1]=u;         
-              }
-
-            }//end of forall
-          }
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-          coforall loc in Locales with ( + reduce count) {
-            on loc {
-                var VBegin = l.localSubdomain().lowBound;
-                var VEnd = l.localSubdomain().highBound;
-
-                    forall x in VBegin..VEnd   {
-                       l[x]=lu[x].read();
-                    }
-                }
-            }
-          }
-        itera += 1;
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-
-      writeln("Number of iterations = ", itera-1);
-
-      return l;
-    }
-
-    // Contour variant: a  mapping based connected components algorithm
-    proc cc_11mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-
-      // Initialize f and f_low in distributed memory.
-
-      localtimer.clear();
-      localtimer.start(); 
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
-      //we first check with order=1 mapping method
-      localtimer.stop(); 
-      var executime=localtimer.elapsed();
-      var myefficiency:real =(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-      while( (!converged) && 
-             (itera<FirstOrderIters) && 
-             ( (Ne/here.numPUs() < LargeScale) || (itera==1) || (myefficiency>LargeEdgeEfficiency)) ) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        itera += 1;
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        //writeln("My Order is 1"); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-      if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=2;
-      }else {
-           ORDERH=1024;
-      }  
-      // In the second step, we employ high order mapping
-      while(!converged) {
-        //var count:int=0;
-        //var count1:int=0;
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                      TmpMin=min(u,v);
-                  } else{
-                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
-                  }
-                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
-                      var myx=u;
-                      var lastx=u;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                      myx=v;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                  }
-                  
-            }//end of forall
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-              if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-              }
-            }
-          }
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        //writeln("My Order is ",ORDERH); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-
-
-
-
-    // Contour variant: a  mapping based connected components algorithm
-    proc cc_1m1m(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      // Initialize f and f_low in distributed memory.
-
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
-      if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=2;
-      }else {
-           ORDERH=1024;
-      }  
-      //we first check with order=1 mapping method
-      while( (!converged) ) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        itera += 1;
-        //writeln("My Order is 1"); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-        if( (count==0) ) {
-          converged = true;
-          continue;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-
-        // In the second step, we employ high order mapping
-        localtimer.clear();
-        localtimer.start(); 
-        if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  if(TmpMin < f[f[u]]) {
-                     f[f[u]] = TmpMin;
-                  }
-                  if(TmpMin < f[f[v]]) {
-                     f[f[v]] = TmpMin;
-                  }
-                  if(TmpMin < f[u]) {
-                    f[u] = TmpMin;
-                  }
-                  if(TmpMin < f[v]) {
-                    f[v] = TmpMin;
-                  }
-                }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                            count=1;
-                        } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-        } else {
-            coforall loc in Locales with ( + reduce count ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                      TmpMin=min(u,v);
-                  } else{
-                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
-                  }
-                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
-                      var myx=u;
-                      var lastx=u;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                      myx=v;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                  }
-                  
-                }//end of forall
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        //writeln("My Order is ",ORDERH); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-
-
-
-
-
-
-    // Contour variant: a  mapping based connected components algorithm
-    proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      // Initialize f and f_low in distributed memory.
-
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
-      if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=2;
-      }else {
-           ORDERH=1024;
-      }  
-      //we first check with order=1 mapping method
-      while( (!converged) ) {
-        // In the second step, we employ high order mapping
-        localtimer.clear();
-        localtimer.start(); 
-
-
-
-
-        if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  if(TmpMin < f[f[u]]) {
-                     f[f[u]] = TmpMin;
-                  }
-                  if(TmpMin < f[f[v]]) {
-                     f[f[v]] = TmpMin;
-                  }
-                  if(TmpMin < f[u]) {
-                    f[u] = TmpMin;
-                  }
-                  if(TmpMin < f[v]) {
-                    f[v] = TmpMin;
-                  }
-                }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                            count=1;
-                        } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-        } else {
-            coforall loc in Locales with ( + reduce count ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                      TmpMin=min(u,v);
-                  } else{
-                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
-                  }
-                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
-                      var myx=u;
-                      var lastx=u;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                      myx=v;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                  }
-                  
-                }//end of forall
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        //writeln("My Order is ",ORDERH); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-    // union-find
-    proc cc_unionfind(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-
-      // Initialize f and f_low in distributed memory.
-
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-
-      var converged:bool = false;
-      var itera = 1;
-      {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd    {
-              var u = src[x];
-              var v = dst[x];
-              unite(u,v,f);
-            }//end of forall
-            forall x in edgeBegin..edgeEnd    {
-              var u = src[x];
-              var v = dst[x];
-              var l=find_half(u,f);
-              var t=u;
-              var ft=f[t];
-              while (f[t]>l) {
-                  ft=f[t];
-                  f[t]=l;
-                  t=ft;
-              }
-              l=find_half(v,f);
-              t=v;
-              while (f[t]>l) {
-                  ft=f[t];
-                  f[t]=l;
-                  t=ft;
-              }
-            }//end of forall
-          }
-        }
-      }
-      writeln("Number of iterations = ", itera);
-
-      return f;
-    }
-
-
-
-    // FastSpread: a  propogation based connected components algorithm
-    proc cc_syn(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, int); 
-
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-      // Initialize f and f_low in distributed memory.
-
-
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            f_low[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                     f_low[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                     f_low[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-      var converged:bool = false;
-      var itera = 1;
-      while(!converged) {
-        localtimer.clear();
-        localtimer.start();
-
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-
-              var TmpMin:int;
-                  {
-                     TmpMin=min(f[f[u]],f[f[v]]);
-                     if(TmpMin < f_low[f[u]]) {
-                         f_low[f[u]] = TmpMin;
-                         count+=1;
-                     }
-                     if(TmpMin < f_low[f[v]]) {
-                         f_low[f[v]] = TmpMin;
-                         count+=1;
-                     }
-                     if(TmpMin < f_low[u]) {
-                         f_low[u] = TmpMin;
-                         count+=1;
-                     }
-                     if(TmpMin < f_low[v]) {
-                         f_low[v] = TmpMin;
-                         count+=1;
-                     }
-                  } 
-            }//end of forall
-          }
-        }
-        f=f_low;
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-        localtimer.stop();
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-
-      }
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-
-
-    // distance=1;
-    proc cc_1(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-      // Initialize f and f_low in distributed memory.
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-      var converged:bool = false;
-      var itera = 1;
-      while(!converged) {
-        localtimer.clear();
-        localtimer.start(); 
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-              if ((u!=0) || (v!=0)) {
-              var TmpMin:int;
-              TmpMin=min(f[u],f[v]);
-              if(TmpMin < f[u]) {
-                f[u] = TmpMin;
-                count+=1;
-              }
-              if(TmpMin < f[v]) {
-                f[v] = TmpMin;
-                count+=1;
-              }
-              }//end if       
-            }//end of forall
-          }
-        }
-
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-      }
-      //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-
-
-    // distance=2;
-    proc cc_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      // Initialize f and f_low in distributed memory.
-
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-      var converged:bool = false;
-      var itera = 1;
-      while(!converged) {
-        var count:int=0;
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count ) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
-              var u = src[x];
-              var v = dst[x];
-
-              var TmpMin:int;
-              if (itera==1) {
-                     TmpMin=min(u,v);
-              } else {
-                TmpMin=min(f[f[u]],f[f[v]]);
-              }
-              if(TmpMin < f[f[u]]) {
-                     f[f[u]] = TmpMin;
-              }
-              if(TmpMin < f[f[v]]) {
-                     f[f[v]] = TmpMin;
-              }
-              if(TmpMin < f[u]) {
-                f[u] = TmpMin;
-              }
-              if(TmpMin < f[v]) {
-                f[v] = TmpMin;
-              }
-            }//end of forall
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-              var u = src[x];
-              var v = dst[x];
-              if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-              }
-            }
-          }
-        }
-
-
-
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-      }
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
 
 
 
@@ -2795,100 +4171,6 @@ module CCMsg {
       }
 
 
-      /* 
-      while(!converged) {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-
-
-
-
-              var TmpMin:int;
-              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
-                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
-                     if(TmpMin < f_low[f_low[u].read()].read()) {
-                       f_low[f_low[u].read()].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[f_low[v].read()].read()) {
-                       f_low[f_low[v].read()].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[u].read()) {
-                       f_low[u].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[v].read()) {
-                       f_low[v].write(TmpMin);
-                       count+=1;
-                     }
-              } else {
-                  if ((itera % (JumpSteps*3) !=0) ) {
-                     TmpMin=min(f_low[u].read(),f_low[v].read());
-                     if(TmpMin < f_low[u].read()) {
-                       f_low[u].write(TmpMin);
-                       count+=1;
-                     }
-                     if(TmpMin < f_low[v].read()) {
-                       f_low[v].write(TmpMin);
-                       count+=1;
-                     }
-                  } else {
-                       //if ((itera % (JumpSteps*3) ==0) ) {
-                       TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                       if(TmpMin < f_low[f_low[f_low[u].read()].read()].read()) {
-                         f_low[f_low[f_low[u].read()].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[f_low[f_low[v].read()].read()].read()) {
-                         f_low[f_low[f_low[v].read()].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[f_low[u].read()].read()) {
-                         f_low[f_low[u].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[f_low[v].read()].read()) {
-                         f_low[f_low[v].read()].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[u].read()) {
-                         f_low[u].write(TmpMin);
-                         count+=1;
-                       }
-                       if(TmpMin < f_low[v].read()) {
-                         f_low[v].write(TmpMin);
-                         count+=1;
-                       }
-                  }
-              }
-            }//end of forall
-
-
-
-          }
-        }
-
-        //writeln("After iteration ", itera," f=",f);
-        
-        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
-        if(  (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-      }
-      */
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera-1);
       coforall loc in Locales {
@@ -2906,95 +4188,6 @@ module CCMsg {
 
 
 
-    // the atomic method for union find implementation
-    proc cc_unionfind_atomic(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var f_low = makeDistArray(Nv, atomic int); 
-
-      // Initialize f and f_low in distributed memory.
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f_low[i].write(i);
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f_low[i].write(tmpv);
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f_low[i].write(tmpv);
-                }
-            }
-          }
-        }
-      }
-
-
-      var converged:bool = false;
-      var itera = 1;
-
-
-
-      {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd    {
-              var u = src[x];
-              var v = dst[x];
-
-              unite_atomic(u,v,f_low);
-            }
-            forall x in edgeBegin..edgeEnd    {
-              var u = src[x];
-              var v = dst[x];
-              var l=find_naive_atomic(u,f_low);
-              var oldx=f_low[u].read();
-              while (oldx>l) {
-                    if (f_low[u].compareAndSwap(oldx,l)) {
-                        u=oldx;
-                    }
-                    oldx=f_low[u].read();
-              }
-              l=find_naive_atomic(v,f_low);
-              oldx=f_low[v].read();
-              while (oldx>l) {
-                    if (f_low[v].compareAndSwap(oldx,l)) {
-                        v=oldx;
-                    }
-                    oldx=f_low[v].read();
-              }
-
-            }//end of forall
-          }
-        }
-        
-      }
-
-
-      writeln("Number of iterations = ", itera);
-      coforall loc in Locales {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
-            f[i] = f_low[i].read();
-          }
-        }
-      }
-
-      return f;
-    }
 
 
     // the atomic method is slower than the non atomic method. However, for large graphs, it seems the atomic method is good.
@@ -3097,146 +4290,6 @@ module CCMsg {
         }
         itera += 1;
       }
-      /*
-      while(!converged) {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
-              var u = src[x];
-              var v = dst[x];
-
-
-              var TmpMin:int;
-              var oldval:int;
-              if ( (numLocales==1) || (itera % JumpSteps ==0)  || (itera < JumpSteps) ) {
-                     TmpMin=min(f_low[f_low[u].read()].read(),f_low[f_low[v].read()].read());
-                     oldval=f_low[f_low[u].read()].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[u].read()].read();
-                        }
-                     }
-                     oldval=f_low[f_low[v].read()].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[f_low[v].read()].read();
-                        }
-                     }
-                     oldval=f_low[u].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[u].read();
-                        }
-                     }
-                     oldval=f_low[v].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[v].read();
-                        }
-                     }
-              } else {
-                  if ((itera % (JumpSteps*3) !=0) ) {
-                     TmpMin=min(f_low[u].read(),f_low[v].read());
-                     oldval=f_low[u].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[u].read();
-                        }
-                     }
-                     oldval=f_low[v].read();
-                     while (oldval>TmpMin) {
-                        if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                             count+=1;
-                        } else {
-                             oldval=f_low[v].read();
-                        }
-                     }
-
-                  } else { 
-                      //if ((itera % (JumpSteps*3) ==0) ) {
-                       TmpMin=min(f_low[f_low[f_low[u].read()].read()].read(),f_low[f_low[f_low[v].read()].read()].read());
-                       oldval=f_low[f_low[f_low[u].read()].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[f_low[u].read()].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[f_low[u].read()].read()].read();
-                            }
-                       }
-                       oldval=f_low[f_low[f_low[v].read()].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[f_low[v].read()].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[f_low[v].read()].read()].read();
-                            }
-                       }
-                       oldval=f_low[f_low[u].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[u].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[u].read()].read();
-                            }
-                       }
-                       oldval=f_low[f_low[v].read()].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[f_low[v].read()].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[f_low[v].read()].read();
-                            }
-                       }
-                       oldval=f_low[u].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[u].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[u].read();
-                            }
-                       }
-                       oldval=f_low[v].read();
-                       while (oldval>TmpMin) {
-                            if (f_low[v].compareAndSwap(oldval, TmpMin)) {
-                                 count+=1;
-                            } else {
-                                 oldval=f_low[v].read();
-                            }
-                       }
-
-                  } 
-              }
-            }//end of forall
-          }
-        }
-
-        //writeln("After iteration ", itera," f=",f);
-        
-        //if( ((count1 == 0) && (numLocales==1)) || (count==0) ) {
-        if(  (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-        }
-        itera += 1;
-      }
-      */
 
       //writeln("Fast sv dist visited = ", f, " Number of iterations = ", itera);
       writeln("Number of iterations = ", itera-1);
@@ -3740,23 +4793,6 @@ module CCMsg {
                 }//end of forall
 
 
-                /*
-                // here we update the neighbor area with the same vertex ID
-                if (here.id>0) {
-                 if ( (a_nei[here.id-1].DO.highBound >=vertexBegin) && (a_nei[here.id-1].DO.lowBound <=vertexBegin)) {
-                      if (f1_next[here.id-1].A[vertexBegin]>f1_next[here.id].A[vertexBegin]) {
-                            f1_next[here.id-1].A[vertexBegin]=f1_next[here.id].A[vertexBegin];
-                      }
-                 }
-                }
-                if (here.id<numLocales-1) {
-                 if ( (a_nei[here.id+1].DO.lowBound <=vertexEnd) && (a_nei[here.id+1].DO.highBound >=vertexEnd) ) {
-                      if (f1_next[here.id+1].A[vertexEnd]>f1_next[here.id].A[vertexEnd]) {
-                            f1_next[here.id+1].A[vertexEnd]=f1_next[here.id].A[vertexEnd];
-                      }
-                 }
-                }
-                */
 
 
 
@@ -3799,269 +4835,22 @@ module CCMsg {
 
 
 
-    var timer:stopwatch;
-    // We only care for undirected graphs, they can be weighted or unweighted. 
-    var f1 = makeDistArray(Nv, int);
-    var f2 = makeDistArray(Nv, int);
-    var f3 = makeDistArray(Nv, int);
-    var f4 = makeDistArray(Nv, int);
-    var f5 = makeDistArray(Nv, int);
-    var f6 = makeDistArray(Nv, int);
-    var f7 = makeDistArray(Nv, int);
-    var f8 = makeDistArray(Nv, int);
-    var f9 = makeDistArray(Nv, int);
-    if (Directed == 0) {
-
-        timer.clear();
-        timer.start(); 
-        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
-                                toSymEntry(ag.getSTART_IDX(), int).a, 
-                                toSymEntry(ag.getSRC(), int).a, 
-                                toSymEntry(ag.getDST(), int).a, 
-                                toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                                toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                                toSymEntry(ag.getSRC_R(), int).a, 
-                                toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-
-
-        timer.clear();
-        timer.start();
-        f2 = cc_unionfind_atomic(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f3 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for 1m1m cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
 
 
-        timer.clear();
-        timer.start();
-        f4 = cc_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f5 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
 
 
-        timer.clear();
-        timer.start();
-        f6 = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
-        timer.clear();
-        timer.start();
-        f7 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for   11mm  cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        timer.clear();
-        timer.start();
-        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        timer.clear();
-        timer.start();
-        f9 = cc_ups(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for ups cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        /*
-        f5=f1;
-        f6=f1;
 
-        if (ag.hasA_START_IDX()) {
-                       timer.clear();
-                       timer.start();
-                       f5=cc_fs_aligned0(
-                           toSymEntry(ag.getNEIGHBOR(), int).a,
-                           toSymEntry(ag.getSTART_IDX(), int).a,
-                           toSymEntry(ag.getSRC(), int).a,
-                           toSymEntry(ag.getDST(), int).a,
-                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                           toSymEntry(ag.getSTART_IDX_R(), int).a,
-                           toSymEntry(ag.getSRC_R(), int).a,
-                           toSymEntry(ag.getDST_R(), int).a,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
-                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
-                           toDomArraySymEntry(ag.getA_DST_R()).domary);
-                       timer.stop();
-                       outMsg = "Time elapsed for aligned0 fs cc: " + timer.elapsed():string;
-                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                       timer.clear();
-                       timer.start();
-                       f6=cc_fs_aligned1(
-                           toSymEntry(ag.getNEIGHBOR(), int).a,
-                           toSymEntry(ag.getSTART_IDX(), int).a,
-                           toSymEntry(ag.getSRC(), int).a,
-                           toSymEntry(ag.getDST(), int).a,
-                           toSymEntry(ag.getNEIGHBOR_R(), int).a,
-                           toSymEntry(ag.getSTART_IDX_R(), int).a,
-                           toSymEntry(ag.getSRC_R(), int).a,
-                           toSymEntry(ag.getDST_R(), int).a,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX()).domary,
-                           toDomArraySymEntry(ag.getA_NEIGHBOR_R()).domary,
-                           toDomArraySymEntry(ag.getA_START_IDX_R()).domary,
-                           toDomArraySymEntry(ag.getA_SRC_R()).domary,
-                           toDomArraySymEntry(ag.getA_DST_R()).domary);
-                       timer.stop();
-                       outMsg = "Time elapsed for aligned1 fs cc: " + timer.elapsed():string;
-                       smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        }
-        */
-        coforall loc in Locales {
-          on loc {
-            var vertexStart = f1.localSubdomain().lowBound;
-            var vertexEnd = f1.localSubdomain().highBound;
-            forall i in vertexStart..vertexEnd {
-              //if ((f1[i] != f3[i]) || (f2[i]!=f3[i]) || (f1[i]!=f4[i]) || (f2[i]!=f4[i]) ||(f1[i]!=f5[i]) || (f2[i]!=f5[i])  ) {
-              if ((f1[i] != f2[i]) ) {
-                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ((f1[i] != f3[i]) ) {
-                var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f4[i]) ) {
-                var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f5[i]) ) {
-                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f6[i]) ) {
-                var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f7[i]) ) {
-                var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f8[i]) ) {
-                var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-              if ( (f1[i]!=f9[i]) ) {
-                var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-              }
-            }
-          }
-        } 
 
-    }
-    
-    // The message that is sent back to the Python front-end. 
-    var comps = new set(int);
 
-    for x in f2 {
-      comps.add(x);
-    }
-
-    var num_comps = makeDistArray(numLocales, int); 
-    num_comps[0] = comps.size;
-    proc return_CC(ary:[?d] int): string throws {
-      CCName = st.nextName();
-      var CCEntry = new shared SymEntry(ary);
-      st.addEntry(CCName, CCEntry);
-
-      var CCMsg =  'created ' + st.attrib(CCName);
-      return CCMsg;
-    }
-
-    var repMsg = return_CC(num_comps);
-    return new MsgTuple(repMsg, MsgType.NORMAL);
-  }
-
-  use CommandMap;
-  registerFunction("segmentedGraphCC", segCCMsg,getModuleName());
-}
+*/
