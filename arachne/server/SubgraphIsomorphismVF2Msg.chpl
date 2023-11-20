@@ -5,8 +5,9 @@ module SubgraphIsomorphismVF2Msg {
     
     // Arachne modules.
     use GraphArray;
-    use SubgraphIsomorphismVF2;
+    use SubgraphIsomorphismVF2; 
     
+
     // Arkouda modules.
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
