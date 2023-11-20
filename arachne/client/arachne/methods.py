@@ -11,6 +11,7 @@ from arkouda.pdarrayclass import pdarray, create_pdarray
 __all__ = ["read_matrix_market_file",
            "bfs_layers",
            "subgraph_isomorphism",
+           "subgraph_isomorphism_VF2",
            "triangles",
            "squares",
            "k_truss",
@@ -227,6 +228,62 @@ def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pd
     graph_degree = graph_in_degree + graph_out_degree
 
     cmd = "subgraphIsomorphism"
+    args = { "MainGraphName":G.name,
+             "SubGraphName":H.name,
+             "GraphDegreeName":graph_degree.name,
+             "SubGraphDegreeName":subgraph_degree.name,
+             "SubGraphInternalVerticesSortedName":subgraph_internal_vertices.name,
+             "Type":type }
+
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(repMsg)
+
+@typechecked
+def subgraph_isomorphism_VF2(G: PropGraph, H:PropGraph, type: str = "VF2") -> pdarray:
+    """
+    Given a graph G and a subgraph H, perform a search in G matching all possible subgraphs that
+    are isomorphic to H. Current contains implementations for Ullmann and VF2. 
+
+    Parameters
+    ----------
+    G : PropGraph | DiGraph
+        Main graph that will be searched into. 
+    H : PropGraph | DiGraph
+        Subgraph (pattern) that will  be searched for. 
+    type : str
+        Algorithmic variation to run. 
+
+    Returns
+    -------
+    pdarray
+        Graph IDs of matching subgraphs from G. 
+    
+    See Also
+    --------
+    
+    Notes
+    -----
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    ### Preprocessing steps for subgraph isomorphism.
+    # 1. Sort vertices by degree in non-ascending order.
+    subgraph_vertex_map = H.nodes()
+    subgraph_internal_vertices = ak.arange(0,len(subgraph_vertex_map))
+    subgraph_in_degree = H.in_degree()
+    subgraph_out_degree = H.out_degree()
+    subgraph_degree = subgraph_in_degree + subgraph_out_degree # TODO: fix to inspect in- and out- degrees separately.
+    perm = ak.argsort(subgraph_degree)
+    subgraph_internal_vertices = subgraph_internal_vertices[perm]
+
+    # 2. Generate the cumulative degree for each vertex in graph.
+    graph_in_degree = G.in_degree()
+    graph_out_degree = G.out_degree()
+    graph_degree = graph_in_degree + graph_out_degree
+
+    cmd = "subgraphIsomorphismVF2"
     args = { "MainGraphName":G.name,
              "SubGraphName":H.name,
              "GraphDegreeName":graph_degree.name,
