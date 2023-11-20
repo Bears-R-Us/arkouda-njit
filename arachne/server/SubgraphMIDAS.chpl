@@ -189,7 +189,7 @@ module SubgraphIsomorphism {
         }
 
         
-        for u in 0..v-1 {
+        forall u in 0..v-1 {
             //writeln("$$$$$$$$$ We reached isIsomorphic 2");
             //writeln(" u= ",u, " mapping[u]= ", mapping[u],"\n\n");
 
