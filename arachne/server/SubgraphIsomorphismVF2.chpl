@@ -385,7 +385,7 @@ module SubgraphIsomorphismVF2 {
     }
     
     // Get predecessors of a node from Graph
-    proc getPredecessors(graph: SegGraph, node: int, Mapper: list(string)): list(int) {
+    proc getPredecessors(graph: SegGraph, node: int, Mapper: list(string)): list(int) throws {
 
         var preds: list(int);
 
@@ -401,7 +401,7 @@ module SubgraphIsomorphismVF2 {
         return preds;
     }
     // Get successors of a node
-    proc getSuccessors(graph: SegGraph, node: int, Mapper: list(string)): list(int) {
+    proc getSuccessors(graph: SegGraph, node: int, Mapper: list(string)): list(int) throws {
 
         var succs: list(int);
 
@@ -419,7 +419,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     // Get nodes that point to node 
-    proc getInNeighbors(graph: SegGraph, node: int, Mapper: list(string)): list(int) {
+    proc getInNeighbors(graph: SegGraph, node: int, Mapper: list(string)): list(int) throws {
 
         var inNeighbors: list(int);
 
@@ -441,7 +441,7 @@ module SubgraphIsomorphismVF2 {
 
     }
     // Get nodes pointed to from 'node'
-    proc getOutNeighbors(graph: SegGraph, node: int, Mapper: list(string)): list(int) {
+    proc getOutNeighbors(graph: SegGraph, node: int, Mapper: list(string)): list(int) throws {
 
         var outNeighbors: list(int);
 
@@ -464,7 +464,7 @@ module SubgraphIsomorphismVF2 {
     ////////////////////////////////////////////////////feasibilty contraints
     
     // Check node labels are the same
-    proc nodesCompatible(n1: int, n2, g1: SegGraph, g2: SegGraph): bool {
+    proc nodesCompatible(n1: int, n2, g1: SegGraph, g2: SegGraph): bool throws {
         writeln("-----------------nodesCompatible called-------------------\n");
 
         //var label1 = g1.nodeLabels[n1];
@@ -488,7 +488,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     //Rpred - Predecessor Count Checking
-    proc Rpred(state: State, n1: int, n2: int, g1:SegGraph , g2: SegGraph): bool {
+    proc Rpred(state: State, n1: int, n2: int, g1:SegGraph , g2: SegGraph): bool throws {
         writeln("-----------------Rpred called-------------------\n");
 
         var n1Preds = getPredecessors(g1, n1, Orig_Rel_Mapper_G_Passed);
@@ -517,7 +517,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     //Rsucc - Successor Count Checking
-    proc Rsucc(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool {
+    proc Rsucc(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool throws {
         writeln("-----------------Rsucc called-------------------\n");
 
         var n1Succs = getSuccessors(g1, n1, Orig_Rel_Mapper_G_Passed);
@@ -546,7 +546,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     //Rin - Check in-neighbor counts
-    proc Rin(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool {
+    proc Rin(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool throws {
         writeln("-----------------Rin called-------------------\n");
 
         var n1In = getInNeighbors(g1, n1, Orig_Rel_Mapper_G_Passed);
@@ -570,7 +570,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     //Rout - Check out-neighbor counts
-    proc Rout(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool {
+    proc Rout(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool throws{
         writeln("-----------------Rout called-------------------\n");
 
         var n1Out = getOutNeighbors(g1, n1, Orig_Rel_Mapper_G_Passed);
@@ -591,7 +591,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     // Check degree constraint 
-    proc degreeConsistent(n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool {
+    proc degreeConsistent(n1: int, n2: int, g1: SegGraph, g2: SegGraph): bool throws{
         writeln("-----------------degreeConsistent called-------------------\n");
 
         // Get degree of n1
@@ -614,7 +614,7 @@ module SubgraphIsomorphismVF2 {
 
 
     // Check if candidates' pairs are feasible
-    proc isFeasible(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph) {
+    proc isFeasible(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph) throws {
         writeln("-----------------isFeasible called-------------------");
         writeln("-----------------for (",n1,",", n2,")-------------------\n");
 
@@ -624,12 +624,12 @@ module SubgraphIsomorphismVF2 {
             return false; 
         }
         
-        if !Rpred(state,n1 ,n2 ,g1 ,g2): bool {
+        if !Rpred(state,n1 ,n2 ,g1 ,g2) {
             writeln("Feasibility returned FALSE because of Rpred");
             return false;
         }
 
-        if !Rsucc(state,n1 ,n2 ,g1 ,g2): bool {
+        if !Rsucc(state,n1 ,n2 ,g1 ,g2) {
             writeln("Feasibility returned FALSE because of Rsucc");
             return false;
         }
@@ -653,7 +653,7 @@ module SubgraphIsomorphismVF2 {
         return true;// passed all checks
     }
 
-    proc addToTinTout(ref state: State, u : int, v: int, g1 : SegGraph, g2: SegGraph): State {
+    proc addToTinTout(ref state: State, u : int, v: int, g1 : SegGraph, g2: SegGraph): State throws {
 
         // Get in and out neighbors
         var inNeighbors = getInNeighbors(g1, u, Orig_Rel_Mapper_G_Passed);
@@ -716,7 +716,7 @@ module SubgraphIsomorphismVF2 {
 
     // This will traverse all the edges of each mapped node and ensure 
     // the connectivity is consistent between g1 and g2 subgraphs.
-    proc validateMapping(state: State, g1: SegGraph, g2: SegGraph) {
+    proc validateMapping(state: State, g1: SegGraph, g2: SegGraph) throws {
 
         // Check all edges between mapped nodes
         for (n1, n2) in state.mapping {
@@ -753,7 +753,7 @@ module SubgraphIsomorphismVF2 {
     }
 
     // DFS returns list of all solution states 
-    proc dfs(ref initialState: State, g1: SegGraph, g2: SegGraph): list(State) {
+    proc dfs(ref initialState: State, g1: SegGraph, g2: SegGraph): list(State) throws {
         writeln("-----------------dfs called-------------------\n");
         //var visited:[0..<g1.numVertices] int = 0;
         var allSolutions: list(State);
