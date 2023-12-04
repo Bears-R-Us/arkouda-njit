@@ -930,8 +930,8 @@ module CCMsg {
         }
       }
 
-      var converged = false;
-      var itera = 1;
+      //var converged = false;
+      //var itera = 1;
       gf = f;
       while(!converged) {
         localtimer.clear();
@@ -1193,15 +1193,13 @@ module CCMsg {
           while(!converged) {
             localtimer.clear();
             localtimer.start(); 
-            coforall loc in Locales with ( + reduce count, + reduce count1) {
+            coforall loc in Locales with ( + reduce count) {
               on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
   
-                forall x in edgeBegin..edgeEnd  with ( + reduce count,+ reduce count1)  {
+                forall x in src.localSubdomain()  with ( + reduce count)  {
                   var u = src[x];
                   var v = dst[x];
-                  if ((u!=0) || (v!=0)) {
+                  {
                      var TmpMin:int;
                      TmpMin=min(f[u],f[v]);
                      if(TmpMin < f[u]) {
@@ -1227,6 +1225,7 @@ module CCMsg {
             }
             else {
               converged = false;
+              count=0;
             }
             itera += 1;
           }
@@ -1387,8 +1386,6 @@ module CCMsg {
           }
 
 
-          var converged:bool = false;
-          var itera = 1;
           while(!converged) {
             var count:int=0;
             localtimer.clear();
@@ -1891,9 +1888,6 @@ module CCMsg {
 
 
 
-          var converged:bool = false;
-          var itera = 1;
-          var count:int=0;
           //we first check with order=1 mapping method
           localtimer.stop(); 
           var executime=localtimer.elapsed();
@@ -1950,8 +1944,6 @@ module CCMsg {
           }  
           // In the second step, we employ high order mapping
           while(!converged) {
-            //var count:int=0;
-            //var count1:int=0;
             localtimer.clear();
             localtimer.start(); 
             coforall loc in Locales with ( + reduce count ) {
@@ -2170,9 +2162,7 @@ module CCMsg {
 
       coforall loc in Locales {
         on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
+          forall i in f.localSubdomain() {
             f[i] = i;
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
@@ -2192,9 +2182,6 @@ module CCMsg {
 
 
 
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
       if (Ne/here.numPUs() < LargeScale) {
            ORDERH=2;
       }else {
@@ -2206,10 +2193,8 @@ module CCMsg {
         localtimer.start(); 
         coforall loc in Locales with ( + reduce count) {
           on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+            forall x in src.localSubdomain()   with ( + reduce count)  {
               var u = src[x];
               var v = dst[x];
 
@@ -2241,7 +2226,6 @@ module CCMsg {
         }
         else {
           converged = false;
-          count=0;
         }
 
         // In the second step, we employ high order mapping
@@ -2250,10 +2234,8 @@ module CCMsg {
         if (ORDERH==2) {
             coforall loc in Locales with ( + reduce count ) {
               on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -2273,7 +2255,7 @@ module CCMsg {
                     f[v] = TmpMin;
                   }
                 }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count)  {
                   var u = src[x];
                   var v = dst[x];
                   if (count==0) {
@@ -2287,10 +2269,8 @@ module CCMsg {
         } else {
             coforall loc in Locales with ( + reduce count ) {
               on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -2318,7 +2298,7 @@ module CCMsg {
                   
                 }//end of forall
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count)  {
                   var u = src[x];
                   var v = dst[x];
                   if (count==0) {
@@ -2510,18 +2490,15 @@ module CCMsg {
       }
 
 
-      var converged:bool = false;
-      var itera = 1;
       while(!converged) {
         localtimer.clear();
         localtimer.start();
 
-        var count:int=0;
         var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+        coforall loc in Locales with ( + reduce count  ) {
           on loc {
 
-            forall x in src.localSubdomain()   with ( + reduce count,+ reduce count1)  {
+            forall x in src.localSubdomain()   with ( + reduce count)  {
               var u = src[x];
               var v = dst[x];
 
@@ -2556,6 +2533,7 @@ module CCMsg {
         }
         else {
           converged = false;
+          count=0;
         }
         itera += 1;
         localtimer.stop();
@@ -2718,7 +2696,6 @@ module CCMsg {
       }
 
 
-      //writeln("Number of iterations = ", itera);
       itera+=1;
       coforall loc in Locales {
         on loc {
