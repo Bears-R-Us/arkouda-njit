@@ -565,19 +565,8 @@ class DiGraph(Graph):
         self.name = oriname.strip()
 
 class PropGraph(DiGraph):
-    """Base class for property graphs. Inherits from DiGraph.
-
-    This is the double index graph data structure based graph representation. The graph data resides 
-    on the arkouda server. The user should not call this class directly; rather its instances are 
-    created by other arachne functions.
-
-    PropGraphs hold directed edges. Self loops and multiple edges are allowed.
-
-    Nodes currently are only allowed to be integers. They can contain labels as strings and 
-    properties as tuples.
-
-    Edges are represented as directed links between nodes. They can contain relationships as strings
-    and properties as tuples.
+    """Base class for property graphs. Inherits from `DiGraph`. This is the double index graph data 
+    structure based graph representation. The graph data resides on the arkouda server. 
 
     Parameters
     ----------
@@ -659,7 +648,9 @@ class PropGraph(DiGraph):
         self.dtype = akint
         self.logger = getArkoudaLogger(name=__class__.__name__)
 
-    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+    def _add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+        # NOTE: This will eventually be a way to allow multiedges in a property graph, but it will
+        #       be only allowed of edges are specified with a relationship. DOES NOT WORK.
         """
         Populates the graph object with edges as defined by the akarrays.
 
@@ -1009,7 +1000,7 @@ class PropGraph(DiGraph):
         -------
         None
         """
-        cmd = "loadEdgeAtrributes"
+        cmd = "loadEdgeAttributes"
         columns = edge_attributes.columns
         source_column = columns[0] if source_column is None else source_column
         destination_column = columns[1] if destination_column is None else destination_column
@@ -1043,7 +1034,7 @@ class PropGraph(DiGraph):
         ### Build the graph into memory.
         # 1a. Multigraph uses the PropGraph add_edges_from() method.
         if self.multied:
-            self.add_edges_from(src, dst)
+            self._add_edges_from(src, dst)
         # 1b. Simple graph uses the DiGraph add_edges_from() method.
         else:
             super().add_edges_from(src, dst)
@@ -1065,9 +1056,17 @@ class PropGraph(DiGraph):
         column_names = column_names[perm]
         column_ids = column_ids[perm]
 
+        # 4. Generate internal indices for the edges.
+        edges = self.edges()
+        nodes = self.nodes()
+        src = ak.find([src], [nodes])
+        dst = ak.find([dst], [nodes])
+        internal_indices = ak.find([src,dst], [edges[0],edges[1]])
+
         args = { "GraphName" : self.name,
                  "ColumnNames" : column_names.name,
-                 "ColumnIds" : column_ids.name,
+                 "ColumnIdsName" : column_ids.name,
+                 "InternalIndicesName" : internal_indices.name,
                  "RelationshipMapperName" : relationship_mapper.name
                }
         rep_msg = generic_msg(cmd=cmd, args=args)

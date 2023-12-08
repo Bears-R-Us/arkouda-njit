@@ -52,14 +52,14 @@ module BuildGraphMsg {
         var akarray_weightS = msgArgs.getValueOf("AkArrayWeight");
         var weightedS = msgArgs.getValueOf("Weighted");
         var directedS = msgArgs.getValueOf("Directed");
-        var multiedS = msgArgs.getValueOf("Multied");
         var num_verticesS = msgArgs.getValueOf("NumVertices");
         var num_edgesS = msgArgs.getValueOf("NumEdges");
 
         var propertied:bool;
-        if msgArgs.contains("IsPropGraph") {
-            propertied = true;
-        }
+        if msgArgs.contains("IsPropGraph") then propertied = true;
+
+        var multied:bool;
+        if msgArgs.contains("Multied") then multied = true;
 
         // Extract the names of the arrays and the data for the non-array variables.
         var src_name:string = (akarray_srcS:string);
@@ -75,10 +75,6 @@ module BuildGraphMsg {
         var directed:bool;
         directedS = directedS.toLower();
         directed = directedS:bool;
-
-        var multied:bool;
-        multiedS = multiedS.toLower();
-        multied = multiedS:bool;
 
         var num_vertices:int;
         num_vertices = num_verticesS:int;
@@ -110,7 +106,7 @@ module BuildGraphMsg {
         var akarray_seg_sym = toSymEntry(akarray_seg_entry, int);
         var segments = akarray_seg_sym.a;
 
-        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied);
+        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied, multied);
         graph.multied = multied;
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
             .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
@@ -205,9 +201,10 @@ module BuildGraphMsg {
         var num_edgesS = msgArgs.getValueOf("NumEdges");
 
         var propertied:bool;
-        if msgArgs.contains("IsPropGraph") {
-            propertied = true;
-        }
+        if msgArgs.contains("IsPropGraph") then propertied = true;
+
+        var multied:bool;
+        if msgArgs.contains("Multied") then multied = true;
 
         // Extract the names of the arrays and the data for the non-array variables.
         var src_name:string = (akarray_srcS:string);
@@ -277,7 +274,7 @@ module BuildGraphMsg {
         var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
         var vmap = akarray_vmap_sym.a;
 
-        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied);
+        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied, multied);
         graph.reversed = true;
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
             .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
