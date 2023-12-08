@@ -80,12 +80,13 @@ module GraphArray {
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
         */
-        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool) {
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool, multied:bool) {
             this.n_vertices = num_v;
             this.n_edges = num_e;
             this.directed = directed;
             this.weighted = weighted;
             this.propertied = propertied;
+            this.multied = multied;
         }
 
         proc isDirected():bool { return this.directed; }
@@ -126,6 +127,19 @@ module GraphArray {
         }
     }
 
+    class SymEntryAS : GenSymEntry {
+        type etype;
+        var bD: makeDistDom(1).type;
+        var sD: sparse subdomain(bD);
+        var a: [sD] etype;
+        
+        proc init(in a: [?D] ?etype) {
+            super.init(etype);
+            this.etype = etype;
+            this.a = a;
+        }
+    }
+
     class MapSymEntry : GenSymEntry {
         var stored_map: map(string, string);
         
@@ -141,6 +155,10 @@ module GraphArray {
 
     proc toSymEntryAD(e) {
         return try! e : borrowed SymEntryAD();
+    }
+
+    proc toSymEntryAS(e) {
+        return try! e : borrowed SymEntryAS();
     }
 
     /**

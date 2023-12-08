@@ -1,4 +1,4 @@
-module DipSLLPropertyGraphMsg {
+module PropertyGraphMsg {
     // Chapel modules.
     use Reflection;
     use Time; 
@@ -25,6 +25,7 @@ module DipSLLPropertyGraphMsg {
     use AryUtil;
     use Logging;
     use Message;
+    use CommAggregation;
     
     // Server message logger. 
     private config const logLevel = LogLevel.DEBUG;
@@ -41,6 +42,17 @@ module DipSLLPropertyGraphMsg {
         type etype;
         var propertyIdentifier: domain(int);
         var propertyValue: [propertyIdentifier] etype;
+    }
+
+    proc insertData(consecutive:bool, ref originalData, ref newData, ref internalIndices, type t) {
+        if consecutive {
+            forall (i,j) in zip(internalIndices, internalIndices.domain) 
+                do newData[i] = originalData[j];
+        } else {
+            forall (i,j) in zip(internalIndices, internalIndices.domain) 
+                with (var agg = new DstAggregator(t)) 
+                do agg.copy(newData[i], originalData[j]);
+        }
     }
 
     /**
@@ -123,202 +135,202 @@ module DipSLLPropertyGraphMsg {
     // *
     // * :returns: MsgTuple
     // */
-    // proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-    //     param pn = Reflection.getRoutineName();
-    //     var time_profile_timer:stopwatch;
+    proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        var time_profile_timer:stopwatch;
 
-    //     // Parse the message from Python to extract needed data. 
-    //     var graphEntryName = msgArgs.getValueOf("GraphName");
-    //     var vertexIdsName = msgArgs.getValueOf("VertexIdsName");
-    //     var propertyMapperName = msgArgs.getValueOf("PropertyMapperName");
-    //     var dataArrayNames = msgArgs.getValueOf("DataArrayNames");
+        // Parse the message from Python to extract needed data. 
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var vertexIdsName = msgArgs.getValueOf("VertexIdsName");
+        var propertyMapperName = msgArgs.getValueOf("PropertyMapperName");
+        var dataArrayNames = msgArgs.getValueOf("DataArrayNames");
 
-    //     // Extract the graph we are operating with from the symbol table.
-    //     var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-    //     var graph = gEntry.graph;
-    //     var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
+        // Extract the graph we are operating with from the symbol table.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var node_map = toSymEntry(graph.getComp("NODE_MAP"), int).a;
 
-    //     // Extract the vertices containing labels to be inputted.
-    //     var inputVerticesEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexIdsName, st);
-    //     var inputVerticesSym = toSymEntry(inputVerticesEntry, int);
-    //     var inputVertices = inputVerticesSym.a;
+        // Extract the vertices containing labels to be inputted.
+        var inputVerticesEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexIdsName, st);
+        var inputVerticesSym = toSymEntry(inputVerticesEntry, int);
+        var inputVertices = inputVerticesSym.a;
 
-    //     // Extract property mappers from message, the first one contains column names in their
-    //     // regular order, the second contains the internal mapping for the property names.
-    //     var columns:SegString = getSegString(propertyMapperName, st);
+        // Extract property mappers from message, the first one contains column names in their
+        // regular order, the second contains the internal mapping for the property names.
+        var columns:SegString = getSegString(propertyMapperName, st);
 
-    //     // Create map of column name to its datatype.
-    //     var col2dtype = new map(string, string);
+        // Create map of column name to its datatype.
+        var col2dtype = new map(string, string);
 
-    //     // Extract the data array names and the data types for those arrays.
-    //     var dataArrays = getSegString(dataArrayNames, st);
-    //     var dataTypeSet: domain(string);
-    //     time_profile_timer.start();
-    //     for i in 0..<dataArrays.size {
-    //         var dataType = dtype2str(getGenericTypedArrayEntry(dataArrays[i], st).dtype);
-    //         col2dtype.add(columns[i], dataType);
-    //         select dataType {
-    //             when "uint8" {
-    //                 var errorMsg = notImplementedError(pn, dataType);
-    //                 pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-    //                 return new MsgTuple(errorMsg, MsgType.ERROR);
-    //             }
-    //             when "bigint" {
-    //                 var errorMsg = notImplementedError(pn, dataType);
-    //                 pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-    //                 return new MsgTuple(errorMsg, MsgType.ERROR);
-    //             }
-    //             when "UNDEF" {
-    //                 var errorMsg = notImplementedError(pn, dataType);
-    //                 pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-    //                 return new MsgTuple(errorMsg, MsgType.ERROR);
-    //             }
-    //         }
-    //         dataTypeSet += dataType;
-    //     }
-    //     time_profile_timer.stop();
-    //     var timer1 = time_profile_timer.elapsed();
-    //     time_profile_timer.reset();
+        // Extract the data array names and the data types for those arrays.
+        var dataArrays = getSegString(dataArrayNames, st);
+        var dataTypeSet: domain(string);
+        time_profile_timer.start();
+        for i in 0..<dataArrays.size {
+            var dataType = dtype2str(getGenericTypedArrayEntry(dataArrays[i], st).dtype);
+            col2dtype.add(columns[i], dataType);
+            select dataType {
+                when "uint8" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+                when "bigint" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+                when "UNDEF" {
+                    var errorMsg = notImplementedError(pn, dataType);
+                    pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                    return new MsgTuple(errorMsg, MsgType.ERROR);
+                }
+            }
+            dataTypeSet += dataType;
+        }
+        time_profile_timer.stop();
+        var timer1 = time_profile_timer.elapsed();
+        time_profile_timer.reset();
 
-    //     // Create a mapping for the string names of the data types to their integer identifier.
-    //     var dataTypeMapStrToInt: [dataTypeSet] int;
-    //     var ind = 0;
-    //     for val in dataTypeMapStrToInt { val = ind; ind += 1; } 
+        // Create a mapping for the string names of the data types to their integer identifier.
+        var dataTypeMapStrToInt: [dataTypeSet] int;
+        var ind = 0;
+        for val in dataTypeMapStrToInt { val = ind; ind += 1; } 
 
-    //     // Create a mapping for the interger identifier values to their string representation.
-    //     var dataTypeMapIntToStr: [0..<ind] string;
-    //     for (key,val) in zip(dataTypeMapStrToInt.domain,dataTypeMapStrToInt) do dataTypeMapIntToStr[val] = key;
+        // Create a mapping for the interger identifier values to their string representation.
+        var dataTypeMapIntToStr: [0..<ind] string;
+        for (key,val) in zip(dataTypeMapStrToInt.domain,dataTypeMapStrToInt) do dataTypeMapIntToStr[val] = key;
 
-    //     var timer:stopwatch;
-    //     timer.start();
-    //     /** Create block distributed two-dimensional array where the row indices correspond to the vertex
-    //     * being stored and the column indices to the datatype being stored. Each element of the array 
-    //     * is to store an object of class Property that contains an associative array where the domain
-    //     * is an integer identifier for the name of the property (column) being stored and the element 
-    //     * is the value for that vertex in that column. */
-    //     time_profile_timer.start();
-    //     var vertex_props = Block.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
-    //     forall (v,d) in vertex_props.domain {
-    //         var datatype:string = dataTypeMapIntToStr[d];
-    //         select datatype {
-    //             when "int64", "int" {
-    //                 var newDom: domain(int);
-    //                 var newArr: [newDom] int;
-    //                 vertex_props[v,d] = new shared Property(d, int, newDom, newArr);
-    //             }
-    //             when "uint64", "uint" {
-    //                 var newDom: domain(int);
-    //                 var newArr: [newDom] uint;
-    //                 vertex_props[v,d] = new shared Property(d, uint, newDom, newArr);
-    //             }
-    //             when "float64" {
-    //                 var newDom: domain(int);
-    //                 var newArr: [newDom] real;
-    //                 vertex_props[v,d] = new shared Property(d, real, newDom, newArr);
-    //             }
-    //             when "bool" {
-    //                 var newDom: domain(int);
-    //                 var newArr: [newDom] bool;
-    //                 vertex_props[v,d] = new shared Property(d, bool, newDom, newArr);
-    //             }
-    //             when "str" {
-    //                 var newDom: domain(int);
-    //                 var newArr: [newDom] string;
-    //                 vertex_props[v,d] = new shared Property(d, string, newDom, newArr);
-    //             }
-    //         }
-    //     }
-    //     time_profile_timer.stop();
-    //     var timer2 = time_profile_timer.elapsed();
-    //     time_profile_timer.reset();
+        var timer:stopwatch;
+        timer.start();
+        /** Create block distributed two-dimensional array where the row indices correspond to the vertex
+        * being stored and the column indices to the datatype being stored. Each element of the array 
+        * is to store an object of class Property that contains an associative array where the domain
+        * is an integer identifier for the name of the property (column) being stored and the element 
+        * is the value for that vertex in that column. */
+        time_profile_timer.start();
+        var vertex_props = Block.createArray({0..<node_map.size, 0..<dataTypeSet.size}, shared GenProperty?);
+        forall (v,d) in vertex_props.domain {
+            var datatype:string = dataTypeMapIntToStr[d];
+            select datatype {
+                when "int64", "int" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] int;
+                    vertex_props[v,d] = new shared Property(d, int, newDom, newArr);
+                }
+                when "uint64", "uint" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] uint;
+                    vertex_props[v,d] = new shared Property(d, uint, newDom, newArr);
+                }
+                when "float64" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] real;
+                    vertex_props[v,d] = new shared Property(d, real, newDom, newArr);
+                }
+                when "bool" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] bool;
+                    vertex_props[v,d] = new shared Property(d, bool, newDom, newArr);
+                }
+                when "str" {
+                    var newDom: domain(int);
+                    var newArr: [newDom] string;
+                    vertex_props[v,d] = new shared Property(d, string, newDom, newArr);
+                }
+            }
+        }
+        time_profile_timer.stop();
+        var timer2 = time_profile_timer.elapsed();
+        time_profile_timer.reset();
 
-    //     /** Sequentially process each data array, where each array itself is picked apart in
-    //     * parallel and its values are stored in the appropriate locations of vertex_props. Due to 
-    //     * Chapel being a statically-typed language, processing each datatype must be done 
-    //     * separately. */
-    //     time_profile_timer.start();
-    //     for i in 0..<dataArrays.size {
-    //         var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArrays[i], st);
-    //         var etype = dataArrayEntry.dtype;
-    //         var etypeStr = dtype2str(etype);
-    //         select etype {
-    //             when (DType.Int64) {
-    //                 var dataArraySym = toSymEntry(dataArrayEntry, int);
-    //                 var dataArray = dataArraySym.a;
-    //                 var etypeInd = dataTypeMapStrToInt[etypeStr];
-    //                 forall (v,j) in zip(inputVertices,inputVertices.domain) {
-    //                     var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(int)));
-    //                     currentProperty!.dataType = etypeInd;
-    //                     currentProperty!.propertyIdentifier += i;
-    //                     currentProperty!.propertyValue[i] = dataArray[j];
-    //                 }
-    //             }
-    //             when (DType.UInt64) {
-    //                 var dataArraySym = toSymEntry(dataArrayEntry, uint);
-    //                 var dataArray = dataArraySym.a;
-    //                 var etypeInd = dataTypeMapStrToInt[etypeStr];
-    //                 forall (v,j) in zip(inputVertices,inputVertices.domain) {
-    //                     var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(uint)));
-    //                     currentProperty!.dataType = etypeInd;
-    //                     currentProperty!.propertyIdentifier += i;
-    //                     currentProperty!.propertyValue[i] = dataArray[j];
-    //                 }
-    //             }
-    //             when (DType.Float64) {
-    //                 var dataArraySym = toSymEntry(dataArrayEntry, real);
-    //                 var dataArray = dataArraySym.a;
-    //                 var etypeInd = dataTypeMapStrToInt[etypeStr];
-    //                 forall (v,j) in zip(inputVertices,inputVertices.domain) {
-    //                     var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(real)));
-    //                     currentProperty!.dataType = etypeInd;
-    //                     currentProperty!.propertyIdentifier += i;
-    //                     currentProperty!.propertyValue[i] = dataArray[j];
-    //                 }
-    //             }
-    //             when (DType.Bool) {
-    //                 var dataArraySym = toSymEntry(dataArrayEntry, bool);
-    //                 var dataArray = dataArraySym.a;
-    //                 var etypeInd = dataTypeMapStrToInt[etypeStr];
-    //                 forall (v,j) in zip(inputVertices,inputVertices.domain) {
-    //                     var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(bool)));
-    //                     currentProperty!.dataType = etypeInd;
-    //                     currentProperty!.propertyIdentifier += i;
-    //                     currentProperty!.propertyValue[i] = dataArray[j];
-    //                 }
-    //             }
-    //             when (DType.Strings) {
-    //                 var dataArraySym = toSegStringSymEntry(dataArrayEntry);
-    //                 var dataArray = getSegString(dataArraySym.name, st);
-    //                 var etypeInd = dataTypeMapStrToInt[etypeStr];
-    //                 forall (v,j) in zip(inputVertices,inputVertices.domain) {
-    //                     var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(string)));
-    //                     currentProperty!.dataType = etypeInd;
-    //                     currentProperty!.propertyIdentifier += i;
-    //                     currentProperty!.propertyValue[i] = dataArray[j];
-    //                 }
-    //             }
-    //         }
-    //     }
-    //     timer.stop();
-    //     time_profile_timer.stop();
-    //     var timer3 = time_profile_timer.elapsed();
-    //     time_profile_timer.reset();
+        /** Sequentially process each data array, where each array itself is picked apart in
+        * parallel and its values are stored in the appropriate locations of vertex_props. Due to 
+        * Chapel being a statically-typed language, processing each datatype must be done 
+        * separately. */
+        time_profile_timer.start();
+        for i in 0..<dataArrays.size {
+            var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArrays[i], st);
+            var etype = dataArrayEntry.dtype;
+            var etypeStr = dtype2str(etype);
+            select etype {
+                when (DType.Int64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, int);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (v,j) in zip(inputVertices,inputVertices.domain) {
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(int)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.UInt64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, uint);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (v,j) in zip(inputVertices,inputVertices.domain) {
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(uint)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.Float64) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, real);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (v,j) in zip(inputVertices,inputVertices.domain) {
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(real)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.Bool) {
+                    var dataArraySym = toSymEntry(dataArrayEntry, bool);
+                    var dataArray = dataArraySym.a;
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (v,j) in zip(inputVertices,inputVertices.domain) {
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(bool)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+                when (DType.Strings) {
+                    var dataArraySym = toSegStringSymEntry(dataArrayEntry);
+                    var dataArray = getSegString(dataArraySym.name, st);
+                    var etypeInd = dataTypeMapStrToInt[etypeStr];
+                    forall (v,j) in zip(inputVertices,inputVertices.domain) {
+                        var currentProperty = (vertex_props[v,etypeInd].borrow():(borrowed Property(string)));
+                        currentProperty!.dataType = etypeInd;
+                        currentProperty!.propertyIdentifier += i;
+                        currentProperty!.propertyValue[i] = dataArray[j];
+                    }
+                }
+            }
+        }
+        timer.stop();
+        time_profile_timer.stop();
+        var timer3 = time_profile_timer.elapsed();
+        time_profile_timer.reset();
 
-    //     // Add the component for the node labels for the graph.
-    //     graph.withComp(new shared SymEntry2D(vertex_props):GenSymEntry, "VERTEX_PROPS");
-    //     graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "VERTEX_PROPS_COL_MAP");
-    //     graph.withComp(new shared SymEntry(dataTypeMapIntToStr):GenSymEntry, "VERTEX_PROPS_DTYPE_MAP");
-    //     graph.withComp(new shared MapSymEntry(col2dtype):GenSymEntry, "VERTEX_PROPS_COL2DTYPE");
-    //     // var repMsg = "node properties added";
-    //     var repMsg = timer1:string + "+" + timer2:string + "+" + timer3:string;
-    //     outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
+        // Add the component for the node labels for the graph.
+        graph.withComp(new shared SymEntry2D(vertex_props):GenSymEntry, "VERTEX_PROPS");
+        graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "VERTEX_PROPS_COL_MAP");
+        graph.withComp(new shared SymEntry(dataTypeMapIntToStr):GenSymEntry, "VERTEX_PROPS_DTYPE_MAP");
+        graph.withComp(new shared MapSymEntry(col2dtype):GenSymEntry, "VERTEX_PROPS_COL2DTYPE");
+        // var repMsg = "node properties added";
+        var repMsg = timer1:string + "+" + timer2:string + "+" + timer3:string;
+        outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
-    //     // Print out debug information to arkouda server output. 
-    //     pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-    //     pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        // Print out debug information to arkouda server output. 
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
-    //     return new MsgTuple(repMsg, MsgType.NORMAL);
-    // } // end of addNodePropertiesMsg
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of addNodePropertiesMsg
 
     /**
     * Adds edge relationships to the edges of a property graph.
@@ -599,7 +611,7 @@ module DipSLLPropertyGraphMsg {
     } // end of addEdgePropertiesMsg
 
     /**
-    * Adds edge attributes to the internal edges of a property graph.
+    * Loads edge attributes to the internal edges of a property graph.
     *
     * :arg cmd: operation to perform. 
     * :type cmd: string
@@ -612,89 +624,118 @@ module DipSLLPropertyGraphMsg {
     */
     proc loadEdgeAttributesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
+        proc addBlockArrayToSymbolTable(newData): string throws {
+            var attrName = st.nextName();
+            var attrEntry = new shared SymEntry(newData);
+            st.addEntry(attrName, attrEntry);
+            var repMsg = "created " + st.attrib(attrName) + "+ ";
+            return repMsg;
+        }
+        proc addSparseArrayToSymbolTable(newData): string throws {
+            var attrName = st.nextName();
+            var attrEntry = new shared SymEntryAS(newData);
+            st.addEntry(attrName, attrEntry);
+            var repMsg = "created " + st.attrib(attrName) + "+ ";
+            return repMsg;
+        }
 
         // Parse the message from Python to extract needed data. 
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var columnNames = msgArgs.getValueOf("ColumnNames");
-        var columnIds = msgArgs.getValueOf("ColumnIds");
-        var relationshipMapperName = msgArgs.getValueOf("RelationshipMapperName")
+        var columnIdsName = msgArgs.getValueOf("ColumnIdsName");
+        var internalIndicesName = msgArgs.getValueOf("InternalIndicesName");
+        var relationshipMapperName = msgArgs.getValueOf("RelationshipMapperName");
 
         // Extract the graph we are operating with from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var graph = gEntry.graph;
         var src = toSymEntry(graph.getComp("SRC"), int).a;
+        var edgeDomain = src.domain;
+        var internalIndicesEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(internalIndicesName, st);
+        var internalIndices = toSymEntry(internalIndicesEntry, int).a;
+        
+        // Ensure internalIndices begin at 0 and end at n-1 and all values within are consecutive, if not
+        // then values are added to a sparse domain based off the original edge domain.
+        var consecutive:bool = true;
+        if src.size != internalIndices.size then consecutive = false;
+        else {
+            if internalIndices[0] != 0 then consecutive = false;
+            else if internalIndices[internalIndices.domain.high] != src.domain.high then consecutive = false;
+            else forall (v,d) in zip(internalIndices, internalIndices.domain) with (ref consecutive) do if v != d then consecutive = false;
+        }
+        var sparseDataDomain: sparse subdomain(edgeDomain);
+        if !consecutive then sparseDataDomain.bulkAddNoPreserveInds(internalIndices, dataSorted = true, isUnique = true);
 
         // Extract property mappers from message, the first one contains column names in their
         // regular order, the second contains the internal mapping for the property names.
         var columns:SegString = getSegString(columnNames, st);
-        var columnIds:SegString = getSegString(columnIds, st);
+        var columnIds:SegString = getSegString(columnIdsName, st);
         var relationshipMapper = getSegString(relationshipMapperName, st);
 
         // Create new arrays for inputted dataframe data incase the original dataframe ever ceases
         // to exist.
         var repMsg = "";
+        var timer: stopwatch;
+        timer.start();
         for i in 0..<columnIds.size {
             var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(columnIds[i], st);
             var etype = dataArrayEntry.dtype;
             select etype {
                 when (DType.Int64) {
-                    var dataArraySym = toSymEntry(dataArrayEntry, int);
-                    var dataArray = dataArraySym.a;
-                    var newDom = makeDistDom(src.size);
-                    var newArray : [newDom] int;
-                    newArray = dataArray;
-                    var newName = st.nextName();
-                    var newEntry = new shared SymEntry(newArray);
-                    st.addEntry(newName, newEntry);
-                    var depMsg = "created " + st.attrib(newName);
+                    var originalData = toSymEntry(dataArrayEntry, int).a;
+                    if consecutive {
+                        var newData: [edgeDomain] int;
+                        insertData(consecutive, originalData, newData, internalIndices, int);
+                        repMsg += addBlockArrayToSymbolTable(newData);
+                    } else {
+                        var newData: [sparseDataDomain] int;
+                        insertData(consecutive, originalData, newData, internalIndices, int);
+                        repMsg += addSparseArrayToSymbolTable(newData);
+                    }
                 }
                 when (DType.UInt64) {
-                    var dataArraySym = toSymEntry(dataArrayEntry, uint);
-                    var dataArray = dataArraySym.a;
-                    var etypeInd = dataTypeMapStrToInt[etypeStr];
-                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
-                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(uint)));
-                        currentProperty!.propertyIdentifier += i;
-                        currentProperty!.propertyValue[i] = dataArray[j];
+                    var originalData = toSymEntry(dataArrayEntry, uint).a;
+                    if consecutive {
+                        var newData: [edgeDomain] uint;
+                        insertData(consecutive, originalData, newData, internalIndices, uint);
+                        repMsg += addBlockArrayToSymbolTable(newData);
+                    } else {
+                        var newData: [sparseDataDomain] uint;
+                        insertData(consecutive, originalData, newData, internalIndices, uint);
+                        repMsg += addSparseArrayToSymbolTable(newData);
                     }
                 }
                 when (DType.Float64) {
-                    var dataArraySym = toSymEntry(dataArrayEntry, real);
-                    var dataArray = dataArraySym.a;
-                    var etypeInd = dataTypeMapStrToInt[etypeStr];
-                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
-                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(real)));
-                        currentProperty!.propertyIdentifier += i;
-                        currentProperty!.propertyValue[i] = dataArray[j];
+                    var originalData = toSymEntry(dataArrayEntry, real).a;
+                    if consecutive {
+                        var newData: [edgeDomain] real;
+                        insertData(consecutive, originalData, newData, internalIndices, real);
+                        repMsg += addBlockArrayToSymbolTable(newData);
+                    } else {
+                        var newData: [sparseDataDomain] real;
+                        insertData(consecutive, originalData, newData, internalIndices, real);
+                        repMsg += addSparseArrayToSymbolTable(newData);
                     }
                 }
                 when (DType.Bool) {
-                    var dataArraySym = toSymEntry(dataArrayEntry, bool);
-                    var dataArray = dataArraySym.a;
-                    var etypeInd = dataTypeMapStrToInt[etypeStr];
-                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
-                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(bool)));
-                        currentProperty!.propertyIdentifier += i;
-                        currentProperty!.propertyValue[i] = dataArray[j];
+                    var originalData = toSymEntry(dataArrayEntry, bool).a;
+                    if consecutive {
+                        var newData: [edgeDomain] bool;
+                        insertData(consecutive, originalData, newData, internalIndices, bool);
+                        repMsg += addBlockArrayToSymbolTable(newData);
+                    } else {
+                        var newData: [sparseDataDomain] bool;
+                        insertData(consecutive, originalData, newData, internalIndices, bool);
+                        repMsg += addSparseArrayToSymbolTable(newData);
                     }
                 }
                 when (DType.Strings) {
-                    var dataArraySym = toSegStringSymEntry(dataArrayEntry);
-                    var dataArray = getSegString(dataArraySym.name, st);
-                    var etypeInd = dataTypeMapStrToInt[etypeStr];
-                    forall (e,j) in zip(inputEdges,inputEdges.domain) {
-                        var currentProperty = (edge_props[e,etypeInd].borrow():(borrowed Property(string)));
-                        currentProperty!.propertyIdentifier += i;
-                        currentProperty!.propertyValue[i] = dataArray[j];
-                    }
+                    writeln("Hello");
                 }
             }
         }
-
-        // Add the component for the node labels for the graph.
+        timer.stop();
         graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "EDGE_PROPS_COL_MAP");
-        // var repMsg = "edge properties added";
-        var repMsg = timer1:string + "+" + timer2:string + "+" + timer3:string;
         outMsg = "addEdgeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
@@ -1479,7 +1520,7 @@ module DipSLLPropertyGraphMsg {
     // registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
     registerFunction("addEdgeProperties", addEdgePropertiesMsg, getModuleName());
-    registerFunction("loadEdgeAttributes", loadEdgeAtrributesMsg, getModuleName());
+    registerFunction("loadEdgeAttributes", loadEdgeAttributesMsg, getModuleName());
     registerFunction("getNodeLabels", getNodeLabelsMsg, getModuleName());
     registerFunction("getNodeProperties", getNodePropertiesMsg, getModuleName());
     registerFunction("getEdgeRelationships", getEdgeRelationshipsMsg, getModuleName());
