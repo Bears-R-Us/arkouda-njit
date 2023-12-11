@@ -143,7 +143,7 @@ module SubgraphIsomorphismVF2Msg {
         timer.start();
 
         //ullmannSubgraphIsomorphism11(g, h, subgraph_internal_vertices_degree_sorted, graph_degree);
-        var (isopassd, numberOfIsos) = vf2(g, h, subgraph_degree, graph_degree,
+        var isopassd = runVF2(g, h, subgraph_degree, graph_degree,
                                         Orig_Label_Mapper_G_to_Pass, Orig_Label_Mapper_H_to_Pass, 
                                         Orig_Relationships_Mapper_G_to_Pass, Orig_Relationships_Mapper_H_to_Pass);
 
@@ -154,7 +154,7 @@ module SubgraphIsomorphismVF2Msg {
         var IsoDistArray = makeDistArray(isopassd.size, int);
         IsoDistArray = isopassd;
 
-        writeln("IsoDistArray = ",IsoDistArray);
+        //writeln("IsoDistArray = ",IsoDistArray);
         //var subgraphs = makeDistArray(1, bool); // Temporary for now, should be "array of graphs".
         var IsoDistArrayName = st.nextName();
         var IsoDistArrayEntry = new shared SymEntry(IsoDistArray);

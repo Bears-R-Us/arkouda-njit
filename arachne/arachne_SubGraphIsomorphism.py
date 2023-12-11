@@ -116,35 +116,62 @@ if __name__ == "__main__":
     prop_graph.add_edge_relationships(relationships_df)
     end = time.time()
     print(f"Populating property graph with {len(random_relationships)} relationships took {end-start} seconds.")
-    """
+    
     prop_graph = ar.PropGraph()
     
-    src= ak.array([101, 102, 104, 104, 104, 105, 105, 105, 106, 108])
-    dst= ak.array([104, 105, 100, 105, 108, 101, 106, 109, 102, 107])
+    #src= ak.array([101, 102, 104, 104, 104, 105, 105, 105, 106, 106, 108])
+    #dst= ak.array([104, 105, 100, 105, 108, 101, 106, 109, 102, 110, 107])
+    
+    src= ak.array([100,  101,   108,  102,  109,  103,  110,  104,  111, 105,  112,  112,  107,  108,  109,  110,  111,  107,  113,  114, 108,  114, 115,  109,  115,  116,  110,  116,  117,  111,  117, 118,  112, 118,  119,  114,  115, 116,        200,  201,   208,  202,  209,  203,  210,  204,  211, 205,  212,  212,  207,  208,  209,  210,  211,  207,  213,  214, 208,  214, 215,  209,  215,  216,  210,  216,  217,  211,  217, 218,  212, 218,  219,  214,  215, 216,      300,  301,   308,  302,  309,  303,  310,  304,  311, 305,  312,  312,  307,  308,  309,  310,  311,  307,  313,  314, 308,  314, 315,  309,  315,  316,  310,  316,  317,  311,  317, 318,  312, 318,  319,  314,  315, 316,        400,  401,   408,  402,  409,  403,  410,  404,  411, 405,  412,  412,  407,  408,  409,  410,  411,  407,  413,  414, 408,  414, 415,  409,  415,  416,  410,  416,  417,  411,  417, 418,  412, 418,  419,  414,  415, 416])
+    dst= ak.array([107,  107,   101,  108,  102,  109,  103,  110,  104, 111,  105,  106,  108,  109,  110,  111,  112,  113,  114,  107, 114,  115, 108,  115,  116,  109,  116,  117,  110,  117,  118, 111,  118, 119,  112,  120,  121, 122,        207,  207,   201,  208,  202,  209,  203,  210,  204, 211,  205,  206,  208,  209,  210,  211,  212,  213,  214,  207, 214,  215, 208,  215,  216,  209,  216,  217,  210,  217,  218, 211,  218, 219,  212,  220,  221, 222,      307,  307,   301,  308,  302,  309,  303,  310,  304, 311,  305,  306,  308,  309,  310,  311,  312,  313,  314,  307, 314,  315, 308,  315,  316,  309,  316,  317,  310,  317,  318, 311,  318, 319,  312,  320,  321, 322,        407,  407,   401,  408,  402,  409,  403,  410,  404, 411,  405,  406,  408,  409,  410,  411,  412,  413,  414,  407, 414,  415, 408,  415,  416,  409,  416,  417,  410,  417,  418, 411,  418, 419,  412,  420,  421, 422])    
+    
     
     prop_graph.add_edges_from(src,dst)
-    node_labels = ak.DataFrame({"vertex_ids" : ak.array([100,101,102,103,104,105,106,107,108,109]), 
-                                "vertex_labels" : ak.array(["label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1"])})
+    node_labels = ak.DataFrame({"vertex_ids"    : ak.array([100,101,102,103,104,105,106,107,108,109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122,    200,201,202,203,204,205,206,207,208,209, 210, 211, 212, 213, 214, 215, 216, 217, 218, 219, 220, 221, 222,       300,301,302,303,304,305,306,307,308,309, 310, 311, 312, 313, 314, 315, 316, 317, 318, 319, 320, 321, 322,    400,401,402,403,404,405,406,407,408,409, 410, 411, 412, 413, 414, 415, 416, 417, 418, 419, 420, 421, 422]), 
+                                "vertex_labels" : ak.array(["label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1",      "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1",       "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1",      "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1","label1", "label1", "label1", "label1","label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1", "label1"])})
     
-    edge_relationships = ak.DataFrame({"src" : ak.array([101, 102, 104, 104, 104, 105, 105, 105, 106, 108]), 
-                                       "dst" : ak.array([104, 105, 100, 105, 108, 101, 106, 109, 102, 107]), "edge_relationships" : 
-        ak.array(["Y1", "Y1", "Y4", "Y2", "Y4", "Y3", "Y1", "Y1", "Y1", "Y5"])})
+    edge_relationships = ak.DataFrame({"src" : ak.array([100,  101,   108,  102,  109,  103,  110,  104,  111, 105,  112,  112,  107,  108,  109,  110,  111,  107,  113,  114, 108,  114, 115,  109,  115,  116,  110,  116,  117,  111,  117, 118,  112, 118,  119,  114,  115, 116,        200,  201,   208,  202,  209,  203,  210,  204,  211, 205,  212,  212,  207,  208,  209,  210,  211,  207,  213,  214, 208,  214, 215,  209,  215,  216,  210,  216,  217,  211,  217, 218,  212, 218,  219,  214,  215, 216,      300,  301,   308,  302,  309,  303,  310,  304,  311, 305,  312,  312,  307,  308,  309,  310,  311,  307,  313,  314, 308,  314, 315,  309,  315,  316,  310,  316,  317,  311,  317, 318,  312, 318,  319,  314,  315, 316,        400,  401,   408,  402,  409,  403,  410,  404,  411, 405,  412,  412,  407,  408,  409,  410,  411,  407,  413,  414, 408,  414, 415,  409,  415,  416,  410,  416,  417,  411,  417, 418,  412, 418,  419,  414,  415, 416]), 
+                                       "dst" : ak.array([107,  107,   101,  108,  102,  109,  103,  110,  104, 111,  105,  106,  108,  109,  110,  111,  112,  113,  114,  107, 114,  115, 108,  115,  116,  109,  116,  117,  110,  117,  118, 111,  118, 119,  112,  120,  121, 122,        207,  207,   201,  208,  202,  209,  203,  210,  204, 211,  205,  206,  208,  209,  210,  211,  212,  213,  214,  207, 214,  215, 208,  215,  216,  209,  216,  217,  210,  217,  218, 211,  218, 219,  212,  220,  221, 222,      307,  307,   301,  308,  302,  309,  303,  310,  304, 311,  305,  306,  308,  309,  310,  311,  312,  313,  314,  307, 314,  315, 308,  315,  316,  309,  316,  317,  310,  317,  318, 311,  318, 319,  312,  320,  321, 322,        407,  407,   401,  408,  402,  409,  403,  410,  404, 411,  405,  406,  408,  409,  410,  411,  412,  413,  414,  407, 414,  415, 408,  415,  416,  409,  416,  417,  410,  417,  418, 411,  418, 419,  412,  420,  421, 422]), 
+                        "edge_relationships" : ak.array(["Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1",       "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1",     "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1",       "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1","Y1", "Y1","Y1", "Y1", "Y1", "Y1", "Y1"])})
     
     prop_graph.add_node_labels(node_labels)
     prop_graph.add_edge_relationships(edge_relationships)
+    """
+
+    src = ak.array([104, 101, 104, 105, 102, 105, 106, 106, 105, 104, 108])
+    dst = ak.array([100, 104, 105, 101, 105, 106, 102, 110, 109, 108, 107])
+    prop_graph = ar.PropGraph()
+    prop_graph.add_edges_from(ak.array(src),ak.array(dst))
+
     
+    node_labels = ak.DataFrame({"vertex_ids"    : ak.array([100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110]), 
+                                "vertex_labels" : ak.array(["label1","label1","label1","label1","label1",
+                                                            "label1","label1","label1","label1","label1","label1"])})
+    
+    edge_relationships = ak.DataFrame({"src" : ak.array([104, 101, 104, 105, 102, 105, 106, 106, 105, 104, 108]), 
+                                       "dst" : ak.array([100, 104, 105, 101, 105, 106, 102, 100, 109, 108, 107]), 
+                        "edge_relationships" : ak.array(["Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1", "Y1",
+                                                                                  "Y1","Y1", "Y1"])})
+
+    prop_graph.add_node_labels(node_labels)
+    prop_graph.add_edge_relationships(edge_relationships)
+
+
+#    prop_graph.add_edges_from(ak.array(src_array) ,ak.array(dst_array) )
+
     ### Test subgraph isomorphism.
+    
     subgraph = ar.PropGraph()
     
-    src1= ak.array([20, 21, 21, 22])
-    dst1= ak.array([21, 22, 23 ,20])
+    src1= ak.array([0, 1, 2, 1])
+    dst1= ak.array([1, 2, 0, 3])
     
     subgraph.add_edges_from(src1,dst1)
-    node_labels = ak.DataFrame({"vertex_ids" : ak.array([20, 21, 22, 23]), 
+    node_labels = ak.DataFrame({"vertex_ids" : ak.array([0, 1 ,2, 3]), 
                                 "vertex_labels" : ak.array(["label1", "label1", "label1", "label1"])})
-    edge_relationships = ak.DataFrame({"src" : ak.array([20, 21, 21, 22]), 
-                                       "dst" : ak.array([21, 22, 23 ,20]), 
-                    "edge_relationships" : ak.array(["Y1", "Y2", "Y4", "Y3"])})
+    edge_relationships = ak.DataFrame({"src" : ak.array([0, 1, 2, 1]), 
+                                       "dst" : ak.array([1, 2, 0, 3]), 
+                    "edge_relationships" : ak.array(["Y1", "Y1", "Y1", "Y1"])})
     subgraph.add_node_labels(node_labels)
     subgraph.add_edge_relationships(edge_relationships)
     
@@ -153,7 +180,8 @@ if __name__ == "__main__":
     #print(type(mappings_df)) 
 
     # Access the DataFrame data
-    print("subgraph_isomorphism run and this is the found ISOs")
+    print("Ullmann subgraph_isomorphism run and this is the found ISOs")
     print(mappings_df)
+    print(len(mappings_df))
 
     ak.shutdown()
