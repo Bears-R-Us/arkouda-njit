@@ -672,6 +672,10 @@ module PropertyGraphMsg {
         var columnIds:SegString = getSegString(columnIdsName, st);
         var relationshipMapper = getSegString(relationshipMapperName, st);
 
+        // Use a map to keep track of the property (column) names to the symbol table identifier for
+        // that property array. 
+        var propertyMapper = new map((string,int), string);
+
         // Create new arrays for inputted dataframe data incase the original dataframe ever ceases
         // to exist.
         var repMsg = "";
@@ -730,13 +734,63 @@ module PropertyGraphMsg {
                     }
                 }
                 when (DType.Strings) {
-                    writeln("Hello");
+                    // We extract the entries that represent strings in a SegStringSymEntry.
+                    var dataArraySegStringSymEntry = toSegStringSymEntry(dataArrayEntry);
+                    var offsetsEntry = dataArraySegStringSymEntry.offsetsEntry;
+                    var bytesEntry = dataArraySegStringSymEntry.bytesEntry;
+
+                    // We make deep copies of the offsets and bytes to ensure changes to the
+                    // dataframe in Python are not reflected here.
+                    var newOffsetsEntry = createSymEntry(offsetsEntry.a);
+                    var newBytesEntry = createSymEntry(bytesEntry.a);
+
+                    if consecutive {
+                        // In this case, newData is different than for the other datatypes, its domain
+                        // and values will actually be the same and store the indices explicilty. 
+                        var newData: [edgeDomain] int;
+                        forall (e,d) in zip(newData, newData.domain) do e = d;
+                        var indicesEntry = createSymEntry(newData);
+
+                        // Create new object that is a wrapper to the Arkouda SegStringSymEntry class.
+                        var propertySegStringSymEntry = new shared PropertySegStringSymEntry(   
+                            newOffsetsEntry, 
+                            newBytesEntry, 
+                            indicesEntry, 
+                            string 
+                        );
+                        
+                        // Add the new object to the symbol table so we can extract this data at another
+                        // time. 
+                        var attrName = st.nextName();
+                        st.addEntry(attrName, propertySegStringSymEntry);
+                        repMsg += attrName;
+                    } else {
+                        // In this case, newData is different than for the other datatypes, its domain
+                        // and values will actually be the same and store the indices explicilty. 
+                        var newData: [sparseDataDomain] int;
+                        forall (e,d) in zip(newData, newData.domain) do e = d;
+                        var indicesEntry = new shared SymEntryAS(newData);
+
+                        // Create new object that is a wrapper to the Arkouda SegStringSymEntry class.
+                        var sparsePropertySegStringSymEntry = new shared SparsePropertySegStringSymEntry(   
+                            newOffsetsEntry, 
+                            newBytesEntry, 
+                            indicesEntry, 
+                            string 
+                        );
+                        
+                        // Add the new object to the symbol table so we can extract this data at another
+                        // time. 
+                        var attrName = st.nextName();
+                        st.addEntry(attrName, sparsePropertySegStringSymEntry);
+                        repMsg += attrName;
+                    }
                 }
             }
         }
         timer.stop();
         graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "EDGE_PROPS_COL_MAP");
-        outMsg = "addEdgeProperties took " + timer.elapsed():string + " sec ";
+        outMsg = "loadEdgeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
         pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);

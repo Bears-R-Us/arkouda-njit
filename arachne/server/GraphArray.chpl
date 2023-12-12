@@ -8,6 +8,7 @@ module GraphArray {
     use Logging;
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
+    use SegmentedString;
 
     // Server message logger.
     private config const logLevel = LogLevel.DEBUG;
@@ -180,5 +181,31 @@ module GraphArray {
     */
     proc toGraphSymEntry(entry: borrowed AbstractSymEntry): borrowed GraphSymEntry throws {
         return (entry: borrowed GraphSymEntry);
+    }
+
+    class PropertySegStringSymEntry : SegStringSymEntry(?) {
+        var indicesEntry: shared SymEntry(int);
+
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SymEntry(int), type etype) {
+            super.init(offsetsSymEntry, bytesSymEntry, etype);
+            this.indicesEntry = indicesSymEntry;
+        }
+    }
+
+    proc toPropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed PropertySegStringSymEntry);
+    }
+
+    class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
+        var indicesEntry: shared SymEntryAS(int);
+
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SymEntryAS(int), type etype) {
+            super.init(offsetsSymEntry, bytesSymEntry, etype);
+            this.indicesEntry = indicesSymEntry;
+        }
+    }
+
+    proc toSparsePropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed SparsePropertySegStringSymEntry);
     }
 }
