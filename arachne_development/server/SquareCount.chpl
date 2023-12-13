@@ -36,7 +36,7 @@ module SquareCount {
     * :type degree: [?D] int
     *
     * :returns: int */
-    proc squareCountSequential(graph:SegGraph, degree:[?D1] int):int throws {
+    proc squareCountSequential(graph:SegGraph, ref degree:[?D1] int):int throws {
         var src = toSymEntry(graph.getComp("SRC"),int).a;
         var dst = toSymEntry(graph.getComp("DST"),int).a;
         var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;

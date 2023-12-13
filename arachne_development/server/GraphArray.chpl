@@ -71,7 +71,7 @@ module GraphArray {
     record DomArray {
          var DO = {0..0};
          var A : [DO] int;
-         proc new_dom(new_d : domain(1)) {
+         proc ref new_dom(ref new_d : domain(1)) {
              this.DO = new_d;
          }
     }

@@ -97,7 +97,7 @@ module CCMsg {
       var myefficiency:real;
       var executime:real;
 
-      forall i in 0..Nv-1 {
+      forall i in 0..Nv-1 with (ref f, ref f_low ) {
         f[i] = i;
         f_low[i] = i;
       }
@@ -117,7 +117,7 @@ module CCMsg {
 
         // Stochastic hooking.
         // writeln("Stochastic hooking:");
-        forall x in 0..Ne-1 {
+        forall x in 0..Ne-1 with (ref f_low) {
           // Get edges from src, dst, srcR, and dstR.
           var u = src[x];
           var v = dst[x];
@@ -139,7 +139,7 @@ module CCMsg {
 
         // Aggresive hooking.
         // writeln("Aggresive hooking:");
-        forall x in 0..Ne-1 {
+        forall x in 0..Ne-1 with (ref f_low) {
           var u = src[x];
           var v = dst[x];
 
@@ -160,7 +160,7 @@ module CCMsg {
 
         // Shortcutting.
         // writeln("Shortcutting:");
-        forall u in 0..Nv-1 {
+        forall u in 0..Nv-1 with (ref f_low) {
           if(f[f[u]] < f_low[u]) {
             // writeln("inner u v = ", u, " ", v);
             f_low[u] = f[f[u]];
@@ -175,13 +175,13 @@ module CCMsg {
         f = f_low; 
 
         // Recompute gf.
-        forall x in 0..Nv-1 {
+        forall x in 0..Nv-1 with (ref gf) {
           gf[x] = f[f[x]];
         }
 
         // Check if gf converged.
         var diff = makeDistArray(Nv, int);
-        forall x in 0..Nv-1 {
+        forall x in 0..Nv-1 with (ref diff){
           diff[x] = gf[x] - dup[x];
         }
         var sum = + reduce diff;
@@ -207,7 +207,7 @@ module CCMsg {
 
 
 
-    inline proc find_split(u:int,  parents:[?D1] int):int {
+    inline proc find_split(u:int,  ref parents:[?D1] int):int {
        var i=u;
        var v,w:int;
        while (1) {
@@ -241,7 +241,7 @@ module CCMsg {
       return v;
     }
 
-    inline proc find_naive_atomic(u:int,  parents:[?D1] atomic int):int {
+    inline proc find_naive_atomic(u:int,  ref parents:[?D1] atomic int):int {
        var i=u;
        var v,w:int;
        while (1) {
@@ -260,7 +260,7 @@ module CCMsg {
 
 
 
-    inline proc find_split_atomic(u:int,  parents:[?D1] atomic int):int {
+    inline proc find_split_atomic(u:int,  ref parents:[?D1] atomic int):int {
        var i=u;
        var v,w:int;
        while (1) {
@@ -278,7 +278,7 @@ module CCMsg {
     }
 
 
-    inline proc find_split_h(u:int,  parents:[?D1] int, h:int):int {
+    inline proc find_split_h(u:int, ref  parents:[?D1] int, h:int):int {
        var  t=0;
        var i=u;
        var v,w:int;
@@ -296,7 +296,7 @@ module CCMsg {
       }
       return v;
     }
-    inline proc find_split_atomic_h(u:int,  parents:[?D1] atomic int, h:int):int {
+    inline proc find_split_atomic_h(u:int, ref  parents:[?D1] atomic int, h:int):int {
        var t=0;
        var i=u;
        var v,w:int;
@@ -314,7 +314,7 @@ module CCMsg {
       return v;
     }
 
-    proc find_half(u:int,  parents:[?D1] int):int {
+    proc find_half(u:int,  ref parents:[?D1] int):int {
        var i=u;
        var v,w:int;
        while (1) {
@@ -329,7 +329,7 @@ module CCMsg {
        }
        return v;
     }
-    proc find_half_h(u:int,  parents:[?D1] int,h:int):int {
+    proc find_half_h(u:int,  ref parents:[?D1] int,h:int):int {
        var t=0;
        var i=u;
        var v,w:int;
@@ -347,7 +347,7 @@ module CCMsg {
        return v;
     }
 
-    proc find_half_atomic_h(u:int,  parents:[?D1] atomic int,h:int):int {
+    proc find_half_atomic_h(u:int,  ref parents:[?D1] atomic int,h:int):int {
        var t=0;
        var i=u;
        var v,w:int;
@@ -366,7 +366,7 @@ module CCMsg {
     }
 
 
-    proc find_half_atomic(u:int,  parents:[?D1] atomic int):int {
+    proc find_half_atomic(u:int,  ref parents:[?D1] atomic int):int {
        var i=u;
        var v,w:int;
        while (1) {
@@ -384,7 +384,7 @@ module CCMsg {
 
 
 
-    proc unite(u:int, v:int,  parents:[?D1] int):int {
+    proc unite(u:int, v:int,  ref parents:[?D1] int):int {
        var rx=u;
        var ry=v;
        var p_ry = parents[ry];
@@ -417,7 +417,7 @@ module CCMsg {
 
 
 
-    proc unite_atomic(u:int, v:int,  parents:[?D1] atomic int):int {
+    proc unite_atomic(u:int, v:int,  ref parents:[?D1] atomic int):int {
        var ru=u;
        var rv=v;
        var p_rv = parents[rv].read() ;
@@ -456,11 +456,11 @@ module CCMsg {
 
       localtimer.clear();
       localtimer.start(); 
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f) {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
           var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
+          forall i in vertexBegin..vertexEnd with (ref f) {
             f[i] = i;
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
@@ -491,12 +491,12 @@ module CCMsg {
                ( (Ne/here.numPUs() < LargeScale) )) {
         localtimer.clear();
         localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
+        coforall loc in Locales with ( + reduce count, ref f) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
               var u = src[x];
               var v = dst[x];
 
@@ -543,12 +543,12 @@ module CCMsg {
       while( (!converged) ) {
         localtimer.clear();
         localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
+        coforall loc in Locales with ( + reduce count, ref f) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+            forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
               var u = src[x];
               var v = dst[x];
 
@@ -587,12 +587,12 @@ module CCMsg {
         localtimer.clear();
         localtimer.start(); 
         if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count, ref f ) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -624,12 +624,12 @@ module CCMsg {
               }// end of on loc 
             }// end of coforall loc 
         } else {
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count , ref f) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -657,7 +657,7 @@ module CCMsg {
                   
                 }//end of forall
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
                   var u = src[x];
                   var v = dst[x];
                   if (count==0) {
@@ -714,11 +714,11 @@ module CCMsg {
 
       // Initialize f and f_low in distributed memory.
 
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f) {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
           var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
+          forall i in vertexBegin..vertexEnd with (ref f) {
             f[i] = i;
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
@@ -743,17 +743,17 @@ module CCMsg {
       {
         var count:int=0;
         var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+        coforall loc in Locales with ( + reduce count, + reduce count1, ref f) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
 
-            forall x in edgeBegin..edgeEnd    {
+            forall x in edgeBegin..edgeEnd  with (ref f)   {
               var u = src[x];
               var v = dst[x];
               unite(u,v,f);
             }//end of forall
-            forall x in edgeBegin..edgeEnd    {
+            forall x in edgeBegin..edgeEnd  with (ref f)  {
               var u = src[x];
               var v = dst[x];
               var l=find_half(u,f);
@@ -805,9 +805,9 @@ module CCMsg {
 
       if (numLocales>1 && MultiLocale==1) {
 
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af) {
                 on loc {
-                    forall i in f.localSubdomain() {
+                    forall i in f.localSubdomain()  with (ref af) {
                          af[i].write(i);
                     }
                 }
@@ -818,18 +818,18 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count ,ref af) {
                      on loc {
                              var localf:[0..Nv-1] int;
                              var lconverged:bool = false;
                              var litera = 1;
                              var lcount:int=0;
-                             forall i in 0..Nv-1 {
+                             forall i in 0..Nv-1 with (ref localf) {
                                  localf[i]=af[i].read();
                              }
                              var localfu=localf;
                              while (!lconverged) {
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain()  with ( + reduce lcount, ref localfu)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     if localfu[localf[u]]>localf[localf[v]] {
@@ -837,7 +837,7 @@ module CCMsg {
                                          lcount+=1;
                                     }
                                 }
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain()  with ( + reduce lcount, ref localfu)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     if localfu[localf[v]]>localf[localf[u]] {
@@ -845,7 +845,7 @@ module CCMsg {
                                          lcount+=1;
                                     }
                                 }
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain()  with ( + reduce lcount, ref localfu)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     if localfu[u]>localf[localf[v]] {
@@ -853,7 +853,7 @@ module CCMsg {
                                          lcount+=1;
                                     }
                                 }
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain()  with ( + reduce lcount, ref localfu)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     if localfu[v]>localf[localf[u]] {
@@ -861,7 +861,7 @@ module CCMsg {
                                          lcount+=1;
                                     }
                                 }
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain()  with ( + reduce lcount, ref localfu)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     if localfu[u]>localf[localf[u]] {
@@ -870,7 +870,7 @@ module CCMsg {
                                     }
                                 }
 
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                forall x in src.localSubdomain()  with ( + reduce lcount, ref localfu)  {
                                     var u = src[x];
                                     var v = dst[x];
                                     if localfu[v]>localf[localf[v]] {
@@ -890,7 +890,7 @@ module CCMsg {
                                 litera+=1;
                              }// while
                              writeln("Converge local ------------------------------------------");
-                             forall i in 0..Nv-1 with (+ reduce count) {
+                             forall i in 0..Nv-1 with (+ reduce count, ref af) {
                                  var old=af[i].read();
                                  var newval=localfu[i];
                                  while old>newval {
@@ -915,15 +915,15 @@ module CCMsg {
                  writeln(" outter iteration=", itera);
 
            }//while
-           forall i in 0..Nv-1 with (+ reduce count) {
+           forall i in 0..Nv-1 with (+ reduce count, ref f) {
                  f[i]=af[i].read();
            }
 
       } else {
       // Initialize f and f_low in distributed memory.
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f, ref f_low) {
         on loc {
-          forall i in f.localSubdomain() {
+          forall i in f.localSubdomain() with (ref f, ref f_low) {
             f[i] = i;
             f_low[i] = i;
           }
@@ -941,7 +941,7 @@ module CCMsg {
 
         // Stochastic hooking.
         // writeln("Stochastic hooking:");
-        coforall loc in Locales {
+        coforall loc in Locales with (ref f_low) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
@@ -974,7 +974,7 @@ module CCMsg {
 
         // Aggresive hooking.
         // writeln("Aggresive hooking:");
-        coforall loc in Locales {
+        coforall loc in Locales with (ref f_low) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
@@ -1003,7 +1003,7 @@ module CCMsg {
         // Shortcutting.
         // writeln("Shortcutting:");
 
-        coforall loc in Locales {
+        coforall loc in Locales with (ref f_low) {
           on loc {
             var vertexBegin = f.localSubdomain().lowBound;
             var vertexEnd = f.localSubdomain().highBound;
@@ -1024,7 +1024,7 @@ module CCMsg {
         f = f_low; 
 
         // Recompute gf.
-        coforall loc in Locales {
+        coforall loc in Locales with (ref gf) {
           on loc {
             var vertexBegin = f.localSubdomain().lowBound;
             var vertexEnd = f.localSubdomain().highBound;
@@ -1035,11 +1035,11 @@ module CCMsg {
         }
 
         // Check if gf converged.
-        coforall loc in Locales {
+        coforall loc in Locales with (ref diff) {
           on loc {
             var vertexBegin = f.localSubdomain().lowBound;
             var vertexEnd = f.localSubdomain().highBound;
-            forall x in vertexBegin..vertexEnd {
+            forall x in vertexBegin..vertexEnd  with (ref diff){
               diff[x] = gf[x] - dup[x];
             }
           }
@@ -1078,9 +1078,9 @@ module CCMsg {
       var myefficiency:real;
       var executime:real;
       if (numLocales>1 && MultiLocale==1) {
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af)  {
                 on loc {
-                    forall i in f.localSubdomain() {
+                    forall i in f.localSubdomain() with (ref af)  {
                          af[i].write(i);
                     }
                 }
@@ -1091,13 +1091,13 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count,ref af ) {
                      on loc {
                              var localf:[0..Nv-1] atomic int;
                              var lconverged:bool = false;
                              var litera = 1;
                              var lcount:int=0;
-                             forall i in 0..Nv-1 {
+                             forall i in 0..Nv-1 with (ref localf) {
                                  localf[i].write(af[i].read());
                              }
                              while (!lconverged) {
@@ -1138,7 +1138,7 @@ module CCMsg {
                                 litera+=1;
                              }// while
                              writeln("Converge local ------------------------------------------");
-                             forall i in 0..Nv-1 with (+ reduce count) {
+                             forall i in 0..Nv-1 with (+ reduce count, ref af) {
                                  var old=af[i].read();
                                  var newval=localf[i].read();
                                  while old>newval {
@@ -1168,11 +1168,11 @@ module CCMsg {
            }
       } else {
       // Initialize f and f_low in distributed memory.
-          coforall loc in Locales {
+          coforall loc in Locales with (ref f) {
             on loc {
               var vertexBegin = f.localSubdomain().lowBound;
               var vertexEnd = f.localSubdomain().highBound;
-              forall i in vertexBegin..vertexEnd {
+              forall i in vertexBegin..vertexEnd  with (ref f){
                 f[i] = i;
                 if (nei[i] >0) {
                     var tmpv=dst[start_i[i]];
@@ -1193,10 +1193,10 @@ module CCMsg {
           while(!converged) {
             localtimer.clear();
             localtimer.start(); 
-            coforall loc in Locales with ( + reduce count) {
+            coforall loc in Locales with ( + reduce count, ref f) {
               on loc {
   
-                forall x in src.localSubdomain()  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
                   {
@@ -1252,9 +1252,9 @@ module CCMsg {
       var executime:real;
       if (numLocales>1 && MultiLocale==1) {
 
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af) {
                 on loc {
-                    forall i in f.localSubdomain() {
+                    forall i in f.localSubdomain() with (ref af)  {
                          af[i].write(i);
                     }
                 }
@@ -1265,13 +1265,13 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count, ref af ) {
                      on loc {
                              var localf:[0..Nv-1] atomic int;
                              var lconverged:bool = false;
                              var litera = 1;
                              var lcount:int=0;
-                             forall i in 0..Nv-1 {
+                             forall i in 0..Nv-1 with (ref af)  {
                                  localf[i].write(af[i].read());
                              }
                              while (!lconverged) {
@@ -1363,7 +1363,7 @@ module CCMsg {
 
       // Initialize f and f_low in distributed memory.
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref f){
             on loc {
               var vertexBegin = f.localSubdomain().lowBound;
               var vertexEnd = f.localSubdomain().highBound;
@@ -1390,7 +1390,7 @@ module CCMsg {
             var count:int=0;
             localtimer.clear();
             localtimer.start(); 
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count,ref f ) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;
@@ -1465,9 +1465,9 @@ module CCMsg {
 
       if (numLocales>1 && MultiLocale==1) {
 
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af) {
               on loc {
-                forall i in f.localSubdomain() {
+                forall i in f.localSubdomain()  with (ref af){
                   af[i].write(i);
                 }
               }
@@ -1484,7 +1484,7 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count , ref af ) {
                      on loc {
                              var localf:[0..Nv-1] atomic int;
                              var lconverged:bool = false;
@@ -1565,7 +1565,7 @@ module CCMsg {
       } else {
 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref f)  {
             on loc {
               forall i in f.localSubdomain() {
                 f[i] = i;
@@ -1602,7 +1602,7 @@ module CCMsg {
 
 
             if (ORDERH==2) {
-                coforall loc in Locales with ( + reduce count ) {
+                coforall loc in Locales with ( + reduce count, ref f ) {
                   on loc {
                     var edgeBegin = src.localSubdomain().lowBound;
                     var edgeEnd = src.localSubdomain().highBound;
@@ -1639,12 +1639,12 @@ module CCMsg {
                   }// end of on loc 
                 }// end of coforall loc 
             } else {
-                coforall loc in Locales with ( + reduce count ) {
+                coforall loc in Locales with ( + reduce count, ref f) {
                   on loc {
                     var edgeBegin = src.localSubdomain().lowBound;
                     var edgeEnd = src.localSubdomain().highBound;
     
-                    forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                    forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
                       var u = src[x];
                       var v = dst[x];
     
@@ -1726,9 +1726,9 @@ module CCMsg {
 
       if (numLocales>1 && MultiLocale==1) {
 
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af) {
               on loc {
-                forall i in f.localSubdomain() {
+                forall i in f.localSubdomain() with (ref af) {
                   af[i].write(i);
                 }
               }
@@ -1745,7 +1745,7 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count, ref af ) {
                      on loc {
                              var localf:[0..Nv-1] atomic int;
                              var lconverged:bool = false;
@@ -1864,7 +1864,7 @@ module CCMsg {
 
           localtimer.clear();
           localtimer.start(); 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref f) {
             on loc {
               var vertexBegin = f.localSubdomain().lowBound;
               var vertexEnd = f.localSubdomain().highBound;
@@ -1897,7 +1897,7 @@ module CCMsg {
                  ( (Ne/here.numPUs() < LargeScale) || (itera==1) || (myefficiency>LargeEdgeEfficiency)) ) {
             localtimer.clear();
             localtimer.start(); 
-            coforall loc in Locales with ( + reduce count) {
+            coforall loc in Locales with ( + reduce count, ref f) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;
@@ -1946,12 +1946,12 @@ module CCMsg {
           while(!converged) {
             localtimer.clear();
             localtimer.start(); 
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count, ref f ) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -2033,9 +2033,9 @@ module CCMsg {
 
       if (numLocales>1 && MultiLocale==1) {
 
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af) {
               on loc {
-                forall i in f.localSubdomain() {
+                forall i in f.localSubdomain()  with (ref af){
                   af[i].write(i);
                 }
               }
@@ -2052,7 +2052,7 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count ,ref af) {
                      on loc {
                              var localf:[0..Nv-1] atomic int;
                              var lconverged:bool = false;
@@ -2160,9 +2160,9 @@ module CCMsg {
 
 
 
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f) {
         on loc {
-          forall i in f.localSubdomain() {
+          forall i in f.localSubdomain()  with (ref f){
             f[i] = i;
             if (nei[i] >0) {
                 var tmpv=dst[start_i[i]];
@@ -2191,10 +2191,10 @@ module CCMsg {
       while( (!converged) ) {
         localtimer.clear();
         localtimer.start(); 
-        coforall loc in Locales with ( + reduce count) {
+        coforall loc in Locales with ( + reduce count, ref f) {
           on loc {
 
-            forall x in src.localSubdomain()   with ( + reduce count)  {
+            forall x in src.localSubdomain()   with ( + reduce count, ref f)  {
               var u = src[x];
               var v = dst[x];
 
@@ -2232,10 +2232,10 @@ module CCMsg {
         localtimer.clear();
         localtimer.start(); 
         if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count, ref f ) {
               on loc {
 
-                forall x in src.localSubdomain()  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -2255,7 +2255,7 @@ module CCMsg {
                     f[v] = TmpMin;
                   }
                 }//end of forall
-                forall x in src.localSubdomain()  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
                   if (count==0) {
@@ -2267,10 +2267,10 @@ module CCMsg {
               }// end of on loc 
             }// end of coforall loc 
         } else {
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count, ref f ) {
               on loc {
 
-                forall x in src.localSubdomain()  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -2298,7 +2298,7 @@ module CCMsg {
                   
                 }//end of forall
 
-                forall x in src.localSubdomain()  with ( + reduce count)  {
+                forall x in src.localSubdomain()  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
                   if (count==0) {
@@ -2350,9 +2350,9 @@ module CCMsg {
       var converged:bool=false;
       if (numLocales>1 && MultiLocale==1) {
 
-           coforall loc in Locales {
+           coforall loc in Locales with (ref af, ref f)  {
                 on loc {
-                    forall i in f.localSubdomain() {
+                    forall i in f.localSubdomain()  with (ref af, ref f) {
                          af[i].write(i);
                          f[i]=i;
                     }
@@ -2364,7 +2364,7 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count, ref af ) {
                      on loc {
                              var localf:[0..Nv-1]  int;
                              var localfu:[0..Nv-1] atomic int;
@@ -2464,11 +2464,11 @@ module CCMsg {
            }
       } else {
 
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f, ref f_low) {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
           var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
+          forall i in vertexBegin..vertexEnd  with (ref f, ref f_low){
             f[i] = i;
             f_low[i] = i;
             if (nei[i] >0) {
@@ -2495,7 +2495,7 @@ module CCMsg {
         localtimer.start();
 
         var count1:int=0;
-        coforall loc in Locales with ( + reduce count  ) {
+        coforall loc in Locales with ( + reduce count, ref f_low  ) {
           on loc {
 
             forall x in src.localSubdomain()   with ( + reduce count)  {
@@ -2561,11 +2561,11 @@ module CCMsg {
       var executime:real;
 
       // Initialize f and f_low in distributed memory.
-      coforall loc in Locales {
+      coforall loc in Locales  with (ref af, ref f, ref f_low){
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
           var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
+          forall i in vertexBegin..vertexEnd with (ref af, ref f, ref f_low) {
             f_low[i].write(i);
             f[i]=i;
             af[i].write(i);
@@ -2588,7 +2588,7 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count, ref af ) {
                      on loc {
                                 var localf_low:[0..Nv-1] atomic int;
                                 var lconverged:bool = false;
@@ -2658,7 +2658,7 @@ module CCMsg {
       } else {
 
       {
-        coforall loc in Locales with ( + reduce count, + reduce count1) {
+        coforall loc in Locales with ( + reduce count, + reduce count1, ref f_low) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
@@ -2697,7 +2697,7 @@ module CCMsg {
 
 
       itera+=1;
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f) {
         on loc {
           forall i in f.localSubdomain() {
             f[i] = f_low[i].read();
@@ -2729,11 +2729,11 @@ module CCMsg {
 
       localtimer.clear();
       localtimer.start(); 
-      coforall loc in Locales {
+      coforall loc in Locales with (ref l, ref lu, ref af) {
         on loc {
           var vertexBegin = l.localSubdomain().lowBound;
           var vertexEnd = l.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd {
+          forall i in vertexBegin..vertexEnd  with (ref l, ref lu, ref af){
             l[i] = i;
             lu[i].write(l[i]);
             af[i].write(l[i]);
@@ -2742,11 +2742,11 @@ module CCMsg {
       }
       var count:int=0;
       
-      coforall loc in Locales {
+      coforall loc in Locales with (ref src2, ref dst2) {
           on loc {
             var edgeBegin = src.localSubdomain().lowBound;
             var edgeEnd = src.localSubdomain().highBound;
-            forall x in src.localSubdomain() {
+            forall x in src.localSubdomain()  with (ref src2, ref dst2){
                   src2[x*2]=src[x];
                   dst2[x*2]=dst[x];
                   src2[x*2+1]=dst[x];
@@ -2770,7 +2770,7 @@ module CCMsg {
              localtimer.start(); 
 
              
-             coforall loc in Locales with ( + reduce count ) {
+             coforall loc in Locales with ( + reduce count, ref src2, ref dst2, ref af ) {
                      on loc {
                              var locall:[0..Nv-1] int;
                              var locallu:[0..Nv-1] atomic int;
@@ -2872,7 +2872,7 @@ module CCMsg {
           while (!converged) {
                 localtimer.clear();
                 localtimer.start(); 
-                coforall loc in Locales with ( + reduce count) {
+                coforall loc in Locales with ( + reduce count, ref lu, ref src2, ref dst2) {
                   on loc {
 
                     forall x in src.localSubdomain()  with ( + reduce count)  {
@@ -2920,9 +2920,9 @@ module CCMsg {
                 else {
                   converged = false;
                   count=0;
-                  coforall loc in Locales with ( + reduce count) {
+                  coforall loc in Locales with ( + reduce count, ref l) {
                     on loc {
-                        forall x in l.localSubdomain() {
+                        forall x in l.localSubdomain() with (ref l) {
                            l[x]=lu[x].read();
                         }
                     }
