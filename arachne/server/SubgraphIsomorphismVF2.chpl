@@ -463,25 +463,6 @@ module SubgraphIsomorphismVF2 {
             return state;
 
         }  //end of createInitialState
-/*
-        // Check if state is a valid solution 
-        proc isSolution(state: State): bool throws {
-            //writeln("-----------------isSolution called-------------------\n");
-          
-            // Check each mapped node
-            for (n1, n2) in state.mapping {
-                // Check degree equivalency 
-                if graphDegree[n1] < SubgraphDegree[n2] {
-                    writeln("Degree mismatch!");
-                    return false;
-                }
-            }
-
-            writeln("Degrees match across mapping"); 
-            
-            return true;
-        } // end of isSolution
-*/
         // Two silly function. wrote just to quick check but worked.LOL
         proc getUnmappedNodesg1(graph: SegGraph, state: State) throws {
             //writeln("-----------------getUnmappedNodesg1 called-------------------\n");
@@ -507,17 +488,6 @@ module SubgraphIsomorphismVF2 {
             return unmapped;
         } // end of getUnmappedNodesg2
         
-        // Why chapel array has no contains()/Find()?!
-        proc arrFindKey(passedarr, key:int) throws {
-            //writeln("-----------------arrFindKey called-------------------\n");
-
-            var flag: bool = false;
-            
-            forall elm in passedarr with(ref flag) {
-                if elm == key then flag = true;
-            }
-            return flag;
-        } // end of arrFindKey
 
         // Create candidates based on current state and retuns a list of pairs
         // based on old paper!!
@@ -566,513 +536,7 @@ module SubgraphIsomorphismVF2 {
             return candidates;
 
         } // end of getCandidatePairsOPti
-/*
-        // Get predecessors of a node from Graph
-        proc getPredecessors(n_vertices: int, segGraph, dstNodes, edgeRelationshipsGraph, node: int, Mapper) throws {
-            //writeln("-----------------getPredecessors called-------------------\n");
-            //writeln("-----------------for ",node,"\n");
-
-            var preds: list(int, parSafe = true);
-            var visited = new set(int); 
-            var stack: list(int, parSafe = true);
-            //writeln("at the begining visited = ", visited);
-            //writeln("at the begining preds = ", preds);
-            //writeln("at the begining stack = ", stack);
-
-            stack.pushBack(node);  
-            //writeln("after pushBack stack = ", stack);
-            while (stack.size > 0) {
-
-                var curr = stack.popBack();
-                //writeln("after popBack stack = ", stack);
-                //writeln("curr = ", curr);
-
-                if !visited.contains(curr) {
-            
-                    visited.add(curr);
-                    //writeln("after add visited = ", visited);
-                    //writeln("getInNeighbors(", curr,") = ", getInNeighbors(graph, curr, Mapper));
-
-                    // Check nodes pointing to curr
-                    for nbr in getInNeighbors(n_vertices, segGraph, dstNodes, edgeRelationshipsGraph , curr, Mapper){
-                        if !preds.contains(nbr) then preds.pushBack(nbr);
-                        //writeln("after pushBack preds = ", preds);
-                        // Traverse
-                        stack.pushBack(nbr); 
-                        //writeln("after pushBack stack = ", stack);
-                    }
-                }
-            }
-            //writeln("getPredecessors retrun preds = ", preds);
-
-            return preds;
-        } // end of getPredecessors
-*/
-/*
-        // Get successors of a node
-        // by using a graph traversal BFS approach
-        //  * Uses distributed queue for scalable BFS. Beaware it is NOT standard package!!!
-        proc getSuccessors(segGraph, node: int, dstNodes) throws {
-            //writeln("-----------------getSuccessors called-------------------\n");
-
-            var visited = new set(int);
-            var succs: list(int, parSafe = true); 
-            
-            // Distributed deque for queue  
-            var queue = new DistDeque(int);
-
-            queue.enqueue(node);
-
-            
-            while queue.size > 0 {
-
-                // Get next node to visit
-                var (foundElem, curr) = queue.dequeue();
-                // Check if visited
-                if visited.contains(curr) {
-                    continue;
-                }
-                
-                // Add to visited      
-                visited.add(curr);
-
-                // Find outgoing edges 
-                for nbr in getOutNeighbors(segGraph, curr, dstNodes)  {
-
-                    // Add as a successor  
-                    //succs.pushBack(nbr);
-                    if !succs.contains(nbr) then succs.pushBack(nbr);
-                    // Enqueue next nodes  
-                    queue.enqueue(nbr);    
-                }
-
-            }
-            //writeln("getSuccessors retrun succs = ", succs);
-    
-            return succs;
-        } // end of getSuccessors
-*/
-/*
-        // Get 2-hop neighbors
-        proc get2HopNeighbors(n_vertices: int, node: int, segGraph, dstNodes, edgeRelationshipsGraph, Mapper, predsFlag: bool) throws{
-            //writeln("-----------------get2HopNeighbors called-------------------\n");
-            //writeln("-----------------for graph, node = ",node,"preds = ", preds," -------------------\n");
-
-            // 1-hop neighbors
-            var oneHop = if predsFlag then getPredecessors(n_vertices, segGraph, dstNodes, edgeRelationshipsGraph, node, Mapper) 
-                        else getSuccessors(segGraph, node, dstNodes);
-            //writeln("oneHop = ", oneHop, " oneHop.type =",(oneHop.type):string);
-            // 2-hop neighbors  
-
-            var twoHop: list(int);
-            //writeln("twoHop = ", twoHop, " twoHop.type =",(twoHop.type):string);
-
-            for n in oneHop {
-                var more = if predsFlag then getPredecessors(n_vertices, segGraph, dstNodes, edgeRelationshipsGraph, node, Mapper)
-                        else getSuccessors(segGraph, node, dstNodes);
-                
-                for m in more {
-                    twoHop.pushBack(m);  
-                }              
-            }
-            
-            // Filter out dups
-            twoHop = twoHop.uniq();
-
-            // Remove 1-hop  
-            twoHop = twoHop.except(oneHop);
-
-            
-            //writeln("twoHop = ", twoHop);
-            for n in oneHop {
-                twoHop.remove(n);
-            }
-                //writeln("twoHop - oneHop = ", twoHop);// Exclude 1-hop neighbors
-
-            return twoHop.toArray();
-        } // end of get2HopNeighbors
-*/
-/*
-        // Checks that the proposed mapping of node n2 satisfies 
-        // the ordering constraint relative to already mapped nodes.
-        // Added to avoid multiple travel to a specific branch
-        proc RmappingInOrder(state: State, n1: int, n2: int): bool {
-            writeln("-----------------RmappingInOrder called-------------------\n");
-
-            var mapped = state.core1;
-            //writeln("state.core2 = ", state.core1);
-            //writeln("mapped = ", mapped);
-            if (mapped.size > 0) {
-
-                var maxMapped = max reduce(mapped);
-                //writeln("maxMapped = ", maxMapped);
-                if (n2 <= maxMapped) {
-                writeln("Violates ordering");
-                return false;
-                }
-            
-            }
-
-            return true;
-
-        } // end of RmappingInOrder
-*/
-        // Rpred This checks:
-        // All mapped predecessors n' of n should have a mapped predecessor m' of m.
-        // All mapped predecessors m' of m should have a mapped predecessor n' of n.
-        // So it verifies this mapping consistency in both directions between the predecessor sets.
-        proc Rpred(state: State, n1: int, n2: int): bool throws {
-            //writeln("-----------------Rpred called-------------------\n");
-            // Get predecessors
-            var nPreds = PredecessorsG1[n1]; //getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
-            var mPreds = PredecessorsG2[n2]; //getPredecessors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
-
-            writeln("nPreds = ", nPreds);
-            writeln("mPreds = ", mPreds);
-            var flag: bool = true;
-
-            // Check each direction
-            // 1. G1 -> G2
-            for nprime in nPreds {
-                writeln("nprime = ", nprime);
-                if state.isMappedn1(nprime) {
-                    writeln(nprime, " is mapped");
-                    var mprime = state.core1[nprime];
-                    writeln("mprime = ", mprime);
-                    //if !arrFindKey(mPreds, mprime) {
-                    if mPreds.find(mprime)!= -1 {    
-                        writeln(mprime," is not in mpreds ");
-                        flag = false;
-                    }
-                }
-            }
-            // 2. G2 -> G1
-            for mprime in mPreds {
-                writeln("mprime = ", mprime);
-                if state.isMappedn2(mprime) {
-                    writeln(mprime, " is mapped");
-                    var nprime = state.core2[mprime];
-                    writeln("nprime = ", nprime);
-                    //if !arrFindKey(nPreds, nprime) { 
-                    if nPreds.find(nprime)!= -1{    
-                        writeln(nprime," is not in nPreds ");
-                        flag = false;
-                    }
-                }
-            }
-
-            //writeln("-----------------Rpred returned ",flag, "-------------------\n");
-            return flag;
-
-/*
-                if state.isMappedn2(p) {
-                    var m = state.core2[p];
-                    writeln(p ," is mapped and ",m," = state.core2[p]" );
-                    if !arrFindKey(n1Preds, m) {
-                        flag = false;
-                        writeln("flag = false for ", m, "is not in", n1Preds);
-                    } else if getEdgeCount(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, m, n1, Orig_Relationships_Mapper_G_to_Pass) 
-                            < getEdgeCount(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, p, n2, Orig_Relationships_Mapper_H_to_Pass) {
-                            //if getEdgeCount(g1, m, n1) != getEdgeCount(g2, p, n2) {
-                            writeln("getEdgeCountG1_m_n1 != getEdgeCountG2_p_n2 ");    
-                            flag = false;
-                        } 
-
-                }
-
-            }
-            writeln("-----------------Rpred returned ",flag, "-------------------\n");
-            return flag;
-*/
-        }// end of Rpred
-/*
-        proc getEdgeCount(segGraph, dstNodes, edgeRelationshipsGraph, 
-                                    n1, n2, Mapper): int throws {
-            //writeln("-----------------getEdgeCount called-------------------\n");
-
-            var count = 0;
-            // Check if n1 points to node n2
-            if PropGraphRelationshipMapper(segGraph, dstNodes, edgeRelationshipsGraph, 
-                                    n1, n2, Mapper)[0]{
-                                        count += 1;
-            }  
-
-            // Also check if n2 is pointed to n1
-            if PropGraphRelationshipMapper(segGraph, dstNodes, edgeRelationshipsGraph, 
-                                    n2, n1, Mapper)[0]{
-                                        count += 1;
-            }  
-            
-            return count;
-
-        }
-*/
-        // Rsucc It checks:
-        // All mapped successors n' of n should have a mapped successor m' of m.
-        // All mapped successors m' of m should have mapped successor n' of n.
-
-        proc Rsucc(state: State, n1: int, n2: int): bool throws {
-            //writeln("-----------------Rsucc called-------------------\n");
-
-            var n1Succs = SuccessorsG1[n1]; //getSuccessors(segGraphG1, n1, dstNodesG1);
-            var n2Succs = SuccessorsG2[n2]; //getSuccessors(segGraphG2, n2, dstNodesG2);
-            //writeln("n1Succs = ", n1Succs);
-            //writeln("n2Succs = ", n2Succs);
-
-            var flag: bool = true;
-
-            // Check each direction  
- 
-            var n1Mapped = 0;
-            for s in n1Succs {
-                if state.isMappedn1(s) {
-                    n1Mapped += 1;
-                }
-            }
-            //writeln("n1Mapped = ", n1Mapped);
-
-            var n2Mapped = 0;
-            for s in n2Succs {
-                if state.isMappedn2(s) {
-                    n2Mapped += 1;
-                }
-            }
-            //writeln("n2Mapped = ", n2Mapped);
-
-            if n1Mapped < n2Mapped {
-                return false;
-            }
-
-            return true;
-
-        } // end of Rsucc
-/*            for s in n2Succs {
-                if state.isMappedn2(s) {
-
-                    var m = state.core2[s];
-                    writeln(s ," is mapped and ",m," = state.core2[p]" );
-
-                        if !arrFindKey(n1Succs, m) {
-                            flag = false;
-                            writeln("flag = false for ", m, "is not in", n1Succs);
-
-                        } else if getEdgeCount(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, m, Orig_Relationships_Mapper_G_to_Pass)
-                             < getEdgeCount(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, s, Orig_Relationships_Mapper_H_to_Pass) {
-                                writeln("getEdgeCountG1_m_n1 != getEdgeCountG2_p_n2 ");
-                                writeln();    
-                                flag = false;
-                            }
-                }
-            }
-            
-            return flag;
-            //return true;
-        } // end of Rsucc
-*/
-        // Rin checks that the number of unmapped in-neighbors of n1 (node from graph 1) 
-        // is greater than or equal to the number of unmapped in-neighbors of n2 (node from graph 2).
-        proc Rin(state: State, n1: int, n2: int): bool throws {
-            //writeln("-----------------Rin called-------------------\n");
-            var n1PredUnmapped, n2PredUnmapped = 0;
-
-            var n1Pred = PredecessorsG1[n1]; //getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
-            var n2Pred = PredecessorsG2[n2]; //getPredecessors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
-
-            //writeln("n1Pred = ", n1Pred);
-            //writeln("n2Pred = ", n2Pred);
-
-            // Filter unmapped nodes
-            for p in n1Pred {
-                if !state.isMappedn1(p) {
-                    n1PredUnmapped += 1; 
-                }
-            }
-
-            for p in n2Pred {
-                if !state.isMappedn2(p) {
-                    n2PredUnmapped += 1;
-                }
-            }
-            // Check unmapped predecessor counts
-            if n1PredUnmapped < n2PredUnmapped {
-                return false;
-            }
-
-            var n1SuccUnmapped, n2SuccUnmapped = 0;
-
-            var n1Succ = SuccessorsG1[n1]; //getSuccessors(segGraphG1, n1, dstNodesG1);
-            var n2Succ = SuccessorsG2[n2]; //getSuccessors(segGraphG2, n2, dstNodesG2);
-
-            //writeln("n1Succ = ", n1Succ);
-            //writeln("n2Succ = ", n2Succ);
-            
-            // Filter unmapped nodes
-            for s in n1Succ {
-                if !state.isMappedn1(s) {
-                    n1SuccUnmapped += 1;
-                }
-            }
-            
-            for s in n2Succ  {
-                if !state.isMappedn2(s) {
-                    n2SuccUnmapped += 1;
-                }
-            }
-
-            // Check successor counts 
-            if n1SuccUnmapped < n2SuccUnmapped {
-                return false;
-            }
-
-            return true;
-        }  // end of Rin
-
-        // Rout checks that the number of unmapped out-neighbors of n1 (node from graph 1) 
-        // is greater than or equal to the number of unmapped out-neighbors of n2 (node from graph 2)
-        proc Rout(state: State, n1: int, n2: int): bool throws{
-            //writeln("-----------------Rout called-------------------\n");
-
-            var n1PredUnmapped = 0;
-
-            var n1Pred = PredecessorsG1[n1]; //getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
-            var n2Pred = PredecessorsG2[n2]; //getPredecessors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
-
-            var getOutN1 = SuccessorsG1[n1]; //getOutNeighbors(segGraphG1, n1, dstNodesG1);
-            var getOutN2 = SuccessorsG2[n2]; //getOutNeighbors(segGraphG2, n2, dstNodesG2);
-         
-            for p in n1Pred {
-                if !state.isMappedn1(p) && getOutN1.find(p)!= -1{  
-                   // if arrFindKey(getOutN1, p) {
-                        n1PredUnmapped += 1;
-                   // } 
-                }
-            }
-
-            var n2PredUnmapped = 0;
-
-            for p in n2Pred {
-                if !state.isMappedn2(p) && getOutN2.find(p) != -1 {
-                   // if arrFindKey(getOutN2, p) {
-                        n2PredUnmapped += 1;  
-                   // }
-                }
-            }
-
-            if n1PredUnmapped < n2PredUnmapped {
-                return false;
-            }
-
-            return true;
-        } // end of Rout
         
-        // Rnew performs a 2-level lookahead in the search space 
-        // to prune states that will have no valid successors after 
-        // 2 steps.
-/*        proc Rnew(state: State, n1: int, n2: int): bool throws {
-            writeln("-----------------Rnew called-------------------\n");
-            // Get 2-hop neighbors
-            var n1Pred2 = get2HopNeighbors(g1.n_vertices, n1, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, Orig_Label_Mapper_G_to_Pass, true); 
-            var n2Pred2 = get2HopNeighbors(g2.n_vertices, n2, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, Orig_Label_Mapper_H_to_Pass, true);
-
-            var n1Succ2 = get2HopNeighbors(g1.n_vertices, n1, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, Orig_Label_Mapper_G_to_Pass, false);
-            var n2Succ2 = get2HopNeighbors(g2.n_vertices, n2, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, Orig_Label_Mapper_H_to_Pass, false);
-
-            // Filter already mapped nodes
-            var n1PredUnmapped, n2PredUnmapped, 
-                n1SuccUnmapped, n2SuccUnmapped: domain(int);
-
-            for n in n1Pred2 {
-                if !state.isMappedn1(n) {
-                n1PredUnmapped += n; 
-                }
-            }
-
-            for n in n2Pred2 {
-                if !state.isMappedn2(n) {
-                n2PredUnmapped += n;
-                }  
-            }
-
-            for n in n1Succ2 {
-                if !state.isMappedn1(n) {
-                n1SuccUnmapped += n;
-                }
-            }
-
-            for n in n2Succ2 {
-                if !state.isMappedn2(n) {
-                n2SuccUnmapped += n;
-                }
-            }
-
-            // Check sizes
-            if n1PredUnmapped.size < n2PredUnmapped.size {
-                return false; 
-            }
-
-            if n1SuccUnmapped.size < n2SuccUnmapped.size {
-                return false;
-            }
-
-            return true;
-
-        } // end of Rnew
-*/
-        // Rnew performs a 2-level lookahead in the search space 
-        // to prune states that will have no valid successors after 
-        // 2 steps.
-        // after reading again and again I changed my mind. I think this
-        // new function is more effective than get2HopNeighbors stuff
-        proc Rnew(state: State, n1: int, n2: int): bool throws {
-            //writeln("-----------------Rnew called-------------------\n");
-            var n1NotIn, n2NotIn = 0;
-            var n1Pred = PredecessorsG1[n1]; //getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
-            var n2Pred = PredecessorsG2[n2];//getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
-
-            for p in n1Pred {
-                if !state.isMappedn1(p) && !state.Tin1.contains(p) && !state.Tout1.contains(p) {
-                    n1NotIn += 1; 
-                }
-            }
-            
-            for p in n2Pred {
-                if !state.isMappedn2(p) && !state.Tin2.contains(p) && !state.Tout2.contains(p) {
-                    n2NotIn += 1; 
-                }
-            }
-            if n1NotIn < n2NotIn {
-                writeln("Rnew first condition returned false for ",n1,", ", n2);
-                writeln("state = ", state);
-                return false;
-            }
-
-
-            var n1NotOut, n2NotOut = 0;
-            var n1Succ = getOutNeighbors(segGraphG1, n1, dstNodesG1);
-            var n2Succ = getOutNeighbors(segGraphG2, n2, dstNodesG2);
-
-            for s in n1Succ {
-                if !state.isMappedn1(s) && !state.Tin1.contains(s) && !state.Tout1.contains(s) {
-                    n1NotOut += 1; 
-                }
-            }            
-            
-            for s in n2Succ {
-                if !state.isMappedn2(s) && !state.Tin2.contains(s) && !state.Tout2.contains(s) {
-                    n2NotOut += 1; 
-                }
-            }
-            
-            if n1NotOut < n2NotOut {
-                writeln("Rnew second condition returned false for ",n1,", ", n2);
-                writeln("state = ", state);
-                return false;
-            }
-
-            return true;
-
-        } // end of Rnew
-
         // Check node labels are the same
         proc nodesLabelCompatible(n1: int, n2: int): bool throws {
             //writeln("-----------------nodesLabelCompatible called-------------------\n");
@@ -1086,137 +550,110 @@ module SubgraphIsomorphismVF2 {
 
             return true;
 
-        }
-
-        //Edge label checking:
-        proc edgesLabelCompatible(n1, n2, x1, x2): bool throws{
-            //writeln("-----------------edgesLabelCompatible called-------------------\n");
-            
-            var (flag1, label1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, x1, Orig_Relationships_Mapper_G_to_Pass);
-            var (flagrev1, labelrev1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, x1, n1, Orig_Relationships_Mapper_G_to_Pass);
-
-            var (flag2, label2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, x2, Orig_Relationships_Mapper_H_to_Pass);
-            var (flagrev2, labelrev2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, x2, n2, Orig_Relationships_Mapper_H_to_Pass);
-            
-            if flag2 && !flag1 {
-                return false;
-
-            } else if flag2 && flag1 {
-                if label1 == label2 {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            } 
-
-            if flagrev2 && !flagrev1 {
-                return false;
-
-            } else if flagrev2 && flagrev1 {
-                if labelrev1 == labelrev2 {
-                    return true;
-                } else {
-                    return false;
-                }
-
-            } 
-                       
-            return true;  
-        }
-
-        proc RpredRsuccRsemanticFeasible(state, n1, n2) throws{
-            //writeln("-----------------RsemanticFeasible called-------------------\n");
-            //writeln("-----------------for n1 = ",n1," n2 = ",n2," -------------------\n");
-            var flag: bool = true;
-            if !nodesLabelCompatible(n1, n2) {
-                //writeln("Node labels are Inconsistent");
-                return false;
-            }
-            
-            // Check edge compatibility
-            //forall (x1, x2) in state.mapping with(ref flag){
-            for (x1, x2) in state.mapping {
-                if !edgesLabelCompatible(n1, n2, x1, x2) {
-                    //writeln("Edge labels are Inconsistent", x1, x2);
-                flag = false;
-                }
-            }
-
-            return flag;
-
-        }
+        }// end of nodesLabelCompatible
 
         // Check if candidates' pairs are feasible
         proc isFeasible(state: State, n1: int, n2: int) throws {
             //writeln("-----------------isFeasible called for (",n1,",", n2,")-------------------");
-            var timerisFeasible:stopwatch;
-            timerisFeasible.start();
+//////////////////////// new version Dec 13
+            var termout1, termout2, termin1, termin2, new1, new2 : int =0 ;
 
-            //if !RmappingInOrder(state, n1, n2) {
-                //writeln("Feasibility returned FALSE because of RmappingInOrder");
-                //return false;
-            //} 
-            var timerRpredRsuccRsemantic:stopwatch;
-            timerRpredRsuccRsemantic.start();
-            
-            if !RpredRsuccRsemanticFeasible(state, n1, n2) {
-                //writeln("Feasibility returned False for",n1,", ",n2," RsemanticFeasible");
-                effectiveArr[0] += 1;
-                return false;
-            } 
-            timerRpredRsuccRsemantic.stop();
-            //outMsg = "RsemanticFeasible output took " + timerRsemanticFeasible.elapsed():string + " sec";
-            //writeln(outMsg);
-            TimerArrNew[5] += timerRpredRsuccRsemantic.elapsed();
-
-            var timerRin:stopwatch;
-            timerRin.start();
-            
-            if !Rin(state, n1, n2) {
-                //writeln("Feasibility returned False for",n1,", ",n2," Rin");
-                effectiveArr[1] += 1;
+            if !nodesLabelCompatible(n1, n2) {
+                //writeln("Node labels are Inconsistent");
                 return false;
             }
-            timerRin.stop();
-            //outMsg = "Rin output took " + timerRin.elapsed():string + " sec";
-            //writeln(outMsg);
-            TimerArrNew[6] += timerRin.elapsed();
 
-            var timerRout:stopwatch;
-            timerRout.start();
+            var getOutN1 = SuccessorsG1[n1]; //getOutNeighbors(segGraphG1, n1, dstNodesG1);
+            var getOutN2 = SuccessorsG2[n2]; //getOutNeighbors(segGraphG2, n2, dstNodesG2);
+         
+            // Check out neighbors of n2 
+            for Out2 in getOutN2 {
+                if state.isMappedn2(Out2) {
+                    var Out1 = state.core2(Out2);
+                    // Check edge compatibility
+                    var (flag1, label1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Out1, Orig_Relationships_Mapper_G_to_Pass);
+                    var (flag2, label2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Out2, Orig_Relationships_Mapper_H_to_Pass);
             
-            if !Rout(state, n1, n2) {
-                //writeln("Feasibility returned False for",n1,", ",n2," Rout");
-                effectiveArr[2] += 1;
-                return false;
-            }  
-            timerRout.stop();
-            //outMsg = "Rout output took " + timerRout.elapsed():string + " sec";
-            //writeln(outMsg);
-            TimerArrNew[7] += timerRout.elapsed();
-
-            var timerRnew:stopwatch;
-            timerRnew.start();
+                    if !flag1 || (label2 != label1) {
+                        return false;
+                    }
+                } 
+                else {
+                    
+                    if state.Tin2.contains(Out2){
+                        termin2 += 1;
+                    }
+                    if state.Tout2.contains(Out2){
+                        termout2 += 1;
+                    }
+                    if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2){
+                        new2 += 1;
+                    }
+                }
+            }
+            var getInN1 = PredecessorsG1[n1]; 
+            var getInN2 = PredecessorsG2[n2];
+            // Check In neighbors of n2 
+            for In2 in getInN2 {
+                if state.isMappedn2(In2) {
+                    var In1 = state.core2(In2);
+                    // Check edge compatibility
+                    var (flag1, label1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, In1, n1, Orig_Relationships_Mapper_G_to_Pass);
+                    var (flag2, label2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, In2, n2, Orig_Relationships_Mapper_H_to_Pass);
             
-            if !Rnew(state, n1 ,n2) {
-                //writeln("Feasibility returned False for",n1,", ",n2," Rnew");
-                effectiveArr[3] += 1;
-                return false;
-            } 
-            timerRnew.stop();
-            //outMsg = "Rnew output took " + timerRnew.elapsed():string + " sec";
-            //writeln(outMsg);
-            TimerArrNew[8] += timerRnew.elapsed();
-
-
-
-            //writeln("-----------------isFeasible PASSED ALL CHECKS-------------------");
-            timerisFeasible.stop();
-            TimerArrNew[3] += timerisFeasible.elapsed();
-            effectiveArr[4] += 1;
-
-            return true;// passed all checks
+                    if !flag1 || label2 != label1 {
+                        return false;
+                    }
+                }
+                else {
+                    if state.Tin2.contains(In2){
+                        termin2 += 1;
+                    }
+                    if state.Tout2.contains(In2){
+                        termout2 += 1;
+                    }
+                    if !state.Tin2.contains(In2) && !state.Tout2.contains(In2){
+                        new2 += 1;
+                    }
+                }
+            }
+            
+            // Check Out neighbors of n1 
+            for Out1 in getOutN1 {
+                if state.isMappedn1(Out1) {
+                    //Nothing to do
+                }
+                else {
+                    if state.Tin1.contains(Out1){
+                        termin1 += 1;
+                    }
+                    if state.Tout1.contains(Out1){
+                        termout1 += 1;
+                    }
+                    if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1){
+                        new1 += 1;
+                    }
+                }
+            }
+            // Check In neighbors of n1 
+            for In1 in getInN1 {
+                if state.isMappedn1(In1) {
+                    //Nothing to do
+                }
+                else {
+                    if state.Tin1.contains(In1){
+                        termin1 += 1;
+                    }
+                    if state.Tout1.contains(In1){
+                        termout1 += 1;
+                    }
+                    if !state.Tin1.contains(In1) && !state.Tout1.contains(In1){
+                        new1 += 1;
+                    }
+                }
+            }
+            
+            return termin2<=termin1 && termout2<=termout1 && (termin2+termout2+new2)<=(termin1+termout1+new1);
         }
 
         // DFS like to traverse graph and returns list of all solution states 
