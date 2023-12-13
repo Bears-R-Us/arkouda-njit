@@ -18,7 +18,7 @@ module RConnectedComponents {
     use ServerConfig;
     use AryUtil;
 
-    inline proc find_split_h(u:int,  parents:[?D1] int, h:int):int {
+    inline proc find_split_h(u:int, ref parents:[?D1] int, h:int):int {
        var  t=0;
        var i=u;
        var v,w:int;
@@ -56,7 +56,7 @@ module RConnectedComponents {
       var neiR = toSymEntry(graph.getComp("NEIGHBOR_R"),int).a;
       var Ne = graph.n_edges;
 
-      coforall loc in Locales {
+      coforall loc in Locales with (ref f) {
         on loc {
           var vertexBegin = f.localSubdomain().lowBound;
           var vertexEnd = f.localSubdomain().highBound;
@@ -93,12 +93,12 @@ module RConnectedComponents {
         // localtimer.start(); 
 
         if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count , ref f) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;
 
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
                   var u = src[x];
                   var v = dst[x];
 
@@ -118,7 +118,7 @@ module RConnectedComponents {
                     f[v] = TmpMin;
                   }
                 }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
+                forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
                   var u = src[x];
                   var v = dst[x];
                   if (count==0) {
@@ -130,7 +130,7 @@ module RConnectedComponents {
               }// end of on loc 
             }// end of coforall loc 
         } else {
-            coforall loc in Locales with ( + reduce count ) {
+            coforall loc in Locales with ( + reduce count, ref f ) {
               on loc {
                 var edgeBegin = src.localSubdomain().lowBound;
                 var edgeEnd = src.localSubdomain().highBound;

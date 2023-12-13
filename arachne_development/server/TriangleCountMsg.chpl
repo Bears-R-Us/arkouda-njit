@@ -154,7 +154,7 @@ module RTriCntMsg {
 
               var tmptimer:stopwatch;
               tmptimer.start();
-              coforall loc in Locales {
+              coforall loc in Locales with (ref subTriSum)  {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -320,7 +320,7 @@ module RTriCntMsg {
 
 
 
-            coforall loc in Locales {
+            coforall loc in Locales with (ref subTriSum) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
