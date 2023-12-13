@@ -20,28 +20,28 @@ TrussDecoFuns=[ "TrussDecoNaiveListIntersection", "TrussDecoNaiveSetSearchSmall"
 
 Parameters='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):string throws{'''
+                        ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{'''
 
 ParametersAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{'''
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{'''
 
 
 ParametersBool='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):bool throws{ '''
+                        ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):bool throws{ '''
 
 ParametersInt='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] int, EdgeDeleted:[?D6] int ):int throws{ '''
+                        ref TriCount:[?D5] int,ref EdgeDeleted:[?D6] int ):int throws{ '''
 
 ParametersBoolAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):bool throws{ '''
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):bool throws{ '''
 
 ParametersIntAtomic='''(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ '''
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ '''
 
 ConditionEdgeRemove='''
                                if (EdgeDeleted[i]==-1) {
@@ -99,7 +99,7 @@ FunStartVariables='''
           var ConFlag=true:bool;
           var RemovedEdge: atomic int;
           var k=kvalue:int;
-          var timer:Timer;
+          var timer:stopwatch;
           var largest:int;
           largest=Ne;
           RemovedEdge.write(0);
@@ -204,7 +204,7 @@ FunStartPreProcessing='''
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref RemovedEdge)  {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -249,7 +249,7 @@ TimerAndWhileStart='''
           timer.start();
 
           RemovedEdge.write(0);
-          forall i in EdgeDeleted {
+          forall i in EdgeDeleted with (ref RemovedEdge)  {
                if (i!=-1) {
                     RemovedEdge.add(1);
                }
@@ -358,13 +358,13 @@ def GenListIntersectionTriCnt(InitAssign,AssignCnt):
 
 
 MarkDelEdges='''
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF,ref EdgeDeleted, ref MinNumTri){
                                if (EdgeDeleted[i]==-1) {
                                   if (TriCount[i] < k-2) {
                                      EdgeDeleted[i] = k-1;
@@ -383,13 +383,13 @@ MarkDelEdges='''
 '''
 
 MarkDelEdgesAtomic='''
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF,ref EdgeDeleted, ref MinNumTri){
                                if (EdgeDeleted[i]==-1) {
                                     if  (TriCount[i].read() < k-2) {
                                         EdgeDeleted[i] = k-1;
@@ -1071,13 +1071,13 @@ def GenWhileAndAffectEdgeRemoveStart(Condition):
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ,ref MinNumTri) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted, ref MinNumTri){
 '''
 	comm='''
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
@@ -1109,12 +1109,12 @@ WhileAndAffectEdgeRemoveStartAtomic=GenWhileAndAffectEdgeRemoveStart(ConditionEd
 MinSearchAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF, ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -1144,7 +1144,7 @@ MinSearchAffectedEdgeRemoval='''
                                       var nextStart=start_i[sv1];
                                       var nextEnd=start_i[sv1]+nei[sv1]-1;
                                       if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==sv1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -1183,7 +1183,7 @@ MinSearchAffectedEdgeRemoval='''
                                       nextStart=start_iR[sv1];
                                       nextEnd=start_iR[sv1]+neiR[sv1]-1;
                                       if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
                                              var e1=findEdge(v4,v3);// we need the edge ID in src instead of srcR
@@ -1231,12 +1231,12 @@ MinSearchAffectedEdgeRemoval='''
                   } //end coforall loc in Locales 
 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted)  {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -1249,13 +1249,13 @@ MinSearchAffectedEdgeRemoval='''
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted, ref MinNumTri){
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -1282,12 +1282,12 @@ MinSearchAffectedEdgeRemoval='''
 SeqMinSearchAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF,ref TriCount ) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF, ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -1404,12 +1404,12 @@ SeqMinSearchAffectedEdgeRemoval='''
                   } //end coforall loc in Locales 
 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted  ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -1422,13 +1422,13 @@ SeqMinSearchAffectedEdgeRemoval='''
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF , ref EdgeDeleted, ref MinNumTri){
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -1454,12 +1454,12 @@ SeqMinSearchAffectedEdgeRemoval='''
 NonMinSearchAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount ) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF , ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -1567,12 +1567,12 @@ NonMinSearchAffectedEdgeRemoval='''
                   } //end coforall loc in Locales 
 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -1585,13 +1585,13 @@ NonMinSearchAffectedEdgeRemoval='''
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF  , ref EdgeDeleted, ref MinNumTri    ){
                                if (EdgeDeleted[i]==-1)  {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -1618,12 +1618,12 @@ MergePathAffectedEdgeRemoval='''
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
 
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF  {
+                           forall i in SetCurF with (ref TriCount) {
 
 
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
@@ -1847,12 +1847,12 @@ MergePathAffectedEdgeRemoval='''
                   //outMsg="After forall ";
                   //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                  coforall loc in Locales  {
+                  coforall loc in Locales with (ref EdgeDeleted)   {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF  with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -1865,13 +1865,13 @@ MergePathAffectedEdgeRemoval='''
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF , ref EdgeDeleted, ref MinNumTri){
                                if (EdgeDeleted[i]==-1)  {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -1905,11 +1905,11 @@ MixMinSearchTriCountAtomic='''
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount)  {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount) {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -1920,7 +1920,7 @@ MixMinSearchTriCountAtomic='''
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp]  with (ref TriCount)  {
                                        var  e=exactEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -1944,7 +1944,7 @@ MixMinSearchTriCountAtomic='''
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall j in beginTmp..endTmp {
+                                   forall j in beginTmp..endTmp  with (ref TriCount)  {
                                        var  x=dst[j];
                                        if ((EdgeDeleted[j] ==-1) && (x !=u) && (i<j)) {
                                                  var e3=exactEdge(x,u);
@@ -1978,12 +1978,12 @@ MixMinSearchAffectedEdgeRemoval='''
 
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF , ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF,ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
                                   var    v1=src[i];
@@ -1995,7 +1995,7 @@ MixMinSearchAffectedEdgeRemoval='''
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -2028,7 +2028,7 @@ MixMinSearchAffectedEdgeRemoval='''
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF,ref TriCount ){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -2062,7 +2062,7 @@ MixMinSearchAffectedEdgeRemoval='''
                                       var dv1=neiR[v1];
                                       var dv2=neiR[v2];
                                       if ((dv1<=dv2) && (dv1>0)) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//v3==v1
                                              var v4=dstR[j];
                                              var e2=exactEdge(v4,v3);
@@ -2079,7 +2079,7 @@ MixMinSearchAffectedEdgeRemoval='''
                                       } else {
                                          nextStart=start_iR[v2];
                                          nextEnd=start_iR[v2]+neiR[v2]-1;
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//v3==v2
                                              var v4=dstR[j];
                                              var e2=exactEdge(v4,v3);
@@ -2103,12 +2103,12 @@ MixMinSearchAffectedEdgeRemoval='''
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) ) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -2119,13 +2119,13 @@ MixMinSearchAffectedEdgeRemoval='''
                   RemovedEdge.add(SetCurF.getSize());
                   SetCurF.clear();
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF  , ref EdgeDeleted, ref MinNumTri){
                                if (EdgeDeleted[i]==-1)  {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -2171,13 +2171,13 @@ MaxTrussStart='''
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -2257,7 +2257,7 @@ MaxTrussEndCheck='''
 '''
           AllRemoved=true;
           var cnt:[0..numLocales-1] int=0;
-          coforall loc in Locales with (ref SetCurF ) {
+          coforall loc in Locales with (ref SetCurF, ref cnt ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
@@ -2659,6 +2659,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                 ref aPTriCount=TriCount;
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 '''
 
 	print(variabledel0)
@@ -2666,7 +2667,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
 
 	if IsAtomic:
 		text01='''
-                forall i in 0..Ne-1 {
+                forall i in 0..Ne-1 with (ref aPTriCount, ref aPlTriCount)  {
                     aPTriCount[i].write(0);
                     aPlTriCount[i].write(0);
                 }
@@ -2712,7 +2713,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
 
 	text31='''
 
-                forall i in 0..Ne-1 {// first keep last time's results
+                forall i in 0..Ne-1 with (ref gEdgeDeleted, ref aPTriCount)  {// first keep last time's results
                              gEdgeDeleted[i]=lEdgeDeleted[i];
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
@@ -2766,7 +2767,7 @@ def GenMaxTrussFunNoFinish(IsAtomic:bool,FunName1:str,CallFunName:str,BodyCode:s
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -2840,11 +2841,12 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                 var aPlTriCount =makeDistArray(Ne,atomic int);
                 ref gEdgeDeleted=EdgeDeleted;
                 var lEdgeDeleted =makeDistArray(Ne,int);
+                var maxKAry=makeDistArray(numLocales,int);
 '''
 	print(variabledel)
 
 	text1='''
-                forall i in 0..Ne-1 {
+                forall i in 0..Ne-1 with (ref aPTriCount, ref aPlTriCount) {
                     aPTriCount[i].write(0);
                     aPlTriCount[i].write(0);
                 }
@@ -2866,7 +2868,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, aPlTriCount,lEdgeDeleted);
-                forall i in 0..Ne-1 {// first keep last time's results
+                forall i in 0..Ne-1 with (ref gEdgeDeleted, ref aPTriCount) {// first keep last time's results
                              gEdgeDeleted[i]=lEdgeDeleted[i];
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
@@ -2975,7 +2977,7 @@ def GenMaxTrussAtomicFun(FunName1,CallFunName,BodyCode):
                             } 
                     }// end of while
                     var countName = st.nextName();
-                    var maxKAry:[0..1] int;
+                    //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
                     var countEntry = new shared SymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
@@ -3209,7 +3211,6 @@ module TrussMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -3305,7 +3306,7 @@ module TrussMsg {
       var kLow=3:int;
       var kUp:int;
       var kMid:int;
-      var maxtimer:Timer;
+      var maxtimer:stopwatch;
 
 
       // this can be a general procedure to check if x is in given range so we put it outside
@@ -3395,7 +3396,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -3469,7 +3470,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted)  {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -3580,13 +3581,13 @@ module TrussMsg {
                   }// end of  on loc 
 
               } // end of coforall loc in Locales 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF , ref EdgeDeleted ){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
@@ -3646,7 +3647,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -3742,7 +3743,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted)  {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -3773,7 +3774,7 @@ module TrussMsg {
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, TriCount){
                          TriCount[i]=0;
                          var sVadj = new set(int, parSafe = true);
                          var u = src[i];
@@ -3849,13 +3850,13 @@ module TrussMsg {
                      }// end of forall. We get the number of triangles for each edge
                   }// end of  on loc 
               } // end of coforall loc in Locales 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF , ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
@@ -3917,7 +3918,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4013,7 +4014,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -4038,13 +4039,13 @@ module TrussMsg {
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               // first we calculate the number of triangles
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref TriCount ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref TriCount){
                          TriCount[i]=0;
                          var sVadj = new set(int, parSafe = true);
                          var u = src[i];
@@ -4117,13 +4118,13 @@ module TrussMsg {
                      }// end of forall. We get the number of triangles for each edge
                   }// end of  on loc 
               } // end of coforall loc in Locales 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF,  ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
@@ -4183,7 +4184,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4257,7 +4258,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -4286,13 +4287,13 @@ module TrussMsg {
           while (ConFlag) {
               //ConFlag=false;
               // first we calculate the number of triangles
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref TriCount ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF,ref TriCount){
                          TriCount[i]=0;
                          var uadj = new set(int, parSafe = true);
                          var vadj = new set(int, parSafe = true);
@@ -4368,13 +4369,13 @@ module TrussMsg {
                   }// end of  on loc 
 
               } // end of coforall loc in Locales 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
@@ -4435,7 +4436,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4509,7 +4510,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -4537,13 +4538,13 @@ module TrussMsg {
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               // first we calculate the number of triangles
-              coforall loc in Locales {
+              coforall loc in Locales with (ref TriCount)  {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount) {
                          TriCount[i]=0;
                          var u = src[i];
                          var v = dst[i];
@@ -4751,7 +4752,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
           //To have unique results, we remove the duplicated edges.
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -4845,7 +4846,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted)  {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -4873,13 +4874,13 @@ module TrussMsg {
           timer.start();
           {
               // first we calculate the number of triangles using list intersection method.
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref  TriCount ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF , ref  TriCount){
                          TriCount[i]=0;
                          var uadj = new set(int, parSafe = true);
                          var vadj = new set(int, parSafe = true);
@@ -4958,13 +4959,13 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF , ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -5104,12 +5105,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -5120,7 +5121,7 @@ module TrussMsg {
 
                   SetCurF.clear();
                   // then we try to remove the affected edges
-                  coforall loc in Locales  {
+                  coforall loc in Locales with (ref EdgeDeleted)  {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
@@ -5191,7 +5192,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -5285,7 +5286,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted)  {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -5312,14 +5313,14 @@ module TrussMsg {
 
           {
               // first we calculate the number of triangles
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF , ref TriCount){
                          var sVadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
@@ -5398,13 +5399,13 @@ module TrussMsg {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF,  ref EdgeDeleted ){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -5423,12 +5424,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount){
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF , ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -5458,7 +5459,7 @@ module TrussMsg {
                                       var nextStart=start_i[sv1];
                                       var nextEnd=start_i[sv1]+nei[sv1]-1;
                                       if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF , ref TriCount){
                                              var v3=src[j];//v3==sv1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -5509,7 +5510,7 @@ module TrussMsg {
                                       nextStart=start_iR[sv1];
                                       nextEnd=start_iR[sv1]+neiR[sv1]-1;
                                       if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF , ref TriCount){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
                                              var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
@@ -5566,7 +5567,7 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF,ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
@@ -5582,13 +5583,13 @@ module TrussMsg {
 
                   SetCurF.clear();
                   // then we try to remove the affected edges
-                  coforall loc in Locales  {
+                  coforall loc in Locales with (ref EdgeDeleted)  {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
 
-                           forall (i,j) in SetNextF  {
+                           forall (i,j) in SetNextF with (ref EdgeDeleted)   {
                              if (xlocal(j,startEdge,endEdge)) {//each locale only check its owned edges
                                 if (EdgeDeleted[j]==-1) {
                                        EdgeDeleted[j]=1-k;
@@ -5648,7 +5649,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -5741,7 +5742,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -5775,18 +5776,18 @@ module TrussMsg {
               // first we calculate the number of triangles
 
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount)  {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge  with (ref TriCount)  {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -5797,7 +5798,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp]   with (ref TriCount) {
                                        var  e=exactEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -5821,7 +5822,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp]  with (ref TriCount) {
                                        var  e=exactEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -5849,13 +5850,13 @@ module TrussMsg {
 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted ){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -5874,12 +5875,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF , ref TriCount ) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -5890,7 +5891,7 @@ module TrussMsg {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF , ref TriCount ){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -5936,7 +5937,7 @@ module TrussMsg {
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF , ref TriCount ){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -5982,7 +5983,7 @@ module TrussMsg {
                                       var dv1=neiR[v1];
                                       var dv2=neiR[v2];
                                       if ((dv1<=dv2) && (dv1>0)) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//v3==v1
                                              var v4=dstR[j];
                                              var e2=exactEdge(v4,v3);
@@ -6007,7 +6008,7 @@ module TrussMsg {
 
                                              nextStart=start_iR[v2];
                                              nextEnd=start_iR[v2]+neiR[v2]-1;
-                                             forall j in nextStart..nextEnd with (ref SetNextF){
+                                             forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                                  var v3=srcR[j];//v3==v2
                                                  var v4=dstR[j];
                                                  var e2=exactEdge(v4,v3);
@@ -6038,12 +6039,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -6052,13 +6053,13 @@ module TrussMsg {
                       }
                   }
                   SetCurF.clear();
-                  coforall loc in Locales with (ref SetNextF ) {
+                  coforall loc in Locales with (ref SetNextF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
 
-                         forall (i,j) in SetNextF  {
+                         forall (i,j) in SetNextF with (ref EdgeDeleted)  {
                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
                                        EdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
@@ -6122,7 +6123,7 @@ module TrussMsg {
           forall i in TriCount {
               i.write(0);
           }
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -6217,7 +6218,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if ( v1==v2) {
@@ -6241,18 +6242,18 @@ module TrussMsg {
               //ConFlag=false;
               // first we calculate the number of triangles
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref  TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (  ref TriCount)  {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -6263,7 +6264,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp]  with (  ref TriCount, ref EReverse) {
                                        var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -6287,7 +6288,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp] with (ref TriCount)  {
                                        var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -6314,13 +6315,13 @@ module TrussMsg {
 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
@@ -6387,7 +6388,7 @@ module TrussMsg {
           forall i in TriCount {
               i.write(0);
           }
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -6482,7 +6483,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if ( v1==v2) {
@@ -6506,18 +6507,18 @@ module TrussMsg {
               //ConFlag=false;
               // first we calculate the number of triangles
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount, ref EReverse)  {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -6528,7 +6529,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp] with (ref TriCount, ref EReverse)   {
                                        var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -6552,7 +6553,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp]   with (ref TriCount)  {
                                        var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -6590,13 +6591,13 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -6615,12 +6616,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount ) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF, ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -6630,7 +6631,7 @@ module TrussMsg {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -6675,7 +6676,7 @@ module TrussMsg {
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -6713,7 +6714,7 @@ module TrussMsg {
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
                                       if EReverse[i].size>0 {
-                                          forall (e1,e2) in EReverse[i] {
+                                          forall (e1,e2) in EReverse[i] with (ref TriCount) {
                                                 if ((EdgeDeleted[e1]==-1) && (EdgeDeleted[e2]==-1)) {
                                                          TriCount[e1].sub(1);
                                                          if TriCount[e1].read() <k-2 {
@@ -6735,12 +6736,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref  EdgeDeleted ){
                               if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -6749,14 +6750,14 @@ module TrussMsg {
                       }
                   }
                   SetCurF.clear();
-                  coforall loc in Locales with (ref SetNextF ) {
+                  coforall loc in Locales with (ref SetNextF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
 
                          var rset = new set((int,int), parSafe = true);
-                         forall (i,j) in SetNextF with(ref rset)  {
+                         forall (i,j) in SetNextF with(ref rset, ref EdgeDeleted )  {
                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
                                        EdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
@@ -6818,7 +6819,7 @@ module TrussMsg {
           var RemovedEdge=0: int;
           //var TriCount=makeDistArray(Ne,int);
           //TriCount=0;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
@@ -6853,7 +6854,7 @@ module TrussMsg {
           //we will try to remove all the unnecessary edges in the graph
           while (ConFlag) {
               // first we calculate the number of triangles
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF,ref TriCount ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
@@ -6862,7 +6863,7 @@ module TrussMsg {
 
 
 
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref TriCount){
                          TriCount[i]=0;
                          var uadj = new set(int, parSafe = true);
                          var vadj = new set(int, parSafe = true);
@@ -6961,7 +6962,7 @@ module TrussMsg {
 
                   }// end of  on loc 
               } // end of coforall loc in Locales 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
@@ -6986,12 +6987,12 @@ module TrussMsg {
               N2+=1;
           }// end while 
 
-          coforall loc in Locales with (ref SetCurF ) {
+          coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref lEdgeDeleted) {
                                if (lEdgeDeleted[i]==1-k) {
                                      lEdgeDeleted[i] = k-1;
                                }
@@ -7031,7 +7032,7 @@ module TrussMsg {
           var k=kInput:int;
           var ConFlag=true:bool;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
@@ -7090,13 +7091,13 @@ module TrussMsg {
           {
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, lEdgeDeleted){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      lEdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -7115,7 +7116,7 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
@@ -7123,7 +7124,7 @@ module TrussMsg {
 
 
 
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF , ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
                                   var    v1=src[i];
@@ -7263,12 +7264,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref lEdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) && (lEdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   lEdgeDeleted[i]=k-1;
                               }
@@ -7278,13 +7279,13 @@ module TrussMsg {
                   }
                   SetCurF.clear();
                   // then we try to remove the affected edges
-                  coforall loc in Locales  {
+                  coforall loc in Locales with (ref lEdgeDeleted)   {
                       on loc {
 
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall (i,j) in SetNextF   {
+                           forall (i,j) in SetNextF  with (ref lEdgeDeleted)  {
                               if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
                                         if (lEdgeDeleted[j]==-1) {
                                              if (TriCount[j].read()<k-2) {
@@ -7305,7 +7306,7 @@ module TrussMsg {
               N2+=1;
           }// end while 
 
-          coforall loc in Locales with (ref SetCurF ) {
+          coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
@@ -7344,7 +7345,7 @@ module TrussMsg {
           var k=kInput:int;
           var ConFlag=true:bool;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
@@ -7402,13 +7403,13 @@ module TrussMsg {
 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref lEdgeDeleted){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      lEdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -7425,7 +7426,7 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
@@ -7435,7 +7436,7 @@ module TrussMsg {
 
 
 
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF, ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
 
 
@@ -7448,7 +7449,7 @@ module TrussMsg {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -7492,7 +7493,7 @@ module TrussMsg {
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -7538,7 +7539,7 @@ module TrussMsg {
                                       var dv1=neiR[v1];
                                       var dv2=neiR[v2];
                                       if ((dv1<=dv2) && (dv1>0)) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//v3==v1
                                              var v4=dstR[j];
                                              var e2=exactEdge(v4,v3);
@@ -7563,7 +7564,7 @@ module TrussMsg {
 
                                              nextStart=start_iR[v2];
                                              nextEnd=start_iR[v2]+neiR[v2]-1;
-                                             forall j in nextStart..nextEnd with (ref SetNextF){
+                                             forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                                  var v3=srcR[j];//v3==v2
                                                  var v4=dstR[j];
                                                  var e2=exactEdge(v4,v3);
@@ -7601,12 +7602,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref lEdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) && (lEdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   lEdgeDeleted[i]=k-1;
                               }
@@ -7647,12 +7648,12 @@ module TrussMsg {
               N2+=1;
           }// end while 
 
-          coforall loc in Locales with (ref SetCurF ) {
+          coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref lEdgeDeleted) {
                                if (lEdgeDeleted[i]==1-k) {
                                      lEdgeDeleted[i] = k-1;
                                }
@@ -7686,7 +7687,7 @@ module TrussMsg {
           forall i in TriCount {
               i.write(0);
           }
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -7779,18 +7780,18 @@ module TrussMsg {
               //ConFlag=false;
               // first we calculate the number of triangles
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount, ref EReverse) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref  TriCount, ref EReverse)  {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -7853,13 +7854,13 @@ module TrussMsg {
 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref lEdgeDeleted){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      lEdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -7911,7 +7912,7 @@ module TrussMsg {
           forall i in TriCount {
               i.write(0);
           }
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -8004,18 +8005,18 @@ module TrussMsg {
               //ConFlag=false;
               // first we calculate the number of triangles
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount, ref EReverse) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge    with ( ref SetNextF, ref TriCount, ref EReverse)    {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -8026,7 +8027,7 @@ module TrussMsg {
                              if ((lEdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp]  with ( ref SetNextF, ref TriCount, ref EReverse) {
                                        var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((lEdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -8050,7 +8051,7 @@ module TrussMsg {
                              if ((lEdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp]  with (ref TriCount) {
                                        var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((lEdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -8087,13 +8088,13 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref lEdgeDeleted ){
                                if ((lEdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      lEdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -8112,12 +8113,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF , ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -8127,7 +8128,7 @@ module TrussMsg {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -8171,7 +8172,7 @@ module TrussMsg {
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -8209,7 +8210,7 @@ module TrussMsg {
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
                                       if EReverse[i].size>0 {
-                                          forall (e1,e2) in EReverse[i] {
+                                          forall (e1,e2) in EReverse[i] with ( ref TriCount) {
                                                 if ((lEdgeDeleted[e1]==-1) && (lEdgeDeleted[e2]==-1)) {
                                                          TriCount[e1].sub(1);
                                                          if TriCount[e1].read() <k-2 {
@@ -8231,12 +8232,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref lEdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref lEdgeDeleted ) {
                               if (xlocal(i,startEdge,endEdge) && (lEdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   lEdgeDeleted[i]=k-1;
                               }
@@ -8245,14 +8246,14 @@ module TrussMsg {
                       }
                   }
                   SetCurF.clear();
-                  coforall loc in Locales with (ref SetNextF ) {
+                  coforall loc in Locales with (ref SetNextF, ref lEdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
 
                          var rset = new set((int,int), parSafe = true);
-                         forall (i,j) in SetNextF with(ref rset)  {
+                         forall (i,j) in SetNextF with(ref rset , ref lEdgeDeleted)  {
                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
                                        lEdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
@@ -8301,7 +8302,7 @@ module TrussMsg {
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
           var k=kvalue:int;
-          var timer:Timer;
+          var timer:stopwatch;
           var largest:int;
           largest=Ne;
 
@@ -8408,13 +8409,13 @@ module TrussMsg {
 
           while (ConFlag) {
               // first we calculate the number of triangles
-              coforall loc in Locales {
+              coforall loc in Locales with (ref  TriCount)  {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref  TriCount) {
                          TriCount[i]=0;
                          var u = src[i];
                          var v = dst[i];
@@ -8557,13 +8558,13 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
               SetCurF.clear();
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i] < k-2)) {
                                      EdgeDeleted[i] = k-1;
                                      SetCurF.add(i);
@@ -8643,7 +8644,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
           var k=kvalue;
           var largest:int;
           largest=Ne;
@@ -8720,7 +8721,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with ( ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -8748,13 +8749,13 @@ module TrussMsg {
           while (ConFlag) {
               ConFlag=false;
               // first we calculate the number of triangles
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref TriCount ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref TriCount){
                          TriCount[i]=0;
                          var uadj = new set(int, parSafe = true);
                          var vadj = new set(int, parSafe = true);
@@ -8830,7 +8831,7 @@ module TrussMsg {
                   }// end of  on loc 
 
               } // end of coforall loc in Locales 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
@@ -8916,7 +8917,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge: atomic int;
-          var timer:Timer;
+          var timer:stopwatch;
           var k=kvalue;
           var largest:int;
           RemovedEdge.write(0);
@@ -9014,7 +9015,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -9041,14 +9042,14 @@ module TrussMsg {
 
           {
               // first we calculate the number of triangles
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref TriCount){
                          var sVadj = new set(int, parSafe = true);
                          var u = src[i];
                          var v = dst[i];
@@ -9132,13 +9133,13 @@ module TrussMsg {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted ) {
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -9157,12 +9158,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF, ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -9192,7 +9193,7 @@ module TrussMsg {
                                       var nextStart=start_i[sv1];
                                       var nextEnd=start_i[sv1]+nei[sv1]-1;
                                       if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF ,ref TriCount){
                                              var v3=src[j];//v3==sv1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -9243,7 +9244,7 @@ module TrussMsg {
                                       nextStart=start_iR[sv1];
                                       nextEnd=start_iR[sv1]+neiR[sv1]-1;
                                       if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
                                              var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
@@ -9300,12 +9301,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF , ref EdgeDeleted) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF  with (ref EdgeDeleted){
                               if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -9316,13 +9317,13 @@ module TrussMsg {
 
                   SetCurF.clear();
                   // then we try to remove the affected edges
-                  coforall loc in Locales  {
+                  coforall loc in Locales with (ref EdgeDeleted) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
 
-                           forall (i,j) in SetNextF  {
+                           forall (i,j) in SetNextF with (ref EdgeDeleted) {
                              if (xlocal(j,startEdge,endEdge)) {//each locale only check its owned edges
                                 if (EdgeDeleted[j]==-1) {
                                        EdgeDeleted[j]=1-k;
@@ -9393,7 +9394,7 @@ module TrussMsg {
           var ConFlag=true:bool;
           EdgeDeleted=-1;
           var RemovedEdge=0: int;
-          var timer:Timer;
+          var timer:stopwatch;
           var k=kvalue;
 
 
@@ -9487,7 +9488,7 @@ module TrussMsg {
                     //var endEdge = ld.high;
                     var startEdge = 0;
                     var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if (  (nei[v1]+neiR[v1])<k-1  || 
@@ -9521,18 +9522,18 @@ module TrussMsg {
               // first we calculate the number of triangles
 
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref  TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref  TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with(ref SetCurF){
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -9543,7 +9544,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp] with(ref SetCurF) {
                                        var  e=exactEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -9567,7 +9568,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp] with(ref SetCurF){
                                        var  e=exactEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -9600,13 +9601,13 @@ module TrussMsg {
           ConFlag=true;
           while (ConFlag) {
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -9625,12 +9626,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF , ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -9641,7 +9642,7 @@ module TrussMsg {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF , ref TriCount){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -9687,7 +9688,7 @@ module TrussMsg {
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -9733,7 +9734,7 @@ module TrussMsg {
                                       var dv1=neiR[v1];
                                       var dv2=neiR[v2];
                                       if ((dv1<=dv2) && (dv1>0)) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                              var v3=srcR[j];//v3==v1
                                              var v4=dstR[j];
                                              var e2=exactEdge(v4,v3);
@@ -9758,7 +9759,7 @@ module TrussMsg {
 
                                              nextStart=start_iR[v2];
                                              nextEnd=start_iR[v2]+neiR[v2]-1;
-                                             forall j in nextStart..nextEnd with (ref SetNextF){
+                                             forall j in nextStart..nextEnd with (ref SetNextF, ref TriCount){
                                                  var v3=srcR[j];//v3==v2
                                                  var v4=dstR[j];
                                                  var e2=exactEdge(v4,v3);
@@ -9789,12 +9790,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -9803,13 +9804,13 @@ module TrussMsg {
                       }
                   }
                   SetCurF.clear();
-                  coforall loc in Locales with (ref SetNextF ) {
+                  coforall loc in Locales with (ref SetNextF,ref EdgeDeleted  ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
 
-                         forall (i,j) in SetNextF  {
+                         forall (i,j) in SetNextF with (ref EdgeDeleted ) {
                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
                                        EdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
@@ -9875,7 +9876,7 @@ module TrussMsg {
           forall i in TriCount {
               i.write(0);
           }
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -9960,12 +9961,12 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          coforall loc in Locales {
+          coforall loc in Locales with (ref EdgeDeleted ) {
               on loc {
                     var ld = src.localSubdomain();
                     var startEdge = ld.low;
                     var endEdge = ld.high;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted ) {
                         var v1=src[i];
                         var v2=dst[i];
                         if ( v1==v2) {
@@ -9990,18 +9991,18 @@ module TrussMsg {
               //ConFlag=false;
               // first we calculate the number of triangles
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge with (ref TriCount, ref EReverse ){
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -10012,7 +10013,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp] with (ref TriCount, ref EReverse ) {
                                        var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -10036,7 +10037,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp] with (ref TriCount ){
                                        var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -10076,13 +10077,13 @@ module TrussMsg {
               } // end of coforall loc in Locales 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted ){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -10156,7 +10157,7 @@ module TrussMsg {
           forall i in TriCount {
               i.write(0);
           }
-          var timer:Timer;
+          var timer:stopwatch;
 
 
           proc RemoveDuplicatedEdges( cur: int):int {
@@ -10241,12 +10242,12 @@ module TrussMsg {
 
 
           //here we begin the first naive version
-          coforall loc in Locales {
+          coforall loc in Locales with (ref EdgeDeleted)  {
               on loc {
                     var ld = src.localSubdomain();
                     var startEdge = ld.low;
                     var endEdge = ld.high;
-                    forall i in startEdge..endEdge {
+                    forall i in startEdge..endEdge with (ref EdgeDeleted) {
                         var v1=src[i];
                         var v2=dst[i];
                         if ( v1==v2) {
@@ -10270,18 +10271,18 @@ module TrussMsg {
               //ConFlag=false;
               // first we calculate the number of triangles
 
-              coforall loc in Locales with ( ref SetNextF) {
+              coforall loc in Locales with ( ref SetNextF, ref TriCount, ref  EReverse) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
 
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge  with (ref TriCount) {
                          TriCount[i].write(0);
                      }
                      //forall i in startEdge..endEdge with(ref SetCurF){
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge  with ( ref SetNextF, ref TriCount, ref  EReverse) {
                          var u = src[i];
                          var v = dst[i];
                          var du=nei[u];
@@ -10292,7 +10293,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[u]>1)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref uadj) {
-                                   forall x in dst[beginTmp..endTmp]  {
+                                   forall x in dst[beginTmp..endTmp]   with ( ref TriCount, ref  EReverse) {
                                        var  e=findEdge(u,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=v) && (i<e)) {
@@ -10316,7 +10317,7 @@ module TrussMsg {
                              if ((EdgeDeleted[i]==-1) && (u!=v) ){
                                 if ( (nei[v]>0)  ){
                                    //forall x in dst[beginTmp..endTmp] with (ref vadj) {
-                                   forall x in dst[beginTmp..endTmp] {
+                                   forall x in dst[beginTmp..endTmp]  with (ref TriCount) {
                                        var  e=findEdge(v,x);//here we find the edge ID to check if it has been removed
                                        if (e!=-1){
                                           if ((EdgeDeleted[e] ==-1) && (x !=u) && (i<e)) {
@@ -10345,13 +10346,13 @@ module TrussMsg {
 
 
 
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF,ref EdgeDeleted ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref EdgeDeleted){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
                                      SetCurF.add(i);
@@ -10370,12 +10371,12 @@ module TrussMsg {
               var tmpN2=0:int;
               while (SetCurF.getSize()>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
-                  coforall loc in Locales with ( ref SetNextF) {
+                  coforall loc in Locales with ( ref SetNextF,ref TriCount) {
                       on loc {
                            var ld = src.localSubdomain();
                            var startEdge = ld.low;
                            var endEdge = ld.high;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF ,ref TriCount) {
                               if (xlocal(i,startEdge,endEdge)) {//each local only check the owned edges
                                   var    v1=src[i];
                                   var    v2=dst[i];
@@ -10385,7 +10386,7 @@ module TrussMsg {
                                       var nextStart=start_i[v1];
                                       var nextEnd=start_i[v1]+nei[v1]-1;
                                       if (nei[v1]>1) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF,ref TriCount){
                                              var v3=src[j];//v3==v1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -10430,7 +10431,7 @@ module TrussMsg {
                                       nextStart=start_i[v2];
                                       nextEnd=start_i[v2]+nei[v2]-1;
                                       if (nei[v2]>0) {
-                                         forall j in nextStart..nextEnd with (ref SetNextF){
+                                         forall j in nextStart..nextEnd with (ref SetNextF,ref TriCount){
                                              var v3=src[j];//v3==v2
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -10468,7 +10469,7 @@ module TrussMsg {
                                          }// end of  forall j in nextStart..nextEnd 
                                       }// end of if
                                       if EReverse[i].size>0 {
-                                          forall (e1,e2) in EReverse[i] {
+                                          forall (e1,e2) in EReverse[i] with (ref TriCount) {
                                                 if ((EdgeDeleted[e1]==-1) && (EdgeDeleted[e2]==-1)) {
                                                          TriCount[e1].sub(1);
                                                          if TriCount[e1].read() <k-2 {
@@ -10490,12 +10491,12 @@ module TrussMsg {
                       } //end on loc 
                   } //end coforall loc in Locales 
 
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
-                         forall i in SetCurF {
+                         forall i in SetCurF with (ref EdgeDeleted) {
                               if (xlocal(i,startEdge,endEdge) && (EdgeDeleted[i]==1-k)) {//each local only check the owned edges
                                   EdgeDeleted[i]=k-1;
                               }
@@ -10504,14 +10505,14 @@ module TrussMsg {
                       }
                   }
                   SetCurF.clear();
-                  coforall loc in Locales with (ref SetNextF ) {
+                  coforall loc in Locales with (ref SetNextF, ref EdgeDeleted ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
 
                          var rset = new set((int,int), parSafe = true);
-                         forall (i,j) in SetNextF with(ref rset)  {
+                         forall (i,j) in SetNextF with(ref rset, ref EdgeDeleted)  {
                             if (xlocal(j,startEdge,endEdge)) {//each local only check the owned edges
                                        EdgeDeleted[j]=1-k;
                                        SetCurF.add(j);
@@ -10563,7 +10564,7 @@ module TrussMsg {
       var kLow=3:int;
       var kUp:int;
       var kMid:int;
-      var maxtimer:Timer;
+      var maxtimer:stopwatch;
 
       if (!Directed) {//for undirected graph
       
@@ -10737,7 +10738,7 @@ module TrussMsg {
                 maxtimer.clear();
                 var PTriCount=makeDistArray(Ne,atomic int);//keep the last no all removed results
                 var aPlTriCount=makeDistArray(Ne,atomic int);//for local use
-                forall i in 0..Ne-1 {
+                forall i in 0..Ne-1 with (ref PTriCount, ref PlTriCount)  {
                     PTriCount[i].write(0);
                     aPlTriCount[i].write(0);
                 }
@@ -10755,7 +10756,7 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, aPlTriCount);
-                forall i in 0..Ne-1 {// first keep last time's results
+                forall i in 0..Ne-1 with (ref lEdgeDeleted, ref PTriCount)  {// first keep last time's results
                              lEdgeDeleted[i]=EdgeDeleted[i];
                              PTriCount[i].write(aPlTriCount[i].read());
                 }
@@ -10768,7 +10769,7 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
                          // we will continuely check if the up value can remove all edges
-                         forall i in 0..Ne-1 {// first keep last time's results
+                         forall i in 0..Ne-1 with (ref lEdgeDeleted, ref aPlTriCount) {// first keep last time's results
                              lEdgeDeleted[i]=EdgeDeleted[i];
                              aPlTriCount[i].write(PTriCount[i].read());
                          }
@@ -10787,7 +10788,7 @@ module TrussMsg {
                                 ConLoop=false;
                          } else {// we will check the mid value to reduce kUp
                             kMid= (kLow+kUp)/2;
-                            forall i in 0..Ne-1 {
+                            forall i in 0..Ne-1  with (ref lEdgeDeleted, ref aPlTriCount) {
                                 lEdgeDeleted[i]=EdgeDeleted[i];
                                 aPlTriCount[i].write(PTriCount[i].read());
                             }
@@ -10812,7 +10813,7 @@ module TrussMsg {
                                      while ((AllRemoved==false) && (kMid<kUp-1)) {
                                         kLow=kMid;
                                         kMid= (kLow+kUp)/2;
-                                        forall i in 0..Ne-1 { 
+                                        forall i in 0..Ne-1 with (ref EdgeDeleted, ref PTriCount) { 
                                             EdgeDeleted[i]=lEdgeDeleted[i];
                                             PTriCount[i].write(aPlTriCount[i].read());
                                         }
@@ -10887,7 +10888,7 @@ module TrussMsg {
                       toSymEntry(ag.getSTART_IDX_R(), int).a,
                       toSymEntry(ag.getSRC_R(), int).a,
                       toSymEntry(ag.getDST_R(), int).a, lAtoTriCount);
-                forall i in 0..Ne-1 {
+                forall i in 0..Ne-1 with (ref lEdgeDeleted, ref AtoPTriCount) {
                              lEdgeDeleted[i]=EdgeDeleted[i];
                              AtoTriCount[i].write(lAtoTriCount[i].read());
                 }
@@ -10899,7 +10900,7 @@ module TrussMsg {
                     var ConLoop=true:bool;
                     while ( (ConLoop) && (kLow<kUp)) {
                          // we will continuely check if the up value can remove the all edges
-                         forall i in 0..Ne-1 {
+                         forall i in 0..Ne-1  with (ref lEdgeDeleted, ref lAtoTriCount) {
                              lEdgeDeleted[i]=EdgeDeleted[i];
                              lAtoTriCount[i].write(AtoTriCount[i].read());
                          }
@@ -10917,7 +10918,7 @@ module TrussMsg {
                                 ConLoop=false;
                          } else {// we will check the mid value to reduce k max
                             kMid= (kLow+kUp)/2;
-                            forall i in 0..Ne-1 {
+                            forall i in 0..Ne-1  with (ref lEdgeDeleted, ref lAtoTriCount) {
                                 lEdgeDeleted[i]=EdgeDeleted[i];
                                 lAtoTriCount[i].write(AtoTriCount[i].read());
                             }
@@ -10941,7 +10942,7 @@ module TrussMsg {
                                      while ((AllRemoved==false) && (kMid<kUp-1)) {
                                             kLow=kMid;
                                             kMid= (kLow+kUp)/2;
-                                            forall i in 0..Ne-1 { 
+                                            forall i in 0..Ne-1 with (ref EdgeDeleted, ref AtoTriCount) { 
                                                 EdgeDeleted[i]=lEdgeDeleted[i];
                                                 AtoTriCount[i].write(lAtoTriCount[i].read());
                                             }

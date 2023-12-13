@@ -100,7 +100,7 @@ module BFSMsgAgg {
         var DR : [rcDomain] domain(1);
     
         // Generate the low and high vertex values from the src and srcR arrays.
-        coforall loc in Locales with (ref D, ref DR) {
+        coforall loc in Locales with (ref D, ref DR, ref lows, ref highs, ref src1, ref lowsR, ref highsR, ref nei_local_vertices, ref neiR_local_vertices, ref start_i_local_vertices, ref start_iR_local_vertices) {
             on loc {
                 lows[loc.id] = src1[src1.localSubdomain().lowBound];
                 highs[loc.id] = src1[src1.localSubdomain().highBound];
@@ -120,18 +120,18 @@ module BFSMsgAgg {
         }
 
         // Populate the "local" arrays with the values from the nei, neiR, start_i, and start_iR arrays.
-        coforall loc in Locales {
+        coforall loc in Locales with (ref nei_local_vertices, ref  nei1, ref neiR_local_vertices, ref neiR1, ref start_i_local_vertices, ref start_i1, ref start_iR_local_vertices, ref start_iR1) {
             on loc {
-                forall i in nei_local_vertices[loc.id].DO {
+                forall i in nei_local_vertices[loc.id].DO with (ref nei_local_vertices, ref  nei1) {
                     nei_local_vertices[loc.id].A[i] = nei1[i];
                 }
-                forall i in neiR_local_vertices[loc.id].DO {
+                forall i in neiR_local_vertices[loc.id].DO with (  ref neiR_local_vertices, ref neiR1  )  {
                     neiR_local_vertices[loc.id].A[i] = neiR1[i];
                 }
-                forall i in start_i_local_vertices[loc.id].DO {
+                forall i in start_i_local_vertices[loc.id].DO ( ref start_i_local_vertices, ref start_i1) {
                     start_i_local_vertices[loc.id].A[i] = start_i1[i];
                 }
-                forall i in start_iR_local_vertices[loc.id].DO {
+                forall i in start_iR_local_vertices[loc.id].DO ( ref start_iR_local_vertices, ref start_iR1) {
                     start_iR_local_vertices[loc.id].A[i] = start_iR1[i];
                 }
             }
@@ -1100,5 +1100,5 @@ module BFSMsgAgg {
     } // end of SegBFSMsg
 
     use CommandMap;
-    registerFunction("segmentedGraphBFS", segBFSMsg);
+    registerFunction("RsegmentedGraphBFS", segBFSMsg);
 }

@@ -12,7 +12,6 @@ module JCSMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -158,7 +157,7 @@ module JCSMsg {
     }
   }
   //Below function finds the prefix sum of its input array.
-  proc prefsum(list:[0..n] int){
+  proc prefsum(ref list:[0..n] int){
     var exp: int = 1;
     var expm1, expnot: int;
     while (exp < n+1) {
@@ -286,7 +285,7 @@ module JCSMsg {
   var mins:[0..4*(n+1)*(m+1)]int;
   //In the function below, we find the index of the minimum of each column of matrix dg and save them in array "mins" recursively. We find the minimum of the middle column, and find the minimum of each 
   //column left of the middle column which is upper than the min index of the middle column, and we find the min index of each column right of the middle column, which is downer than the min index of the middle column.
-  proc findColMins(dgu,dgl,vertex:int, left: int, right: int, top: int, bottom: int, mins,firstind:int) {
+  proc findColMins(dgu,dgl,vertex:int, left: int, right: int, top: int, bottom: int, ref mins,firstind:int) {
 
     var cols = right - left + 1;//it shows the number of columns of the matrix we want to work with.
     if(cols < 1){
@@ -301,7 +300,7 @@ module JCSMsg {
     //writeln("firstind= ",firstind," midcol= ",midCol," left= ",left," right= ",right," mins index= ",firstind+midCol-left,"  minIndex= ",minIndex," top= ",top," bottom = ",bottom);
     if find_cell(dgu,dgl,vertex,minIndex,midCol)!=infin{
 
-      cobegin{ //Parallel step
+      cobegin with (ref mins) { //Parallel step
         findColMins(dgu,dgl,vertex:int, left, midCol-1, top, minIndex, mins,firstind); //left submatrix
         findColMins(dgu,dgl,vertex:int, midCol+1, right, minIndex, bottom, mins,firstind+midCol-left+1); //right submatrix
       }
@@ -339,7 +338,7 @@ module JCSMsg {
   //writeln("matrix number 0 :");
   //printMatrix(javab[0]);
   // In the below function, in each step, we combine each 2 adjacent matrices(dgu and dgl) to get a dg of them. We do it until 1 matrix remains at last.
-  proc computedg(left: int, right: int, top: int, bottom: int, mins){ 
+  proc computedg(left: int, right: int, top: int, bottom: int, ref mins){ 
     var x=2;
     var intmat=0;
     while((x)<=2*m-1){

@@ -14,7 +14,6 @@ module TriCtrMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -63,12 +62,13 @@ module TriCtrMsg {
           Weighted=true;
       }
       var countName:string;
-      var timer:Timer;
+      var timer:stopwatch;
 
       var TotalCnt:[0..0] int;
       var subTriSum: [0..numLocales-1] int;
       var NeiNonTriNum=makeDistArray(Nv,atomic int);
-      var TriCtr:[0..Nv-1] real;
+      //var TriCtr:[0..Nv-1] real;
+      var TriCtr=makeDistArray(Nv,real);
       var TriNum=makeDistArray(Nv,atomic int);
       var NeiTriNum=makeDistArray(Nv,atomic int);
       var NeiAry=makeDistArray(Ne,bool);
@@ -176,7 +176,7 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
           coforall loc in Locales {
                 on loc {
@@ -406,9 +406,9 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
-      var tmptimer:Timer;
+      var tmptimer:stopwatch;
       tmptimer.start();
           coforall loc in Locales {
                 on loc {
@@ -550,7 +550,7 @@ module TriCtrMsg {
 
       proc triCtr_kernelMST(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
-	  var timer:Timer;
+	  var timer:stopwatch;
           TriCtr=0.0;
           forall i in TriNum {
               i.write(0);
@@ -641,15 +641,15 @@ module TriCtrMsg {
               return eid;
           }// end of  proc exatEdge(u:int,v:int)
 
-              var tmptimer:Timer;
+              var tmptimer:stopwatch;
               tmptimer.start();
-              coforall loc in Locales {
+              coforall loc in Locales with (ref TriNum, ref NeiAry, ref subTriSum){
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
                      var endEdge = ld.highBound;
                      var triCount=0:int;
-                     forall i in startEdge..endEdge with(+ reduce triCount){
+                     forall i in startEdge..endEdge with(+ reduce triCount, ref NeiAry){
                            var Count:int;
                            Count=0;
                                   var    v1=src[i];
@@ -675,7 +675,7 @@ module TriCtrMsg {
                                       var nextStart=start_i[sv1];
                                       var nextEnd=start_i[sv1]+nei[sv1]-1;
                                       if (nei[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (+ reduce triCount){
+                                         forall j in nextStart..nextEnd with (+ reduce triCount, ref NeiAry, ref TriNum){
                                              var v3=src[j];//v3==sv1
                                              var v4=dst[j]; 
                                              var tmpe:int;
@@ -702,7 +702,7 @@ module TriCtrMsg {
                                       nextStart=start_iR[sv1];
                                       nextEnd=start_iR[sv1]+neiR[sv1]-1;
                                       if (neiR[sv1]>0) {
-                                         forall j in nextStart..nextEnd with (+ reduce triCount ){
+                                         forall j in nextStart..nextEnd with (+ reduce triCount, ref TriNum, ref NeiAry ){
                                              var v3=srcR[j];//sv1==v3
                                              var v4=dstR[j]; 
                                              var e1=exactEdge(v4,v3);// we need the edge ID in src instead of srcR
@@ -744,7 +744,7 @@ module TriCtrMsg {
           writeln("Elapsed time for triangle Counting minimum search ="+(tmptimer.elapsed()):string);
 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref NeiTriNum, ref NeiNonTriNum){
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -766,13 +766,13 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref TriCtr) {
                 on loc {
 
                      var ld = nei.localSubdomain();
                      var startVer = ld.lowBound;
                      var endVer = ld.highBound;
-                     forall i in startVer..endVer {
+                     forall i in startVer..endVer with (ref TriCtr) {
                              var curnum=0:int;
                              var beginTmp=start_i[i];
                              var endTmp=beginTmp+nei[i]-1;
@@ -900,11 +900,11 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
-      var tmptimer:Timer;
+      var tmptimer:stopwatch;
       tmptimer.start();
-              coforall loc in Locales {
+              coforall loc in Locales with (ref TriNum, ref NeiAry, ref subTriSum) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -1105,13 +1105,13 @@ module TriCtrMsg {
           writeln("Elapsed time for triangle Counting path merge ="+(tmptimer.elapsed()):string);
 
 	   //writeln("Beginning of NeiTriNum");
-          coforall loc in Locales {
+          coforall loc in Locales with (ref NeiTriNum, ref NeiNonTriNum) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
                      var endEdge = ld.highBound;
 
-                     forall i in startEdge..endEdge {
+                     forall i in startEdge..endEdge  with (ref NeiTriNum, ref NeiNonTriNum){
                          var u = src[i];
                          var v = dst[i];
                          if NeiAry[i] {
@@ -1127,13 +1127,13 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref TriCtr) {
                 on loc {
 
                      var ld = nei.localSubdomain();
                      var startVer = ld.lowBound;
                      var endVer = ld.highBound;
-                     forall i in startVer..endVer {
+                     forall i in startVer..endVer  with (ref TriCtr){
                              var curnum=0:int;
                              var beginTmp=start_i[i];
                              var endTmp=beginTmp+nei[i]-1;
@@ -1263,7 +1263,7 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
               coforall loc in Locales {
                   on loc {
@@ -1516,7 +1516,7 @@ module TriCtrMsg {
 
 
 
-	  var timer:Timer;
+	  var timer:stopwatch;
 	  timer.start();
               coforall loc in Locales  {
                   on loc {

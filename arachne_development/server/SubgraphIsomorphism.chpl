@@ -1,4 +1,4 @@
-module SubgraphIsomorphism {
+module RSubgraphIsomorphism {
     // Chapel modules.
     use Reflection;
     use List;

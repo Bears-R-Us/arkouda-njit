@@ -14,7 +14,6 @@ module TriCntMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -79,7 +78,7 @@ module TriCntMsg {
 
       var directed=false:bool;
       var weighted=false:bool;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag=false:bool;
       var DegreeSortFlag=false:bool;
 
@@ -124,7 +123,7 @@ module TriCntMsg {
 
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -135,11 +134,14 @@ module TriCntMsg {
 
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref src, ref dst, ref e_weight, ref start_i, ref start_iR,ref neighbourR, ref srcR, ref dstR ,ref neighbour )  {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader();
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -151,7 +153,8 @@ module TriCntMsg {
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in  r.lines() {
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -360,7 +363,7 @@ module TriCntMsg {
              }
           }
 
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref srcR, ref dstR)  {
               on loc {
                   forall i in srcR.localSubdomain(){
                         srcR[i]=dst[i];
@@ -455,7 +458,7 @@ module TriCntMsg {
           Weighted=true;
       }
       var countName:string;
-      var timer:Timer;
+      var timer:stopwatch;
       timer.start();
 
       var TotalCnt:[0..0] int;
@@ -539,7 +542,7 @@ module TriCntMsg {
           }// end of  proc findEdge(u:int,v:int)
 
 
-          coforall loc in Locales {
+          coforall loc in Locales with (ref subTriSum, ref RemoteAccessTimes, ref LocalAccessTimes) {
                 on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -924,11 +927,11 @@ module TriCntMsg {
                 return eid;
             }// end of  proc exatEdge(u:int,v:int)
 
-            var timer:Timer;
+            var timer:stopwatch;
             timer.start();
-            var tmptimer:Timer;
+            var tmptimer:stopwatch;
             tmptimer.start();
-            coforall loc in Locales {
+            coforall loc in Locales with (ref TriNum, ref NeiAry, ref subTriSum) {
                 on loc {
                     var ld = src.localSubdomain();
                     var startEdge = ld.lowBound;
@@ -1190,14 +1193,14 @@ module TriCntMsg {
             subTriSum=0;	
                             
 
-            var timer:Timer;
+            var timer:stopwatch;
             timer.start();
-            var tmptimer:Timer;
+            var tmptimer:stopwatch;
             tmptimer.start();
 
 
 
-            coforall loc in Locales {
+            coforall loc in Locales with (ref subTriSum) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -1645,7 +1648,7 @@ module TriCntMsg {
       if ((DirectedS:int)==1) {
           directed=true;
       }
-      var timer: Timer;
+      var timer: stopwatch;
       if NumCol>2 {
            weighted=true;
       }
@@ -1693,7 +1696,7 @@ module TriCntMsg {
       LocalAccessTimes=0;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -1703,11 +1706,13 @@ module TriCntMsg {
 
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref src, ref dst, ref e_weight, ref start_i, ref start_iR,ref neighbour, ref neighbourR, ref srcR, ref dstR,ref e_cnt ,ref v_weight, ref v_cnt )  {
               on loc {
                   var randv = new RandomStream(real, here.id, false);
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader();
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -1737,7 +1742,8 @@ module TriCntMsg {
                         start_iR[i]=-1;
                   }
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in  r.lines() {
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -1847,7 +1853,7 @@ module TriCntMsg {
       }//end combine_sort
 
       proc set_neighbour(){ 
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref src, ref dst, ref e_weight, ref start_i, ref start_iR,ref neighbour, ref neighbourR, ref srcR, ref dstR,ref e_cnt ,ref StartVerAry, ref EndVerAry )  {
               on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -1961,7 +1967,7 @@ module TriCntMsg {
 
 
           proc set_neighbourR(){ 
-              coforall loc in Locales  {
+              coforall loc in Locales with (ref srcR , ref neighbourR, ref start_iR ) {
                   on loc {
                        ref srcfR=srcR;
                        ref nfR=neighbourR;
@@ -2003,7 +2009,7 @@ module TriCntMsg {
           }
 
 
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref srcR, ref dstR)  {
               on loc {
                   forall i in srcR.localSubdomain(){
                         srcR[i]=dst[i];
@@ -2023,9 +2029,9 @@ module TriCntMsg {
 
       timer.start();
 
-      coforall loc in Locales  {
+      coforall loc in Locales with (ref neighbour, ref neighbourR)  {
               on loc {
-                  forall i in neighbour.localSubdomain(){
+                  forall i in neighbour.localSubdomain() with (ref neighbour, ref neighbourR){
                       if ( v_cnt[i]<=1 ) {
                           neighbour[i]=0;
                           neighbourR[i]=0;
@@ -2034,12 +2040,12 @@ module TriCntMsg {
               }
       }
 
-      proc stream_tri_kernel_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
+      proc stream_tri_kernel_u(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
+                        ref neiR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int):string throws{
           var number_edge=0:int;
           var sum_ratio1=0.0:real;
           var sum_ratio2=0.0:real;
-          coforall loc in Locales with (+ reduce number_edge, + reduce sum_ratio1,+reduce sum_ratio2)  {
+          coforall loc in Locales with (+ reduce number_edge, + reduce sum_ratio1,+reduce sum_ratio2, ref src, ref dst, ref srcR, ref dstR, ref start_i, ref start_iR, ref StartVerAry, ref EndVerAry, ref subTriSum, ref RemoteAccessTimes, ref LocalAccessTimes, ref nei)  {
                    on loc {
                        var triCount=0:int;
                        var remoteCnt=0:int;
@@ -2301,7 +2307,9 @@ module TriCntMsg {
           //writeln("LocalRatio=", (totalLocal:real)/((totalRemote+totalLocal):real),", TotalTimes=",totalRemote+totalLocal);
           //writeln("LocalAccessTimes=", totalLocal,", RemoteAccessTimes=",totalRemote);
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TotalCnt);
+          var retval=makeDistArray(numLocales,int);
+          retval[0]=TotalCnt[0];
+          var countEntry = new shared SymEntry(retval);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -2354,7 +2362,7 @@ module TriCntMsg {
       var NumCol=ColS:int;
       var directed=DirectedS:int;
       var weighted=0:int;
-      var timer: Timer;
+      var timer: stopwatch;
       if NumCol>2 {
            weighted=1;
       }
@@ -2467,10 +2475,12 @@ module TriCntMsg {
       LocalAccessTimes3=0;
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with(ref src1, ref dst1,ref src2, ref dst2, ref src3, ref dst3, ref srcR1, ref dstR1, ref e_weight1, ref e_weight1, ref neighbour1,ref start_i1,ref e_cnt1, ref v_weight1, ref v_cnt1,ref neighbourR1, ref start_iR1, ref neighbour2 ,ref start_i2, ref e_weight2, ref e_cnt2, ref v_weight2, ref v_cnt2, ref srcR2, ref dstR2, ref neighbourR2, ref start_iR2, ref neighbour3, ref start_i3, ref e_weight3, ref e_cnt3, ref v_weight3, ref v_cnt3, ref srcR3, ref dstR3, ref neighbourR3, ref start_iR3 ) {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader();
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -2534,7 +2544,8 @@ module TriCntMsg {
                   initvalue(start_i3,-1);
                   initvalue(start_iR3,-1);
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in  r.lines()  {
                       if NumCol==2 {
                            (a,b)=  line.splitMsgToTuple(2);
                       } else {
@@ -2692,7 +2703,7 @@ module TriCntMsg {
 
       //proc set_neighbour(ref src:[?D1] int,ref  dst:[?D2] int,ref  neighbour:[?D3] int,ref start_i:[?D4] int) {
       proc set_neighbour() {
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref src, ref dst, ref neighbour, ref start_i)  {
               on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -2729,10 +2740,10 @@ module TriCntMsg {
              }
           }
       }
-      proc sameshape_array_assignment(A:[?D1],B:[?D2]) {
-          coforall loc in Locales  {
+      proc sameshape_array_assignment(ref A:[?D1],B:[?D2]) {
+          coforall loc in Locales with (ref A)  {
               on loc {
-                  forall i in A.localSubdomain(){
+                  forall i in A.localSubdomain() with (ref A){
                        A[i]=B[i];
                   }
               }
@@ -2827,9 +2838,9 @@ module TriCntMsg {
 
       timer.start();
 
-      coforall loc in Locales  {
+      coforall loc in Locales with (ref neighbour1, ref neighbourR1, ref neighbour2, ref neighbourR2, ref neighbour3, ref neighbourR3)  {
               on loc {
-                  forall i in neighbour1.localSubdomain(){
+                  forall i in neighbour1.localSubdomain() with (ref neighbour1, ref neighbourR1, ref neighbour2, ref neighbourR2, ref neighbour3, ref neighbourR3){
                       if ( v_cnt1[i]<=1 ) {
                           neighbour1[i]=0;
                           neighbourR1[i]=0;
@@ -2846,15 +2857,15 @@ module TriCntMsg {
               }
       }
 
-      proc stream_tri_kernel_u(neighbour:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neighbourR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        StartVerAry:[?D5] int, EndVerAry:[?D6] int,subTriSum:[?D7] int,
-                        RemoteAccessTimes:[?D8] int,LocalAccessTimes:[?D9] int,v_cnt:[?D10] int  ):int throws{
+      proc stream_tri_kernel_u(ref neighbour:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
+                        ref neighbourR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int,
+                        ref StartVerAry:[?D5] int, ref EndVerAry:[?D6] int,ref subTriSum:[?D7] int,
+                        ref RemoteAccessTimes:[?D8] int,ref LocalAccessTimes:[?D9] int,v_cnt:[?D10] int  ):int throws{
 
           var number_edge=0:int;
           var sum_ratio1=0.0:real;
           var sum_ratio2=0.0:real;
-          coforall loc in Locales with (+ reduce number_edge, + reduce sum_ratio1,+reduce sum_ratio2)  {
+          coforall loc in Locales with (+ reduce number_edge, + reduce sum_ratio1,+reduce sum_ratio2, ref LocalAccessTimes, ref EndVerAry, ref StartVerAry, ref subTriSum, ref RemoteAccessTimes, ref neighbour, ref start_i, ref src, ref dst, ref neighbourR, ref start_iR, ref srcR, ref dstR  )  {
                    on loc {
                        var triCount=0:int;
                        var remoteCnt=0:int;
@@ -3181,7 +3192,9 @@ module TriCntMsg {
 
       //writeln("Combine three estimates together, triangles=",TotalCnt[0]);
       var countName = st.nextName();
-      var countEntry = new shared SymEntry(TotalCnt);
+      var retval=makeDistArray(numLocales,int);
+      retval[0]=TotalCnt[0];
+      var countEntry = new shared SymEntry(retval);
       st.addEntry(countName, countEntry);
       repMsg =  'created ' + st.attrib(countName);
 
