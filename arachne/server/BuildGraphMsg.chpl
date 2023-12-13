@@ -47,8 +47,8 @@ module BuildGraphMsg {
         // Parse the message from the Python front-end.
         var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
         var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
-        var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
         var akarray_segS = msgArgs.getValueOf("AkArraySeg");
+        var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
         var akarray_weightS = msgArgs.getValueOf("AkArrayWeight");
         var weightedS = msgArgs.getValueOf("Weighted");
         var directedS = msgArgs.getValueOf("Directed");
@@ -136,6 +136,30 @@ module BuildGraphMsg {
                     return new MsgTuple(errorMsg, MsgType.ERROR);
                 }
             }
+        }
+
+        var akarray_srcRS, akarray_dstRS, akarray_segRS:string;
+        if directed {
+            akarray_srcRS = msgArgs.getValueOf("AkArraySrcR");
+            akarray_dstRS = msgArgs.getValueOf("AkArrayDstR");
+            akarray_segRS = msgArgs.getValueOf("AkArraySegR");
+
+            var akarray_srcR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(akarray_srcRS, st);
+            var akarray_dstR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(akarray_dstRS, st);
+            var akarray_segR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(akarray_segRS, st);
+
+            var akarray_srcR_sym = toSymEntry(akarray_srcR_entry,int);
+            var srcR = akarray_srcR_sym.a;
+
+            var akarray_dstR_sym = toSymEntry(akarray_dstR_entry,int);
+            var dstR = akarray_dstR_sym.a;
+
+            var akarray_segR_sym = toSymEntry(akarray_segR_entry, int);
+            var segmentsR = akarray_segR_sym.a;
+
+            graph.withComp(new shared SymEntry(srcR):GenSymEntry, "SRC_R")
+                .withComp(new shared SymEntry(dstR):GenSymEntry, "DST_R")
+                .withComp(new shared SymEntry(segmentsR):GenSymEntry, "SEGMENTS_R");
         }
 
         // Create the ranges array that keeps track of the vertices the edge arrays store on each
