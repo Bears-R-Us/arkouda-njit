@@ -43,7 +43,7 @@ module SubgraphIsomorphismVF2 {
         var edgeRelationshipsGraphG2 = toSymEntry(g2.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
         var nodeLabels_GraphG2 = toSymEntry(g2.getComp("VERTEX_LABELS"), domain(int)).a;
         
-        var TimerArrNew:[0..13] real(64) = 0.0;
+        var TimerArrNew:[0..17] real(64) = 0.0;
         var effectiveArr:[0..7] int = 0;
         var timerpreproc:stopwatch;
         timerpreproc.start();
@@ -53,41 +53,48 @@ module SubgraphIsomorphismVF2 {
         var PredecessorsG1: [0..#g1.n_vertices] list(int);
         var PredecessorsG2: [0..#g2.n_vertices] list(int);
 
+        var timerpredG1:stopwatch;
+        timerpredG1.start();
+
         forall i in 0..g1.n_vertices-1 with (ref PredecessorsG1) {
             PredecessorsG1[i] = getInNeighbors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, i, Orig_Relationships_Mapper_G_to_Pass);
             //PredecessorsG1[i] = getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, i, Orig_Relationships_Mapper_G_to_Pass);
         }
+        timerpredG1.stop();
+        TimerArrNew[14] += timerpredG1.elapsed();
+
+        var timerpredG2:stopwatch;
+        timerpredG2.start();
+
         forall i in 0..g2.n_vertices-1 with(ref PredecessorsG2) {
             PredecessorsG2[i] = getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, i, Orig_Relationships_Mapper_H_to_Pass);
             //PredecessorsG2[i] = getPredecessors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, i, Orig_Relationships_Mapper_H_to_Pass);
         }
+        timerpredG2.stop();
+        TimerArrNew[15] += timerpredG2.elapsed();
 
         // Successors computation
         var SuccessorsG1: [0..#g1.n_vertices] list(int);
         var SuccessorsG2: [0..#g2.n_vertices] list(int);
 
+        var timersuccG1:stopwatch;
+        timersuccG1.start();
         forall i in 0..g1.n_vertices-1 with(ref SuccessorsG1) {
             SuccessorsG1[i].pushBack(getOutNeighbors(segGraphG1, i, dstNodesG1));
             //SuccessorsG1[i] = getSuccessors(segGraphG1, i, dstNodesG1);
         }
+        timersuccG1.stop();
+        TimerArrNew[16] += timersuccG1.elapsed();
+
+        var timersuccG2:stopwatch;
+        timersuccG2.start();
         forall i in 0..g2.n_vertices-1 with(ref SuccessorsG2){
             SuccessorsG2[i].pushBack(getOutNeighbors(segGraphG2, i, dstNodesG2));
             //SuccessorsG2[i] = getSuccessors(segGraphG2, i, dstNodesG2);
         }
-
-        // InNeighbors computation
-        var InNeighborsG1: [0..#g1.n_vertices] list(int);
-        var InNeighborsG2: [0..#g2.n_vertices] list(int);
-
-        forall i in 0..g1.n_vertices-1  with(ref InNeighborsG1){
-           InNeighborsG1[i] = getInNeighbors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, 
-                                            i, Orig_Relationships_Mapper_G_to_Pass);
-        }
-        forall i in 0..g2.n_vertices-1  with(ref InNeighborsG2){
-           InNeighborsG2[i] = getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, 
-                                            i, Orig_Relationships_Mapper_H_to_Pass);
-        }
-
+        timersuccG2.stop();
+        TimerArrNew[17] += timersuccG2.elapsed();
+        
         timerpreproc.stop();
         TimerArrNew[0] += timerpreproc.elapsed();
 
@@ -106,35 +113,6 @@ module SubgraphIsomorphismVF2 {
 
         var IsoArr = nodeMap_GraphG1[IsoArrtemp];        
         writeln("inside VF2 IsoArr     = ", IsoArr);
-
-
-/*
-
-        var IsoArr:[0..1] int;
-        var newstate5: State;
-        newstate5.n1=5;
-        newstate5.n2=9;
-        writeln("crrent newState5 = ",newstate5 );
-
-        var newState = createInitialState();
-        newState.addPair(2, 0);
-        newState = addToTinTout(newState, 2, 0);
-
-        newState.addPair(4, 1);
-        newState = addToTinTout(newState, 4, 1);
-
-        newState.addPair(5, 2);
-        newState = addToTinTout(newState, 5, 2);
-        writeln("crrent state = ",newState );
-        writeln("\nisFeasible = ",isFeasible(newState,1, 3, g1, g2));
-        writeln("**************************************************************\n " );
-
-        var newState1 = newState.copy();
-        writeln("newState1 = ",newState1 );
-
-        newState1.addPair(3, 0);
-        writeln("newState1 after addPair(3, 0) = ",newState1 );
-*/
 
         proc PropGraphRelationshipMapper(segGraph, dstNodes, edgeRelationshipsGraph, 
                                         fromNode: int, toNode: int, Mapper): (bool, string) throws {
@@ -400,10 +378,10 @@ module SubgraphIsomorphismVF2 {
             //writeln("-----------------for", u, ", ", v, "-------------------\n");
 
             // Get in and out neighbors
-            var inNeighbors = InNeighborsG1[u]; //getInNeighbors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, u, Orig_Relationships_Mapper_G_to_Pass);
+            var inNeighbors = PredecessorsG1[u]; //getInNeighbors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, u, Orig_Relationships_Mapper_G_to_Pass);
             //writeln("inNeighbors g1 (",u,")= ", inNeighbors);
 
-            var outNeighbors = getOutNeighbors(segGraphG1, u, dstNodesG1);
+            var outNeighbors = SuccessorsG1[u]; //getOutNeighbors(segGraphG1, u, dstNodesG1);
             //writeln("outNeighbors g1 (", u,")= ", outNeighbors);
 
             // Add neighbors of u to tin1, tout1 from g1
@@ -433,8 +411,8 @@ module SubgraphIsomorphismVF2 {
             // Add neighbors of v to tin2, tout2 from g2
 
             // Get in and out neighbors
-            var inNeighborsg2 = InNeighborsG2[v]; //getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, v, Orig_Relationships_Mapper_H_to_Pass);
-            var outNeighborsg2 = getOutNeighbors(segGraphG2, v, dstNodesG2);
+            var inNeighborsg2 = PredecessorsG2[v]; //getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, v, Orig_Relationships_Mapper_H_to_Pass);
+            var outNeighborsg2 = SuccessorsG2[v]; //getOutNeighbors(segGraphG2, v, dstNodesG2);
             //writeln("inNeighbors g2 (",v,")= ", inNeighbors);
             //writeln("outNeighbors g2 (", v,")= ", outNeighbors);
             
@@ -478,18 +456,18 @@ module SubgraphIsomorphismVF2 {
 
             //state.core1 = -1; 
             //state.core2 = -1;
-            state.core1.clear(); 
-            state.core2.clear();
+            //state.core1.clear(); 
+            //state.core2.clear();
 
-            state.depth = 0;
+            //state.depth = 0;
             return state;
 
         }  //end of createInitialState
-
+/*
         // Check if state is a valid solution 
         proc isSolution(state: State): bool throws {
             //writeln("-----------------isSolution called-------------------\n");
-          /*
+          
             // Check each mapped node
             for (n1, n2) in state.mapping {
                 // Check degree equivalency 
@@ -500,22 +478,13 @@ module SubgraphIsomorphismVF2 {
             }
 
             writeln("Degrees match across mapping"); 
-            */
+            
             return true;
         } // end of isSolution
-
+*/
         // Two silly function. wrote just to quick check but worked.LOL
         proc getUnmappedNodesg1(graph: SegGraph, state: State) throws {
             //writeln("-----------------getUnmappedNodesg1 called-------------------\n");
-/*
-            var unmapped: list(int, parSafe = true);
-
-            forall n in 0..<graph.n_vertices with(ref unmapped) {
-                if !state.isMappedn1(n) {
-                    unmapped.pushBack(n);
-                }
-            }
-*/
             var unmapped: list(int) = 0..#graph.n_vertices;
             for key in state.core1.keys(){
                 unmapped.remove(key);
@@ -538,7 +507,7 @@ module SubgraphIsomorphismVF2 {
             return unmapped;
         } // end of getUnmappedNodesg2
         
-        // Why chapel array has no contains()?!
+        // Why chapel array has no contains()/Find()?!
         proc arrFindKey(passedarr, key:int) throws {
             //writeln("-----------------arrFindKey called-------------------\n");
 
@@ -549,51 +518,7 @@ module SubgraphIsomorphismVF2 {
             }
             return flag;
         } // end of arrFindKey
-/*
-        // Create candidates based on current state and retuns a list of pairs
-        proc getCandidatePairs(state:State) throws {
-            writeln("-----------------getCandidatePairs called-------------------\n");
-            //var candidates = new sortedSet((int, int), comparator=new TupleComparator());
-            var candidates = new set((int, int));
-            // Use Tout sets
-            for n1 in state.Tout1 {
-                for n2 in state.Tout2 {
-                candidates.add((n1, n2));
-                }
-            }
-            //writeln("candidates after Tout = ", candidates);
-            // Use Tin sets
-            if candidates.isEmpty() {
-                for n1 in state.Tin1 {
-                    for n2 in state.Tin2 {
-                        candidates.add((n1, n2));  
-                    }
-                }
-            }
-            //writeln("candidates after Tin = ", candidates);
 
-            // Check unmapped nodes if still empty
-            if candidates.isEmpty() {
-                //writeln("Tin was emptyXXXXXXX");
-
-                // Get product of unmapped nodes
-                var unmapped1 = getUnmappedNodesg1(g1, state);
-                var unmapped2 = getUnmappedNodesg2(g2, state);
-
-                // Add their product
-                for n1 in unmapped1 {
-                    for n2 in unmapped2 {
-                        candidates.add((n1, n2));
-                    }
-                }
-
-            }
-            //writeln("candidates in return = ", candidates);
-
-            return candidates;
-
-        } // end of getCandidatePairs
-*/
         // Create candidates based on current state and retuns a list of pairs
         // based on old paper!!
         proc getCandidatePairsOpti(state:State) throws {
@@ -601,21 +526,14 @@ module SubgraphIsomorphismVF2 {
 
             var candidates = new set((int, int), parSafe = true);
             
-            var timerunmapped2:stopwatch;
-            timerunmapped2.start();
-
             var unmapped2 = getUnmappedNodesg2(g2, state);
 
-            timerunmapped2.stop();
-            TimerArrNew[12] += timerunmapped2.elapsed();
-            effectiveArr[7] += 1;
-/////////////////////////////////////////////temp change Dec10 created
             // If Tout1 and Tout2 are both nonempty.
             if state.Tout1.size > 0 && state.Tout2.size > 0 {
                 
                 var minTout2 = min reduce state.Tout2;
                 //forall n1 in state.Tout1 with (ref candidates){
-                for n1 in state.Tout1 {
+                forall n1 in state.Tout1 with (ref candidates){
                     //writeln("HERE 1");
                     candidates.add((n1, minTout2)); 
                 }
@@ -626,94 +544,29 @@ module SubgraphIsomorphismVF2 {
                     if state.Tin1.size > 0 && state.Tin2.size > 0{
                         var minTin2 = min reduce state.Tin2;
                         //forall n1 in state.Tin1 with (ref candidates) {
-                        for n1 in state.Tin1 {
+                        forall n1 in state.Tin1 with (ref candidates){
                             //writeln("HERE 2");
                             candidates.add((n1, minTin2)); 
                         }
                     } else { //not (Tin1 or Tin2)
                                 if unmapped2.size >0 {
-                                    var timerIF1:stopwatch;
-                                    timerIF1.start();
                                     var minUnmapped2 = min reduce unmapped2;
                                     //forall n1 in unmapped1 with (ref candidates){
                                     //for n1 in unmapped1 {
-                                    for n1 in 0..#g1.n_vertices {
+                                    forall n1 in 0..#g1.n_vertices with (ref candidates) {
                                         if !state.core1.contains(n1){
                                             //writeln("HERE 3");
                                             candidates.add((n1, minUnmapped2));
                                         }    
                                     }
-
-                                    timerIF1.stop();
-                                    TimerArrNew[13] += timerIF1.elapsed();
                                 }    
                             } 
                 }   
-///////////////////////////////////////old version Dec 10            
-/*            
-            var timerunmapped1:stopwatch;
-            timerunmapped1.start();
-            
-            var unmapped1 = getUnmappedNodesg1(g1, state);
-            
-            timerunmapped1.stop();
-            TimerArrNew[11] += timerunmapped1.elapsed();
-            effectiveArr[6] += 1;
-
-            var timerunmapped2:stopwatch;
-            timerunmapped2.start();
-
-            var unmapped2 = getUnmappedNodesg2(g2, state);
-
-            timerunmapped2.stop();
-            TimerArrNew[12] += timerunmapped2.elapsed();
-            effectiveArr[7] += 1;
-            //writeln("unmapped1 = ",unmapped1);
-            //writeln("unmapped2 = ",unmapped2);
-
-
-            // If Tout1 and Tout2 are both nonempty.
-            if state.Tout1.size > 0 && state.Tout2.size > 0 {
-                
-                var minTout2 = min reduce state.Tout2;
-                //forall n1 in state.Tout1 with (ref candidates){
-                for n1 in state.Tout1 {
-                    writeln("HERE 1");
-                    candidates.add((n1, minTout2)); 
-                }
-                
-            } 
-                else {
-                    //If Tin1 and Tin2 are both nonempty. 
-                    if state.Tin1.size > 0 && state.Tin2.size > 0{
-                        var minTin2 = min reduce state.Tin2;
-                        //forall n1 in state.Tin1 with (ref candidates) {
-                        for n1 in state.Tin1 {
-                            writeln("HERE 2");
-                            candidates.add((n1, minTin2)); 
-                        }
-                    } else { //not (Tin1 or Tin2)
-                                if unmapped2.size >0 {
-                                    var timerIF1:stopwatch;
-                                    timerIF1.start();
-                                    var minUnmapped2 = min reduce unmapped2;
-                                    //forall n1 in unmapped1 with (ref candidates){
-                                    for n1 in unmapped1 {
-                                        writeln("HERE 3");
-                                        candidates.add((n1, minUnmapped2));
-                                    }
-
-                                    timerIF1.stop();
-                                    TimerArrNew[13] += timerIF1.elapsed();
-                                }    
-                            } 
-                }          
-*/            
             //if candidates.size == 0 then writeln("We made a huge mistake");
             return candidates;
 
         } // end of getCandidatePairsOPti
-
+/*
         // Get predecessors of a node from Graph
         proc getPredecessors(n_vertices: int, segGraph, dstNodes, edgeRelationshipsGraph, node: int, Mapper) throws {
             //writeln("-----------------getPredecessors called-------------------\n");
@@ -754,7 +607,8 @@ module SubgraphIsomorphismVF2 {
 
             return preds;
         } // end of getPredecessors
-
+*/
+/*
         // Get successors of a node
         // by using a graph traversal BFS approach
         //  * Uses distributed queue for scalable BFS. Beaware it is NOT standard package!!!
@@ -797,7 +651,8 @@ module SubgraphIsomorphismVF2 {
     
             return succs;
         } // end of getSuccessors
-
+*/
+/*
         // Get 2-hop neighbors
         proc get2HopNeighbors(n_vertices: int, node: int, segGraph, dstNodes, edgeRelationshipsGraph, Mapper, predsFlag: bool) throws{
             //writeln("-----------------get2HopNeighbors called-------------------\n");
@@ -820,14 +675,14 @@ module SubgraphIsomorphismVF2 {
                     twoHop.pushBack(m);  
                 }              
             }
-            /*
+            
             // Filter out dups
             twoHop = twoHop.uniq();
 
             // Remove 1-hop  
             twoHop = twoHop.except(oneHop);
 
-            */
+            
             //writeln("twoHop = ", twoHop);
             for n in oneHop {
                 twoHop.remove(n);
@@ -836,7 +691,8 @@ module SubgraphIsomorphismVF2 {
 
             return twoHop.toArray();
         } // end of get2HopNeighbors
-
+*/
+/*
         // Checks that the proposed mapping of node n2 satisfies 
         // the ordering constraint relative to already mapped nodes.
         // Added to avoid multiple travel to a specific branch
@@ -860,7 +716,7 @@ module SubgraphIsomorphismVF2 {
             return true;
 
         } // end of RmappingInOrder
-
+*/
         // Rpred This checks:
         // All mapped predecessors n' of n should have a mapped predecessor m' of m.
         // All mapped predecessors m' of m should have a mapped predecessor n' of n.
@@ -883,7 +739,8 @@ module SubgraphIsomorphismVF2 {
                     writeln(nprime, " is mapped");
                     var mprime = state.core1[nprime];
                     writeln("mprime = ", mprime);
-                    if !arrFindKey(mPreds, mprime) {
+                    //if !arrFindKey(mPreds, mprime) {
+                    if mPreds.find(mprime)!= -1 {    
                         writeln(mprime," is not in mpreds ");
                         flag = false;
                     }
@@ -896,7 +753,8 @@ module SubgraphIsomorphismVF2 {
                     writeln(mprime, " is mapped");
                     var nprime = state.core2[mprime];
                     writeln("nprime = ", nprime);
-                    if !arrFindKey(nPreds, nprime) { 
+                    //if !arrFindKey(nPreds, nprime) { 
+                    if nPreds.find(nprime)!= -1{    
                         writeln(nprime," is not in nPreds ");
                         flag = false;
                     }
@@ -927,7 +785,7 @@ module SubgraphIsomorphismVF2 {
             return flag;
 */
         }// end of Rpred
-
+/*
         proc getEdgeCount(segGraph, dstNodes, edgeRelationshipsGraph, 
                                     n1, n2, Mapper): int throws {
             //writeln("-----------------getEdgeCount called-------------------\n");
@@ -940,15 +798,15 @@ module SubgraphIsomorphismVF2 {
             }  
 
             // Also check if n2 is pointed to n1
-/*            if PropGraphRelationshipMapper(segGraph, dstNodes, edgeRelationshipsGraph, 
+            if PropGraphRelationshipMapper(segGraph, dstNodes, edgeRelationshipsGraph, 
                                     n2, n1, Mapper)[0]{
                                         count += 1;
             }  
-*/            
+            
             return count;
 
         }
-
+*/
         // Rsucc It checks:
         // All mapped successors n' of n should have a mapped successor m' of m.
         // All mapped successors m' of m should have mapped successor n' of n.
@@ -1079,24 +937,24 @@ module SubgraphIsomorphismVF2 {
             var n1Pred = PredecessorsG1[n1]; //getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
             var n2Pred = PredecessorsG2[n2]; //getPredecessors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
 
-            var getOutN1 = getOutNeighbors(segGraphG1, n1, dstNodesG1);
-            var getOutN2 = getOutNeighbors(segGraphG2, n2, dstNodesG2);
+            var getOutN1 = SuccessorsG1[n1]; //getOutNeighbors(segGraphG1, n1, dstNodesG1);
+            var getOutN2 = SuccessorsG2[n2]; //getOutNeighbors(segGraphG2, n2, dstNodesG2);
          
             for p in n1Pred {
-                if !state.isMappedn1(p) {  
-                    if arrFindKey(getOutN1, p) {
+                if !state.isMappedn1(p) && getOutN1.find(p)!= -1{  
+                   // if arrFindKey(getOutN1, p) {
                         n1PredUnmapped += 1;
-                    } 
+                   // } 
                 }
             }
 
             var n2PredUnmapped = 0;
 
             for p in n2Pred {
-                if !state.isMappedn2(p) {
-                    if arrFindKey(getOutN2, p) {
+                if !state.isMappedn2(p) && getOutN2.find(p) != -1 {
+                   // if arrFindKey(getOutN2, p) {
                         n2PredUnmapped += 1;  
-                    }
+                   // }
                 }
             }
 
@@ -1167,44 +1025,48 @@ module SubgraphIsomorphismVF2 {
         // new function is more effective than get2HopNeighbors stuff
         proc Rnew(state: State, n1: int, n2: int): bool throws {
             //writeln("-----------------Rnew called-------------------\n");
-            var n1PredUnmapped = 0;
+            var n1NotIn, n2NotIn = 0;
             var n1Pred = PredecessorsG1[n1]; //getPredecessors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
-            var getinN1 = InNeighborsG1[n1]; //getInNeighbors(g1.n_vertices, segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, Orig_Relationships_Mapper_G_to_Pass);
-            var getoutN1 = getOutNeighbors(segGraphG1, n1, dstNodesG1);
+            var n2Pred = PredecessorsG2[n2];//getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
 
-            //forall p in n1Pred with(ref n1PredUnmapped){
             for p in n1Pred {
-
-                if !state.isMappedn1(p) {
-                    if !arrFindKey(getinN1, p) {
-                        if !arrFindKey(getoutN1, p) {
-                            n1PredUnmapped += 1; 
-                        }
-                    }
+                if !state.isMappedn1(p) && !state.Tin1.contains(p) && !state.Tout1.contains(p) {
+                    n1NotIn += 1; 
                 }
-            
             }
-
-            var n2PredUnmapped = 0;
-            var n2Pred = PredecessorsG2[n2]; //getPredecessors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
-
-            var getinN2 = InNeighborsG2[n2]; //getInNeighbors(g2.n_vertices, segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Orig_Relationships_Mapper_H_to_Pass);
-            var getoutN2 = getOutNeighbors(segGraphG2, n2, dstNodesG2);
-            // Similarly count for n2 
-            //forall p in n2Pred with(ref n2PredUnmapped){
+            
             for p in n2Pred {
-
-                if !state.isMappedn2(p) {
-                    if !arrFindKey(getinN2, p) {
-                        if !arrFindKey(getoutN2, p) {
-                            n2PredUnmapped += 1; 
-                        }
-                    }
+                if !state.isMappedn2(p) && !state.Tin2.contains(p) && !state.Tout2.contains(p) {
+                    n2NotIn += 1; 
                 }
-            
             }
-            if n1PredUnmapped < n2PredUnmapped {
-                return false; 
+            if n1NotIn < n2NotIn {
+                writeln("Rnew first condition returned false for ",n1,", ", n2);
+                writeln("state = ", state);
+                return false;
+            }
+
+
+            var n1NotOut, n2NotOut = 0;
+            var n1Succ = getOutNeighbors(segGraphG1, n1, dstNodesG1);
+            var n2Succ = getOutNeighbors(segGraphG2, n2, dstNodesG2);
+
+            for s in n1Succ {
+                if !state.isMappedn1(s) && !state.Tin1.contains(s) && !state.Tout1.contains(s) {
+                    n1NotOut += 1; 
+                }
+            }            
+            
+            for s in n2Succ {
+                if !state.isMappedn2(s) && !state.Tin2.contains(s) && !state.Tout2.contains(s) {
+                    n2NotOut += 1; 
+                }
+            }
+            
+            if n1NotOut < n2NotOut {
+                writeln("Rnew second condition returned false for ",n1,", ", n2);
+                writeln("state = ", state);
+                return false;
             }
 
             return true;
@@ -1227,7 +1089,7 @@ module SubgraphIsomorphismVF2 {
         }
 
         //Edge label checking:
-        proc edgesLabelCompatible(n1, n2, x1, x2, g1: SegGraph, g2: SegGraph): bool throws{
+        proc edgesLabelCompatible(n1, n2, x1, x2): bool throws{
             //writeln("-----------------edgesLabelCompatible called-------------------\n");
             
             var (flag1, label1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, n1, x1, Orig_Relationships_Mapper_G_to_Pass);
@@ -1263,7 +1125,7 @@ module SubgraphIsomorphismVF2 {
             return true;  
         }
 
-        proc RpredRsuccRsemanticFeasible(state, n1, n2, g1, g2) throws{
+        proc RpredRsuccRsemanticFeasible(state, n1, n2) throws{
             //writeln("-----------------RsemanticFeasible called-------------------\n");
             //writeln("-----------------for n1 = ",n1," n2 = ",n2," -------------------\n");
             var flag: bool = true;
@@ -1275,7 +1137,7 @@ module SubgraphIsomorphismVF2 {
             // Check edge compatibility
             //forall (x1, x2) in state.mapping with(ref flag){
             for (x1, x2) in state.mapping {
-                if !edgesLabelCompatible(n1, n2, x1, x2, g1, g2) {
+                if !edgesLabelCompatible(n1, n2, x1, x2) {
                     //writeln("Edge labels are Inconsistent", x1, x2);
                 flag = false;
                 }
@@ -1286,8 +1148,10 @@ module SubgraphIsomorphismVF2 {
         }
 
         // Check if candidates' pairs are feasible
-        proc isFeasible(state: State, n1: int, n2: int, g1: SegGraph, g2: SegGraph) throws {
+        proc isFeasible(state: State, n1: int, n2: int) throws {
             //writeln("-----------------isFeasible called for (",n1,",", n2,")-------------------");
+            var timerisFeasible:stopwatch;
+            timerisFeasible.start();
 
             //if !RmappingInOrder(state, n1, n2) {
                 //writeln("Feasibility returned FALSE because of RmappingInOrder");
@@ -1296,7 +1160,7 @@ module SubgraphIsomorphismVF2 {
             var timerRpredRsuccRsemantic:stopwatch;
             timerRpredRsuccRsemantic.start();
             
-            if !RpredRsuccRsemanticFeasible(state, n1, n2, g1, g2) {
+            if !RpredRsuccRsemanticFeasible(state, n1, n2) {
                 //writeln("Feasibility returned False for",n1,", ",n2," RsemanticFeasible");
                 effectiveArr[0] += 1;
                 return false;
@@ -1305,35 +1169,7 @@ module SubgraphIsomorphismVF2 {
             //outMsg = "RsemanticFeasible output took " + timerRsemanticFeasible.elapsed():string + " sec";
             //writeln(outMsg);
             TimerArrNew[5] += timerRpredRsuccRsemantic.elapsed();
-/*
-            var timerRpred:stopwatch;
-            timerRpred.start();
 
-            if !Rpred(state, n1, n2) {
-                writeln("Feasibility returned False for",n1,", ",n2," Rpred");
-                effectiveArr[0] += 1;
-                return false;
-            }
-            
-            timerRpred.stop();
-            //outMsg = "Rpred output took " + timerRpred.elapsed():string + " sec";
-            //writeln(outMsg);
-            TimerArr[0] += timerRpred.elapsed();
-
-            var timerRsucc:stopwatch;
-            timerRsucc.start();
-
-            if !Rsucc(state, n1, n2) {
-                writeln("Feasibility returned False for",n1,", ",n2," Rsucc");
-                effectiveArr[1] += 1;
-                return false;
-            }
-            
-            timerRsucc.stop();
-            //outMsg = "Rsucc output took " + timerRsucc.elapsed():string + " sec";
-            //writeln(outMsg);
-            TimerArr[1] += timerRsucc.elapsed();
-*/
             var timerRin:stopwatch;
             timerRin.start();
             
@@ -1376,7 +1212,9 @@ module SubgraphIsomorphismVF2 {
 
 
             //writeln("-----------------isFeasible PASSED ALL CHECKS-------------------");
-
+            timerisFeasible.stop();
+            TimerArrNew[3] += timerisFeasible.elapsed();
+            effectiveArr[4] += 1;
 
             return true;// passed all checks
         }
@@ -1397,72 +1235,31 @@ module SubgraphIsomorphismVF2 {
 
             while stack.size > 0 {
                 var state = stack.popBack();
-
-                //writeln("pop happened stack.size = ", stack.size,"\n");
-                //writeln("\nworking state now is:", state);
-
-                
                 if state.mapping.size == g2.n_vertices {
-                    //writeln("if state.mapping.size == g2.n_vertices { WORKED ");
-                    if isSolution(state) {
-                        //writeln("isSolution = TRUE");
-                        //if !allSolutions.contains(state){
-                        //allSolutions.pushBack(state);
-                        allmappings.pushBack(state.mapping);
-                        //} 
-                        //writeln("************************NEW ISO FOUND: ", state.mapping);
-                        //writeln("now the stack.size = ", stack.size,"\n");
-                    }
 
+                    allmappings.pushBack(state.mapping);
                 }
-                //var candidates = getCandidatePairs(state);
-                //writeln("Candidate (new version) has: #",candidates.size," to check = ",candidates,"\n" );
                 var timercandidatesOpti:stopwatch;
                 timercandidatesOpti.start();
 
                 var candidatesOpti = getCandidatePairsOpti(state);
-                //writeln("candidatesOpti has: #",candidatesOpti.size," to check = ",candidatesOpti,"\n" );
                 
                 timercandidatesOpti.stop();
                 TimerArrNew[4] += timercandidatesOpti.elapsed();
 
                 //var counter: int = 0;
-                for (n1, n2) in candidatesOpti {
-                //for (n1, n2) in candidatesOpti {
-                    
-                    //counter += 1;
-                    //var newState = state.copy();
-                    
-                    //if newState.mapping.size < g2.n_vertices{
-                        //writeln("newState.mapping.size = ", newState.mapping.size);
-                        //writeln("g2.n_vertices = ", g2.n_vertices);
-            
-                        //if isFeasible(newState, n1, n2, g1, g2) {
-                        var timerisFeasible:stopwatch;
-                        timerisFeasible.start();
-
-                        if isFeasible(state, n1, n2, g1, g2) {
-
-                            var newState = state.copy();
-
-                            newState.addPair(n1, n2);
-                            newState = addToTinTout(newState, n1, n2);
-                            stack.pushBack(newState);
-                        }
-                        
-                        timerisFeasible.stop();
-                        TimerArrNew[3] += timerisFeasible.elapsed();
-                        effectiveArr[4] += 1;
-
+                forall (n1, n2) in candidatesOpti with(ref stack) {
+                    if isFeasible(state, n1, n2) {
+                        var newState = state.copy();
+                        newState.addPair(n1, n2);
+                        newState = addToTinTout(newState, n1, n2);
+                        stack.pushBack(newState);
+                    }
                 }
                 //writeln("end of checking all current candidates\n");
                 state.reset();
-
             }
 
-
-
-            //writeln("mappings are = ", allmappings );
             return allmappings; // Isomappings
             
         }  //end of dfs 
@@ -1487,7 +1284,6 @@ module SubgraphIsomorphismVF2 {
 
             var posOffset = 0;
 
-            //forall solSet in solutions with(ref posOffset) {
             for solSet in solutions {
                 for (n1, n2) in solSet {
                     subIsoArrToReturn[posOffset + n2] = n1;
@@ -1500,13 +1296,31 @@ module SubgraphIsomorphismVF2 {
         } //end of VF2
         
 
-        for i in 0..13 {
+        for i in 0..17 {
             if i == 0 {
+                writeln("**********************Preprocessing *********************");
                 writeln("Preprocessing total time = ", TimerArrNew[i]);
                 //writeln("Rpred usage = ", effectiveArr[i]);
-            }              
+            }               
+            if i == 14 {
+                writeln("PredecessorsG1 total time = ", TimerArrNew[i]);
+                //writeln("Rpred usage = ", effectiveArr[i]);
+            }            
+            if i == 15 {
+                writeln("PredecessorsG2 total time = ", TimerArrNew[i]);
+                //writeln("Rpred usage = ", effectiveArr[i]);
+            }            
+            if i == 16 {
+                writeln("SuccessorsG1 total time = ", TimerArrNew[i]);
+                //writeln("Rpred usage = ", effectiveArr[i]);
+            }            
+            if i == 17 {
+                writeln("SuccessorsG2 total time = ", TimerArrNew[i]);
+                //writeln("Rpred usage = ", effectiveArr[i]);
+            }
+
             if i == 1 {
-                writeln("VF2 total time = ", TimerArrNew[i]);
+                writeln("\nVF2 total time = ", TimerArrNew[i]);
                 //writeln("Rpred usage = ", effectiveArr[i]);
             }              
             
@@ -1515,36 +1329,36 @@ module SubgraphIsomorphismVF2 {
                 //writeln("Rpred usage = ", effectiveArr[i]);
             }            
             if i == 3 {
-                writeln("isFeasible total time = ", TimerArrNew[i]);
+                writeln("\nisFeasible total time = ", TimerArrNew[i]);
                 writeln("isFeasible usage = ", effectiveArr[4]);
             }              
             if i == 4 {
-                writeln("CandidateOpti total time = ", TimerArrNew[i]);
+                writeln("\nCandidateOpti total time = ", TimerArrNew[i]);
                 //writeln("Rpred usage = ", effectiveArr[i]);
             }             
             if i == 5 {
-                writeln("RpredRsuccRsemantic total time = ", TimerArrNew[i]);
-                writeln("Rpred usage = ", effectiveArr[0]);
+                writeln("\nRpredRsuccRsemantic total time = ", TimerArrNew[5]);
+                writeln("# usage = ", effectiveArr[0]);
             }              
             if i == 6 {
-                writeln("Rin total time = ", TimerArrNew[i]);
-                writeln("Rpred usage = ", effectiveArr[1]);
+                writeln("\nRin total time = ", TimerArrNew[6]);
+                writeln("# usage = ", effectiveArr[1]);
             }              
             if i == 7 {
-                writeln("Rout total time = ", TimerArrNew[i]);
-                writeln("Rout usage = ", effectiveArr[2]);
+                writeln("\nRout total time = ", TimerArrNew[7]);
+                writeln("# usage = ", effectiveArr[2]);
             }            
             if i == 8 {
-                writeln("Rnew total time = ", TimerArrNew[i]);
-                writeln("Rpred usage = ", effectiveArr[3]);
+                writeln("\nRnew total time = ", TimerArrNew[8]);
+                writeln("# usage = ", effectiveArr[3]);
             }              
             if i == 11 {
-                writeln("getunmapped1 total time = ", TimerArrNew[i]);
-                writeln("getunmapped1 usage = ", effectiveArr[6]);
+                writeln("\ngetunmapped1 total time = ", TimerArrNew[i]);
+                writeln("# usage = ", effectiveArr[6]);
             }              
             if i == 12 {
-                writeln("getunmapped2 total time = ", TimerArrNew[i]);
-                writeln("getunmapped2 usage = ", effectiveArr[7]);
+                writeln("\ngetunmapped2 total time = ", TimerArrNew[i]);
+                writeln("# usage = ", effectiveArr[7]);
             }  
             if i == 13 {
                 writeln("candidate creation total time = ", TimerArrNew[i]);
