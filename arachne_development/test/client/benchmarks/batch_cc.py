@@ -36,7 +36,7 @@ def time_ak_cc():
             [2443408,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.txt.pr"],\
             [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.txt"],\
             [14855842,456626,2,0,HomeDir+"Adata/SNAP/higgs-social_network.edgelist"],\
-            [117185083,3072441,2,0,HomeDir+"Adata/ANSP/com-orkut.ungraph.txt.gr"],\
+            [117185083,3072441,2,0,HomeDir+"Adata/SNAP/com-orkut.ungraph.txt.gr"],\
             ]
     MtxEdgeList=[ [14496,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.mtx"],\
             [25998,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.mtx"],\
@@ -52,25 +52,9 @@ def time_ak_cc():
             [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.mtx"],\
             [14855842,456626,2,0,HomeDir+"Adata/SNAP/higgs-twitter.mtx"],\
             [19753078,1634989,2,0,HomeDir+"Adata/SNAP/wikipedia-20051105.mtx"],\
+            [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.mtx"],\
             [117185083,3072441,2,0,HomeDir+"Adata/SNAP/com-Orkut.mtx"],\
-            ]
-    MtxEdgeList=[ [14496,5242,2,0,HomeDir+"Adata/SNAP/ca-GrQc.mtx"],\
-            [25998,9877,2,0,HomeDir+"Adata/SNAP/ca-HepTh.mtx"],\
-            [93497,23133,2,0,HomeDir+"Adata/SNAP/ca-CondMat.mtx"],\
-            [106762,31379,3,0,HomeDir+"Adata/SNAP/as-caida.mtx"],\
-            [118521,12008,2,0,HomeDir+"Adata/SNAP/ca-HepPh.mtx"],\
-            [183831,36692,2,0,HomeDir+"Adata/SNAP/email-Enron.mtx"],\
-            [198110,18772,2,0,HomeDir+"Adata/SNAP/ca-AstroPh.mtx"],\
-            [214078,58228,2,0,HomeDir+"Adata/SNAP/loc-Brightkite.mtx"],\
-            [508837,75888,2,0,HomeDir+"Adata/SNAP/soc-Epinions1.mtx"],\
-            [1049866,317080,2,0,HomeDir+"Adata/SNAP/com-DBLP.mtx"],\
-            [2987624,1134890,2,0,HomeDir+"Adata/SNAP/com-Youtube.mtx"],\
-            [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.mtx"],\
-            [14855842,456626,2,0,HomeDir+"Adata/higgs-twitter.mtx"],\
-            [19753078,1634989,2,0,HomeDir+"Adata/SNAP/wikipedia-20051105.mtx"],\
-            [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.mtx"],\
-            [117185083,3072441,2,0,HomeDir+"Adata/com-Orkut.mtx"],\
             ]
 
     MtxDelaunay=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\
@@ -88,8 +72,6 @@ def time_ak_cc():
             [12582869,4194304,2,0,HomeDir+"Adata/Delaunay/delaunay_n22/delaunay_n22.mtx"],\
             [25165784,8388608,2,0,HomeDir+"Adata/Delaunay/delaunay_n23/delaunay_n23.mtx"],\
             [50331601,16777216,2,0,HomeDir+"Adata/Delaunay/delaunay_n24/delaunay_n24.mtx"],\
-            ]
-    MtxOther=[[28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             ]
     BigMtxFile=[ 
             [180292586,170728175,2,0,HomeDir+"Adata/SNAP/kmer_A2a.mtx"],\
@@ -174,17 +156,6 @@ def time_ak_cc():
         FileName=i[4]
         print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
 #        Graph=njit.graph_file_read(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
-        Graph=methods.read_matrix_market_file( str(FileName),False,False)
-        cc = njit.graph_cc(Graph)
-        print("Number of components=",cc)
-    for i in MtxOther:
-        Edges=i[0]
-        Vertices=i[1]
-        Columns=i[2]
-        Directed=i[3]
-        FileName=i[4]
-        print(Edges,",",Vertices,",",Columns,",",Directed,",",str(FileName))
-#        Graph=njit.graph_file_read_mtx(Edges,Vertices,Columns,Directed,str(FileName),0,0,0,0,1)
         Graph=methods.read_matrix_market_file( str(FileName),False,False)
         cc = njit.graph_cc(Graph)
         print("Number of components=",cc)

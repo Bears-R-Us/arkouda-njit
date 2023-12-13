@@ -532,7 +532,7 @@ class DiGraph(Graph):
         dst = all_vertices[src.size:]
 
         ### Create vertex index arrays.
-        # 1. Build the neighbors of the adjacency lists for each vertex.
+        # 1. Build the out-neighbors of the adjacency lists for each vertex.
         gb_src = ak.GroupBy(src, assume_sorted = True)
         gb_src_indices, gb_src_neighbors = gb_src.count()
         neis = ak.full(gb_vertices.unique_keys.size, 0, dtype=ak.int64)
@@ -547,11 +547,31 @@ class DiGraph(Graph):
         self.n_vertices = int(vmap.size)
         self.n_edges = int(src.size)
 
+        ### Create the reversed arrays for in-neighbor calculations.
+        # 1. Reverse the edges and sort them.
+        gb_edges_reversed = ak.GroupBy([dst, src])
+        src_reversed = gb_edges_reversed.unique_keys[0]
+        dst_reversed = gb_edges_reversed.unique_keys[1]
+
+        # 2. Build the in-neighbors of the adjacency lists for each vertex.
+        gb_src_reversed = ak.GroupBy(src_reversed, assume_sorted = True)
+        gb_src_indices_reversed, gb_src_neighbors_reversed = gb_src_reversed.count()
+        neis_reversed = ak.full(gb_vertices.unique_keys.size, 0, dtype=ak.int64)
+        neis_reversed[gb_src_indices_reversed] = gb_src_neighbors_reversed
+
+        # 3. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
+        segs_reversed = ak.cumsum(neis_reversed)
+        first_seg_reversed = ak.array([0])
+        segs_reversed = ak.concatenate([first_seg_reversed, segs_reversed])
+
         ### Store everything in a graph object in the Chapel server.
         # 1. Store data into an Graph object in the Chapel server.
         args = { "AkArraySrc" : src,
                  "AkArrayDst" : dst,
                  "AkArraySeg" : segs,
+                 "AkArraySrcR" : src_reversed,
+                 "AkArrayDstR" : dst_reversed,
+                 "AkArraySegR" : segs_reversed,
                  "AkArrayWeight" : wgt,
                  "AkArrayVmap" : vmap,
                  "Directed": bool(self.directed),

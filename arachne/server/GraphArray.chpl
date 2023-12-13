@@ -34,6 +34,11 @@ module GraphArray {
         EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
         EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
 
+        // For directed graphs we also want to maintain reversed edge arrays to easily find the
+        // in-neighbors for each vertex. We will use the SRC_R and DST_R components below to 
+        // signify the reversed edge arrays as well as a SEGMENTS_R array defined here. 
+        SEGMENTS_R,
+
         // TEMPORARY COMPONENTS BELOW FOR UNDIRECTED GRAPHS TO ENSURE COMPATIBILTIY WITH OLD CODE.
         // We want to phase out the need for reversed arrays in undirected graph algorithms.
         // Includes: connected components, triangle counting, k-truss, and triangle centrality.
