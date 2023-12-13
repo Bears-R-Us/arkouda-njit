@@ -715,7 +715,7 @@ module DipSLLPropertyGraphMsg {
 
         // Distribute the labels_to_find_set to each locale.
         var labels_to_find_set_dist = makeDistArray(numLocales, domain(int));
-        coforall loc in Locales do on loc {
+        coforall loc in Locales with (ref labels_to_find_set_dist)  do on loc   {
             labels_to_find_set_dist[here.id] = labels_to_find_set;
         }
 
@@ -1044,7 +1044,7 @@ module DipSLLPropertyGraphMsg {
 
         // Distribute the relationships_to_find_set to each locale.
         var relationships_to_find_set_dist = makeDistArray(numLocales, domain(int));
-        coforall loc in Locales do on loc {
+        coforall loc in Locales   with (ref relationships_to_find_set_dist) do on loc  {
             relationships_to_find_set_dist[here.id] = relationships_to_find_set;
         }
         
