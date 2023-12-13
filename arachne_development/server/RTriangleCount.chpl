@@ -1,4 +1,4 @@
-module TriangleCount {
+module RTriangleCount {
     // Chapel modules.
     use Reflection;
     use Set;

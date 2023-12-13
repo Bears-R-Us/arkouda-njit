@@ -14,7 +14,6 @@ module BFSMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -68,15 +67,15 @@ module BFSMsg {
       var Weighted=weightedN:int;
       var depthName:string;
       var RCMFlag=RCMs:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
 
       timer.start();
       var depth=makeDistArray(Nv,int);
-      coforall loc in Locales  {
+      coforall loc in Locales with (ref depth)  {
                   on loc {
-                           forall i in depth.localSubdomain() {
+                           forall i in depth.localSubdomain() with (ref depth){
                                  depth[i]=-1; }       
                   }
       }
@@ -86,7 +85,7 @@ module BFSMsg {
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
       var ag = gEntry.graph;
  
-      proc _d1_bfs_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
+      proc _d1_bfs_kernel(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int):string throws{
           var cur_level=0;
           var numCurF=1:int;//flag for stopping loop
 
@@ -108,7 +107,7 @@ module BFSMsg {
           remoteNum=0;
 
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref edgeBeginG, ref edgeEndG,ref vertexBeginG, ref vertexEndG, ref HvertexBeginG, ref src, ref TvertexEndG, ref MaxBufSize )  {
               on loc {
                  edgeBeginG[here.id]=src.localSubdomain().lowBound;
                  edgeEndG[here.id]=src.localSubdomain().highBound;
@@ -143,7 +142,7 @@ module BFSMsg {
           LPG=0;
           RPG=0;
 
-          coforall loc in Locales   {
+          coforall loc in Locales  with (ref localArrayG, ref LPG) {
               on loc {
                  if (xlocal(root,vertexBeginG[here.id],vertexEndG[here.id]) ) {
                    localArrayG[CMaxSize*here.id]=root;
@@ -479,8 +478,8 @@ module BFSMsg {
           return "success";
       }//end of _d1_bfs_kernel_u
 
-      proc fo_bag_bfs_kernel_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+      proc fo_bag_bfs_kernel_u(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
+                        ref neiR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int, 
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -490,7 +489,7 @@ module BFSMsg {
           var topdown=0:int;
           var bottomup=0:int;
           while (numCurF>0) {
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -709,7 +708,7 @@ module BFSMsg {
 
 
 
-      proc fo_bag_bfs_kernel(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc fo_bag_bfs_kernel(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
           var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
@@ -720,7 +719,7 @@ module BFSMsg {
           var bottomup=0:int;
 
           while (numCurF>0) {
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref src, ref depth) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -1691,8 +1690,8 @@ module BFSMsg {
           return "success";
       }//end of co_domain_bfs_kernel_u
 
-      proc co_d1_bfs_kernel_u(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
-                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,GivenRatio:real):string throws{
+      proc co_d1_bfs_kernel_u(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
+                        ref neiR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int,GivenRatio:real):string throws{
           var cur_level=0;
           var numCurF=1:int;//flag for stopping loop
           var topdown=0:int;
@@ -1720,7 +1719,9 @@ module BFSMsg {
           remoteNum=0;
 
           var MaxBufSize=makeDistArray(numLocales,int);//temp array to calculate global max
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref edgeBeginG,ref edgeEndG,ref vertexBeginG,ref vertexEndG,ref vertexBeginRG, ref vertexEndRG,
+                                        ref  BoundBeginG,ref BoundEndG,ref HvertexBeginG,ref HvertexBeginRG,
+                                        ref TvertexEndG,ref TvertexEndRG,ref MaxBufSize) {
               on loc {
                  edgeBeginG[here.id]=src.localSubdomain().lowBound;
                  edgeEndG[here.id]=src.localSubdomain().highBound;
@@ -1771,7 +1772,7 @@ module BFSMsg {
           LPG=0;
           RPG=0;
 
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref localArrayG, ref LPG)   {
               on loc {
                  if (xlocal(root,vertexBeginG[here.id],vertexEndG[here.id]) || 
                                  xlocal(root,vertexBeginRG[here.id],vertexEndRG[here.id])) {
@@ -1782,7 +1783,7 @@ module BFSMsg {
           }
 
           while numCurF >0 {
-              coforall loc in Locales with (+ reduce topdown, + reduce bottomup)  {
+              coforall loc in Locales with (+ reduce topdown, + reduce bottomup, ref src,ref dst, ref nei, ref start_i, ref srcR, ref dstR, ref neiR, ref start_iR, ref localNum ,ref recvArrayG, ref RPG, ref depth, ref remoteNum, ref LPG)  {
                   on loc {
                    ref srcf=src;
                    ref df=dst;
@@ -1920,7 +1921,7 @@ module BFSMsg {
                                   var nextStart=max(edgeId,edgeBeginG[here.id]);
                                   var nextEnd=min(edgeEndG[here.id],edgeId+numNF-1);
                                   ref NF=dfR[nextStart..nextEnd];
-                                  coforall j in NF with (ref LocalSet, ref RemoteSet) {
+                                  coforall j in NF with (ref LocalSet, ref RemoteSet, ref depth) {
                                          if FrontierHas(j) {
                                                depth[i]=cur_level+1;
                                                if (xlocal(i,vertexBeginG[here.id],vertexEndG[here.id]) ||
@@ -1940,7 +1941,7 @@ module BFSMsg {
                        
                    if (RemoteSet.size>0) {//there is vertex to be sent
                                   remoteNum[here.id]+=RemoteSet.size;
-                                  coforall localeNum in 0..numLocales-1  { 
+                                  coforall localeNum in 0..numLocales-1 with (ref recvArrayG, ref RPG) { 
                                        if localeNum != here.id{
                                          var ind=0:int;
                                          var agg= newDstAggregator(int); 
@@ -1974,7 +1975,7 @@ module BFSMsg {
                    RemoteSet.clear();
                   }//end on loc
               }//end coforall loc
-              coforall loc in Locales {
+              coforall loc in Locales with (ref LPG){
                   on loc {
                    var mystart=here.id*CMaxSize;
                    for i in 0..numLocales-1 {
@@ -2015,9 +2016,9 @@ module BFSMsg {
           return "success";
       }//end of co_d1_bfs_kernel_u
 
-      proc return_depth(): string throws{
+      proc return_depth(depth:[?d] int): string throws{
           var depthName = st.nextName();
-          var depthEntry = new shared SymEntry([0]);
+          var depthEntry = new shared SymEntry(depth);
           st.addEntry(depthName, depthEntry);
           //try! st.addEntry(vertexName, vertexEntry);
 
@@ -2053,7 +2054,7 @@ module BFSMsg {
                   toSymEntry(ag.getDST(), int).a,
                   1, GivenRatio);
 
-               repMsg=return_depth();
+               repMsg=return_depth(depth);
 
       }
       else {
@@ -2105,7 +2106,7 @@ module BFSMsg {
                 //   );
                 //   outMsg= "graph BFS time= "+timer.elapsed():string+" for aligned_fo_bag version";
                 //   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                  repMsg=return_depth();
+                  repMsg=return_depth(depth);
  
               } else {// do batch test
                   depth=-1;
@@ -2286,7 +2287,7 @@ module BFSMsg {
                   writeln("$$$$$$$$$$$$$$$$$ graph BFS time= ",timer.elapsed(), " for Domain G version $$$$$$$$$$$$$$$$$$");
                   */
 
-                  repMsg=return_depth();
+                  repMsg=return_depth(depth);
               }//end of batch test
 
       }

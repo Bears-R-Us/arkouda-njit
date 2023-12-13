@@ -1,4 +1,4 @@
-module BreadthFirstSearch {
+module RBreadthFirstSearch {
     // Chapel modules.
     use Reflection;
     use Set;

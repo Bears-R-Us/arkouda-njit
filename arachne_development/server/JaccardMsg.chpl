@@ -1,6 +1,8 @@
 module JaccardMsg {
 
 
+  use Math;
+
   use Reflection;
   use ServerErrors;
   use Logging;
@@ -13,7 +15,6 @@ module JaccardMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use RadixSortLSD;
   use Set;
   use DistributedBag;
@@ -75,15 +76,15 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
 
       var JaccGamma=makeDistArray(Nv*Nv,atomic int);//we only need to save half results and we will optimize it later.
       var JaccCoeff=makeDistArray(Nv*Nv, real);//we only need to save half results and we will optimize it later.
-      coforall loc in Locales  {
+      coforall loc in Locales with (ref JaccGamma)  {
                   on loc {
-                           forall i in JaccGamma.localSubdomain() {
+                           forall i in JaccGamma.localSubdomain() with (ref JaccGamma) {
                                  JaccGamma[i].write(0);
                            }       
                   }
@@ -107,7 +108,7 @@ module JaccardMsg {
           var vertexEndG=makeDistArray(numLocales,int);// each locales' ending vertex ID in src
 
 
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref edgeBeginG, ref edgeEndG, ref vertexBeginG, ref vertexEndG)   {
               on loc {
                  edgeBeginG[here.id]=src.localSubdomain().lowBound;
                  edgeEndG[here.id]=src.localSubdomain().highBound;
@@ -117,7 +118,7 @@ module JaccardMsg {
 
               }
           }
-          coforall loc in Locales   {
+          coforall loc in Locales  with (ref vertexBeginG) {
               on loc {
                  if (here.id>0) {
                    vertexBeginG[here.id]=vertexEndG[here.id-1]+1;
@@ -127,7 +128,7 @@ module JaccardMsg {
 
               }
           }
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref vertexEndG)   {
               on loc {
 
                  if (here.id<numLocales-1) {
@@ -138,20 +139,20 @@ module JaccardMsg {
 
               }
           }
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref JaccGamma)   {
               on loc {
 
                        var vertexBegin=vertexBeginG[here.id];
                        var vertexEnd=vertexEndG[here.id];
-                       forall  i in vertexBegin..vertexEnd {
+                       forall  i in vertexBegin..vertexEnd  with (ref JaccGamma){
                               var    numNF=nei[i];
                               var    edgeId=start_i[i];
                               var nextStart=edgeId;
                               var nextEnd=edgeId+numNF-1;
                               //check the combinations of all out edges from the same vertex
-                              forall e1 in nextStart..nextEnd-1 {
+                              forall e1 in nextStart..nextEnd-1  with (ref JaccGamma){
                                    var u=dst[e1];
-                                   forall e2 in e1+1..nextEnd {
+                                   forall e2 in e1+1..nextEnd  with (ref JaccGamma){
                                        var v=dst[e2];
                                        {
                                            JaccGamma[u*Nv+v].add(1);
@@ -163,9 +164,9 @@ module JaccardMsg {
                               nextStart=edgeId;
                               nextEnd=edgeId+numNF-1;
                               //check the combinations of all in edges to the same vertex
-                              forall e1 in nextStart..nextEnd-1 {
+                              forall e1 in nextStart..nextEnd-1  with (ref JaccGamma){
                                    var u=dstR[e1];
-                                   forall e2 in e1+1..nextEnd {
+                                   forall e2 in e1+1..nextEnd  with (ref JaccGamma){
                                        var v=dstR[e2];
                                        {
                                            JaccGamma[u*Nv+v].add(1);
@@ -176,14 +177,14 @@ module JaccardMsg {
 
 
                               //check the combinations of each out edge with each in edge connected to the same vertex
-                              forall e1 in nextStart..nextEnd {
+                              forall e1 in nextStart..nextEnd  with (ref JaccGamma){
                                    var u=dstR[e1];
 
                                    var    numNF2=nei[i];
                                    var    edgeId2=start_i[i];
                                    var nextStart2=edgeId2;
                                    var nextEnd2=edgeId2+numNF2-1;
-                                   forall e2 in nextStart2..nextEnd2 {
+                                   forall e2 in nextStart2..nextEnd2  with (ref JaccGamma){
                                        var v=dst[e2];
                                        if u<v {
                                            JaccGamma[u*Nv+v].add(1);
@@ -200,8 +201,8 @@ module JaccardMsg {
               }
           }//end coforall loc
 
-          forall u in 0..Nv-2 {
-             forall v in u+1..Nv-1 {
+          forall u in 0..Nv-2 with (ref JaccCoeff){
+             forall v in u+1..Nv-1 with (ref JaccCoeff){
                   var tmpjac:real =JaccGamma[u*Nv+v].read();
                   if ((u<v) && (tmpjac>0.0)) {
                       JaccCoeff[u*Nv+v]=tmpjac/(nei[u]+nei[v]+neiR[u]+neiR[v]-tmpjac);
@@ -210,8 +211,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-Original"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var wf = open("Jaccard-Original"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           for i in 0..(Nv-2) {
               for j in (i+1)..(Nv-1) {
                  if JaccCoeff[i*Nv+j]>0.0 {
@@ -262,7 +263,7 @@ module JaccardMsg {
           wf.close();
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
+          var JaccEntry = new shared SymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -523,8 +524,8 @@ module JaccardMsg {
                  }
               }
           }
-          var wf = open("Jaccard-Aligned"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var wf = open("Jaccard-Aligned"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(kind=S(erializers);
           for i in 0..Nv*Nv-1 {
                  mw.writeln("%7.3dr".format(JaccCoeff[i]));
           }
@@ -534,7 +535,7 @@ module JaccardMsg {
 
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry([JaccCoeff[0]]);
+          var JaccEntry = new shared SymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -562,9 +563,9 @@ module JaccardMsg {
                   var outMsg= "graph Jaccard takes "+timer.elapsed():string;
                   smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-                 coforall loc in Locales  {
+                 coforall loc in Locales with (ref JaccGamma)  {
                     on loc {
-                           forall i in JaccGamma.localSubdomain() {
+                           forall i in JaccGamma.localSubdomain() with (ref JaccGamma)  {
                                  JaccGamma[i].write(0);
                            }
                     }
@@ -620,7 +621,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
       var uvNames: domain(int);
@@ -867,8 +868,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-Hash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var wf = open("Jaccard-Hash"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -952,7 +953,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
 
       var uvNames: domain(int);
@@ -975,7 +976,7 @@ module JaccardMsg {
       }
 
       var myMapper = new MyMapper();
-      var D: domain(2*int) dmapped Hashed(idxType=2*int, mapper=myMapper);
+      var D: domain(2*int) dmapped hashedDist(idxType=2*int, mapper=myMapper);
       var HashJaccGamma:[D] atomic int;
       var JaccCoeff:[D] real;
 
@@ -1001,7 +1002,7 @@ module JaccardMsg {
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int):string throws{
 
 
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref edgeBeginG, ref  edgeEndG, ref vertexBeginG, ref vertexEndG)     {
               on loc {
                  edgeBeginG[here.id]=src.localSubdomain().lowBound;
                  edgeEndG[here.id]=src.localSubdomain().highBound;
@@ -1010,7 +1011,7 @@ module JaccardMsg {
                  vertexEndG[here.id]=src[edgeEndG[here.id]];
               }
           }
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref vertexBeginG)  {
               on loc {
                  if (here.id>0) {
                    vertexBeginG[here.id]=vertexEndG[here.id-1]+1;
@@ -1020,7 +1021,7 @@ module JaccardMsg {
 
               }
           }
-          coforall loc in Locales   {
+          coforall loc in Locales with (ref vertexEndG)   {
               on loc {
                  if (here.id<numLocales-1) {
                    vertexEndG[here.id]=vertexBeginG[here.id+1]-1;
@@ -1031,20 +1032,20 @@ module JaccardMsg {
               }
           }
 
-          coforall loc in Locales  with (ref D)  {
+          coforall loc in Locales  with (ref D, ref HashJaccGamma)  {
               on loc {
 
                        var vertexBegin=vertexBeginG[here.id];
                        var vertexEnd=vertexEndG[here.id];
 
-                       forall  i in vertexBegin..vertexEnd with (ref D) {
+                       forall  i in vertexBegin..vertexEnd with (ref D, ref HashJaccGamma) {
                               var    numNF=nei[i];
                               var    edgeId=start_i[i];
                               var nextStart=edgeId;
                               var nextEnd=edgeId+numNF-1;
-                              forall e1 in nextStart..nextEnd-1 with (ref D)  {
+                              forall e1 in nextStart..nextEnd-1 with (ref D, ref HashJaccGamma)  {
                                    var u=dst[e1];
-                                   forall e2 in e1+1..nextEnd  with (ref D){
+                                   forall e2 in e1+1..nextEnd  with (ref D, ref HashJaccGamma){
                                        var v=dst[e2];
                                        {
                                            if D.contains((u,v)) 
@@ -1061,9 +1062,9 @@ module JaccardMsg {
                               edgeId=start_iR[i];
                               nextStart=edgeId;
                               nextEnd=edgeId+numNF-1;
-                              forall e1 in nextStart..nextEnd-1  with (ref D){
+                              forall e1 in nextStart..nextEnd-1  with (ref D, ref HashJaccGamma){
                                    var u=dstR[e1];
-                                   forall e2 in e1+1..nextEnd  with (ref D){
+                                   forall e2 in e1+1..nextEnd  with (ref D, ref HashJaccGamma){
                                        var v=dstR[e2];
                                        {
                                            if D.contains((u,v)) 
@@ -1079,14 +1080,14 @@ module JaccardMsg {
 
 
 
-                              forall e1 in nextStart..nextEnd  with (ref D){
+                              forall e1 in nextStart..nextEnd  with (ref D, ref HashJaccGamma){
                                    var u=dstR[e1];
 
                                    var    numNF2=nei[i];
                                    var    edgeId2=start_i[i];
                                    var nextStart2=edgeId2;
                                    var nextEnd2=edgeId2+numNF2-1;
-                                   forall e2 in nextStart2..nextEnd2  with (ref D){
+                                   forall e2 in nextStart2..nextEnd2  with (ref D, ref HashJaccGamma){
                                        var v=dst[e2];
                                        if u<v {
                                            if D.contains((u,v)) 
@@ -1116,8 +1117,8 @@ module JaccardMsg {
               }
           }//end coforall loc
 
-          forall u in 0..(Nv-2) {
-             forall v in (u+1)..(Nv-1) {
+          forall u in 0..(Nv-2) with (ref JaccCoeff)  {
+             forall v in (u+1)..(Nv-1)  with (ref JaccCoeff) {
                   var tmpjac:real;
                   if  D.contains((u,v) ){
                       tmpjac= HashJaccGamma[(u,v)].read():real;
@@ -1125,8 +1126,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -1277,7 +1278,7 @@ module JaccardMsg {
       var Ne=n_edgesN:int;
       var Directed=directedN:int;
       var Weighted=weightedN:int;
-      var timer:Timer;
+      var timer:stopwatch;
 
       var D=makeDistArray(numLocales,domain(2*int));
 
@@ -1442,8 +1443,8 @@ module JaccardMsg {
                   }
              }
           }
-          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", iomode.cw);
-          var mw = wf.writer(kind=ionative);
+          var wf = open("Jaccard-DistHash"+graphEntryName+".dat", ioMode.cw);
+          var mw = wf.writer(serializer = new defaultSerializer());
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -1498,7 +1499,7 @@ module JaccardMsg {
           wf.close();
          
           var JaccName = st.nextName();
-          //var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
+          //var JaccEntry = new shared SymEntry(JaccCoeff);
           var JaccEntry = new shared SymEntry(retresult);
           st.addEntry(JaccName, JaccEntry);
 
