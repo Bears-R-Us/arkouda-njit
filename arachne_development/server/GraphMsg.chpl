@@ -13,7 +13,6 @@ module GraphMsg {
   use IO;
 
 
-  use SymArrayDmap;
   use Random;
   use RadixSortLSD;
   use Set;
@@ -62,7 +61,7 @@ module GraphMsg {
   * based on the src array, we calculate the start_i and neighbour arrays
   */
 
-  private proc set_neighbour(lsrc:[?D1]int, lstart_i :[?D2] int, lneighbour :[?D3] int ){ 
+  private proc set_neighbour(ref lsrc:[?D1]int, ref lstart_i :[?D2] int, ref lneighbour :[?D3] int ){ 
           var Ne=D1.size;
           forall i in lstart_i {
                i=-1;
@@ -140,7 +139,7 @@ module GraphMsg {
   }
 
   // map vertex ID from a large range to 0..Nv-1. In this version, we track the vertex ID.
-  private proc vertex_remap( lsrc:[?D1] int, ldst:[?D2] int, numV:int, OriVertexAry:[?D3] int) :int throws {
+  private proc vertex_remap( ref lsrc:[?D1] int, ref ldst:[?D2] int, numV:int, ref OriVertexAry:[?D3] int) :int throws {
 
           var numE=lsrc.size;
           var tmpe:[D1] int;
@@ -174,7 +173,7 @@ module GraphMsg {
       /* 
        * we sort the combined array [src dst] here
        */
-  private proc combine_sort( lsrc:[?D1] int, ldst:[?D2] int )   {
+  private proc combine_sort( ref lsrc:[?D1] int, ref ldst:[?D2] int )   {
              param bitsPerDigit = RSLSD_bitsPerDigit;
              var bitWidths: [0..1] int;
              var negs: [0..1] bool;
@@ -294,7 +293,7 @@ module GraphMsg {
       /* 
        * we sort the combined array [src dst] here. For this version, we also update the edge weight array too.
        */
-  private proc combine_sort( lsrc:[?D1] int, ldst:[?D2] int, type WeightType, le_weight:[?D3] WeightType )   {
+  private proc combine_sort( ref lsrc:[?D1] int, ref ldst:[?D2] int, type WeightType, ref le_weight:[?D3] WeightType )   {
              param bitsPerDigit = RSLSD_bitsPerDigit;
              var bitWidths: [0..1] int;
              var negs: [0..1] bool;
@@ -355,7 +354,7 @@ module GraphMsg {
    * the basic idea of RCM is relabeling the vertex based on their BFS visiting order
    * we update the vertex tracking array.
    */
-  private proc RCM( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, ldepth:[?D5] int,OriVertexAry: [?D6] int )  {
+  private proc RCM( ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int, ref ldepth:[?D5] int,ref OriVertexAry: [?D6] int )  {
           var Ne=D1.size;
           var Nv=D3.size;            
           var cmary: [0..Nv-1] int;
@@ -687,7 +686,7 @@ module GraphMsg {
    * this version we will update the weight and track arrays.
    * In this version, we  update the weitht array and the track array
    */
-  private proc RCM( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, ldepth:[?D5] int,type WeightType, le_weight:[?D6] WeightType,OriVertexAry:[?D7] int )  {
+  private proc RCM( ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int, ref ldepth:[?D5] int,type WeightType, ref le_weight:[?D6] WeightType,ref OriVertexAry:[?D7] int )  {
           var Ne=D1.size;
           var Nv=D3.size;            
           var cmary: [0..Nv-1] int;
@@ -853,9 +852,9 @@ module GraphMsg {
 
 
   // RCM for undirected graph. vertex tracking array will be updated.
-  private proc RCM_u( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, 
-                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, 
-                      ldepth:[?D9] int, OriVertexAry:[?D10] int )  {
+  private proc RCM_u( ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int, 
+                      ref lsrcR:[?D5] int, ref ldstR:[?D6] int, ref lstart_iR:[?D7] int, ref lneighbourR:[?D8] int, 
+                      ref ldepth:[?D9] int, ref OriVertexAry:[?D10] int )  {
               var Ne=D1.size;
               var Nv=D3.size;
               var cmary: [0..Nv-1] int;
@@ -1268,9 +1267,9 @@ module GraphMsg {
 
 
   // RCM for undirected graph. We also update the weight array and vertex tracking array here.
-  private proc RCM_u( lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int, 
-                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, 
-                      ldepth:[?D9] int, type WeightType, le_weight:[?D10] WeightType, OriVertexAry: [?D11] int )  {
+  private proc RCM_u( ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int, 
+                      ref lsrcR:[?D5] int, ref ldstR:[?D6] int, ref lstart_iR:[?D7] int, ref lneighbourR:[?D8] int, 
+                      ref ldepth:[?D9] int, type WeightType, ref le_weight:[?D10] WeightType, ref OriVertexAry: [?D11] int )  {
               var Ne=D1.size;
               var Nv=D3.size;
               var cmary: [0..Nv-1] int;
@@ -1476,15 +1475,15 @@ module GraphMsg {
 
 
   //sorting the vertices based on their degrees. add the vertex tracking array.
-  private proc part_degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,lneighbourR:[?D6] int, OriVertexAry:[?D7] int) {
+  private proc part_degree_sort(ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int,ref lneighbourR:[?D6] int, ref OriVertexAry:[?D7] int) {
              var DegreeArray, VertexMapping: [D4] int;
              var tmpedge:[D1] int;
              var Nv=D4.size;
              var iv:[D1] int;
 
-             coforall loc in Locales  {
+             coforall loc in Locales with (ref DegreeArray)  {
                 on loc {
-                  forall i in lneighbour.localSubdomain(){
+                  forall i in lneighbour.localSubdomain()with (ref DegreeArray) {
                         DegreeArray[i]=lneighbour[i]+lneighbourR[i];
                   }
                 }
@@ -1506,17 +1505,17 @@ module GraphMsg {
              var tmpOriVertexAry=OriVertexAry[tmpiv];
              OriVertexAry=tmpOriVertexAry;
 
-             coforall loc in Locales  {
+             coforall loc in Locales  with (ref tmpedge, ref VertexMapping) {
                 on loc {
-                  forall i in lsrc.localSubdomain(){
+                  forall i in lsrc.localSubdomain()with (ref tmpedge, ref VertexMapping) {
                         tmpedge[i]=VertexMapping[lsrc[i]];
                   }
                 }
              }
              lsrc=tmpedge;
-             coforall loc in Locales  {
+             coforall loc in Locales with (ref tmpedge)  {
                 on loc {
-                  forall i in ldst.localSubdomain(){
+                  forall i in ldst.localSubdomain() with (ref tmpedge){
                         tmpedge[i]=VertexMapping[ldst[i]];
                   }
                 }
@@ -1605,16 +1604,16 @@ module GraphMsg {
   }
 
   //sorting the vertices based on their degrees. This version will track the vertex mapping and support edge weight
-  private proc part_degree_sort(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,type EweightType, le_weight:[?D5] EweightType,lneighbourR:[?D6] int,OriVertexAry:[?D7] int) {
+  private proc part_degree_sort(ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int,type EweightType, ref le_weight:[?D5] EweightType,ref lneighbourR:[?D6] int,ref OriVertexAry:[?D7] int) {
              var DegreeArray, VertexMapping: [D4] int;
              var tmpedge:[D1] int;
              var tmpweight:[D1] EweightType;
              var Nv=D4.size;
              var iv:[D1] int;
 
-             coforall loc in Locales  {
+             coforall loc in Locales with (ref DegreeArray)  {
                 on loc {
-                  forall i in lneighbour.localSubdomain(){
+                  forall i in lneighbour.localSubdomain() with (ref DegreeArray){
                         DegreeArray[i]=lneighbour[i]+lneighbourR[i];
                   }
                 }
@@ -1635,17 +1634,17 @@ module GraphMsg {
              var tmpOriVertexAry=OriVertexAry[tmpiv];
              OriVertexAry=tmpOriVertexAry;
 
-             coforall loc in Locales  {
+             coforall loc in Locales with (ref tmpedge)   {
                 on loc {
-                  forall i in lsrc.localSubdomain(){
+                  forall i in lsrc.localSubdomain() with (ref tmpedge) {
                         tmpedge[i]=VertexMapping[lsrc[i]];
                   }
                 }
              }
              lsrc=tmpedge;
-             coforall loc in Locales  {
+             coforall loc in Locales with (ref tmpedge) {
                 on loc {
-                  forall i in ldst.localSubdomain(){
+                  forall i in ldst.localSubdomain()with (ref tmpedge) {
                         tmpedge[i]=VertexMapping[ldst[i]];
                   }
                 }
@@ -1672,8 +1671,8 @@ module GraphMsg {
 
 
   //degree sort for an undirected graph. add vertex tracking array.
-  private  proc degree_sort_u(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,
-                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int, OriVertexAry: [?D9] int) {
+  private  proc degree_sort_u(ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int,
+                      ref lsrcR:[?D5] int, ref ldstR:[?D6] int, ref lstart_iR:[?D7] int, ref lneighbourR:[?D8] int, ref OriVertexAry: [?D9] int) {
 
              part_degree_sort(lsrc, ldst, lstart_i, lneighbour,lneighbourR,OriVertexAry);
              coforall loc in Locales  {
@@ -1719,8 +1718,8 @@ module GraphMsg {
 
 
   //degree sort for an undirected graph. In this version, we will sort weight too.
-  private  proc degree_sort_u(lsrc:[?D1] int, ldst:[?D2] int, lstart_i:[?D3] int, lneighbour:[?D4] int,
-                      lsrcR:[?D5] int, ldstR:[?D6] int, lstart_iR:[?D7] int, lneighbourR:[?D8] int,type WeightType, le_weight:[?D9] WeightType,OriVertexAry) {
+  private  proc degree_sort_u(ref lsrc:[?D1] int, ref ldst:[?D2] int, ref lstart_i:[?D3] int, ref lneighbour:[?D4] int,
+                      ref lsrcR:[?D5] int, ref ldstR:[?D6] int, ref lstart_iR:[?D7] int, ref lneighbourR:[?D8] int,type WeightType, ref le_weight:[?D9] WeightType,ref OriVertexAry:[?D10] int) {
 
              part_degree_sort(lsrc, ldst, lstart_i, lneighbour,WeightType, le_weight,lneighbourR,OriVertexAry);
              coforall loc in Locales  {
@@ -1767,7 +1766,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -1882,7 +1881,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -1891,10 +1890,12 @@ module GraphMsg {
       }
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref src, ref dst, ref e_weight, ref srcR, ref dstR )  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader( );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -1902,7 +1903,8 @@ module GraphMsg {
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in r.lines() {
                       if (line[0]=="%" || line[0]=="#") {
                           //smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(), "edge  error");
                           continue;
@@ -1988,9 +1990,9 @@ module GraphMsg {
       }
 
       if (!DirectedFlag) { //undirected graph
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref srcR, ref dstR)  {
               on loc {
-                  forall i in srcR.localSubdomain(){
+                  forall i in srcR.localSubdomain() with (ref srcR, ref dstR){
                         srcR[i]=dst[i];
                         dstR[i]=src[i];
                    }
@@ -2129,7 +2131,7 @@ module GraphMsg {
 
 
           if (!DirectedFlag) { //undirected graph
-              coforall loc in Locales  {
+              coforall loc in Locales with (ref mysrcR, ref mydstR)   {
                   on loc {
                        forall i in mysrcR.localSubdomain(){
                             mysrcR[i]=mydst[i];
@@ -2152,8 +2154,10 @@ module GraphMsg {
                   }
               }
 
-                  var wf = open(FileName+".deg", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2176,8 +2180,10 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-                  wf = open(FileName+".sta", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  wf = open(FileName+".sta", ioMode.cw);
+                  //mw = wf.writer(serializer = new defaultSerializer());
+                  //mw = wf.writer(kind=iokind.dynamic );
+                  mw = wf.writer( );
                   mw.writeln("%i %i %i".format(low,up, (ave/(max(NewNv-point,1))):int));
                   mw.close();
                   wf.close();
@@ -2197,8 +2203,10 @@ module GraphMsg {
               }  
 
 
-                  var wf = open(FileName+".deg", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2221,16 +2229,20 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-                  wf = open(FileName+".sta", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  wf = open(FileName+".sta", ioMode.cw);
+                  //mw = wf.writer(serializer = new defaultSerializer());
+                  //mw = wf.writer(kind=iokind.dynamic );
+                  mw = wf.writer( );
                   mw.writeln("%i %i %i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
           }  
           if (WriteFlag) {
 
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
 
                   for i in 0..NewNe-1 {
                       mw.writeln("%i %i".format(mysrc[i],mydst[i]));
@@ -2244,8 +2256,10 @@ module GraphMsg {
       } else {
     
           if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   for i in 0..NewNe-1 {
                       mw.writeln("%i %i".format(src[i],dst[i]));
                   }
@@ -2253,8 +2267,10 @@ module GraphMsg {
                   mw.close();
                   wf.close();
           }
-                  var wf = open(FileName+".deg", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".deg", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer();
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2281,8 +2297,10 @@ module GraphMsg {
                   }
                   mw.close();
                   wf.close();
-                  wf = open(FileName+".sta", iomode.cw);
-                  mw = wf.writer(kind=ionative);
+                  wf = open(FileName+".sta", ioMode.cw);
+                  //mw = wf.writer(serializer = new defaultSerializer());
+                  //mw = wf.writer(kind=iokind.dynamic );
+                  mw = wf.writer( );
                   mw.writeln("%i %i %i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
@@ -2326,7 +2344,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -2440,7 +2458,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -2449,17 +2467,20 @@ module GraphMsg {
       }
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref src, ref dst, ref e_weight, ref srcR, ref dstR)  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader( );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in r.lines() {
                       if (line[0]=="%" || line[0]=="#") {
                           smLogger.error(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
@@ -2537,9 +2558,9 @@ module GraphMsg {
       }
 
       if (!DirectedFlag) { //undirected graph
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref srcR, ref dstR)  {
               on loc {
-                  forall i in srcR.localSubdomain(){
+                  forall i in srcR.localSubdomain() with (ref srcR, ref dstR){
                         srcR[i]=dst[i];
                         dstR[i]=src[i];
                    }
@@ -2678,9 +2699,9 @@ module GraphMsg {
 
 
           if (!DirectedFlag) { //undirected graph
-              coforall loc in Locales  {
+              coforall loc in Locales with (ref mysrcR, ref mydstR) {
                   on loc {
-                       forall i in mysrcR.localSubdomain(){
+                       forall i in mysrcR.localSubdomain() with (ref mysrcR, ref mydstR){
                             mysrcR[i]=mydst[i];
                             mydstR[i]=mysrc[i];
                        }
@@ -2701,8 +2722,10 @@ module GraphMsg {
                   }
               }
               if (WriteFlag) {
-                  var wf = open(FileName+".nde", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".nde", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,myneighbour[i]+myneighbourR[i]));
@@ -2729,8 +2752,10 @@ module GraphMsg {
 
               }  
               if (WriteFlag) {
-                  var wf = open(FileName+".nde", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".nde", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,myneighbour[i]));
@@ -2747,8 +2772,10 @@ module GraphMsg {
       } else {
 
           if (WriteFlag) {
-                  var wf = open(FileName+".nde", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".nde", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,neighbour[i]+neighbourR[i]));
@@ -2796,7 +2823,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -2874,7 +2901,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -2883,17 +2910,20 @@ module GraphMsg {
       }
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref src, ref dst, ref e_weight)  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(useIOSerializers=true,serializer = new defaultSerializer() );
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader( );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
                   var srclocal=src.localSubdomain();
                   var ewlocal=e_weight.localSubdomain();
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in r.lines() {
                       if (line[0]=="%"||line[0]=="#") {
                           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                                 "edge  error");
@@ -2981,9 +3011,9 @@ module GraphMsg {
       }
 
       if (!DirectedFlag) { //undirected graph
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref srcR, ref dstR)  {
               on loc {
-                  forall i in srcR.localSubdomain(){
+                  forall i in srcR.localSubdomain() with (ref srcR, ref dstR){
                         srcR[i]=dst[i];
                         dstR[i]=src[i];
                    }
@@ -3030,7 +3060,7 @@ module GraphMsg {
               var DVertex : [rcDomain] domain(1);
               var DEdge : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref DVertex, ref DEdge) {
+              coforall loc in Locales with (ref DVertex, ref DEdge, ref src, ref start_iR, ref DVertex, ref DEdge, ref aligned_nei, ref aligned_dstR, ref aligned_neiR, ref aligned_start_i, ref aligned_start_iR, ref aligned_srcR) {
                    on loc {
                        var Lver=src[src.localSubdomain().lowBound];
                        var Ledg=start_iR[Lver];
@@ -3082,7 +3112,7 @@ module GraphMsg {
                        aligned_dstR[here.id].new_dom(DEdge[1]);
                    }
               }
-              coforall loc in Locales {
+              coforall loc in Locales with (ref aligned_nei, ref aligned_neiR,  ref aligned_start_iR, ref aligned_dstR, ref aligned_start_i, ref aligned_srcR) {
                   on loc {
                       forall i in aligned_nei[here.id].DO {
                           aligned_nei[here.id].A[i] = neighbour[i];
@@ -3196,7 +3226,7 @@ module GraphMsg {
 
               var DVertex : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref DVertex ) {
+              coforall loc in Locales with (ref DVertex ,ref src, ref aligned_nei,ref aligned_start_i) {
                    on loc {
                        var Lver=src[src.localSubdomain().lowBound];
                        var Hver=src[src.localSubdomain().highBound];
@@ -3213,12 +3243,12 @@ module GraphMsg {
                        aligned_start_i[here.id].new_dom(DVertex[1]);
                    }
               }
-              coforall loc in Locales {
+              coforall loc in Locales with (ref aligned_nei, ref aligned_start_i, ref neighbour, ref start_i) {
                   on loc {
-                      forall i in aligned_nei[here.id].DO {
+                      forall i in aligned_nei[here.id].DO with (ref aligned_nei, ref neighbour) {
                           aligned_nei[here.id].A[i] = neighbour[i];
                       }
-                      forall i in aligned_start_i[here.id].DO {
+                      forall i in aligned_start_i[here.id].DO with (ref aligned_start_i, ref start_i) {
                           aligned_start_i[here.id].A[i] = start_i[i];
                       }
                   }
@@ -3234,8 +3264,10 @@ module GraphMsg {
         //}
       }//end of else
       if (WriteFlag) {
-                  var wf = open(FileName+".my.gr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".my.gr", ioMode.cw);
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
+                  //var mw = wf.writer(serializer = new defaultSerializer());
                   for i in 0..Ne-1 {
                       mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
                   }
@@ -3302,7 +3334,7 @@ module GraphMsg {
       var Ne =orisrc.size;
       var Nv:int =0;
      
-      forall i in 0..Ne-1 with (ref Nv) {
+      forall i in 0..Ne-1 with (ref Nv, ref orisrc, ref oridst) {
             if orisrc[i]>Nv {
                 Nv=orisrc[i];
             }
@@ -3316,7 +3348,7 @@ module GraphMsg {
       var DirectedFlag:bool=false;
       var WeightedFlag:bool=false;
 
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -3398,7 +3430,7 @@ module GraphMsg {
 
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref src, ref dst)  {
               on loc {
                   var line:string;
                   var a,b:int;
@@ -3505,7 +3537,7 @@ module GraphMsg {
 
 
 
-          forall i in 0..NewNe-1 {
+          forall i in 0..NewNe-1  with (ref mysrc, ref mydst){
              mysrc[i]=tmpsrc[i];
              mydst[i]=tmpdst[i];
           }
@@ -3519,9 +3551,9 @@ module GraphMsg {
 
 
           if (!DirectedFlag) { //undirected graph
-              coforall loc in Locales  {
+              coforall loc in Locales with (ref mysrcR, ref mydstR)  {
                   on loc {
-                       forall i in mysrcR.localSubdomain(){
+                       forall i in mysrcR.localSubdomain() with (ref mysrcR, ref mydstR){
                             mysrcR[i]=mydst[i];
                             mydstR[i]=mysrc[i];
                        }
@@ -3562,7 +3594,7 @@ module GraphMsg {
                   var DVertex : [rcDomain] domain(1);
                   var DEdge : [rcDomain] domain(1);
 
-                  coforall loc in Locales with (ref DVertex, ref DEdge) {
+                  coforall loc in Locales with (ref DVertex, ref DEdge, ref aligned_neiR, ref aligned_start_i, ref aligned_start_iR, ref aligned_srcR, ref aligned_dstR, ref aligned_nei ) {
                        on loc {
                            var Lver=mysrc[mysrc.localSubdomain().lowBound];
                            var Ledg=start_iR[Lver];
@@ -3614,24 +3646,24 @@ module GraphMsg {
                            aligned_dstR[here.id].new_dom(DEdge[1]);
                        }
                   }
-                  coforall loc in Locales {
+                  coforall loc in Locales with (ref aligned_nei, ref aligned_neiR, ref aligned_start_i, ref aligned_start_iR, ref aligned_srcR, ref aligned_dstR, ref myneighbour, ref myneighbourR , ref mystart_i ,ref mystart_iR, ref mysrcR, ref mydstR) {
                       on loc {
-                          forall i in aligned_nei[here.id].DO {
+                          forall i in aligned_nei[here.id].DO with (ref  aligned_nei,ref myneighbour) {
                               aligned_nei[here.id].A[i] = myneighbour[i];
                           }
-                          forall i in aligned_neiR[here.id].DO {
+                          forall i in aligned_neiR[here.id].DO with (ref  aligned_neiR, ref myneighbourR)  {
                               aligned_neiR[here.id].A[i] = myneighbourR[i];
                           }
-                          forall i in aligned_start_i[here.id].DO {
+                          forall i in aligned_start_i[here.id].DO with (ref aligned_start_i, ref mystart_i) {
                               aligned_start_i[here.id].A[i] = mystart_i[i];
                           }
-                          forall i in aligned_start_iR[here.id].DO {
+                          forall i in aligned_start_iR[here.id].DO with (ref aligned_start_iR,ref mystart_iR) {
                               aligned_start_iR[here.id].A[i] = mystart_iR[i];
                           }
-                          forall i in aligned_srcR[here.id].DO {
+                          forall i in aligned_srcR[here.id].DO with (ref aligned_srcR, ref mysrcR) {
                               aligned_srcR[here.id].A[i] = mysrcR[i];
                           }
-                          forall i in aligned_dstR[here.id].DO {
+                          forall i in aligned_dstR[here.id].DO with (ref aligned_dstR, ref mydstR)  {
                               aligned_dstR[here.id].A[i] = mydstR[i];
                           }
                       }
@@ -3647,8 +3679,10 @@ module GraphMsg {
 
               }
               if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   for i in 0..NewNe-1 {
                       mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
@@ -3666,9 +3700,9 @@ module GraphMsg {
           if (!DirectedFlag) { //undirected graph
               smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),
                       "Handle undirected graph");
-              coforall loc in Locales  {
+              coforall loc in Locales with (ref srcR, ref dstR)  {
                   on loc {
-                      forall i in srcR.localSubdomain(){
+                      forall i in srcR.localSubdomain() with (ref srcR, ref dstR){
                             srcR[i]=dst[i];
                             dstR[i]=src[i];
                        }
@@ -3714,7 +3748,7 @@ module GraphMsg {
                   var DVertex : [rcDomain] domain(1);
                   var DEdge : [rcDomain] domain(1);
 
-                  coforall loc in Locales with (ref DVertex, ref DEdge) {
+                  coforall loc in Locales with (ref DVertex, ref DEdge, ref aligned_nei,ref aligned_neiR, ref aligned_start_i, ref  aligned_start_iR, ref aligned_srcR, ref aligned_dstR) {
                        on loc {
                            var Lver=src[src.localSubdomain().lowBound];
                            var Ledg=start_iR[Lver];
@@ -3766,24 +3800,24 @@ module GraphMsg {
                            aligned_dstR[here.id].new_dom(DEdge[1]);
                        }
                   }
-                  coforall loc in Locales {
+                  coforall loc in Locales with (ref aligned_nei, ref aligned_neiR, ref aligned_start_i, ref aligned_start_iR, ref aligned_srcR, ref aligned_dstR, ref  neighbour,  ref  neighbourR, ref  start_i, ref start_iR, ref srcR, ref dstR) {
                       on loc {
-                          forall i in aligned_nei[here.id].DO {
+                          forall i in aligned_nei[here.id].DO with (ref aligned_nei, ref neighbour) {
                               aligned_nei[here.id].A[i] = neighbour[i];
                           }
-                          forall i in aligned_neiR[here.id].DO {
+                          forall i in aligned_neiR[here.id].DO with (ref aligned_neiR, ref neighbourR) {
                               aligned_neiR[here.id].A[i] = neighbourR[i];
                           }
-                          forall i in aligned_start_i[here.id].DO {
+                          forall i in aligned_start_i[here.id].DO with (ref aligned_start_i, ref  start_i) {
                               aligned_start_i[here.id].A[i] = start_i[i];
                           }
-                          forall i in aligned_start_iR[here.id].DO {
+                          forall i in aligned_start_iR[here.id].DO with (ref aligned_start_iR, ref start_iR) {
                               aligned_start_iR[here.id].A[i] = start_iR[i];
                           }
-                          forall i in aligned_srcR[here.id].DO {
+                          forall i in aligned_srcR[here.id].DO with (ref aligned_srcR, ref srcR) {
                               aligned_srcR[here.id].A[i] = srcR[i];
                           }
-                          forall i in aligned_dstR[here.id].DO {
+                          forall i in aligned_dstR[here.id].DO with (ref aligned_dstR, ref dstR) {
                               aligned_dstR[here.id].A[i] = dstR[i];
                           }
                       }
@@ -3800,8 +3834,10 @@ module GraphMsg {
 
               }
               if (WriteFlag) {
-                  var wf = open(FileName+".pr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".pr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   for i in 0..Ne-1 {
                       mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
@@ -3872,7 +3908,7 @@ module GraphMsg {
       var WeightedFlag:bool=false;
       type EweightType;
       type VweightType;
-      var timer: Timer;
+      var timer: stopwatch;
       var RCMFlag:bool=false;
       var DegreeSortFlag:bool=false;
       var RemapVertexFlag:bool=false;
@@ -3950,7 +3986,7 @@ module GraphMsg {
       var tmpmindegree:int =start_min_degree;
 
       try {
-           var f = open(FileName, iomode.r);
+           var f = open(FileName, ioMode.r);
            // we check if the file can be opened correctly
            f.close();
       } catch {
@@ -3959,10 +3995,12 @@ module GraphMsg {
       }
 
       proc readLinebyLine() throws {
-           coforall loc in Locales  {
+           coforall loc in Locales with (ref e_weight, ref src, ref dst)  {
               on loc {
-                  var f = open(FileName, iomode.r);
-                  var r = f.reader(kind=ionative);
+                  var f = open(FileName, ioMode.r);
+                  //var r = f.reader(serializer = new defaultSerializer());
+                  //var r = f.reader(kind=iokind.dynamic );
+                  var r = f.reader( );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -3972,7 +4010,8 @@ module GraphMsg {
                   var Nvsrc,Nvdst,Nedge:string;
 
 
-                  while r.readLine(line) {
+                  //while r.readLine(line) {
+                  for line in r.lines() {
                       if (line[0]=="%"||line[0]=="#") {
                           continue;
                       }
@@ -4070,9 +4109,9 @@ module GraphMsg {
       }
 
       if (!DirectedFlag) { //undirected graph
-          coforall loc in Locales  {
+          coforall loc in Locales with (ref srcR, ref dst, ref dstR, ref src)  {
               on loc {
-                  forall i in srcR.localSubdomain(){
+                  forall i in srcR.localSubdomain() with (ref srcR, ref dst, ref dstR, ref src){
                         srcR[i]=dst[i];
                         dstR[i]=src[i];
                    }
@@ -4119,7 +4158,7 @@ module GraphMsg {
               var DVertex : [rcDomain] domain(1);
               var DEdge : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref DVertex, ref DEdge) {
+              coforall loc in Locales with (ref DVertex, ref DEdge,ref aligned_nei, ref aligned_neiR, ref aligned_start_i, ref aligned_start_iR, ref aligned_srcR, ref aligned_dstR) {
                    on loc {
                        var Lver=src[src.localSubdomain().lowBound];
                        var Ledg=start_iR[Lver];
@@ -4171,24 +4210,24 @@ module GraphMsg {
                        aligned_dstR[here.id].new_dom(DEdge[1]);
                    }
               }
-              coforall loc in Locales {
+              coforall loc in Locales with (ref  aligned_nei, ref neighbour, ref aligned_neiR, ref neighbourR, ref aligned_start_i, ref start_i, ref aligned_start_iR, ref  start_iR, ref aligned_srcR, ref srcR, ref aligned_dstR, ref dstR) {
                   on loc {
-                      forall i in aligned_nei[here.id].DO {
+                      forall i in aligned_nei[here.id].DO with (ref aligned_nei, ref  neighbour){
                           aligned_nei[here.id].A[i] = neighbour[i];
                       }
-                      forall i in aligned_neiR[here.id].DO {
+                      forall i in aligned_neiR[here.id].DO with (ref aligned_neiR, ref neighbourR){
                           aligned_neiR[here.id].A[i] = neighbourR[i];
                       }
-                      forall i in aligned_start_i[here.id].DO {
+                      forall i in aligned_start_i[here.id].DO with (ref aligned_start_i, ref start_i){
                           aligned_start_i[here.id].A[i] = start_i[i];
                       }
-                      forall i in aligned_start_iR[here.id].DO {
+                      forall i in aligned_start_iR[here.id].DO with (ref aligned_start_iR, ref start_iR)  {
                           aligned_start_iR[here.id].A[i] = start_iR[i];
                       }
-                      forall i in aligned_srcR[here.id].DO {
+                      forall i in aligned_srcR[here.id].DO with (ref aligned_srcR, ref srcR) {
                           aligned_srcR[here.id].A[i] = srcR[i];
                       }
-                      forall i in aligned_dstR[here.id].DO {
+                      forall i in aligned_dstR[here.id].DO with (ref aligned_dstR, ref dstR) {
                           aligned_dstR[here.id].A[i] = dstR[i];
                       }
                   }
@@ -4285,7 +4324,7 @@ module GraphMsg {
 
               var DVertex : [rcDomain] domain(1);
 
-              coforall loc in Locales with (ref DVertex ) {
+              coforall loc in Locales with (ref DVertex ,ref aligned_nei, ref aligned_start_i ) {
                    on loc {
                        var Lver=src[src.localSubdomain().lowBound];
                        var Hver=src[src.localSubdomain().highBound];
@@ -4302,7 +4341,7 @@ module GraphMsg {
                        aligned_start_i[here.id].new_dom(DVertex[1]);
                    }
               }
-              coforall loc in Locales {
+              coforall loc in Locales with (ref aligned_nei, ref  neighbour, ref aligned_start_i, ref start_i) {
                   on loc {
                       forall i in aligned_nei[here.id].DO {
                           aligned_nei[here.id].A[i] = neighbour[i];
@@ -4323,8 +4362,10 @@ module GraphMsg {
         //}
       }//end of else
       if (WriteFlag) {
-                  var wf = open(FileName+".my.gr", iomode.cw);
-                  var mw = wf.writer(kind=ionative);
+                  var wf = open(FileName+".my.gr", ioMode.cw);
+                  //var mw = wf.writer(serializer = new defaultSerializer());
+                  //var mw = wf.writer(kind=iokind.dynamic );
+                  var mw = wf.writer( );
                   for i in 0..Ne-1 {
                       mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
                   }
@@ -4406,7 +4447,7 @@ module GraphMsg {
       // number of edges
       var Ne = Ne_per_v * Nv:int;
 
-      var timer:Timer;
+      var timer:stopwatch;
       timer.clear();
       timer.start();
       var n_vertices=Nv;
@@ -4439,12 +4480,12 @@ module GraphMsg {
       */
 
  
-      coforall loc in Locales  {
+      coforall loc in Locales with (ref src, ref dst)  {
           on loc {
-              forall i in src.localSubdomain() {
+              forall i in src.localSubdomain() with (ref src){
                   src[i]=1;
               }
-              forall i in dst.localSubdomain() {
+              forall i in dst.localSubdomain() with (ref dst) {
                   dst[i]=0;
               }
               //forall i in start_i.localSubdomain() {
@@ -4482,7 +4523,7 @@ module GraphMsg {
                  //var tmpvar: [0..Ne-1] real;
                  var tmpvar=src;
                  fillRandom(tmpvar);
-                 coforall loc in Locales  {
+                 coforall loc in Locales with (ref src_bit, ref tmpvar)   {
                        on loc {
                            forall i in src_bit.localSubdomain() {
                                  src_bit[i]=tmpvar[i]>ab;
@@ -4491,15 +4532,15 @@ module GraphMsg {
                  }
                  //src_bit=tmpvar>ab;
                  fillRandom(tmpvar);
-                 coforall loc in Locales  {
+                 coforall loc in Locales  with (ref dst_bit, ref tmpvar, ref src_bit) {
                        on loc {
-                           forall i in dst_bit.localSubdomain() {
+                           forall i in dst_bit.localSubdomain() with (ref dst_bit, ref tmpvar, ref src_bit) {
                                  dst_bit[i]=tmpvar[i]>(c_norm * src_bit[i] + a_norm * (~ src_bit[i]));
                            }       
                        }
                  }
                  //dst_bit=tmpvar>(c_norm * src_bit + a_norm * (~ src_bit));
-                 coforall loc in Locales  {
+                 coforall loc in Locales  with (ref dst_bit, ref dst, ref src, ref src_bit) {
                        on loc {
                            forall i in dst.localSubdomain() {
                                  dst[i]=dst[i]+ ((2**(ib-1)) * dst_bit[i]);
@@ -4512,9 +4553,9 @@ module GraphMsg {
                  //src = src + ((2**(ib-1)) * src_bit);
                  //dst = dst + ((2**(ib-1)) * dst_bit);
              }
-             coforall loc in Locales  {
+             coforall loc in Locales  with (ref src, ref dst){
                        on loc {
-                           forall i in src_bit.localSubdomain() {
+                           forall i in src_bit.localSubdomain()with (ref src, ref dst) {
                                  src[i]=src[i]+(src[i]==dst[i]);
                                  src[i]=src[i]%Nv;
                                  dst[i]=dst[i]%Nv;
@@ -4543,7 +4584,7 @@ module GraphMsg {
       }
       set_neighbour(src,start_i,neighbour);
 
-      forall i in 0..Nv-1 {
+      forall i in 0..Nv-1 with (ref OriVertexAry, ref src, ref start_i) {
               OriVertexAry[i]=src[start_i[i]];
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
@@ -4554,9 +4595,9 @@ module GraphMsg {
                .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
 
       if (!DirectedFlag) { //undirected graph
-              coforall loc in Locales  {
+              coforall loc in Locales with (ref srcR, ref dst, ref dstR, ref src)  {
                   on loc {
-                      forall i in srcR.localSubdomain(){
+                      forall i in srcR.localSubdomain() with (ref srcR, ref dst, ref dstR, ref src) {
                             srcR[i]=dst[i];
                             dstR[i]=src[i];
                        }
@@ -4649,7 +4690,7 @@ module GraphMsg {
 
 
 
-      var timer:Timer;
+      var timer:stopwatch;
 
       timer.start();
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
@@ -4798,7 +4839,7 @@ module GraphMsg {
 
 
 
-      var timer:Timer;
+      var timer:stopwatch;
 
       timer.start();
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);

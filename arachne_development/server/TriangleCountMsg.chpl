@@ -1,4 +1,4 @@
-module TriCntMsg {
+module RTriCntMsg {
     // Chapel modules.
     use Reflection;
     use Time;
@@ -7,7 +7,7 @@ module TriCntMsg {
     use GraphArray;
     use Utils;
     use Aggregators;
-    use TriangleCount;
+    use RTriangleCount;
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
@@ -154,7 +154,7 @@ module TriCntMsg {
 
               var tmptimer:stopwatch;
               tmptimer.start();
-              coforall loc in Locales {
+              coforall loc in Locales with (ref subTriSum)  {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -320,7 +320,7 @@ module TriCntMsg {
 
 
 
-            coforall loc in Locales {
+            coforall loc in Locales with (ref subTriSum) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.lowBound;
@@ -579,5 +579,5 @@ module TriCntMsg {
   }// end of segTriMsg
 
    use CommandMap;
-   registerFunction("segmentedGraphTri", segTriCntMsg,getModuleName());
+   registerFunction("RsegmentedGraphTri", segTriCntMsg,getModuleName());
 }
