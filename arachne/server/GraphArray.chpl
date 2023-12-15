@@ -16,24 +16,25 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,                    // The source array of every edge in the graph
-        DST,                    // The destination array of every edge in the graph
-        SEGMENTS,               // The segments of adjacency lists for each vertex in DST
-        RANGES,                 // Keeps the range of the vertices the edge list stores per locale
-        EDGE_WEIGHT,            // Stores the edge weights of the graph, if applicable
-        NODE_MAP,               // Doing an index of NODE_MAP[u] gives you the original value of u
-        VERTEX_LABELS,          // Any labels that belong to a specific node
-        VERTEX_LABELS_MAP,      // Sorted array of vertex labels to integer id (array index)
-        EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
-        EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
-        VERTEX_PROPS,           // Any properties that belong to a specific node
-        VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
-        VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
-        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column 
-        EDGE_PROPS,             // Any properties that belong to a specific edge
-        EDGE_PROPS_COL_MAP,     // Sorted array of edge property to integer id (array index)
-        EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
-        EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
+        SRC,                      // The source array of every edge in the graph
+        DST,                      // The destination array of every edge in the graph
+        SEGMENTS,                 // The segments of adjacency lists for each vertex in DST
+        RANGES,                   // Keeps the range of the vertices the edge list stores per locale
+        EDGE_WEIGHT,              // Stores the edge weights of the graph, if applicable
+        NODE_MAP,                 // Doing an index of NODE_MAP[u] gives you the original value of u
+        VERTEX_LABELS,            // Any labels that belong to a specific node
+        VERTEX_LABELS_MAP,        // Sorted array of vertex labels to integer id (array index)
+        EDGE_RELATIONSHIPS,       // The relationships that belong to specific edges
+        EDGE_RELATIONSHIPS_MAP,   // Sorted array of edge relationships to integer id (array index)
+        VERTEX_PROPS,             // Any properties that belong to a specific node
+        VERTEX_PROPS_COL_MAP,     // Sorted array of vertex property to integer id (array index)
+        VERTEX_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
+        VERTEX_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column 
+        EDGE_PROPS,               // Any properties that belong to a specific edge
+        EDGE_PROPS_COL_MAP,       // Sorted array of edge property to integer id (array index)
+        EDGE_PROPS_DTYPE_MAP,     // Sorted array of column datatype to integer id (array index)
+        EDGE_PROPS_COL2DTYPE,     // Map of column names to the datatype of the column
+        EDGE_PROPS_TO_SYM_TAB_ID, // Map of property name to the symbol table identifier for its array
 
         // For directed graphs we also want to maintain reversed edge arrays to easily find the
         // in-neighbors for each vertex. We will use the SRC_R and DST_R components below to 
@@ -98,6 +99,8 @@ module GraphArray {
         proc isDirected():bool { return this.directed; }
         proc isWeighted():bool { return this.weighted; }
         proc isPropertied():bool { return this.propertied; }
+        proc isMultied():bool { return this.multied; }
+        proc isReversed():bool { return this.reversed; }
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
@@ -147,16 +150,20 @@ module GraphArray {
     }
 
     class MapSymEntry : GenSymEntry {
-        var stored_map: map(string, string);
+        type left;
+        type right;
+        var stored_map: map(left, right);
         
-        proc init(ref map_to_store: map(string, string)) {
+        proc init(ref map_to_store: map(?left, ?right)) {
             super.init(string);
+            this.left = left;
+            this.right = right;
             this.stored_map = map_to_store;
         }
     }
 
     proc toMapSymEntry(e) {
-        return try! e : borrowed MapSymEntry;
+        return try! e : borrowed MapSymEntry(?);
     }
 
     proc toSymEntryAD(e) {

@@ -660,8 +660,10 @@ module PropertyGraphMsg {
         if src.size != internalIndices.size then consecutive = false;
         else {
             if internalIndices[0] != 0 then consecutive = false;
-            else if internalIndices[internalIndices.domain.high] != src.domain.high then consecutive = false;
-            else forall (v,d) in zip(internalIndices, internalIndices.domain) with (ref consecutive) do if v != d then consecutive = false;
+            else if internalIndices[internalIndices.domain.high] != src.domain.high 
+                 then consecutive = false;
+            else forall (v,d) in zip(internalIndices, internalIndices.domain) with (ref consecutive) 
+                 do if v != d then consecutive = false;
         }
         var sparseDataDomain: sparse subdomain(edgeDomain);
         if !consecutive then sparseDataDomain.bulkAddNoPreserveInds(internalIndices, dataSorted = true, isUnique = true);
@@ -674,7 +676,7 @@ module PropertyGraphMsg {
 
         // Use a map to keep track of the property (column) names to the symbol table identifier for
         // that property array. 
-        var propertyMapper = new map((string,int), string);
+        var propertyNameToSymTabId = new map((string,int), string);
 
         // Create new arrays for inputted dataframe data incase the original dataframe ever ceases
         // to exist.
@@ -682,7 +684,9 @@ module PropertyGraphMsg {
         var timer: stopwatch;
         timer.start();
         for i in 0..<columnIds.size {
-            var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(columnIds[i], st);
+            var dataArraySymbolTableIdentifier = columnIds[i];
+            propertyNameToSymTabId.add((columns[i], -1), dataArraySymbolTableIdentifier); // NOTE: -1 is the identifier for "belongs to all relationships."
+            var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArraySymbolTableIdentifier, st);
             var etype = dataArrayEntry.dtype;
             select etype {
                 when (DType.Int64) {
@@ -789,6 +793,7 @@ module PropertyGraphMsg {
             }
         }
         timer.stop();
+        graph.withComp(new shared MapSymEntry(propertyNameToSymTabId):GenSymEntry, "EDGE_PROPS_TO_SYM_TAB_ID");
         graph.withComp(new shared SegStringSymEntry(columns.offsets, columns.values, string):GenSymEntry, "EDGE_PROPS_COL_MAP");
         outMsg = "loadEdgeProperties took " + timer.elapsed():string + " sec ";
         
@@ -1024,7 +1029,8 @@ module PropertyGraphMsg {
         const ref entry = toSegStringSymEntry(graph.getComp("VERTEX_PROPS_COL_MAP"));
         var vertex_props_col_map = assembleSegStringFromParts(entry.offsetsEntry, entry.bytesEntry, st);
         var vertex_props_dtype_map = toSymEntry(graph.getComp("VERTEX_PROPS_DTYPE_MAP"), string).a;
-        var vertex_props_col2dtype = toMapSymEntry(graph.getComp("VERTEX_PROPS_COL2DTYPE")).stored_map;
+        // var vertex_props_col2dtype = toMapSymEntry(graph.getComp("VERTEX_PROPS_COL2DTYPE")).stored_map;
+        var vertex_props_col2dtype = (graph.getComp("VERTEX_PROPS_COL2DTYPE"):shared MapSymEntry(string,string)).stored_map;
         var return_array : [makeDistDom(graph.n_vertices)] bool;
         var dtype = vertex_props_col2dtype[column];
 
@@ -1353,7 +1359,8 @@ module PropertyGraphMsg {
         const ref entry = toSegStringSymEntry(graph.getComp("EDGE_PROPS_COL_MAP"));
         var edge_props_col_map = assembleSegStringFromParts(entry.offsetsEntry, entry.bytesEntry, st);
         var edge_props_dtype_map = toSymEntry(graph.getComp("EDGE_PROPS_DTYPE_MAP"), string).a;
-        var edge_props_col2dtype = toMapSymEntry(graph.getComp("EDGE_PROPS_COL2DTYPE")).stored_map;
+        // var edge_props_col2dtype = toMapSymEntry(graph.getComp("EDGE_PROPS_COL2DTYPE")).stored_map;
+        var edge_props_col2dtype = (graph.getComp("EDGE_PROPS_COL2DTYPE"):shared MapSymEntry(string,string)).stored_map;
         var return_array : [makeDistDom(graph.n_edges)] bool;
         var dtype = edge_props_col2dtype[column];
 
