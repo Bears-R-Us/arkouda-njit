@@ -1331,6 +1331,50 @@ class PropGraph(DiGraph):
         src, dst = src[edges_bool], dst[edges_bool]
 
         return (src,dst)
+    
+    def query_edge_attributes( self,
+                               column:str, value,
+                               op:str = "<" ) -> pdarray:
+        """Given a property name, value, and operator, performs a query and returns the edges that
+        match the query. Adhere to the operators accepted and ensure the values passed match the
+        same type of the property.
+
+        Parameters
+        ----------
+        column : str
+            String specifying the column being search within.
+        op : str
+            Operator to apply to the search. Candidates vary and are listed below:
+            `int64`, `uint64`, `float64`: "<", ">", "<=", ">=", "==", "<>". 
+            `bool`: "==", "<>".
+            `str`: "contains".
+        
+        Returns
+        -------
+        pdarray
+            Source and destination node names that contain the edges that match the query.
+        """
+        cmd = "queryEdgeAttributes"
+
+        args = {  "GraphName" : self.name,
+                  "Column" : column,
+                  "Value" : value,
+                  "Op" : op }
+
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        ### Manipulate data to turn internal vertex names to external ones.
+        # 1. Convert Boolean array to actual pdarray.
+        edges_bool:pdarray = create_pdarray(rep_msg)
+
+        # 2. Extract edges and nodes of the graph and convert them to original vertex names.
+        edges, nodes = self.edges(), self.nodes()
+        src, dst = edges[0], edges[1]
+        src:pdarray = nodes[src]
+        dst:pdarray = nodes[dst]
+        src, dst = src[edges_bool], dst[edges_bool]
+
+        return (src,dst)
 
     def one_path( self,
                   labels_to_find:pdarray, relationships_to_find:pdarray,
