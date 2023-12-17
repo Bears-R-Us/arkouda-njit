@@ -624,18 +624,21 @@ module PropertyGraphMsg {
     */
     proc loadEdgeAttributesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
-        proc addBlockArrayToSymbolTable(newData): string throws {
+        var propertyNameToSymTabId = new map((string,int), string); // map to keep track of stored properties
+        proc addBlockArrayToSymbolTable(newData, columnName): string throws {
             var attrName = st.nextName();
             var attrEntry = new shared SymEntry(newData);
             st.addEntry(attrName, attrEntry);
             var repMsg = "created " + st.attrib(attrName) + "+ ";
+            propertyNameToSymTabId.add((columnName, -1), attrName); // NOTE: -1 is the identifier for "belongs to all relationships."
             return repMsg;
         }
-        proc addSparseArrayToSymbolTable(newData): string throws {
+        proc addSparseArrayToSymbolTable(newData, columnName): string throws {
             var attrName = st.nextName();
             var attrEntry = new shared SymEntryAS(newData);
             st.addEntry(attrName, attrEntry);
             var repMsg = "created " + st.attrib(attrName) + "+ ";
+            propertyNameToSymTabId.add((columnName, -1), attrName); // NOTE: -1 is the identifier for "belongs to all relationships."
             return repMsg;
         }
 
@@ -674,18 +677,14 @@ module PropertyGraphMsg {
         var columnIds:SegString = getSegString(columnIdsName, st);
         var relationshipMapper = getSegString(relationshipMapperName, st);
 
-        // Use a map to keep track of the property (column) names to the symbol table identifier for
-        // that property array. 
-        var propertyNameToSymTabId = new map((string,int), string);
-
         // Create new arrays for inputted dataframe data incase the original dataframe ever ceases
         // to exist.
         var repMsg = "";
         var timer: stopwatch;
         timer.start();
         for i in 0..<columnIds.size {
+            var columnName = columns[i];
             var dataArraySymbolTableIdentifier = columnIds[i];
-            propertyNameToSymTabId.add((columns[i], -1), dataArraySymbolTableIdentifier); // NOTE: -1 is the identifier for "belongs to all relationships."
             var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArraySymbolTableIdentifier, st);
             var etype = dataArrayEntry.dtype;
             select etype {
@@ -694,11 +693,11 @@ module PropertyGraphMsg {
                     if consecutive {
                         var newData: [edgeDomain] int;
                         insertData(consecutive, originalData, newData, internalIndices, int);
-                        repMsg += addBlockArrayToSymbolTable(newData);
+                        repMsg += addBlockArrayToSymbolTable(newData, columnName);
                     } else {
                         var newData: [sparseDataDomain] int;
                         insertData(consecutive, originalData, newData, internalIndices, int);
-                        repMsg += addSparseArrayToSymbolTable(newData);
+                        repMsg += addSparseArrayToSymbolTable(newData, columnName);
                     }
                 }
                 when (DType.UInt64) {
@@ -706,11 +705,11 @@ module PropertyGraphMsg {
                     if consecutive {
                         var newData: [edgeDomain] uint;
                         insertData(consecutive, originalData, newData, internalIndices, uint);
-                        repMsg += addBlockArrayToSymbolTable(newData);
+                        repMsg += addBlockArrayToSymbolTable(newData, columnName);
                     } else {
                         var newData: [sparseDataDomain] uint;
                         insertData(consecutive, originalData, newData, internalIndices, uint);
-                        repMsg += addSparseArrayToSymbolTable(newData);
+                        repMsg += addSparseArrayToSymbolTable(newData, columnName);
                     }
                 }
                 when (DType.Float64) {
@@ -718,11 +717,11 @@ module PropertyGraphMsg {
                     if consecutive {
                         var newData: [edgeDomain] real;
                         insertData(consecutive, originalData, newData, internalIndices, real);
-                        repMsg += addBlockArrayToSymbolTable(newData);
+                        repMsg += addBlockArrayToSymbolTable(newData, columnName);
                     } else {
                         var newData: [sparseDataDomain] real;
                         insertData(consecutive, originalData, newData, internalIndices, real);
-                        repMsg += addSparseArrayToSymbolTable(newData);
+                        repMsg += addSparseArrayToSymbolTable(newData, columnName);
                     }
                 }
                 when (DType.Bool) {
@@ -730,11 +729,11 @@ module PropertyGraphMsg {
                     if consecutive {
                         var newData: [edgeDomain] bool;
                         insertData(consecutive, originalData, newData, internalIndices, bool);
-                        repMsg += addBlockArrayToSymbolTable(newData);
+                        repMsg += addBlockArrayToSymbolTable(newData, columnName);
                     } else {
                         var newData: [sparseDataDomain] bool;
                         insertData(consecutive, originalData, newData, internalIndices, bool);
-                        repMsg += addSparseArrayToSymbolTable(newData);
+                        repMsg += addSparseArrayToSymbolTable(newData, columnName);
                     }
                 }
                 when (DType.Strings) {
@@ -1576,6 +1575,164 @@ module PropertyGraphMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } //end of queryEdgePropertiesMsg
 
+    /**
+    * Queries the property graph and returns a boolean array indicating which edges match the query
+    * operation.
+    *
+    * :arg cmd: operation to perform. 
+    * :type cmd: string
+    * :arg msgArgs: arguments passed to backend. 
+    * :type msgArgs: borrowed MessageArgs
+    * :arg st: symbol table used for storage.
+    * :type st: borrowed SymTab
+    *
+    * :returns: MsgTuple
+    */
+    proc queryEdgeAttributesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
+        
+        // Parse the message from Python to extract needed data.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var column = msgArgs.getValueOf("Column");
+        var value = msgArgs.getValueOf("Value");
+        var op = msgArgs.getValueOf("Op");
+
+        // Extract graph data for usage in this function.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var graph = gEntry.graph;
+        var edgePropertiesMap = (graph.getComp("EDGE_PROPS_TO_SYM_TAB_ID"):shared MapSymEntry((string,int),string)).stored_map;
+        var arraySymTabName = edgePropertiesMap[(column, -1)];
+        var arrayGenSymEntry = getGenericTypedArrayEntry(arraySymTabName, st);
+        var dtype = dtype2str(arrayGenSymEntry.dtype);
+        var arrayType = ""; // helper variable for casting symbol table entries
+
+        // Create boolean array to be returned where the element is True or False if an edge index
+        // matches the query.
+        var return_array : [makeDistDom(graph.n_edges)] bool;
+
+        // Perform the querying operation in parallel.
+        var timer:stopwatch;
+        timer.start();
+        select dtype {
+            when "float64" {
+                try {
+                    var arraySymEntry = arrayGenSymEntry: borrowed SymEntry(real);
+                    writeln("\n\n\n\n we get here 1 \n\n\n\n\n");
+                    arrayType = "SymEntry";
+                } catch {
+                    arrayType = "non-block or sparse symbol table entry detected";
+                    writeln("\n\n\n\n we get here 2 \n\n\n\n\n");
+                }
+                try {
+                    var arraySymEntryAS = arrayGenSymEntry: borrowed SymEntryAS(real);
+                    arrayType = "SymEntryAS";
+                    writeln("\n\n\n\n we get here 3 \n\n\n\n\n");
+                } catch {
+                    arrayType = "non-block or sparse symbol table entry detected";
+                    writeln("\n\n\n\n we get here 4 \n\n\n\n\n");
+                }
+                writeln("\n\n\n\n\n");
+                writeln("$$$$$ arrayGenSymEntry = ", arrayGenSymEntry);
+                writeln("$$$$$ dtype = ", dtype);
+                writeln("$$$$$ arrayTtype = ", arrayType);
+                writeln("\n\n\n\n\n");
+                select op {
+                    when ">" {
+                        writeln("hi");
+                    }
+                    when "<" {
+                        writeln("hi");
+                    }
+                    when "<=" {
+                        writeln("hi");
+                    }
+                    when ">=" {
+                        writeln("hi");
+                    }
+                    when "==" {
+                        writeln("hi");
+                    }
+                    when "<>" {
+                        writeln("hi");
+                    }
+                }
+            }
+        //     when "int64" {
+        //         select op {
+        //             when ">" {
+        //                 writeln("hi");
+        //             }
+        //             when "<" {
+        //                 writeln("hi");
+        //             }
+        //             when "<=" {
+        //                 writeln("hi");
+        //             }
+        //             when ">=" {
+        //                 writeln("hi");
+        //             }
+        //             when "==" {
+        //                 writeln("hi");
+        //             }
+        //             when "<>" {
+        //                 writeln("hi");
+        //             }
+        //         }
+        //     }
+        //     when "uint64" {
+        //         select op {
+        //             when ">" {
+        //                 writeln("hi");
+        //             }
+        //             when "<" {
+        //                 writeln("hi");
+        //             }
+        //             when "<=" {
+        //                 writeln("hi");
+        //             }
+        //             when ">=" {
+        //                 writeln("hi");
+        //             }
+        //             when "==" {
+        //                 writeln("hi");
+        //             }
+        //             when "<>" {
+        //                 writeln("hi");
+        //             }
+        //         }
+        //     }
+        //     when "bool" {
+        //         var inner_value = value.toLower():bool;
+        //         select op {
+        //             when "==" {
+        //                 writeln("hi");
+        //             }
+        //             when "<>" {
+        //                 writeln("hi");
+        //             }
+        //         }
+        //     }
+        //     when "str" {
+        //         select op {
+        //             when "contains" {
+        //                 writeln("hi");
+        //             }
+        //         }
+        //     }
+        }
+        timer.stop();
+        var time_msg = "edge attributes query took " + timer.elapsed():string + " sec";
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),time_msg);
+
+        var retName = st.nextName();
+        var retEntry = new shared SymEntry(return_array);
+        st.addEntry(retName, retEntry);
+        var repMsg = 'created ' + st.attrib(retName);
+
+        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } //end of queryEdgeAttributesMsg
+
     use CommandMap;
     registerFunction("addNodeLabels", addNodeLabelsMsg, getModuleName());
     // registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
@@ -1589,5 +1746,6 @@ module PropertyGraphMsg {
     registerFunction("queryLabels", queryLabelsMsg, getModuleName());
     registerFunction("queryNodeProperties", queryNodePropertiesMsg, getModuleName());
     registerFunction("queryRelationships", queryRelationshipsMsg, getModuleName());
-    registerFunction("queryEdgeProperties", queryEdgePropertiesMsg, getModuleName());
+    // registerFunction("queryEdgeProperties", queryEdgePropertiesMsg, getModuleName());
+    registerFunction("queryEdgeAttributes", queryEdgeAttributesMsg, getModuleName());
 }
