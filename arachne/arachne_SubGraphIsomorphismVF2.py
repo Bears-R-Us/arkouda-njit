@@ -196,6 +196,8 @@ if __name__ == "__main__":
     import networkx as nx
     import time
 
+    # Get the NetworkX version
+    print("NetworkX version:", nx.__version__)
     # Creating directed graphs
     G = nx.DiGraph()
     H = nx.DiGraph()
@@ -205,11 +207,11 @@ if __name__ == "__main__":
     H.clear()
 
     # Adding nodes and edges to directed graphs
-    G.add_nodes_from(range(0, 9))
+    G.add_nodes_from(range(0, 10))
     G.add_edges_from([(3, 0), (1, 3), (4, 1), (2, 4), (5, 2), (3, 4), (4, 5), 
                       (3, 7), (7, 6), (4, 8), (5, 9),(1, 0),(2,1),(8, 7), (7,4), (8, 5), (9,8)])
 
-    H.add_nodes_from(range(0, 3))
+    H.add_nodes_from(range(0, 4))
     H.add_edges_from([(0, 1), (1, 2), (2, 0), (1, 3)])
     #H.add_edges_from([(3, 1), (1, 2), (2, 3), (1, 0)])
 
@@ -227,7 +229,7 @@ if __name__ == "__main__":
 
     # Find subgraph isomorphisms of H in G
     GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
-    subgraph_isomorphisms = list(GM.subgraph_isomorphisms_iter())
+    subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
 
     print("NetworkX subgraph_isomorphism found ISOs:", len(subgraph_isomorphisms))
     print("Subgraph isomorphisms found:")
@@ -310,5 +312,19 @@ if __name__ == "__main__":
     print("number of nodes: ", len(vertex_idsG))
     print("subgraph #edges: ", len(edgesH))
     print("subgraph #nodes: ", len(vertex_idsH))
+    
+    start_time = time.time()
+
+    mappings_df = ar.subgraph_isomorphism(prop_graph, subgraph, "ullmann")
+    #print(type(mappings_df)) 
+    # Access the DataFrame data
+    print("Ullmann subgraph_isomorphism run and this is the found ISOs")
+    print(mappings_df)
+    print(len(mappings_df))
+    
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print("Elapsed time:", elapsed_time, "seconds")
+    print("*********************************************************************************")
     ak.shutdown()
 

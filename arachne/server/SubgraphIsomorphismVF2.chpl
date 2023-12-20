@@ -349,6 +349,15 @@ module SubgraphIsomorphismVF2 {
             var state = new State();
 
             state.init(g1.n_vertices, g2.n_vertices);
+            /*
+            ///test
+            state.addPair(1, 0);
+            state = addToTinTout(newState, 1, 0);            
+            
+            state.addPair(3, 1);
+            state = addToTinTout(newState, 3, 1);
+            ///test
+            */
             return state;
 
         }  //end of createInitialState
@@ -366,8 +375,10 @@ module SubgraphIsomorphismVF2 {
         proc getUnmappedNodesg2(graph, state) throws {
             //writeln("-----------------getUnmappedNodesg2 called-------------------\n");
 
-            var unmapped: list(int);
-            for n in 0..<graph.n_vertices {
+            var unmapped: list(int);//
+            //var values = [1, 0, 2, 3];// ordered based on degree- I had worse results
+            for n in 0..<graph.n_vertices { 
+            //for n in values{    
                 if !state.isMappedn2(n) {
                     unmapped.pushBack(n);
                 }
@@ -381,7 +392,8 @@ module SubgraphIsomorphismVF2 {
         // based on old paper!!
         proc getCandidatePairsOpti(state:State) throws {
             //writeln("-----------------getCandidatePairsOpti called-------------------\n");
-//////////////////////// new version added Dec 5
+            //writeln("state = ", state);
+            //////////////////////// new version added Dec 5
 
             var candidates = new set((int, int), parSafe = true);
             
@@ -422,7 +434,7 @@ module SubgraphIsomorphismVF2 {
                                 }    
                             } 
                 }   
-            //if candidates.size == 0 then writeln("We made a huge mistake");
+            //writeln("candidates = ", candidates);
             return candidates;
 
         } // end of getCandidatePairsOPti
@@ -445,7 +457,7 @@ module SubgraphIsomorphismVF2 {
         // Check if candidates' pairs are feasible
         proc isFeasible(state: State, n1: int, n2: int) throws {
             //writeln("-----------------isFeasible called for (",n1,",", n2,")-------------------");
-//////////////////////// new version added Dec 13
+            //////////////////////// new version added Dec 13
             var termout1, termout2, termin1, termin2, new1, new2 : int =0 ;
 
             if !nodesLabelCompatible(n1, n2) {
@@ -617,7 +629,6 @@ module SubgraphIsomorphismVF2 {
 
             var posOffset = 0;
             // just to have a nice and readable output? should I get ride of it?!!!!! 
-            // why I did it?
             for solSet in solutions {
                 for (n1, n2) in solSet {
                     subIsoArrToReturn[posOffset + n2] = n1;

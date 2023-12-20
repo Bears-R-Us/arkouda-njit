@@ -117,25 +117,19 @@ module SubgraphIsomorphism {
 
             
             for u in 0..v-1 {
-                //writeln("$$$$$$$$$ We reached isIsomorphic 2");
-                //writeln(" u= ",u, " mapping[u]= ", mapping[u],"\n\n");
-
                 if mapping[u] > -1 {  // If u in H is mapped to some vertex in G
                                     // Check if there is an edge from u to v in H
-                    //writeln("if mapping[u] > -1 {");
                     var (flag_u_v_G2, rel_u_v_G2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, u, v, Orig_Relationships_Mapper_H_to_Pass);
 
                     if flag_u_v_G2 {
                         // Check if there is an edge from mapping[u] to mapping[v] in G
                         // And check if the edge labels are the same
-                        //writeln("We have an edge in subgraph. NOW lets check in G with mapped nodes:\n\n");
                         var um = mapping[u];
                         var vm = mapping[v];
                         
                         var (flag_um_vm_G1, rel_um_vm_G1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, um, vm, Orig_Relationships_Mapper_G_to_Pass);
                         
                         if !flag_um_vm_G1 || (rel_u_v_G2 != rel_um_vm_G1) {
-                            //writeln("-----------------isIsomorphic returned False1");
                             return false;
                         }
                     }
@@ -152,16 +146,13 @@ module SubgraphIsomorphism {
                         var (flag_vm_um_G1, rel_vm_um_G1) = PropGraphRelationshipMapper(segGraphG1, dstNodesG1, edgeRelationshipsGraphG1, vm, um, Orig_Relationships_Mapper_G_to_Pass);
 
                         if !flag_vm_um_G1 || rel_v_u_G2 != rel_vm_um_G1{
-                        //if um_found<0 || u_found <0{
-                            //writeln("if !PropGraphRelationshipMapper(G, vm, um, SymTablePassed)[0] || !PropGraphRelationshipMapper(H, v, u, SymTablePassed)[0]{");
-                            //writeln("-----------------isIsomorphic returned False2");
+
                             return false;
                         }
                     }
                 }
             }
-            //writeln("isiso return true ");
-            //writeln("-----------------isIsomorphic returned True");
+
 
             return true;
         }
@@ -170,8 +161,6 @@ module SubgraphIsomorphism {
         proc ullmannSubgraphIsomorphism11Helper(g1: SegGraph, g2: SegGraph, v: int, 
                                                 visited: [?D1] bool, mapping: [?D2] int, 
                                                 graphDegree: [?D3] int): list(int)  throws {
-            //writeln("-----------------ullmannSubgraphIsomorphism11Helper called-------------------");
-            //writeln("-----------------v = ",v," visited = ", visited,"mapping = ", mapping,"-------------------");
 
             var localIsoList: list(int, parSafe=true);  // List to store the isomorphisms found in the current branch
             var localIsoCounter = 0;  // Count the number of isomorphisms found in the current branch
@@ -184,9 +173,7 @@ module SubgraphIsomorphism {
                     // If the vertex can be added to the current mapping
                     if (isIsomorphic(v, mapping )) {
                         // If all vertices in H have been visited
-                        //writeln("Here 2");
                         if (v >= g2.n_vertices-1) {
-                            //writeln("Here 3");
                             var isComplete = true;  // Check if all vertices in the subgraph have been mapped
                             for j in 0..g2.n_vertices-1 {
                                 if (mapping[j] < 0) {
@@ -196,11 +183,8 @@ module SubgraphIsomorphism {
                             }
                             // If the mapping is complete, add the current mapping to the isomorphism list
                             if (isComplete) {
-                                //writeln("Here 4");
-                                //writeln("mapping = ", mapping);
                                 for elm in mapping{
                                     localIsoList.pushBack(elm);
-                                    //writeln("localIsoList = ", localIsoList);
                                 }    
                             }
                         }
@@ -268,21 +252,12 @@ module SubgraphIsomorphism {
                 visited = false;  // Initialize all vertices as unvisited
                 // Find isomorphisms for the current vertex v
                 var subIsoList = ullmannSubgraphIsomorphism11Helper(g1, g2, v, visited, mapping, graphDegree);
-                //writeln("$$$$$$ WE GET HERE 2");
-                //writeln("subIsoList =", subIsoList);
-                //writeln("subIsoList.size = ", subIsoList.size);
-                //writeln("subIsoList = ",subIsoList);
-
-                
-
                 if (subIsoList.size > 0) {
                     // Print isomorphisms found by the current task without merging
-                    //writeln("Passedjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjj");
-                    //writeln("subIsoListToReturn =", subIsoListToReturn);
+
                     var taskIsoCounter = 0;
                     for isoElm in subIsoList {
-                        //writeln("isoElm",isoElm);
-                        //taskIsoCounter += 1;
+
                         subIsoListToReturn.pushBack(isoElm);
                     }
                     
@@ -290,11 +265,7 @@ module SubgraphIsomorphism {
                     globalIsoCounter.add(taskIsoCounter);
                 }
             }
-            //subIsoListToReturn = subIsoList;
-            // Print the total number of isomorphisms found
-            //writeln("Total isomorphisms found: ", globalIsoCounter.read());
-            //writeln("subIsoListToReturn :",subIsoListToReturn);
-            //return (subIsoListToReturn, globalIsoCounter.read());
+
             return (subIsoListToReturn);
         } // end of ullmannSubgraphIsomorphism11
 
