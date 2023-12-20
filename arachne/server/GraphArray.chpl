@@ -142,10 +142,12 @@ module GraphArray {
         var sD: sparse subdomain(bD);
         var a: [sD] etype;
         
-        proc init(in a: [?D] ?etype) {
+        // TODO: fix error with sparse_subdomain assignment not being allowed.
+        proc init(in sparse_array: [?sparse_subdomain] ?etype) {
             super.init(etype);
             this.etype = etype;
-            this.a = a;
+            this.sD = sparse_subdomain;
+            this.a = sparse_array;
         }
     }
 
