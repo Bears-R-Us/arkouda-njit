@@ -1,10 +1,13 @@
 """Contains the graph class defintion for `PropGraph`."""
 
 from __future__ import annotations
-from typing import List
+from typing import List, Dict
+from sys import exit
 
 import arachne as ar
 import arkouda as ak
+
+__all__ = ["PropGraph"]
 
 class PropGraph(ar.DiGraph):
     """`PropGraph` is the base class to represent a property graph. It inherits from `DiGraph` since
@@ -54,8 +57,12 @@ class PropGraph(ar.DiGraph):
         The graph is a multi graph (True) or not a multi graph (False).
     edge_attributes : ak.DataFrame
         Dataframe containing the edges of the graph and their attributes. 
-    node_attributes : ak.DatafRame
+    node_attributes : ak.DataFrame
         Dataframe containing the nodes of the graph and their attributes.
+    relationship_mapper : Dict
+        List of the attribute (column) names that correspond to relationships.
+    label_mapper : Dict
+        List of the attribute (column) names that correspond to labels.
 
     See Also
     --------
@@ -70,46 +77,66 @@ class PropGraph(ar.DiGraph):
         super().__init__()
         self.multied = 0
         self.edge_attributes = ak.DataFrame()
+        self.relationship_mapper = Dict()
         self.node_attributes = ak.DataFrame()
+        self.label_mapper = Dict()
 
     def add_node_labels(self, labels:ak.DataFrame) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below. The column containing the nodes
-        should be called `nodes` and the column with labels should be called `labels.`
+        should be called `nodes`. Every column that is not the `nodes` column is inferred to be a
+        column containing labels. Duplicate nodes are removed.
         
         Parameters
         ----------
         labels : ak.DataFrame
-            `ak.DataFrame({"nodes" : nodes, "labels" : labels})`
+            `ak.DataFrame({"nodes" : nodes, "labels1" : labels1, ..., "labelsN" : labelsN})`
 
         Returns
         -------
         None
         """
         cmd = "addNodeLabels"
+        # 0. Do preliminary check to make sure any attribute (column) names do not already exist.
+        try:
+            [self.node_attributes[col] for col in labels.columns]
+        except KeyError:
+            raise KeyError("duplicated attribute (column) name in labels")
+            
+        set(self.node_attributes.columns).intersection(labels.columns)
 
-        ### Preprocessing steps for faster back-end array population.
-        # 0. Extract the nodes and labels from the dataframe.
-        vertex_ids = labels["nodes"]
-        vertex_labels = labels["labels"]
+        # 1. Extract the nodes and labels from the dataframe.
+        vertex_ids = None
+        try:
+            vertex_ids = labels["nodes"]
+        except KeyError:
+            raise KeyError("attributed (column) nodes does not exist in labels")
+        
+        labels = labels.drop("nodes", axis=1)
 
-        # 1. Convert labels to integers and store the index to label mapping in an array.
-        gb_labels = ak.GroupBy(vertex_labels)
-        new_label_ids = ak.arange(gb_labels.unique_keys.size)
-        vertex_labels = gb_labels.broadcast(new_label_ids)
-        label_mapper = gb_labels.unique_keys
+        # 2. Convert labels to integers and store the index to label mapping in the label_mapper.
+        for col in labels.columns:
+            if labels[col] is ak.Strings:
+                gb_labels = ak.GroupBy(labels)
+                new_label_ids = ak.arange(gb_labels.unique_keys.size)
+                new_vertex_labels = gb_labels.broadcast(new_label_ids)
+                self.label_mapper[col] = gb_labels.unique_keys
+                labels[col] = new_vertex_labels
+            else:
+                labels[col] = None
 
-        # 2. Convert the vertex_ids to internal vertex_ids.
+        # 3. Convert the vertex ids to internal vertex ids.
         vertex_map = self.nodes()
         inds = ak.in1d(vertex_ids, vertex_map) # Gets rid of vertex_ids that do not exist.
         vertex_ids = vertex_ids[inds]
-        vertex_labels = vertex_labels[inds]
+        labels = labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
 
-        # 3. GroupBy to sort the vertex ids and labels together and remove duplicates.
-        gb_vertex_ids_and_labels = ak.GroupBy([vertex_ids,vertex_labels])
-        vertex_ids = gb_vertex_ids_and_labels.unique_keys[0]
-        vertex_labels = gb_vertex_ids_and_labels.unique_keys[1]
+        # 4. GroupBy to sort the vertex ids and labels together and remove duplicates.
+        gb_vertex_ids = ak.GroupBy(vertex_ids)
+        vertex_ids = gb_vertex_ids.unique_keys[0]
+        inds = gb_vertex_ids.permutation[gb_vertex_ids.segments]
+        labels = labels[inds]
 
         args = { "GraphName" : self.name,
                  "VertexIdsName" : vertex_ids.name,
@@ -179,10 +206,92 @@ class PropGraph(ar.DiGraph):
 
         ak.generic_msg(cmd=cmd, args=args)
 
+    def load_node_attributes(self,
+                             node_attributes:ak.DataFrame,
+                             node_column:str,
+                             label_column:List(str)|str|None = None) -> None:
+        """Populates the graph object with attributes derived from the columns of a dataframe. Node
+        properties are different from node labels where labels just extra identifiers for nodes.
+        On the other hand, properties are key-value pairs more akin to storing the columns of a 
+        dataframe. The column to be used as the node labels can be denoted by setting the 
+        `label_column` parameter. A node can have multiple labels so `label_column` can be a list
+        of column names.
+        
+        Parameters
+        ----------
+        node_attributes : ak.DataFrame
+            `ak.DataFrame({"nodes" : nodes, "attribute1" : attribute1, ..., 
+                           "attributeN" : attributeN})`
+        node_column : str
+            The column denoting the values to be treated as the nodes of the graph.
+        label_column : List(str) | str | None
+            Name of the column(s) to be used to denote the labels of the nodes. 
+
+        See Also
+        --------
+        add_node_labels, add_edge_relationships, add_edge_attributes
+        """
+        cmd = "loadNodeAttributes"
+        columns = node_attributes.columns
+
+        ### Modify the inputted dataframe by sorting it.
+        # 1. Sort the data and remove duplicates.
+        node_attributes_sorted_idx = node_attributes.argsort( [ node_column ] )
+        node_attributes = node_attributes[node_attributes_sorted_idx]
+
+        # 2. Store the modified edge attributes into the class variable.
+        self.node_attributes = node_attributes
+
+        # 3. Extract the nodes column as a pdarray.
+        nodes = self.node_attributes[node_column]
+
+        # 2. Populate the graph object with labels if specified.
+        if label_column is not None and label_column is str:
+            self.add_node_labels(ak.DataFrame(
+                {"nodes":nodes,
+                 "labels":self.node_attributes[label_column]}))
+            self.edge_attributes.rename(column={label_column:"labels"}, inplace=True)
+            columns.remove(label_column)
+        elif label_column is List(str):
+            for col in label_column:
+
+
+        ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
+        # 1. Remove the first two column names, edge ids, since those are sent separately.
+        columns.remove(source_column)
+        columns.remove(destination_column)
+        column_names = ak.array(columns)
+
+        # 2. Extract symbol table names of arrays to use in the back-end.
+        column_ids = []
+        for column in columns:
+            column_ids.append(edge_attributes[column].name)
+        column_ids = ak.array(column_ids)
+
+        # 3. Sort the strings in size and lexical order.
+        perm = ak.GroupBy(column_names).permutation
+        column_names = column_names[perm]
+        column_ids = column_ids[perm]
+
+        # 4. Generate internal indices for the edges.
+        edges = self.edges()
+        nodes = self.nodes()
+        src = ak.find([src], [nodes])
+        dst = ak.find([dst], [nodes])
+        internal_indices = ak.find([src,dst], [edges[0],edges[1]])
+
+        args = { "GraphName" : self.name,
+                 "ColumnNames" : column_names.name,
+                 "ColumnIdsName" : column_ids.name,
+                 "InternalIndicesName" : internal_indices.name
+               }
+
+        ak.generic_msg(cmd=cmd, args=args)
+
     def load_edge_attributes(self,
                              edge_attributes:ak.DataFrame,
                              source_column:str,
-                             destination_column,
+                             destination_column:str,
                              relationship_column:str|None = None) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Edge
         properties are different from edge relationships where relationships are used to tell apart
@@ -197,17 +306,17 @@ class PropGraph(ar.DiGraph):
                            "attribute1" : attribute1, ..., "attributeN" : attributeN})`
         source_column : str
             The column denoting the values to be treated as the source vertices of an edge in 
-            a graph. If unset, the first column of `edge_attributes` is used. 
+            a graph.
         destination_column : str
             The column denoting the values to be treated as the destination vertices of an edge in
-            a graph. If unset, the second column of `edge_attributes` is used.
-        relationship_column : str
+            a graph.
+        relationship_column : str | None
             Name of the column to be used to denote the relationships of each edge. If unset, no
             column is used as relationships and multiple edges will be deleted.
 
         See Also
         --------
-        add_node_labels, add_edge_relationships, add_node_properties, add_edge_properties
+        add_node_labels, add_edge_relationships, add_node_attributes
         """
         cmd = "loadEdgeAttributes"
         columns = edge_attributes.columns
@@ -235,11 +344,13 @@ class PropGraph(ar.DiGraph):
             relationships = ak.full(len(src), "relationship", str)
             self.add_edge_relationships(ak.DataFrame({"source":src, "destination":dst,
                                                       "relationships":relationships}))
+            self.edge_attributes["relationships"] = relationships
         else:
             self.add_edge_relationships(ak.DataFrame(
                 {"source":src,
                  "destination":dst,
                  "relationships":edge_attributes[relationship_column]}))
+            self.edge_attributes.rename(column={relationship_column:"relationships"}, inplace=True)
             columns.remove(relationship_column)
 
         ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
@@ -274,16 +385,21 @@ class PropGraph(ar.DiGraph):
 
         ak.generic_msg(cmd=cmd, args=args)
 
-    def get_node_labels(self) -> ak.Strings | ak.pdarray:
+    def get_node_labels(self) -> ak.Strings | ak.pdarray | -1:
         """Returns the `pdarray` or `Strings` object holding the nodel labels of the `PropGraph`
-        object.
+        object. If return is -1 then no node labels found.
 
         Returns
         -------
-        `ak.Strings` | `ak.pdarray`
-            The node labels of the property graph.
+        `ak.Strings` | `ak.pdarray` | `int`
+            The node labels of the property graph. If return is -1 then no node labels found.
         """
-        return self.node_attributes["labels"]
+        labels = None
+        try:
+            labels = self.node_attributes["labels"]
+        except KeyError:
+            raise KeyError("no labels property found.")
+        return labels
 
     def get_node_attributes(self) -> ak.DataFrame:
         """Returns the `ak.DataFrame` object holding all the node attributes of the `PropGraph`
@@ -298,16 +414,22 @@ class PropGraph(ar.DiGraph):
 
     def get_edge_relationships(self) -> ak.Strings | ak.pdarray:
         """Returns the `pdarray` or `Strings` object holding the edge relationships of the 
-        `PropGraph` object.
+        `PropGraph` object. If return is -1 then no edge relationships found.
 
         Returns
         -------
-        `ak.Strings` | `ak.pdarray`
-            The edge relationships of the property graph.
+        `ak.Strings` | `ak.pdarray` | `int`
+            The edge relationships of the property graph. If return is -1 then no edge relationships 
+            found.
         """
-        return self.edge_attributes["relationships"]
+        labels = None
+        try:
+            labels = self.node_attributes["labels"]
+        except KeyError:
+            raise KeyError("no relationships property found.")
+        return labels
 
-    def get_edge_properties(self) -> ak.DataFrame:
+    def get_edge_attributes(self) -> ak.DataFrame:
         """Returns the `ak.DataFrame` object holding all the edge attributes of the `PropGraph`
         object.
 
