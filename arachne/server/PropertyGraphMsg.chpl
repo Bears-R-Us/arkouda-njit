@@ -120,12 +120,12 @@ module PropertyGraphMsg {
         var edgeRelationshipsName = msgArgs.getValueOf("EdgeRelationshipsName");
         var relationshipMapperName = msgArgs.getValueOf("RelationshipMapperName");
         
-        // Extract the actual arrays for each of the names above.
+        // Extract the actual arrays for internal edge indices and relationships.
         var internalEdgeIndicesEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(internalEdgeIndicesName, st);
         var internalEdgeIndicesSym = toSymEntry(internalEdgeIndicesEntry, int);
         var internalEdgeIndices = internalEdgeIndicesSym.a;
 
-        var edgeRelationshipsEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeRelationshipsEntry, st);
+        var edgeRelationshipsEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeRelationshipsName, st);
         var edgeRelationshipsSym = toSymEntry(edgeRelationshipsEntry, int);
         var edgeRelationships = edgeRelationshipsSym.a;
 
@@ -140,12 +140,12 @@ module PropertyGraphMsg {
         var timer:stopwatch;
         timer.start();
         var relationships = blockDist.createArray(srcActual.domain, domain(int));
-        forall (e,rel) in zip(internalEdgeIndices,edgeRelationships) do relationships[e] = rel;
+        forall (e,rel) in zip(internalEdgeIndices,edgeRelationships) do relationships[e] += rel;
         timer.stop();
         
         // Add the component for the node labels for the graph. 
         graph.withComp(new shared SymEntry(relationships):GenSymEntry, "EDGE_RELATIONSHIPS");
-        graph.withComp(new shared SegStringSymEntry(relationshipMapper.offsets, relationship_mapper.values, string):GenSymEntry, "EDGE_RELATIONSHIPS_MAP"); 
+        graph.withComp(new shared SegStringSymEntry(relationshipMapper.offsets, relationshipMapper.values, string):GenSymEntry, "EDGE_RELATIONSHIPS_MAP"); 
         var repMsg = "edge relationships added";
         outMsg = "addEdgeRelationships took " + timer.elapsed():string + " sec";
         
@@ -317,6 +317,7 @@ module PropertyGraphMsg {
         pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
+        if repMsg.size == 0 then repMsg = "no arrays created";
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of loadEdgePropertiesMsg
 
