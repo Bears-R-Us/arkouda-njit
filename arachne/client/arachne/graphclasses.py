@@ -17,7 +17,7 @@ from arkouda.dtypes import (
     resolve_scalar_dtype
 )
 
-__all__ = ["Graph", "DiGraph", "PropGraph"]
+__all__ = ["Graph", "DiGraph"]
 
 class Graph:
     """Base class for undirected graphs. 

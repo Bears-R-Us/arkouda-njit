@@ -19,9 +19,9 @@ module GraphArray {
         SRC,                      // The source array of every edge in the graph
         DST,                      // The destination array of every edge in the graph
         SEGMENTS,                 // The segments of adjacency lists for each vertex in DST
-        RANGES,                   // Keeps the range of the vertices the edge list stores per locale
         EDGE_WEIGHT,              // Stores the edge weights of the graph, if applicable
         NODE_MAP,                 // Doing an index of NODE_MAP[u] gives you the original value of u
+        RANGES,                   // Keeps the range of the vertices the edge list stores per locale
         VERTEX_LABELS,            // Any labels that belong to a specific node
         VERTEX_LABELS_MAP,        // Sorted array of vertex labels to integer id (array index)
         EDGE_RELATIONSHIPS,       // The relationships that belong to specific edges
