@@ -164,15 +164,15 @@ module BuildGraphMsg {
 
         // Create the ranges array that keeps track of the vertices the edge arrays store on each
         // locale.
-        var D_sbdmn = {0..numLocales-1} dmapped Replicated();
+        var D_sbdmn = {0..numLocales-1} dmapped replicatedDist();
         var ranges : [D_sbdmn] (int,locale);
 
         // Write the local subdomain low value to the ranges array.
-        coforall loc in Locales {
+        coforall loc in Locales with (ref ranges) {
             on loc {
                 var low_vertex = src[src.localSubdomain().low];
 
-                coforall rloc in Locales do on rloc { 
+                coforall rloc in Locales with (ref ranges) do on rloc { 
                     ranges[loc.id] = (low_vertex,loc);
                 }
             }
@@ -358,7 +358,7 @@ module BuildGraphMsg {
     
         // Start parsing through the file.
         var f = open(path, ioMode.r);
-        var r = f.reader(kind = ionative);
+        var r = f.reader();
         var line:string;
         var a,b,c:string;
 
