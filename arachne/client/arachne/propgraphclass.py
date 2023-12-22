@@ -97,6 +97,7 @@ class PropGraph(ar.DiGraph):
         None
         """
         cmd = "addNodeLabels"
+
         # 0. Do preliminary check to make sure any attribute (column) names do not already exist.
         try:
             [self.node_attributes[col] for col in labels.columns]
@@ -109,24 +110,24 @@ class PropGraph(ar.DiGraph):
             vertex_ids = labels["nodes"]
         except KeyError:
             raise KeyError("attribute (column) nodes does not exist in labels")
-        labels = labels.drop("nodes", axis=1)
+        labels.drop("nodes", axis=1, inplace=True)
 
         # 2. Convert labels to integers and store the index to label mapping in the label_mapper.
-        vertex_labels_symbol_table_ids = ""
-        vertex_labels_mapper_symbol_table_ids = ""
+        vertex_labels_symbol_table_ids = []
+        vertex_labels_mapper_symbol_table_ids = []
         for col in labels.columns:
-            if labels[col] is ak.Strings:
+            if isinstance(labels[col],ak.Strings):
                 gb_labels = ak.GroupBy(labels[col])
                 new_label_ids = ak.arange(gb_labels.unique_keys.size)
                 new_vertex_labels = gb_labels.broadcast(new_label_ids)
                 self.label_mapper[col] = gb_labels.unique_keys
-                labels[col] = new_vertex_labels
-                vertex_labels_mapper_symbol_table_ids += self.label_mapper[col].name + " + "
+                self.node_attributes[col] = new_vertex_labels
             else:
-                self.label_mapper[col] = None
-                vertex_labels_mapper_symbol_table_ids += "None + "
-            
-            vertex_labels_symbol_table_ids += labels[col].name + " + "
+                placeholder = ak.array([" "])
+                self.label_mapper[col] = placeholder
+
+            vertex_labels_symbol_table_ids.append(labels[col].name)
+            vertex_labels_mapper_symbol_table_ids.append(self.label_mapper[col].name)
 
         # 3. Convert the vertex ids to internal vertex ids.
         vertex_map = self.nodes()
@@ -135,7 +136,7 @@ class PropGraph(ar.DiGraph):
         labels = labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
 
-        # 4. GroupBy to sort the vertex ids and labels together and remove duplicates.
+        # 4. GroupBy to sort the vertex ids and remove duplicates.
         gb_vertex_ids = ak.GroupBy(vertex_ids)
         inds = gb_vertex_ids.permutation[gb_vertex_ids.segments]
         vertex_ids = vertex_ids[inds]
@@ -145,70 +146,10 @@ class PropGraph(ar.DiGraph):
         args = { "GraphName" : self.name,
                  "VertexIdsName" : vertex_ids.name,
                  "ColumnNames" : "+".join(labels.columns),
-                 "VertexLabelArrayNames" : vertex_labels_symbol_table_ids,
-                 "LabelMapperNames" : vertex_labels_mapper_symbol_table_ids
+                 "VertexLabelArrayNames" : "+".join(vertex_labels_symbol_table_ids),
+                 "LabelMapperNames" : "+".join(vertex_labels_mapper_symbol_table_ids)
         }
-        labels["nodes"] = vertex_ids
-        ak.generic_msg(cmd=cmd, args=args)
-
-    def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
-        """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
-        should follow the same format specified in the Parameters section below. The columns
-        containing the edges should be called `source` for the source vertex of an edge and 
-        `destination` for the destination vertex of the edge. The column with the relationships
-        should be called `relationships`. 
         
-        Parameters
-        ----------
-        relationships : ak.DataFrame
-            `ak.DataFrame({"source" : source, "destination" : destination,
-                           "relationships" : relationships})`
-
-        Returns
-        -------
-        None
-        """
-        cmd = "addEdgeRelationships"
-
-        ### Preprocessing steps for faster back-end array population.
-        # 0. Extract the source and destination vertices and the relationships from the dataframe.
-        src_vertex_ids = relationships["source"]
-        dst_vertex_ids = relationships["destination"]
-        edge_relationships = relationships["relationships"]
-
-        # 1. Convert the relationships to integers and store the index to label mapping in an array.
-        gb_relationships = ak.GroupBy(edge_relationships)
-        new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
-        edge_relationships = gb_relationships.broadcast(new_relationship_ids)
-        relationship_mapper = gb_relationships.unique_keys
-
-        # 2. Convert the source and destination vertex ids to the internal vertex_ids.
-        vertex_map = self.nodes()
-        src_vertex_ids = ak.find(src_vertex_ids, vertex_map)
-        dst_vertex_ids = ak.find(dst_vertex_ids, vertex_map)
-
-        # 3. Ensure all edges are actually present in the underlying graph data structure.
-        edges = self.edges()
-        edge_inds = ak.in1d([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
-        src_vertex_ids = src_vertex_ids[edge_inds]
-        dst_vertex_ids = dst_vertex_ids[edge_inds]
-        edge_relationships = edge_relationships[edge_inds]
-
-        # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
-        gb_edges_and_relationships = ak.GroupBy([src_vertex_ids,dst_vertex_ids,edge_relationships])
-        src_vertex_ids = gb_edges_and_relationships.unique_keys[0]
-        dst_vertex_ids = gb_edges_and_relationships.unique_keys[1]
-        edge_relationships = gb_edges_and_relationships.unique_keys[2]
-
-        # 5. Generate internal edge indices.
-        internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
-
-        args = {  "GraphName" : self.name,
-                  "InternalEdgeIndicesName" : internal_edge_indices.name, 
-                  "EdgeRelationshipsName" : edge_relationships.name,
-                  "RelationshipMapperName" : relationship_mapper.name
-        }
-
         ak.generic_msg(cmd=cmd, args=args)
 
     def load_node_attributes(self,
@@ -240,9 +181,10 @@ class PropGraph(ar.DiGraph):
         columns = node_attributes.columns
 
         ### Modify the inputted dataframe by sorting it.
-        # 1. Sort the data, don't remove duplicates.
-        node_attributes_sorted_idx = ak.argsort(node_attributes[node_column])
-        node_attributes = node_attributes[node_attributes_sorted_idx]
+        # 1. Sort the data and remove duplicates since each node can only have one instance of a
+        #    property.
+        node_attributes_gb = node_attributes.groupby([ node_column ])
+        node_attributes = node_attributes[node_attributes_gb.permutation[node_attributes_gb.segments]]
 
         # 2. Store the modified edge attributes into the class variable.
         self.node_attributes = node_attributes
@@ -263,24 +205,16 @@ class PropGraph(ar.DiGraph):
             labels_to_add["nodes"] = nodes
             self.add_node_labels(ak.DataFrame(labels_to_add))
 
-        ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
-        # 1. Remove the first two column names, edge ids, since those are sent separately.
+        ### Prepare the columns that are to be sent to the back-end to be stored per node.
+        # 1. From columns remove nodes and any other columns that were handled by adding node
+        #    labels.
+        columns = [col for col in columns if col not in label_columns]
         columns.remove(node_column)
-        columns.remove(label_columns)
-        column_names = ak.array(columns)
 
         # 2. Extract symbol table names of arrays to use in the back-end.
-        column_ids = []
-        for column in columns:
-            column_ids.append(node_attributes[column].name)
-        column_ids = ak.array(column_ids)
+        column_ids = [node_attributes[col].name for col in columns]
 
-        # 3. Sort the strings in size and lexical order.
-        perm = ak.GroupBy(column_names).permutation
-        column_names = column_names[perm]
-        column_ids = column_ids[perm]
-
-        # 4. Generate internal indices for the edges.
+        # 3. Generate internal indices for the nodes.
         vertex_map = self.nodes()
         inds = ak.in1d(nodes, vertex_map) # Gets rid of vertex_ids that do not exist.
         vertex_ids = nodes[inds]
@@ -288,10 +222,85 @@ class PropGraph(ar.DiGraph):
         vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
 
         args = { "GraphName" : self.name,
-                 "ColumnNames" : column_names.name,
-                 "ColumnIdsName" : column_ids.name,
+                 "ColumnNames" : "+".join(columns),
+                 "ColumnIdsName" : "+".join(column_ids),
                  "InternalIndicesName" : vertex_ids.name
                }
+        ak.generic_msg(cmd=cmd, args=args)
+
+    def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
+        """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
+        should follow the same format specified in the Parameters section below. The columns
+        containing the edges should be called `source` for the source vertex of an edge and 
+        `destination` for the destination vertex of the edge. The column with the relationships
+        should be called `relationships`. 
+        
+        Parameters
+        ----------
+        relationships : ak.DataFrame
+            `ak.DataFrame({"src" : source, "dst" : destination, "relationship1" : relationship1,
+                           ..., "relationshipN" : relationshipN})`
+
+        Returns
+        -------
+        None
+        """
+        cmd = "addEdgeRelationships"
+
+        # 0. Do preliminary check to make sure any attribute (column) names do not already exist.
+        try:
+            [self.edge_attributes[col] for col in relationships.columns]
+        except KeyError:
+            raise KeyError("duplicated attribute (column) name in relationships")
+
+        # 1. Extract the nodes from the dataframe and drop them from the labels dataframe.
+        src, dst = (None, None)
+        try:
+            src, dst = (relationships["src"], relationships["dst"])
+        except KeyError:
+            raise KeyError("attribute (column) src or dst does not exist in relationship")
+        relationships.drop(["src", "dst"], axis=1, inplace=True)
+
+        # 2. Convert relationships to integers and store the index to relationship mapping in
+        #    the relationship_mapper.
+        edge_relationships_symbol_table_ids = []
+        edge_relationships_mapper_symbol_table_ids = []
+        for col in relationships.columns:
+            if isinstance(relationships[col],ak.Strings):
+                gb_relationships = ak.GroupBy(relationships[col])
+                new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
+                new_edge_relationships = gb_relationships.broadcast(new_relationship_ids)
+                self.relationship_mapper[col] = gb_relationships.unique_keys
+                self.edge_attributes[col] = new_edge_relationships
+            else:
+                placeholder = ak.array([" "])
+                self.relationship_mapper[col] = placeholder
+
+            edge_relationships_symbol_table_ids.append(relationships[col].name)
+            edge_relationships_mapper_symbol_table_ids.append(self.relationship_mapper[col].name)
+
+        # 3. Convert the source and destination vertex ids to the internal vertex_ids.
+        vertex_map = self.nodes()
+        src_vertex_ids = ak.find(src, vertex_map)
+        dst_vertex_ids = ak.find(dst, vertex_map)
+
+        # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
+        gb_edges = ak.GroupBy([src_vertex_ids,dst_vertex_ids])
+        inds = gb_edges.permutation[gb_edges.segments]
+        src_vertex_ids = src[inds]
+        dst_vertex_ids = dst[inds]
+        relationships = relationships[inds]
+
+        # 5. Generate internal edge indices.
+        edges = self.edges()
+        internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+
+        args = {  "GraphName" : self.name,
+                  "InternalEdgeIndicesName" : internal_edge_indices.name, 
+                  "ColumnNames" : "+".join(relationships.columns),
+                  "EdgeRelationshipArrayNames" : "+".join(edge_relationships_symbol_table_ids),
+                  "RelationshipMapperNames" : "+".join(edge_relationships_mapper_symbol_table_ids)
+        }
 
         ak.generic_msg(cmd=cmd, args=args)
 
@@ -299,7 +308,7 @@ class PropGraph(ar.DiGraph):
                              edge_attributes:ak.DataFrame,
                              source_column:str,
                              destination_column:str,
-                             relationship_column:str|None = None) -> None:
+                             relationship_columns:List(str)|str|None = None) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Edge
         properties are different from edge relationships where relationships are used to tell apart
         multiple edges. On the other hand, properties are key-value pairs more akin to storing the 
@@ -346,39 +355,31 @@ class PropGraph(ar.DiGraph):
         # 1. Populate the graph object with edges.
         super().add_edges_from(src, dst)
 
-        # TODO: Fix relationship handling, must match the node labels format.
-        # # 2. Populate the graph object with relationships.
-        # if relationship_column is None:
-        #     relationships = ak.full(len(src), "relationship", str)
-        #     self.add_edge_relationships(ak.DataFrame({"source":src, "destination":dst,
-        #                                               "relationships":relationships}))
-        #     self.edge_attributes["relationships"] = relationships
-        # else:
-        #     self.add_edge_relationships(ak.DataFrame(
-        #         {"source":src,
-        #          "destination":dst,
-        #          "relationships":edge_attributes[relationship_column]}))
-        #     self.edge_attributes.rename(column={relationship_column:"relationships"}, inplace=True)
-        #     columns.remove(relationship_column)
+        # 2. Populate the graph object with relationships.
+        if relationship_columns is not None and relationship_columns is str:
+            self.add_edge_relationships(ak.DataFrame({
+                    "src":src,
+                    "dst":dst,
+                    "relationships":self.edge_attributes[relationship_columns]
+                })
+            )
+            columns.remove(relationship_columns)
+        elif isinstance(relationship_columns, list):
+            relationships_to_add = {col: edge_attributes[col] for col in relationship_columns}
+            relationships_to_add["src"] = src
+            relationships_to_add["dst"] = dst
+            self.add_edge_relationships(ak.DataFrame(relationships_to_add))
 
         ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
         # 1. Remove the first two column names, edge ids, since those are sent separately.
+        columns = [col for col in columns if col not in relationship_columns]
         columns.remove(source_column)
         columns.remove(destination_column)
-        column_names = ak.array(columns)
 
         # 2. Extract symbol table names of arrays to use in the back-end.
-        column_ids = []
-        for column in columns:
-            column_ids.append(edge_attributes[column].name)
-        column_ids = ak.array(column_ids)
+        column_ids = [edge_attributes[col].name for col in columns]
 
-        # 3. Sort the strings in size and lexical order.
-        perm = ak.GroupBy(column_names).permutation
-        column_names = column_names[perm]
-        column_ids = column_ids[perm]
-
-        # 4. Generate internal indices for the edges.
+        # 3. Generate internal indices for the edges.
         edges = self.edges()
         nodes = self.nodes()
         src = ak.find([src], [nodes])
@@ -386,11 +387,10 @@ class PropGraph(ar.DiGraph):
         internal_indices = ak.find([src,dst], [edges[0],edges[1]])
 
         args = { "GraphName" : self.name,
-                 "ColumnNames" : column_names.name,
-                 "ColumnIdsName" : column_ids.name,
+                 "ColumnNames" : "+".join(columns),
+                 "ColumnIdsName" : "+".join(column_ids),
                  "InternalIndicesName" : internal_indices.name
                }
-
         ak.generic_msg(cmd=cmd, args=args)
 
     def get_node_labels(self) -> ak.Strings | ak.pdarray | -1:
@@ -404,9 +404,12 @@ class PropGraph(ar.DiGraph):
         """
         labels = None
         try:
-            labels = self.node_attributes[self.label_mapper.keys]
+            indexer = list(self.label_mapper.keys())
+            ns = ["nodes"]
+            ns.extend(indexer)
+            labels = self.node_attributes[ns]
         except KeyError:
-            raise KeyError("no labels property found.")
+            raise KeyError("no label(s) found.")
         return labels
 
     def get_node_attributes(self) -> ak.DataFrame:
@@ -430,12 +433,15 @@ class PropGraph(ar.DiGraph):
             The edge relationships of the property graph. If return is -1 then no edge relationships 
             found.
         """
-        labels = None
+        relationships = None
         try:
-            labels = self.node_attributes[self.relationship_mapper.keys]
+            indexer = list(self.relationship_mapper.keys())
+            es = ["src", "dst"]
+            es.extend(indexer)
+            relationships = self.edge_attributes[es]
         except KeyError:
-            raise KeyError("no relationships property found.")
-        return labels
+            raise KeyError("no relationship(s) found.")
+        return relationships
 
     def get_edge_attributes(self) -> ak.DataFrame:
         """Returns the `ak.DataFrame` object holding all the edge attributes of the `PropGraph`
