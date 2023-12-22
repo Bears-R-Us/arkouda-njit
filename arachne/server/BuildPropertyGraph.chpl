@@ -48,7 +48,7 @@ module BuildPropertyGraph {
 
     proc insertArrays (attributes, attributeSymTabIds, ref attributeMap: map(?), consecutive:bool, sparseDataDomain, ref internalIndices, st:borrowed SymTab, mapper: [?D] string = blockDist.createArray({0..0}, string)) throws {
         var repMsg = "";
-        for i in 0..<attributeSymTabIds.size {
+        for i in attributes.domain {
             var attributeName = attributes[i];
             var dataArraySymTabId = attributeSymTabIds[i];
             var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArraySymTabId, st);
