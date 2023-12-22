@@ -29,26 +29,47 @@ module SubgraphIsomorphismVF2 {
                     Orig_Relationships_Mapper_H_to_Pass: [?D6] string):[] int throws {
         
         // Extract the g1/G information from PropGraph DS
-        var srcNodesG1 = toSymEntry(g1.getComp("SRC"), int).a;
-        var dstNodesG1 = toSymEntry(g1.getComp("DST"), int).a;
-        var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS"), int).a;
+        var srcNodesG1Dis = toSymEntry(g1.getComp("SRC"), int).a;
+        var dstNodesG1Dis = toSymEntry(g1.getComp("DST"), int).a;
+        var segGraphG1Dis = toSymEntry(g1.getComp("SEGMENTS"), int).a;
         var edgeRelationshipsGraphG1 = toSymEntry(g1.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
         var nodeLabels_GraphG1 = toSymEntry(g1.getComp("VERTEX_LABELS"), domain(int)).a;
         var nodeMap_GraphG1 = toSymEntry(g1.getComp("NODE_MAP"), int).a;
-        var srcRG1 = toSymEntry(g1.getComp("SRC_R"), int).a;
-        var dstRG1 = toSymEntry(g1.getComp("DST_R"), int).a;
-        var segRG1 = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
+        var srcRG1Dis = toSymEntry(g1.getComp("SRC_R"), int).a;
+        var dstRG1Dis = toSymEntry(g1.getComp("DST_R"), int).a;
+        var segRG1Dis = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
+        // make them local
+        var srcNodesG1: [0..<srcNodesG1Dis.size] int;        srcNodesG1 = srcNodesG1Dis;
+        var dstNodesG1: [0..<dstNodesG1Dis.size] int;        dstNodesG1 = dstNodesG1Dis;
+        var segGraphG1: [0..<segGraphG1Dis.size] int;        segGraphG1 = segGraphG1Dis;
+        //var edgeRelationshipsGraphG1: [0..<edgeRelationshipsGraphG1Dis.size] int;        edgeRelationshipsGraphG1 = edgeRelationshipsGraphG1Dis;
+        //var nodeLabels_GraphG1: [0..<nodeLabels_GraphG1Dis.size] int;        nodeLabels_GraphG1 = nodeLabels_GraphG1Dis;
+        //var nodeMap_GraphG1: [0..<nodeMap_GraphG1Dis.size] int;        nodeMap_GraphG1 = nodeMap_GraphG1Dis;
+        var srcRG1: [0..<srcRG1Dis.size] int;        srcRG1 = srcRG1Dis;
+        var dstRG1: [0..<dstRG1Dis.size] int;        dstRG1 = dstRG1Dis;
+        var segRG1: [0..<segRG1Dis.size] int;        segRG1 = segRG1Dis;
+
 
         // Extract the g2/H information from PropGraph DS
-        var srcNodesG2 = toSymEntry(g2.getComp("SRC"), int).a;
-        var dstNodesG2 = toSymEntry(g2.getComp("DST"), int).a;
-        var segGraphG2 = toSymEntry(g2.getComp("SEGMENTS"), int).a;
+        var srcNodesG2Dis = toSymEntry(g2.getComp("SRC"), int).a;
+        var dstNodesG2Dis = toSymEntry(g2.getComp("DST"), int).a;
+        var segGraphG2Dis = toSymEntry(g2.getComp("SEGMENTS"), int).a;
         var edgeRelationshipsGraphG2 = toSymEntry(g2.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
         var nodeLabels_GraphG2 = toSymEntry(g2.getComp("VERTEX_LABELS"), domain(int)).a;
-        var srcRG2 = toSymEntry(g2.getComp("SRC_R"), int).a;
-        var dstRG2 = toSymEntry(g2.getComp("DST_R"), int).a;
-        var segRG2 = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-
+        var nodeMap_GraphG2 = toSymEntry(g2.getComp("NODE_MAP"), int).a;
+        var srcRG2Dis = toSymEntry(g2.getComp("SRC_R"), int).a;
+        var dstRG2Dis = toSymEntry(g2.getComp("DST_R"), int).a;
+        var segRG2Dis = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
+        // make them local
+        var srcNodesG2: [0..<srcNodesG2Dis.size] int;        srcNodesG2 = srcNodesG2Dis;
+        var dstNodesG2: [0..<dstNodesG2Dis.size] int;        dstNodesG2 = dstNodesG2Dis;
+        var segGraphG2: [0..<segGraphG2Dis.size] int;        segGraphG2 = segGraphG2Dis;
+        //var edgeRelationshipsGraphG2: [0..<edgeRelationshipsGraphG2Dis.size] int;        edgeRelationshipsGraphG2 = edgeRelationshipsGraphG2Dis;
+        //var nodeLabels_GraphG2: [0..<nodeLabels_GraphG2Dis.size] int;        nodeLabels_GraphG2 = nodeLabels_GraphG2Dis;
+        //var nodeMap_GraphG2: [0..<nodeMap_GraphG2Dis.size] int;        nodeMap_GraphG2 = nodeMap_GraphG2Dis;
+        var srcRG2: [0..<srcRG2Dis.size] int;        srcRG2 = srcRG2Dis;
+        var dstRG2: [0..<dstRG2Dis.size] int;        dstRG2 = dstRG2Dis;
+        var segRG2: [0..<segRG2Dis.size] int;        segRG2 = segRG2Dis;
          
         //var IsoArr:[0..1] int;
         
