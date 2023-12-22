@@ -16,25 +16,16 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,                      // The source array of every edge in the graph
-        DST,                      // The destination array of every edge in the graph
-        SEGMENTS,                 // The segments of adjacency lists for each vertex in DST
-        EDGE_WEIGHT,              // Stores the edge weights of the graph, if applicable
-        NODE_MAP,                 // Doing an index of NODE_MAP[u] gives you the original value of u
-        RANGES,                   // Keeps the range of the vertices the edge list stores per locale
-        VERTEX_LABELS,            // Any labels that belong to a specific node
-        VERTEX_LABELS_MAP,        // Sorted array of vertex labels to integer id (array index)
-        EDGE_RELATIONSHIPS,       // The relationships that belong to specific edges
-        EDGE_RELATIONSHIPS_MAP,   // Sorted array of edge relationships to integer id (array index)
-        VERTEX_PROPS,             // Any properties that belong to a specific node
-        VERTEX_PROPS_COL_MAP,     // Sorted array of vertex property to integer id (array index)
-        VERTEX_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
-        VERTEX_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column 
-        EDGE_PROPS,               // Any properties that belong to a specific edge
-        EDGE_PROPS_COL_MAP,       // Sorted array of edge property to integer id (array index)
-        EDGE_PROPS_DTYPE_MAP,     // Sorted array of column datatype to integer id (array index)
-        EDGE_PROPS_COL2DTYPE,     // Map of column names to the datatype of the column
-        EDGE_PROPS_TO_SYM_TAB_ID, // Map of property name to the symbol table identifier for its array
+        SRC,                      // Array holding the source vertices of an edge
+        DST,                      // Array holding the destination vertices of an edge
+        SEGMENTS,                 // Array giving the segments of a neighborhood in DST
+        EDGE_WEIGHT,              // Array giving the edge weights of the graph
+        NODE_MAP,                 // Array where NODE_MAP[u] gives the original value of u
+        RANGES,                   // Replicated array of the low vertex value in SRC per locale
+        VERTEX_LABELS,            // Map of type (string, (string,SegStringSymEntry)
+        EDGE_RELATIONSHIPS,       // Map of type (string, (string,SegStringSymEntry)
+        VERTEX_PROPS,             // Map of type (string, (string,string))
+        EDGE_PROPS,               // Map of type (string, (string,string))
 
         // For directed graphs we also want to maintain reversed edge arrays to easily find the
         // in-neighbors for each vertex. We will use the SRC_R and DST_R components below to 
