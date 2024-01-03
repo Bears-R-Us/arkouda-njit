@@ -227,6 +227,12 @@ module BuildPropertyGraphMsg {
         var aligned:bool = isAligned(edgeIds);
         var consecutive:bool = isConsecutive(edgeIds);
 
+        writeln("\n\n\n\n\n\n");
+        writeln("aligned = ", aligned);
+        writeln("consecutive = ", consecutive);
+        writeln("edgeIds = ", edgeIds);
+        writeln("\n\n\n\n\n\n");
+
         // Create sparse domain to hold data 
         var sparseDataDomain: sparse subdomain(edgeDomain);
         if !consecutive then 
