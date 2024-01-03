@@ -287,8 +287,8 @@ class PropGraph(ar.DiGraph):
         # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
         gb_edges = ak.GroupBy([src_vertex_ids,dst_vertex_ids])
         inds = gb_edges.permutation[gb_edges.segments]
-        src_vertex_ids = src[inds]
-        dst_vertex_ids = dst[inds]
+        src_vertex_ids = src_vertex_ids[inds]
+        dst_vertex_ids = dst_vertex_ids[inds]
         relationships = relationships[inds]
 
         # 5. Generate internal edge indices.
