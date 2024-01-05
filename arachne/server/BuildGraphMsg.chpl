@@ -111,7 +111,7 @@ module BuildGraphMsg {
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
             .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
             .withComp(new shared SymEntry(segments):GenSymEntry, "SEGMENTS")
-            .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
+            .withComp(new shared SymEntry(vmap):GenSymEntry, "VERTEX_MAP");
 
         if weighted {
             select akarray_weight_entry.dtype {
@@ -308,7 +308,7 @@ module BuildGraphMsg {
             .withComp(new shared SymEntry(neiR):GenSymEntry, "NEIGHBOR_R")
             .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
             .withComp(new shared SymEntry(start_iR):GenSymEntry, "START_IDX_R")
-            .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
+            .withComp(new shared SymEntry(vmap):GenSymEntry, "VERTEX_MAP");
 
         // Add graph to the specific symbol table entry. 
         var graphEntryName = st.nextName();
