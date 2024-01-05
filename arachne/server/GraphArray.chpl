@@ -20,7 +20,7 @@ module GraphArray {
         DST,                      // Array holding the destination vertices of an edge
         SEGMENTS,                 // Array giving the segments of a neighborhood in DST
         EDGE_WEIGHT,              // Array giving the edge weights of the graph
-        NODE_MAP,                 // Array where NODE_MAP[u] gives the original value of u
+        VERTEX_MAP,               // Array where VERTEX_MAP[u] gives the original value of u
         RANGES,                   // Replicated array of the low vertex value in SRC per locale
         VERTEX_LABELS,            // Map of type (string, (string,SegStringSymEntry)
         EDGE_RELATIONSHIPS,       // Map of type (string, (string,SegStringSymEntry)
@@ -116,7 +116,10 @@ module GraphArray {
         }
     }
 
-    class SymEntryAD : GenSymEntry {
+    /**
+    * Allows storage of associative arrays in the Symbol Table (SymTab).
+    */
+    class AssociativeSymEntry : GenSymEntry {
         var aD: domain(int);
         var a: [aD] int;
         
@@ -127,7 +130,12 @@ module GraphArray {
         }
     }
 
-    class SymEntryAS : GenSymEntry {
+    /**
+    * Allows storage of sparse arrays in the Symbol Table (SymTab).
+    * NOTE: Currently returns an error since assignment of an inputted sparse subdomain to an 
+    *       already-created sparse subdomain is not allowed. Workaround is incoming.
+    */
+    class SparseSymEntry : GenSymEntry {
         type etype;
         var bD: makeDistDom(1).type;
         var sD: sparse subdomain(bD);
@@ -159,12 +167,12 @@ module GraphArray {
         return try! e : borrowed MapSymEntry(?);
     }
 
-    proc toSymEntryAD(e) {
-        return try! e : borrowed SymEntryAD();
+    proc toAssociativeSymEntry(e) {
+        return try! e : borrowed AssociativeSymEntry();
     }
 
-    proc toSymEntryAS(e) {
-        return try! e : borrowed SymEntryAS();
+    proc toSparseSymEntry(e) {
+        return try! e : borrowed SparseSymEntry();
     }
 
     /**
@@ -202,9 +210,9 @@ module GraphArray {
     }
 
     class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
-        var indicesEntry: shared SymEntryAS(int);
+        var indicesEntry: shared SparseSymEntry(int);
 
-        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SymEntryAS(int), type etype) {
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(int), type etype) {
             super.init(offsetsSymEntry, bytesSymEntry, etype);
             this.indicesEntry = indicesSymEntry;
         }

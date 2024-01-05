@@ -2,12 +2,9 @@ module BuildPropertyGraphMsg {
     // Chapel modules.
     use Reflection;
     use Time;
-    use List;
     use Sort;
     use Map;
     use BlockDist;
-    use BlockCycDist;
-    use CommDiagnostics;
     
     // Arachne Modules.
     use Utils; 
@@ -21,323 +18,358 @@ module BuildPropertyGraphMsg {
     use ServerConfig;
     use ServerErrors;
     use ServerErrorStrings;
-    use SegmentedString;
-    use ArgSortMsg;
     use AryUtil;
     use Logging;
     use Message;
-    use CommAggregation;
     
     // Server message logger. 
     private config const logLevel = LogLevel.DEBUG;
-    const pgmLogger = new Logger(logLevel);
+    const bpgmLogger = new Logger(logLevel);
     var outMsg:string;
 
     /**
-    * Adds node labels to the nodes of a property graph.
-    *
-    * :arg cmd: operation to perform. 
-    * :type cmd: string
-    * :arg msgArgs: arguments passed to backend. 
-    * :type msgArgs: borrowed MessageArgs
-    * :arg st: symbol table used for storage.
-    * :type st: borrowed SymTab
-    *
-    * :returns: MsgTuple
+    * Message parser that calls function to add labels to the vertices of a property graph.
+    
+    :arg cmd: operation to perform. 
+    :type cmd: string
+    :arg msgArgs: arguments passed to backend. 
+    :type msgArgs: borrowed MessageArgs
+    :arg st: symbol table used for storage.
+    :type st: borrowed SymTab
+    
+    :returns: MsgTuple
     */
     proc addNodeLabelsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
 
         // Parse the message from Python.
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var vertexIdsName = msgArgs.getValueOf("VertexIdsName");
+        var graphName = msgArgs.getValueOf("GraphName");
+        var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
         var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
-        var vertexLabelArrayNames = msgArgs.getValueOf("VertexLabelArrayNames").split("+");
-        var labelMapperArrayNames = msgArgs.getValueOf("LabelMapperNames").split("+");
+        var labelArrayNames = msgArgs.getValueOf("LabelArrayNames").split("+");
+        var labelMapperNames = msgArgs.getValueOf("LabelMapperNames").split("+");
 
-        // Map to keep track of symbol table id for the label array to the dataframe column and its
-        // mapper, if applicable.
-        var labelSymTabIdToColumnAndMapper = new map(string, (string, borrowed SegStringSymEntry));
-        // NOTE: Map types cannot be generic, so SegStringSymEntry cannot be nil, therefore, we need
-        //       a placeholder SegStringSymEntry for the labels that do not have a mapper.
+        // Map to keep track of symbol table id for a label array to the dataframe column name and 
+        // its mapper, if applicable.
+        var vertexLabels = new map(string, (string, borrowed SegStringSymEntry));
+        // NOTE: Map types cannot be generic, therefore, we need a placeholder SegStringSymEntry for 
+        //       non-string labels.
         
-        // Extract the vertices with labels to be inputted.
-        var vertexIdsEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(vertexIdsName, st);
-        var vertexIdsSym = toSymEntry(vertexIdsEntry, int);
-        var vertexIds = vertexIdsSym.a;
+        // Extract the indices (internal representation of vertices) with labels to be inputted.
+        var inputIndicesEntry = getGenericTypedArrayEntry(inputIndicesName, st);
+        var inputIndicesSym = toSymEntry(inputIndicesEntry, int);
+        var inputIndices = inputIndicesSym.a;
 
-        // Extract the graph we are operating with from the symbol table.
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
+        // Extract the graph we are inputting new data into.
+        var graphEntry: borrowed GraphSymEntry = getGraphSymEntry(graphName, st); 
+        var graph = graphEntry.graph;
         
-        // Extract the node_map array to get the domain for the nodes.
-        var nodeMap = toSymEntry(graph.getComp("NODE_MAP"), int).a;
-        var nodeDomain = nodeMap.domain;
+        // Extract the vertex domain for the graph, the domain also represents the internal
+        // representations of the vertices of the graph.
+        var vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
+        var vertexDomain = vertexMap.domain;
 
-        // Ensure vertexIds begin at 0 and end at n-1 and all values within are consecutive, if not
-        // then values are added to a sparse domain based off the original node domain.
-        var aligned:bool = isAligned(vertexIds);
-        var consecutive:bool = isConsecutive(vertexIds);
+        // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
+        // if not then values are added to a sparse domain based off the original vertex domain.
+        var aligned:bool = isAligned(inputIndices);
+        var consecutive:bool = isConsecutive(inputIndices);
 
-        // Create sparse domain to hold data 
-        var sparseDataDomain: sparse subdomain(nodeDomain);
+        // Create sparse domain from the original vertex domain to hold new data to be inputted.
+        var sparseVertexDomain: sparse subdomain(vertexDomain);
         if !consecutive then 
-            sparseDataDomain.bulkAddNoPreserveInds(vertexIds, dataSorted = true, isUnique = true);
+            sparseVertexDomain.bulkAddNoPreserveInds(inputIndices, dataSorted=true, isUnique=true);
         if !aligned && consecutive then 
-            nodeDomain = blockDist.createDomain({vertexIds[vertexIds.domain.low]..vertexIds[vertexIds.domain.high]});
+            vertexDomain = blockDist.createDomain(
+                {inputIndices[inputIndices.domain.low]..inputIndices[inputIndices.domain.high]}
+            ); // Block domains can be created as long as the range is consecutive.
 
-        // NOTE: Temporary restriction to utilizing sparse arrays. 
+        // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
+        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
-            pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
 
-        // Create the array of domains that will store the labels for our vertices.
+        // Call helper method that handles attribute insertions regardless of the type of attribute
+        // or of the datatype of each attribute.
         var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertArrays(columnNames, vertexLabelArrayNames, labelSymTabIdToColumnAndMapper, consecutive, sparseDataDomain, vertexIds, st, labelMapperArrayNames);
+        var repMsg:string = insertAttributes(   columnNames, labelArrayNames, vertexLabels, 
+                                                consecutive, sparseVertexDomain, inputIndices, st, 
+                                                labelMapperNames
+        );
         timer.stop();
 
-        // Add the component for the node labels for the graph.
-        graph.withComp(new shared MapSymEntry(labelSymTabIdToColumnAndMapper):GenSymEntry, "VERTEX_LABELS");
+        // Add the component for the vertex labels for the graph.
+        graph.withComp(new shared MapSymEntry(vertexLabels):GenSymEntry, "VERTEX_LABELS");
         timer.stop();
         outMsg = "addNodeLabels took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         if repMsg.size == 0 then repMsg = "no arrays created";
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addNodeLabelsMsg
 
     /**
-    * Loads node attributes to the internal node representations of a property graph.
-    *
-    * :arg cmd: operation to perform. 
-    * :type cmd: string
-    * :arg msgArgs: arguments passed to backend. 
-    * :type msgArgs: borrowed MessageArgs
-    * :arg st: symbol table used for storage.
-    * :type st: borrowed SymTab
-    *
-    * :returns: MsgTuple
+    Message parser that calls function to add properties to the vertices of a property graph.
+    
+    :arg cmd: operation to perform. 
+    :type cmd: string
+    :arg msgArgs: arguments passed to backend. 
+    :type msgArgs: borrowed MessageArgs
+    :arg st: symbol table used for storage.
+    :type st: borrowed SymTab
+    
+    :returns: MsgTuple
     */
-    proc loadNodeAttributesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc addNodePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
 
-        // Map to keep track of stored attributes. The string inside of the tuple is to denote the 
-        // relationship that a specific property belongs to.
-        var propertyNameToSymTabId = new map(string, (string, string));
-
         // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var graphName = msgArgs.getValueOf("GraphName");
+        var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
         var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
-        var columnIdNames = msgArgs.getValueOf("ColumnIdsName").split("+");
-        var internalIndicesName = msgArgs.getValueOf("InternalIndicesName");
+        var propertyArrayNames = msgArgs.getValueOf("PropertyArrayNames").split("+");
 
-        // Extract the graph we are operating with from the symbol table.
-        var gEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
-        var src = toSymEntry(graph.getComp("SRC"), int).a;
-        var edgeDomain = blockDist.createDomain(src.domain);
-        var internalIndicesEntry = getGenericTypedArrayEntry(internalIndicesName, st);
-        var internalIndices = toSymEntry(internalIndicesEntry, int).a;
+        // Map to keep track of the symbol table id for a property array to the dataframe column
+        // name and the label it belongs to, if applicable.
+        var vertexProps = new map(string, (string, string));
+
+        // Extract the indices (internal representation of vertices) with properties to be inputted.
+        var inputIndicesEntry = getGenericTypedArrayEntry(inputIndicesName, st);
+        var inputIndicesSym = toSymEntry(inputIndicesEntry, int);
+        var inputIndices = inputIndicesSym.a;
+
+        // Extract the graph we are inputting new data into.
+        var graphEntry: borrowed GraphSymEntry = getGraphSymEntry(graphName, st); 
+        var graph = graphEntry.graph;
+
+        // Extract the vertex domain for the graph, the domain also represents the internal
+        // representations of the vertices of the graph.
+        var vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
+        var vertexDomain = vertexMap.domain;
         
-        // Ensure internalIndices begin at 0 and end at n-1 and all values within are consecutive, if not
-        // then values are added to a sparse domain based off the original edge domain.
-        var aligned:bool = isAligned(internalIndices);
-        var consecutive:bool = isConsecutive(internalIndices);
+        // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
+        // if not then values are added to a sparse domain based off the original vertex domain.
+        var aligned:bool = isAligned(inputIndices);
+        var consecutive:bool = isConsecutive(inputIndices);
 
-        // Create sparse domain to hold data 
-        var sparseDataDomain: sparse subdomain(edgeDomain);
+        // Create sparse domain from the original vertex domain to hold new data to be inputted.
+        var sparseVertexDomain: sparse subdomain(vertexDomain);
         if !consecutive then 
-            sparseDataDomain.bulkAddNoPreserveInds(internalIndices, dataSorted = true, isUnique = true);
+            sparseVertexDomain.bulkAddNoPreserveInds(inputIndices, dataSorted=true, isUnique=true);
         if !aligned && consecutive then 
-            edgeDomain = blockDist.createDomain({internalIndices[internalIndices.domain.low]..internalIndices[internalIndices.domain.high]});
+            vertexDomain = blockDist.createDomain(
+                {inputIndices[inputIndices.domain.low]..inputIndices[inputIndices.domain.high]}
+            ); // Block domains can be created as long as the range is consecutive.
 
-        // NOTE: Temporary restriction to utilizing sparse arrays. 
+        // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
+        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
-            pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
 
-        // Create new arrays for inputted dataframe data incase the original dataframe ever ceases
-        // to exist.
-        var timer: stopwatch;
+        // Call helper method that handles attribute insertions regardless of the type of attribute
+        // or of the datatype of each attribute.
+        var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertArrays(columnNames, columnIdNames, propertyNameToSymTabId, consecutive, sparseDataDomain, internalIndices, st);
+        var repMsg:string = insertAttributes(   columnNames, propertyArrayNames, vertexProps, 
+                                                consecutive, sparseVertexDomain, inputIndices, st 
+        );
         timer.stop();
-        graph.withComp(new shared MapSymEntry(propertyNameToSymTabId):GenSymEntry, "VERTEX_PROPS");
-        outMsg = "loadNodeProperties took " + timer.elapsed():string + " sec ";
+
+        // Add the component for the vertex properties for the graph.
+        graph.withComp(new shared MapSymEntry(vertexProps):GenSymEntry, "VERTEX_PROPS");
+        timer.stop();
+        outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         if repMsg.size == 0 then repMsg = "no arrays created";
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of loadNodeAttributesMsg
+    } // end of addNodePropertiesMsg
 
     /**
-    * Adds edge relationships to the edges of a property graph.
-    *
-    * :arg cmd: operation to perform. 
-    * :type cmd: string
-    * :arg msgArgs: arguments passed to backend. 
-    * :type msgArgs: borrowed MessageArgs
-    * :arg st: symbol table used for storage.
-    * :type st: borrowed SymTab
-    *
-    * :returns: MsgTuple
+    Message parser that calls function to add relationships to the edges of a property graph.
+    
+    :arg cmd: operation to perform. 
+    :type cmd: string
+    :arg msgArgs: arguments passed to backend. 
+    :type msgArgs: borrowed MessageArgs
+    :arg st: symbol table used for storage.
+    :type st: borrowed SymTab
+    
+    :returns: MsgTuple
     */
     proc addEdgeRelationshipsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
 
         // Parse the message from Python.
-        var graphEntryName = msgArgs.getValueOf("GraphName");
-        var edgeIdsName = msgArgs.getValueOf("InternalEdgeIndicesName");
+        var graphName = msgArgs.getValueOf("GraphName");
+        var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
         var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
-        var edgeRelationshipArrayNames = msgArgs.getValueOf("EdgeRelationshipArrayNames").split("+");
-        var relationshipMapperArrayNames = msgArgs.getValueOf("RelationshipMapperNames").split("+");
+        var relationshipArrayNames = msgArgs.getValueOf("RelationshipArrayNames").split("+");
+        var relationshipMapperNames = msgArgs.getValueOf("RelationshipMapperNames").split("+");
 
-        // Map to keep track of symbol table id for the relationship array to the dataframe column 
-        // and its mapper, if applicable.
-        var relationshipSymTabIdToColumnAndMapper = new map(string, (string, borrowed SegStringSymEntry));
-        // NOTE: Map types cannot be generic, so SegStringSymEntry cannot be nil, therefore, we need
-        //       a placeholder SegStringSymEntry for the labels that do not have a mapper.
+        // Map to keep track of symbol table id for a relationship array to the dataframe column 
+        // name and its mapper, if applicable.
+        var edgeRelationships = new map(string, (string, borrowed SegStringSymEntry));
+        // NOTE: Map types cannot be generic, therefore, we need a placeholder SegStringSymEntry for 
+        //       non-string labels.
         
-        // Extract the edges with relationships to be inputted.
-        var edgeIdsEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeIdsName, st);
-        var edgeIdsSym = toSymEntry(edgeIdsEntry, int);
-        var edgeIds = edgeIdsSym.a;
+        // Extract the indices (internal representation of edges) with relationships to be inputted.
+        var inputIndicesEntry = getGenericTypedArrayEntry(inputIndicesName, st);
+        var inputIndicesSym = toSymEntry(inputIndicesEntry, int);
+        var inputIndices = inputIndicesSym.a;
 
-        // Extract the graph we are operating with from the symbol table.
-        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
+        // Extract the graph we are inputting new data into.
+        var graphEntry: borrowed GraphSymEntry = getGraphSymEntry(graphName, st); 
+        var graph = graphEntry.graph;
         
-        // Extract the src array to get the domain for the edges.
+        // Extract the edge domain for the graph, the domain represents the internal index
+        // representations of the edges of the graph.
         var src = toSymEntry(graph.getComp("SRC"), int).a;
         var edgeDomain = src.domain;
 
-        // Ensure edgeIds begin at 0 and end at n-1 and all values within are consecutive, if not
-        // then values are added to a sparse domain based off the original edge domain.
-        var aligned:bool = isAligned(edgeIds);
-        var consecutive:bool = isConsecutive(edgeIds);
+        // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
+        // if not then values are added to a sparse domain based off the original edge domain.
+        var aligned:bool = isAligned(inputIndices);
+        var consecutive:bool = isConsecutive(inputIndices);
 
-        writeln("\n\n\n\n\n\n");
-        writeln("aligned = ", aligned);
-        writeln("consecutive = ", consecutive);
-        writeln("edgeIds = ", edgeIds);
-        writeln("\n\n\n\n\n\n");
-
-        // Create sparse domain to hold data 
-        var sparseDataDomain: sparse subdomain(edgeDomain);
+        // Create sparse domain from the original edge domain to hold new data to be inputted.
+        var sparseEdgeDomain: sparse subdomain(edgeDomain);
         if !consecutive then 
-            sparseDataDomain.bulkAddNoPreserveInds(edgeIds, dataSorted = true, isUnique = true);
+            sparseEdgeDomain.bulkAddNoPreserveInds(inputIndices, dataSorted=true, isUnique=true);
         if !aligned && consecutive then 
-            edgeDomain = blockDist.createDomain({edgeIds[edgeIds.domain.low]..edgeIds[edgeIds.domain.high]});
+            edgeDomain = blockDist.createDomain(
+                {inputIndices[inputIndices.domain.low]..inputIndices[inputIndices.domain.high]}
+            ); // Block domains can be created as long as the range is consecutive.
 
-        // NOTE: Temporary restriction to utilizing sparse arrays. 
+        // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
+        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
-            pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
 
-        // Create the array of domains that will store the labels for our vertices.
+        // Call helper method that handles attribute insertions regardless of the type of attribute
+        // or of the datatype of each attribute.
         var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertArrays(columnNames, edgeRelationshipArrayNames, relationshipSymTabIdToColumnAndMapper, consecutive, sparseDataDomain, edgeIds, st, relationshipMapperArrayNames);
+        var repMsg:string = insertAttributes(   columnNames, relationshipArrayNames, 
+                                                edgeRelationships, consecutive, sparseEdgeDomain, 
+                                                inputIndices, st, relationshipMapperNames
+        );
         timer.stop();
 
-        // Add the component for the node labels for the graph.
-        graph.withComp(new shared MapSymEntry(relationshipSymTabIdToColumnAndMapper):GenSymEntry, "EDGE_RELATIONSHIPS");
+        // Add the component for the edge relationships for the graph.
+        graph.withComp(new shared MapSymEntry(edgeRelationships):GenSymEntry, "EDGE_RELATIONSHIPS");
         timer.stop();
         outMsg = "addEdgeRelationships took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         if repMsg.size == 0 then repMsg = "no arrays created";
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addEdgeRelationshipsMsg
 
     /**
-    * Loads edge attributes to the internal edges of a property graph.
-    *
-    * :arg cmd: operation to perform. 
-    * :type cmd: string
-    * :arg msgArgs: arguments passed to backend. 
-    * :type msgArgs: borrowed MessageArgs
-    * :arg st: symbol table used for storage.
-    * :type st: borrowed SymTab
-    *
-    * :returns: MsgTuple
+    Message parser that calls function to add properties to the edges of a property graph.
+    
+    :arg cmd: operation to perform. 
+    :type cmd: string
+    :arg msgArgs: arguments passed to backend. 
+    :type msgArgs: borrowed MessageArgs
+    :arg st: symbol table used for storage.
+    :type st: borrowed SymTab
+    
+    :returns: MsgTuple
     */
-    proc loadEdgeAttributesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc addEdgePropertiesMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
 
-        // Map to keep track of stored attributes. The string inside of the tuple is to denote the 
-        // relationship that a specific property belongs to.
-        var propertyNameToSymTabId = new map(string, (string, string));
-
         // Parse the message from Python to extract needed data. 
-        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var graphName = msgArgs.getValueOf("GraphName");
+        var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
         var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
-        var columnIdNames = msgArgs.getValueOf("ColumnIdsName").split("+");
-        var internalIndicesName = msgArgs.getValueOf("InternalIndicesName");
+        var propertyArrayNames = msgArgs.getValueOf("PropertyArrayNames").split("+");
 
-        // Extract the graph we are operating with from the symbol table.
-        var gEntry = getGraphSymEntry(graphEntryName, st); 
-        var graph = gEntry.graph;
+        // Map to keep track of the symbol table id for a property array to the dataframe column
+        // name and the label it belongs to, if applicable.
+        var edgeProps = new map(string, (string, string));
+
+        // Extract the indices (internal representation of edges) with properties to be inputted.
+        var inputIndicesEntry = getGenericTypedArrayEntry(inputIndicesName, st);
+        var inputIndicesSym = toSymEntry(inputIndicesEntry, int);
+        var inputIndices = inputIndicesSym.a;
+
+        // Extract the graph we are inputting new data into.
+        var graphEntry: borrowed GraphSymEntry = getGraphSymEntry(graphName, st); 
+        var graph = graphEntry.graph;
+
+        // Extract the edge domain for the graph, the domain represents the internal index
+        // representations of the edges of the graph.
         var src = toSymEntry(graph.getComp("SRC"), int).a;
-        var edgeDomain = blockDist.createDomain(src.domain);
-        var internalIndicesEntry = getGenericTypedArrayEntry(internalIndicesName, st);
-        var internalIndices = toSymEntry(internalIndicesEntry, int).a;
-        
-        // Ensure internalIndices begin at 0 and end at n-1 and all values within are consecutive, if not
-        // then values are added to a sparse domain based off the original edge domain.
-        var aligned:bool = isAligned(internalIndices);
-        var consecutive:bool = isConsecutive(internalIndices);
+        var edgeDomain = src.domain;
 
-        // Create sparse domain to hold data 
-        var sparseDataDomain: sparse subdomain(edgeDomain);
+        // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
+        // if not then values are added to a sparse domain based off the original edge domain.
+        var aligned:bool = isAligned(inputIndices);
+        var consecutive:bool = isConsecutive(inputIndices);
+
+        // Create sparse domain from the original edge domain to hold new data to be inputted.
+        var sparseEdgeDomain: sparse subdomain(edgeDomain);
         if !consecutive then 
-            sparseDataDomain.bulkAddNoPreserveInds(internalIndices, dataSorted = true, isUnique = true);
+            sparseEdgeDomain.bulkAddNoPreserveInds(inputIndices, dataSorted=true, isUnique=true);
         if !aligned && consecutive then 
-            edgeDomain = blockDist.createDomain({internalIndices[internalIndices.domain.low]..internalIndices[internalIndices.domain.high]});
+            edgeDomain = blockDist.createDomain(
+                {inputIndices[inputIndices.domain.low]..inputIndices[inputIndices.domain.high]}
+            ); // Block domains can be created as long as the range is consecutive.
 
-        // NOTE: Temporary restriction to utilizing sparse arrays. 
+        // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
+        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
-            pgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
 
-        // Create new arrays for inputted dataframe data incase the original dataframe ever ceases
-        // to exist.
-        var timer: stopwatch;
+        // Call helper method that handles attribute insertions regardless of the type of attribute
+        // or of the datatype of each attribute.
+        var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertArrays(columnNames, columnIdNames, propertyNameToSymTabId, consecutive, sparseDataDomain, internalIndices, st);
+        var repMsg:string = insertAttributes(   columnNames, propertyArrayNames, edgeProps, 
+                                                consecutive, sparseEdgeDomain, inputIndices, st 
+        );
         timer.stop();
-        graph.withComp(new shared MapSymEntry(propertyNameToSymTabId):GenSymEntry, "EDGE_PROPS");
-        outMsg = "loadEdgeProperties took " + timer.elapsed():string + " sec ";
+
+        // Add the component for the edge properties for the graph.
+        graph.withComp(new shared MapSymEntry(edgeProps):GenSymEntry, "EDGE_PROPS");
+        timer.stop();
+        outMsg = "addEdgeProperties took " + timer.elapsed():string + " sec ";
         
         // Print out debug information to arkouda server output. 
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        pgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         if repMsg.size == 0 then repMsg = "no arrays created";
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of loadEdgeAttributesMsg
+    } // end of addEdgePropertiesMsg
 
     use CommandMap;
     registerFunction("addNodeLabels", addNodeLabelsMsg, getModuleName());
     registerFunction("addEdgeRelationships", addEdgeRelationshipsMsg, getModuleName());
-    registerFunction("loadNodeAttributes", loadNodeAttributesMsg, getModuleName());
-    registerFunction("loadEdgeAttributes", loadEdgeAttributesMsg, getModuleName());
+    registerFunction("addNodeProperties", addNodePropertiesMsg, getModuleName());
+    registerFunction("addEdgeProperties", addEdgePropertiesMsg, getModuleName());
 }
