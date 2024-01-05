@@ -1,8 +1,7 @@
 """Contains the graph class defintion for `PropGraph`."""
 
 from __future__ import annotations
-from typing import List, Dict
-from sys import exit
+from typing import List
 
 import arachne as ar
 import arkouda as ak
@@ -101,15 +100,15 @@ class PropGraph(ar.DiGraph):
         # 0. Do preliminary check to make sure any attribute (column) names do not already exist.
         try:
             [self.node_attributes[col] for col in labels.columns]
-        except KeyError:
-            raise KeyError("duplicated attribute (column) name in labels")
+        except KeyError as exc:
+            raise KeyError("duplicated attribute (column) name in labels") from exc
 
         # 1. Extract the nodes from the dataframe and drop them from the labels dataframe.
         vertex_ids = None
         try:
             vertex_ids = labels["nodes"]
-        except KeyError:
-            raise KeyError("attribute (column) nodes does not exist in labels")
+        except KeyError as exc:
+            raise KeyError("attribute (column) nodes does not exist in labels") from exc
         labels.drop("nodes", axis=1, inplace=True)
 
         # 2. Convert labels to integers and store the index to label mapping in the label_mapper.
@@ -144,12 +143,12 @@ class PropGraph(ar.DiGraph):
 
         # 5. Prepare arguments to transmit to the Chapel back-end server.
         args = { "GraphName" : self.name,
-                 "VertexIdsName" : vertex_ids.name,
+                 "InputIndicesName" : vertex_ids.name,
                  "ColumnNames" : "+".join(labels.columns),
-                 "VertexLabelArrayNames" : "+".join(vertex_labels_symbol_table_ids),
+                 "LabelArrayNames" : "+".join(vertex_labels_symbol_table_ids),
                  "LabelMapperNames" : "+".join(vertex_labels_mapper_symbol_table_ids)
         }
-        
+
         ak.generic_msg(cmd=cmd, args=args)
 
     def load_node_attributes(self,
@@ -162,6 +161,8 @@ class PropGraph(ar.DiGraph):
         dataframe. The column to be used as the node labels can be denoted by setting the 
         `label_column` parameter. A node can have multiple labels so `label_column` can be a list
         of column names.
+
+        **Graph must already be pupulated with edges prior to calling this method**.
         
         Parameters
         ----------
@@ -177,14 +178,17 @@ class PropGraph(ar.DiGraph):
         --------
         add_node_labels, add_edge_relationships, add_edge_attributes
         """
-        cmd = "loadNodeAttributes"
+        cmd = "addNodeProperties" # TODO: This function should be command-less and just call a
+                                  # `PropGraph` method called add_node_properties().
         columns = node_attributes.columns
 
         ### Modify the inputted dataframe by sorting it.
         # 1. Sort the data and remove duplicates since each node can only have one instance of a
         #    property.
         node_attributes_gb = node_attributes.groupby([ node_column ])
-        node_attributes = node_attributes[node_attributes_gb.permutation[node_attributes_gb.segments]]
+        node_attributes = node_attributes[
+                            node_attributes_gb.permutation[node_attributes_gb.segments]
+                        ]
 
         # 2. Store the modified edge attributes into the class variable.
         self.node_attributes = node_attributes
@@ -222,9 +226,9 @@ class PropGraph(ar.DiGraph):
         vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
 
         args = { "GraphName" : self.name,
+                 "InputIndicesName" : vertex_ids.name,
                  "ColumnNames" : "+".join(columns),
-                 "ColumnIdsName" : "+".join(column_ids),
-                 "InternalIndicesName" : vertex_ids.name
+                 "PropertyArrayNames" : "+".join(column_ids)
                }
         ak.generic_msg(cmd=cmd, args=args)
 
@@ -250,15 +254,15 @@ class PropGraph(ar.DiGraph):
         # 0. Do preliminary check to make sure any attribute (column) names do not already exist.
         try:
             [self.edge_attributes[col] for col in relationships.columns]
-        except KeyError:
-            raise KeyError("duplicated attribute (column) name in relationships")
+        except KeyError as exc:
+            raise KeyError("duplicated attribute (column) name in relationships") from exc
 
         # 1. Extract the nodes from the dataframe and drop them from the labels dataframe.
         src, dst = (None, None)
         try:
             src, dst = (relationships["src"], relationships["dst"])
-        except KeyError:
-            raise KeyError("attribute (column) src or dst does not exist in relationship")
+        except KeyError as exc:
+            raise KeyError("attribute (column) src or dst does not exist in relationship") from exc
         relationships.drop(["src", "dst"], axis=1, inplace=True)
 
         # 2. Convert relationships to integers and store the index to relationship mapping in
@@ -296,9 +300,9 @@ class PropGraph(ar.DiGraph):
         internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
 
         args = {  "GraphName" : self.name,
-                  "InternalEdgeIndicesName" : internal_edge_indices.name, 
+                  "InputIndicesName" : internal_edge_indices.name, 
                   "ColumnNames" : "+".join(relationships.columns),
-                  "EdgeRelationshipArrayNames" : "+".join(edge_relationships_symbol_table_ids),
+                  "RelationshipArrayNames" : "+".join(edge_relationships_symbol_table_ids),
                   "RelationshipMapperNames" : "+".join(edge_relationships_mapper_symbol_table_ids)
         }
 
@@ -334,7 +338,8 @@ class PropGraph(ar.DiGraph):
         --------
         add_node_labels, add_edge_relationships, add_node_attributes
         """
-        cmd = "loadEdgeAttributes"
+        cmd = "addEdgeProperties" # TODO: This function should be command-less and just call a
+                                  # `PropGraph` method called add_edge_properties().
         columns = edge_attributes.columns
 
         ### Modify the inputted dataframe by sorting it and removing duplicates.
@@ -371,7 +376,7 @@ class PropGraph(ar.DiGraph):
             self.add_edge_relationships(ak.DataFrame(relationships_to_add))
 
         ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
-        # 1. Remove the first two column names, edge ids, since those are sent separately.
+        # 1. Remove edges sine those are sent separately and any columns marked as relationships.
         columns = [col for col in columns if col not in relationship_columns]
         columns.remove(source_column)
         columns.remove(destination_column)
@@ -388,8 +393,8 @@ class PropGraph(ar.DiGraph):
 
         args = { "GraphName" : self.name,
                  "ColumnNames" : "+".join(columns),
-                 "ColumnIdsName" : "+".join(column_ids),
-                 "InternalIndicesName" : internal_indices.name
+                 "PropertyArrayNames" : "+".join(column_ids),
+                 "InputIndicesName" : internal_indices.name
                }
         ak.generic_msg(cmd=cmd, args=args)
 
@@ -408,8 +413,8 @@ class PropGraph(ar.DiGraph):
             ns = ["nodes"]
             ns.extend(indexer)
             labels = self.node_attributes[ns]
-        except KeyError:
-            raise KeyError("no label(s) found.")
+        except KeyError as exc:
+            raise KeyError("no label(s) found") from exc
         return labels
 
     def get_node_attributes(self) -> ak.DataFrame:
@@ -439,8 +444,8 @@ class PropGraph(ar.DiGraph):
             es = ["src", "dst"]
             es.extend(indexer)
             relationships = self.edge_attributes[es]
-        except KeyError:
-            raise KeyError("no relationship(s) found.")
+        except KeyError as exc:
+            raise KeyError("no relationship(s) found") from exc
         return relationships
 
     def get_edge_attributes(self) -> ak.DataFrame:
@@ -455,34 +460,29 @@ class PropGraph(ar.DiGraph):
         return self.edge_attributes
 
     def find_paths_of_length_one( self,
-                                  node_column_names: List(str),
-                                  node_column_values: List,
-                                  edge_column_names: List(str),
-                                  edge_column_values: List) -> (ak.pdarray, ak.pdarray):
-        """Given a list of node and edge attribute column names, and desired values, find the paths
-        of length one that satisfy the query.
+                                  node_types: ak.DataFrame,
+                                  edge_types: ak.DataFrame) -> (ak.pdarray, ak.pdarray):
+        """Given two dataframes specifying the node and edge types to search form returns all paths
+        of length one that matches the given types.
 
         Parameters
         ----------
-        node_column_names : List(str)
-            Names of the node attribute to search for.
-        node_column_values : List
-            Values of the node attributes to search for.
-        edge_column_namse : List(str)
-            Names of the edge attribute to search for.
-        edge_column_values : List
-            Values of the edge attributes to search for.
+        node_types : ak.DataFrame
+            Dataframes specifying the node attribute names and values to search for. 
+        edge_types : ak.DataFrame
+            Dataframes specifying the edge attribute names and values to search for. 
 
         Returns
         -------
-        (pdarray,pdarray)
-            Source and destination vertex pairs that contain the length one paths.
+        `(ak.pdarray,ak.pdarray)`
+            Edges that contain the given types.
         """
-        # 1. Get the nodes and edges that contain the specified labels and relationships.
-        nodes = ak.intx(ak.DataFrame(dict(zip(node_column_names, node_column_values))),
-                        self.node_attributes)
-        edges = ak.intx(ak.DataFrame(dict(zip(edge_column_names, edge_column_values))),
-                        self.edge_attributes)
+        # 1. Get the nodes and edges that contain the specified node and edge types.
+        nodes = ak.intx(self.node_attributes, node_types)
+        edges = ak.intx(self.edge_attributes, edge_types)
+
+        print(f"nodes = {nodes}")
+        print(f"edges = {edges}")
 
         # 2. Find the overlap of returned edges and returned nodes.
         src = ak.in1d(edges[0], nodes)
