@@ -1135,26 +1135,59 @@ module DiameterMsg {
 
 
       var CompSet=new set(int,parSafe = true);
-      forall i in f with (ref CompSet) {
+      for i in f  {
          CompSet.add(i);
       }
+      writeln("Size of the Components=",CompSet.size);
+      writeln("The components are as follows");
+      writeln(CompSet);
       // handle all components
       var largestD=0:int;
-      forall i in CompSet with (ref largestD) {
+      for i in CompSet  {
+          writeln("Handle component ",i);
           var numV=f.count(i);
           var AdjMatrix=Matrix(numV,numV,eltType=int);
+          AdjMatrix=0;
+          var diameter=0:int ;
           forall j in 0..numV-1 with (ref AdjMatrix) {
                AdjMatrix[j,j]=1;
           }
-          forall j in 0..f.size-1 with (ref AdjMatrix) {
+          var mapary=f;
+          var tmpmap=0:int;
+          for k in 0..f.size-1 {
+              if f[k]==i {
+                  mapary[k]=tmpmap;
+                  tmpmap+=1;
+                  
+              }
+          }
+          forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
              if f[j]==i {
-                 forall k in start_i[j]..start_i[j]+nei[j]-1 {
-                     AdjMatrix[j,dst[k]]=1;
-                     AdjMatrix[dst[k],j]=1;
+                 for k in start_i[j]..start_i[j]+nei[j]-1 {
+                     AdjMatrix[mapary[j],mapary[dst[k]]]=1;
+                     AdjMatrix[mapary[dst[k]],mapary[j]]=1;
+                     if j!=dst[k]  {
+                        diameter=1;
+                     }
+ 
+                 }      
+                 for k in start_iR[j]..start_iR[j]+neiR[j]-1 {
+                     AdjMatrix[mapary[j],mapary[dstR[k]]]=1;
+                     AdjMatrix[mapary[dstR[k]],mapary[j]]=1;
+                     if j!=dstR[k]  {
+                        diameter=1;
+                     }
                  }      
              }
 
           }
+          if (numV<10) {
+              writeln("The adjacency matrix ",numV,"X",numV," is as follows");
+              writeln(AdjMatrix);
+           } else {
+
+              writeln("It is a ",numV,"X",numV," AdjMatrix");
+           }
           // Here, we have built the adjacencent matrix based on component i
           var Mk=AdjMatrix;
           var k=0:int;
@@ -1167,7 +1200,8 @@ module DiameterMsg {
                    havezero=true;
                }
           }
-          while havezero {
+          writeln("size of the matrix=",Mk.size);
+          while havezero && Mk.size>1 {
               var MM= matPow(Mk, 2);
               k=k+1;
               Mk=MM;
@@ -1177,26 +1211,31 @@ module DiameterMsg {
                        havezero=true;
                    }
               }
-
+              writeln("k=",k);
           }
-          var diameter=2**(k-1):int ;
+          if k==1 {
+               writeln("The diameter of component ",i,"=1");
+               continue;
+          }
+          diameter=max(2**(k-1),diameter):int ;
           var left=matPow(AdjMatrix, 2**(k-1));
-          var right = matPow(AdjMatrix, 2**k);
           var B=left;
-          for l in k-2..0 by -1 {
-              var Ml = matPow(AdjMatrix,2**l);
+          for l in 0..k-2 {
+              var Ml = matPow(AdjMatrix,2**(k-2-l));
 
-              B = dot(B, Ml);
+              var Bnew = dot(B, Ml);
 
               havezero=false;
-              forall x in B with (ref havezero) {
+              forall x in Bnew with (ref havezero) {
                    if x==0 {
                        havezero=true;
                    }
               }
               if havezero {
-                  B = dot(left, Ml);
-                  diameter  += 2**i;
+                  B = Bnew;
+                  //dot(left, Ml);
+                  diameter  += 2**(k-2-l);
+                  writeln("Increase diameter to ", diameter);
               }
           }
           largestD=max(largestD,diameter);
@@ -1619,9 +1658,9 @@ module DiameterMsg {
     */
     if (Directed == 0) {
 
+        /*
         timer.clear();
         timer.start(); 
-        /*
         f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
                                 toSymEntry(ag.getSTART_IDX(), int).a, 
                                 toSymEntry(ag.getSRC(), int).a, 
@@ -1681,9 +1720,10 @@ module DiameterMsg {
         outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        */
         timer.clear();
         timer.start();
-        f5 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f1 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1697,7 +1737,6 @@ module DiameterMsg {
 
 
 
-        */
 
         timer.clear();
         timer.start();
@@ -1713,98 +1752,6 @@ module DiameterMsg {
         outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        /*
-        timer.clear();
-        timer.start();
-        f7 = cc_11mm(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for   11mm  cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for synchronization cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f9 = cc_ups(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for ups cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        coforall loc in Locales {
-          on loc {
-            var vertexStart = f1.localSubdomain().lowBound;
-            var vertexEnd = f1.localSubdomain().highBound;
-            forall i in vertexStart..vertexEnd {
-              if ((f1[i] != f2[i]) ) {
-                var outMsg = "!!!!!f1<->f2 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f2[",i,"]=",f2[i]);
-              }
-              if ((f1[i] != f3[i]) ) {
-                var outMsg = "!!!!!f1<->f3 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f3[",i,"]=",f3[i]);
-              }
-              if ( (f1[i]!=f4[i]) ) {
-                var outMsg = "!!!!!f1<->f4 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f4[",i,"]=",f4[i]);
-              }
-              if ( (f1[i]!=f5[i]) ) {
-                var outMsg = "!!!!!f1<->f5 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f5[",i,"]=",f5[i]);
-              }
-              if ( (f1[i]!=f6[i]) ) {
-                var outMsg = "!!!!!f1<->f6 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f6[",i,"]=",f6[i]);
-              }
-              if ( (f1[i]!=f7[i]) ) {
-                var outMsg = "!!!!!f1<->f7 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f7[",i,"]=",f7[i]);
-              }
-              if ( (f1[i]!=f8[i]) ) {
-                var outMsg = "!!!!!f1<->f8 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f8[",i,"]=",f8[i]);
-              }
-              if ( (f1[i]!=f9[i]) ) {
-                var outMsg = "!!!!!f1<->f9 CONNECTED COMPONENT MISMATCH!!!!!";
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-                writeln("f1[",i,"]=",f1[i]," f9[",i,"]=",f9[i]);
-              }
-            }
-          }
-        } 
-        */
 
     }
    
