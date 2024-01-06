@@ -1146,6 +1146,10 @@ module DiameterMsg {
       for i in CompSet  {
           writeln("Handle component ",i);
           var numV=f.count(i);
+          if numV<=2 {
+              writeln("Only two vertices, contiune");
+              continue;
+          }
           var AdjMatrix=Matrix(numV,numV,eltType=int);
           AdjMatrix=0;
           var diameter=0:int ;
@@ -1164,6 +1168,10 @@ module DiameterMsg {
           forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
              if f[j]==i {
                  for k in start_i[j]..start_i[j]+nei[j]-1 {
+                     if src[k]!=i || dst[k]!=i {
+                         writeln("There is something wrong in the component ",i, " because they mapped to different vertices");
+                         exit(0);
+                     }
                      AdjMatrix[mapary[j],mapary[dst[k]]]=1;
                      AdjMatrix[mapary[dst[k]],mapary[j]]=1;
                      if j!=dst[k]  {
@@ -1172,6 +1180,10 @@ module DiameterMsg {
  
                  }      
                  for k in start_iR[j]..start_iR[j]+neiR[j]-1 {
+                     if srcR[k]!=i || dstR[k]!=i {
+                         writeln("There is something wrong in the component ",i, " because they mapped to different vertices");
+                         exit(0);
+                     }
                      AdjMatrix[mapary[j],mapary[dstR[k]]]=1;
                      AdjMatrix[mapary[dstR[k]],mapary[j]]=1;
                      if j!=dstR[k]  {
@@ -1184,10 +1196,10 @@ module DiameterMsg {
           if (numV<10) {
               writeln("The adjacency matrix ",numV,"X",numV," is as follows");
               writeln(AdjMatrix);
-           } else {
+          } else {
 
               writeln("It is a ",numV,"X",numV," AdjMatrix");
-           }
+          }
           // Here, we have built the adjacencent matrix based on component i
           var Mk=AdjMatrix;
           var k=0:int;
@@ -1213,7 +1225,7 @@ module DiameterMsg {
               }
               writeln("k=",k);
           }
-          if k==1 {
+          if k<=1 {
                writeln("The diameter of component ",i,"=1");
                continue;
           }
