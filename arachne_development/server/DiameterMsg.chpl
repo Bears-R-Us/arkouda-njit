@@ -1150,7 +1150,7 @@ module DiameterMsg {
               writeln("Only two vertices, contiune");
               continue;
           }
-          writeln("Allocate ",numV,"X",numV," matrix);
+          writeln("Allocate ",numV,"X",numV," matrix");
           var AdjMatrix=Matrix(numV,numV,eltType=int);
           AdjMatrix=0;
           var diameter=0:int ;
