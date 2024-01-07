@@ -1183,7 +1183,7 @@ module DiameterMsg {
              }
 
           }
-          if (numV<10) {
+          if (numV<20) {
               writeln("The adjacency matrix ",numV,"X",numV," is as follows");
               writeln(AdjMatrix);
           } else {
@@ -1194,7 +1194,6 @@ module DiameterMsg {
           var Mk=AdjMatrix;
           var k=0:int;
           var x,y:int;
-          var tindex:[0..2] 2*int;
           var havezero=false:bool;
       
           forall x in Mk with (ref havezero) {
@@ -1238,6 +1237,9 @@ module DiameterMsg {
                   //dot(left, Ml);
                   diameter  += 2**(k-2-l);
                   writeln("Increase diameter to ", diameter);
+              } else {
+                  
+                  writeln("2^",k-2-l," do not have zero entry");
               }
           }
           largestD=max(largestD,diameter);
