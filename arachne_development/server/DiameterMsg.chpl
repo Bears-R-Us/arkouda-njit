@@ -1166,9 +1166,10 @@ module DiameterMsg {
               }
           }
           forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
-             if f[j]==i {
+             if f[j]==i  && nei[j] >=1 {
                  for k in start_i[j]..start_i[j]+nei[j]-1 {
-                     if src[k]!=i || dst[k]!=i {
+                     if f[src[k]]!=i || f[dst[k]]!=i {
+                         writeln("src[",k,"]=",src[k]," component=",i," dst[",k,"]=",dst[k]," f[src[",k,"]]=",f[src[k]]," f[dst[",k,"]]=",f[dst[k]]);
                          writeln("There is something wrong in the component ",i, " because they mapped to different vertices");
                          exit(0);
                      }
@@ -1178,17 +1179,6 @@ module DiameterMsg {
                         diameter=1;
                      }
  
-                 }      
-                 for k in start_iR[j]..start_iR[j]+neiR[j]-1 {
-                     if srcR[k]!=i || dstR[k]!=i {
-                         writeln("There is something wrong in the component ",i, " because they mapped to different vertices");
-                         exit(0);
-                     }
-                     AdjMatrix[mapary[j],mapary[dstR[k]]]=1;
-                     AdjMatrix[mapary[dstR[k]],mapary[j]]=1;
-                     if j!=dstR[k]  {
-                        diameter=1;
-                     }
                  }      
              }
 
