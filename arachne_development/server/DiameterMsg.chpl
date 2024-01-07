@@ -1150,14 +1150,17 @@ module DiameterMsg {
               writeln("Only two vertices, contiune");
               continue;
           }
+          writeln("Allocate ",numV,"X",numV," matrix);
           var AdjMatrix=Matrix(numV,numV,eltType=int);
           AdjMatrix=0;
           var diameter=0:int ;
+          writeln("Assign diagnal");
           forall j in 0..numV-1 with (ref AdjMatrix) {
                AdjMatrix[j,j]=1;
           }
           var mapary=f;
           var tmpmap=0:int;
+          writeln("mapping vertices to matrix");
           for k in 0..f.size-1 {
               if f[k]==i {
                   mapary[k]=tmpmap;
@@ -1165,6 +1168,7 @@ module DiameterMsg {
                   
               }
           }
+          writeln("assign edge to matrix");
           forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
              if f[j]==i  && nei[j] >=1 {
                  for k in start_i[j]..start_i[j]+nei[j]-1 {
@@ -1202,6 +1206,7 @@ module DiameterMsg {
                }
           }
           writeln("size of the matrix=",Mk.size);
+          writeln("calculate matrix power");
           while havezero && Mk.size>1 {
               var MM= matPow(Mk, 2);
               k=k+1;
