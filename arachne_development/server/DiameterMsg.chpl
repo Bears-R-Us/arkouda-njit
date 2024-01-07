@@ -87,6 +87,76 @@ module DiameterMsg {
 
 
 
+      proc fo_bag_bfs_kernel_u(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
+                        ref neiR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int, 
+                        ref depth:[?D15],root:int):int throws{
+          var cur_level=0;
+          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          while (numCurF>0) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                cur_level+=1;
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+          }//end while  
+          return cur_level;
+      }//end of fo_bag_bfs_kernel_u
 
     inline proc find_split(u:int,  ref parents:[?D1] int):int {
        var i=u;
@@ -1194,64 +1264,89 @@ module DiameterMsg {
 
               writeln("It is a ",numV,"X",numV," AdjMatrix");
           }
-          // Here, we have built the adjacencent matrix based on component i
-          var Mk=AdjMatrix;
-          var k=0:int;
-          var x,y:int;
-          var havezero=false:bool;
+          if numV>2500 {
+              var depth=f;
+              depth=-1;
+              
+              var level=fo_bag_bfs_kernel_u(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, 
+                        depth,i);
+              diameter =max(diameter,level);
+              var longestvertexSet=new set(int,parSafe = true);
+              forall s in 0..depth.size-1 with (ref longestvertexSet) {
+                   if depth[s]==level {
+                        longestvertexSet.add(s);
+                   }
+              }
+              for s in longestvertexSet {
+                  depth=-1;
+                  level=fo_bag_bfs_kernel_u(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, 
+                        depth,s);
+                  diameter =max(diameter,level);
+
+              }
+              writeln("The diameter of component ",i,"=",diameter );
+              largestD=max(largestD,diameter);
+          } else {
+              // Here, we have built the adjacencent matrix based on component i
+              var Mk=AdjMatrix;
+              var k=0:int;
+              var x,y:int;
+              var havezero=false:bool;
       
-          forall x in Mk with (ref havezero) {
-               if x==0 {
-                   havezero=true;
-               }
-          }
-          writeln("size of the matrix=",Mk.size);
-          writeln("calculate matrix power");
-          while havezero && Mk.size>1 {
-              var MM= matPow(Mk, 2);
-              k=k+1;
-              Mk=MM;
-              havezero=false;
               forall x in Mk with (ref havezero) {
                    if x==0 {
                        havezero=true;
                    }
               }
-              writeln("k=",k);
-          }
-          if k<=1 {
-               writeln("The diameter of component ",i,"=1");
-               continue;
-          }
-          diameter=max(2**(k-1),diameter):int ;
-          var left=matPow(AdjMatrix, 2**(k-1));
-          var B=left;
-          for l in 0..k-2 {
-              var Ml = matPow(AdjMatrix,2**(k-2-l));
-
-              var Bnew = dot(B, Ml);
-
-              havezero=false;
-              forall x in Bnew with (ref havezero) {
-                   if x==0 {
-                       havezero=true;
-                   }
+              writeln("size of the matrix=",Mk.size);
+              writeln("calculate matrix power");
+              while havezero && Mk.size>1 {
+                  var MM= matPow(Mk, 2);
+                  k=k+1;
+                  Mk=MM;
+                  havezero=false;
+                  forall x in Mk with (ref havezero) {
+                       if x==0 {
+                           havezero=true;
+                       }
+                  }
+                  writeln("k=",k);
               }
-              if havezero {
-                  B = Bnew;
-                  //dot(left, Ml);
-                  diameter  += 2**(k-2-l);
-                  writeln("Increase diameter to ", diameter);
-              } else {
-                  
-                  writeln("2^",k-2-l," do not have zero entry");
+              if k<=1 {
+                   writeln("The diameter of component ",i,"=1");
+                   continue;
               }
+              diameter=max(2**(k-1),diameter):int ;
+              var left=matPow(AdjMatrix, 2**(k-1));
+              var B=left;
+              for l in 0..k-2 {
+                  var Ml = matPow(AdjMatrix,2**(k-2-l));
+
+                  var Bnew = dot(B, Ml);
+
+                  havezero=false;
+                  forall x in Bnew with (ref havezero) {
+                       if x==0 {
+                           havezero=true;
+                       }
+                  }
+                  if havezero {
+                      B = Bnew;
+                      //dot(left, Ml);
+                      diameter  += 2**(k-2-l);
+                      writeln("Increase diameter to ", diameter);
+                  } else {
+                      
+                      writeln("2^",k-2-l," do not have zero entry");
+                  }
+              }
+              largestD=max(largestD,diameter);
+              writeln("The diameter of component ",i,"=",diameter );
           }
-          largestD=max(largestD,diameter);
-          writeln("The diameter of component ",i,"=",diameter );
+          writeln("The largest diameter =",largestD);
       }
-      writeln("The largest diameter =",largestD);
-
       return f;
     }
 
