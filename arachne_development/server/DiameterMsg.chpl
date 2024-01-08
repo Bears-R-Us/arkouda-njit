@@ -1220,50 +1220,6 @@ module DiameterMsg {
               writeln("Only two vertices, contiune");
               continue;
           }
-          writeln("Allocate ",numV,"X",numV," matrix");
-          var AdjMatrix=Matrix(numV,numV,eltType=int);
-          AdjMatrix=0;
-          var diameter=0:int ;
-          writeln("Assign diagnal");
-          forall j in 0..numV-1 with (ref AdjMatrix) {
-               AdjMatrix[j,j]=1;
-          }
-          var mapary=f;
-          var tmpmap=0:int;
-          writeln("mapping vertices to matrix");
-          for k in 0..f.size-1 {
-              if f[k]==i {
-                  mapary[k]=tmpmap;
-                  tmpmap+=1;
-                  
-              }
-          }
-          writeln("assign edge to matrix");
-          forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
-             if f[j]==i  && nei[j] >=1 {
-                 for k in start_i[j]..start_i[j]+nei[j]-1 {
-                     if f[src[k]]!=i || f[dst[k]]!=i {
-                         writeln("src[",k,"]=",src[k]," component=",i," dst[",k,"]=",dst[k]," f[src[",k,"]]=",f[src[k]]," f[dst[",k,"]]=",f[dst[k]]);
-                         writeln("There is something wrong in the component ",i, " because they mapped to different vertices");
-                         exit(0);
-                     }
-                     AdjMatrix[mapary[j],mapary[dst[k]]]=1;
-                     AdjMatrix[mapary[dst[k]],mapary[j]]=1;
-                     if j!=dst[k]  {
-                        diameter=1;
-                     }
- 
-                 }      
-             }
-
-          }
-          if (numV<20) {
-              writeln("The adjacency matrix ",numV,"X",numV," is as follows");
-              writeln(AdjMatrix);
-          } else {
-
-              writeln("It is a ",numV,"X",numV," AdjMatrix");
-          }
           if numV>2500 {
               var depth=f;
               depth=-1;
@@ -1289,6 +1245,55 @@ module DiameterMsg {
               writeln("The diameter of component ",i,"=",diameter );
               largestD=max(largestD,diameter);
           } else {
+
+
+              writeln("Allocate ",numV,"X",numV," matrix");
+              var AdjMatrix=Matrix(numV,numV,eltType=int);
+              AdjMatrix=0;
+              var diameter=0:int ;
+              writeln("Assign diagnal");
+              forall j in 0..numV-1 with (ref AdjMatrix) {
+                   AdjMatrix[j,j]=1;
+              }
+              var mapary=f;
+              var tmpmap=0:int;
+              writeln("mapping vertices to matrix");
+              for k in 0..f.size-1 {
+                  if f[k]==i {
+                      mapary[k]=tmpmap;
+                      tmpmap+=1;
+                  
+                  }
+              }
+              writeln("assign edge to matrix");
+              forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
+                 if f[j]==i  && nei[j] >=1 {
+                     for k in start_i[j]..start_i[j]+nei[j]-1 {
+                         if f[src[k]]!=i || f[dst[k]]!=i {
+                             writeln("src[",k,"]=",src[k]," component=",i," dst[",k,"]=",dst[k]," f[src[",k,"]]=",f[src[k]]," f[dst[",k,"]]=",f[dst[k]]);
+                             writeln("There is something wrong in the component ",i, " because they mapped to different vertices");
+                             exit(0);
+                         }
+                         AdjMatrix[mapary[j],mapary[dst[k]]]=1;
+                         AdjMatrix[mapary[dst[k]],mapary[j]]=1;
+                         if j!=dst[k]  {
+                            diameter=1;
+                         }
+ 
+                     }      
+                 }
+
+              }
+              if (numV<20) {
+                  writeln("The adjacency matrix ",numV,"X",numV," is as follows");
+                  writeln(AdjMatrix);
+              } else {
+
+                  writeln("It is a ",numV,"X",numV," AdjMatrix");
+              }
+
+
+
               // Here, we have built the adjacencent matrix based on component i
               var Mk=AdjMatrix;
               var k=0:int;
