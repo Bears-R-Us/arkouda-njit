@@ -1211,6 +1211,7 @@ module DiameterMsg {
       writeln("Size of the Components=",CompSet.size);
       writeln("The components are as follows");
       writeln(CompSet);
+      writeln("Size of the Components=",CompSet.size);
       // handle all components
       var largestD=0:int;
       var diameter=0:int ;
@@ -1350,6 +1351,7 @@ module DiameterMsg {
               largestD=max(largestD,diameter);
               writeln("The diameter of component ",i,"=",diameter );
           }
+          writeln("Size of the Components=",CompSet.size);
           writeln("The largest diameter =",largestD);
       }
       return f;
