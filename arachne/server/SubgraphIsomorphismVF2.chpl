@@ -27,7 +27,12 @@ module SubgraphIsomorphismVF2 {
                     graphDegree: [?D2] int, Orig_Label_Mapper_G_to_Pass: [?D3] string, 
                     Orig_Label_Mapper_H_to_Pass: [?D4] string, Orig_Relationships_Mapper_G_to_Pass: [?D5] string, 
                     Orig_Relationships_Mapper_H_to_Pass: [?D6] string):[] int throws {
-        
+
+        var TimerArrNew:[0..13] real(64) = 0.0;
+
+        var timerpreproc:stopwatch;
+        timerpreproc.start();
+
         // Extract the g1/G information from PropGraph DS
         var srcNodesG1Dis = toSymEntry(g1.getComp("SRC"), int).a;
         var dstNodesG1Dis = toSymEntry(g1.getComp("DST"), int).a;
@@ -70,12 +75,20 @@ module SubgraphIsomorphismVF2 {
         var srcRG2: [0..<srcRG2Dis.size] int;        srcRG2 = srcRG2Dis;
         var dstRG2: [0..<dstRG2Dis.size] int;        dstRG2 = dstRG2Dis;
         var segRG2: [0..<segRG2Dis.size] int;        segRG2 = segRG2Dis;
-         
+        
+        timerpreproc.stop();
+        TimerArrNew[0] += timerpreproc.elapsed();
+
         //var IsoArr:[0..1] int;
         
         // I don't like this part and preparing output
         // it is wasting memory and time!!!
+        var timerVF2:stopwatch;
+        timerVF2.start();
+        
         var IsoArrtemp = vf2(g1, g2);
+        timerVF2.stop();
+        TimerArrNew[1] += timerVF2.elapsed();
 
         var IsoArr = nodeMap_GraphG1[IsoArrtemp];        
         //writeln("inside VF2 IsoArr     = ", IsoArr);
@@ -382,6 +395,9 @@ module SubgraphIsomorphismVF2 {
             return state;
 
         }  //end of createInitialState
+
+        var timergetUnmappedNodesg1:stopwatch;
+        timergetUnmappedNodesg1.start();
         // Two silly function. wrote just to quick check but worked.LOL
         proc getUnmappedNodesg1(graph: SegGraph, state: State) throws {
             //writeln("-----------------getUnmappedNodesg1 called-------------------\n");
@@ -392,7 +408,11 @@ module SubgraphIsomorphismVF2 {
 
             return unmapped;
         } // end of getUnmappedNodesg1
+        timergetUnmappedNodesg1.stop();
+        TimerArrNew[5] += timergetUnmappedNodesg1.elapsed();
 
+        var timergetUnmappedNodesg2:stopwatch;
+        timergetUnmappedNodesg2.start();
         proc getUnmappedNodesg2(graph, state) throws {
             //writeln("-----------------getUnmappedNodesg2 called-------------------\n");
 
@@ -408,6 +428,10 @@ module SubgraphIsomorphismVF2 {
             return unmapped;
         } // end of getUnmappedNodesg2
         
+        timergetUnmappedNodesg2.stop();
+        TimerArrNew[6] += timergetUnmappedNodesg2.elapsed();
+
+
 
         // Create candidates based on current state and retuns a list of pairs
         // based on old paper!!
@@ -415,7 +439,9 @@ module SubgraphIsomorphismVF2 {
             //writeln("-----------------getCandidatePairsOpti called-------------------\n");
             //writeln("state = ", state);
             //////////////////////// new version added Dec 5
-
+            var timergetCandidatePairsOpti:stopwatch;
+            timergetCandidatePairsOpti.start();
+            
             var candidates = new set((int, int), parSafe = true);
             
             var unmapped2 = getUnmappedNodesg2(g2, state);
@@ -456,33 +482,49 @@ module SubgraphIsomorphismVF2 {
                             } 
                 }   
             //writeln("candidates = ", candidates);
+            timergetCandidatePairsOpti.stop();
+            TimerArrNew[7] += timergetCandidatePairsOpti.elapsed();
             return candidates;
 
         } // end of getCandidatePairsOPti
-        
+
+
+
+
         // Check node labels are the same
         proc nodesLabelCompatible(n1: int, n2: int): bool throws {
             //writeln("-----------------nodesLabelCompatible called-------------------\n");
-
+            var timernodesLabelCompatible:stopwatch;
+            timernodesLabelCompatible.start();
             var label1 = PropGraphNodeLabelMapper(nodeLabels_GraphG1, n1, Orig_Label_Mapper_G_to_Pass)[1];
             var label2 = PropGraphNodeLabelMapper(nodeLabels_GraphG2, n2, Orig_Label_Mapper_H_to_Pass)[1];
 
             if label1 != label2 {
+                timernodesLabelCompatible.stop();
+                TimerArrNew[4] += timernodesLabelCompatible.elapsed();                
                 return false;
             }
-
+            timernodesLabelCompatible.stop();
+            TimerArrNew[4] += timernodesLabelCompatible.elapsed();
             return true;
 
         }// end of nodesLabelCompatible
 
+
+
         // Check if candidates' pairs are feasible
         proc isFeasible(state: State, n1: int, n2: int) throws {
+            
+            var timerisFeasible:stopwatch;
+            timerisFeasible.start();
             //writeln("-----------------isFeasible called for (",n1,",", n2,")-------------------");
             //////////////////////// new version added Dec 13
             var termout1, termout2, termin1, termin2, new1, new2 : int =0 ;
 
             if !nodesLabelCompatible(n1, n2) {
                 //writeln("Node labels are Inconsistent");
+                timerisFeasible.stop();
+                TimerArrNew[2] += timerisFeasible.elapsed();
                 return false;
             }
             // Out Neighbours of G1
@@ -506,6 +548,8 @@ module SubgraphIsomorphismVF2 {
                     var (flag2, label2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, n2, Out2, Orig_Relationships_Mapper_H_to_Pass);
             
                     if !flag1 || (label2 != label1) {
+                        timerisFeasible.stop();
+                        TimerArrNew[2] += timerisFeasible.elapsed();
                         return false;
                     }
                 } 
@@ -544,6 +588,8 @@ module SubgraphIsomorphismVF2 {
                     var (flag2, label2) = PropGraphRelationshipMapper(segGraphG2, dstNodesG2, edgeRelationshipsGraphG2, In2, n2, Orig_Relationships_Mapper_H_to_Pass);
             
                     if !flag1 || label2 != label1 {
+                        timerisFeasible.stop();
+                        TimerArrNew[2] += timerisFeasible.elapsed();
                         return false;
                     }
                 }
@@ -594,12 +640,17 @@ module SubgraphIsomorphismVF2 {
                     }
                 }
             }
-            
+            timerisFeasible.stop();
+            TimerArrNew[2] += timerisFeasible.elapsed();
             return termin2<=termin1 && termout2<=termout1 && (termin2+termout2+new2)<=(termin1+termout1+new1);
         }// end of isFeasible
 
+        
+
         // DFS like to traverse graph and returns list of all solution states 
         proc dfs(ref initialState: State, g1: SegGraph, g2: SegGraph): list (set((int, int))) throws {
+            var timerDFS:stopwatch;
+            timerDFS.start();
             //writeln("-----------------dfs called-------------------\n");
 
             var allmappings: list (set((int, int)));
@@ -633,10 +684,12 @@ module SubgraphIsomorphismVF2 {
                 //writeln("end of checking all current candidates\n");
                 state.reset();
             }
-
+            timerDFS.stop();
+            TimerArrNew[3] += timerDFS.elapsed();
             return allmappings; // Isomappings
             
         }  //end of dfs 
+
 
         // Main procudre of VF2 Subgraph Isomorphism
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
@@ -660,6 +713,26 @@ module SubgraphIsomorphismVF2 {
             return(subIsoArrToReturn);
         } //end of VF2
         
+        for i in 0..13 {
+            if i == 0 {
+                writeln("Preprocessing total time = ", TimerArrNew[0]);
+            }              
+            if i == 1 {
+                writeln("\nVF2 total time = ", TimerArrNew[1]);
+            }            
+            if i == 2 {
+                writeln("\nisFeasible total time = ", TimerArrNew[2]);
+            }            
+            if i == 3 {
+                writeln("\nDFS total time = ", TimerArrNew[3]);
+            }            
+            if i == 4 {
+                writeln("\nnodesLabelCompatible total time = ", TimerArrNew[4]);
+            }            
+            if i == 7 {
+                writeln("\ngetCandidatePairsOpti total time = ", TimerArrNew[7]);
+            }
+        }
         return(IsoArr);
 
     } //end of runVF2
