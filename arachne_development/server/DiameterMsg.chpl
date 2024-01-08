@@ -1829,7 +1829,6 @@ module DiameterMsg {
         outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        */
         timer.clear();
         timer.start();
         f1 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
@@ -1844,6 +1843,7 @@ module DiameterMsg {
         outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        */
 
 
 
