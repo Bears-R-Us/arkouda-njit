@@ -950,7 +950,7 @@ module DiameterMsg {
 
 
     // Contour variant: a  mapping based connected components algorithm
-    proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+    proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int): int throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var af = makeDistArray(Nv, atomic int); 
@@ -1354,7 +1354,7 @@ module DiameterMsg {
           writeln("Size of the Components=",CompSet.size);
           writeln("The largest diameter =",largestD);
       }
-      return f;
+      return largestD;
     }
 
 
@@ -1755,9 +1755,10 @@ module DiameterMsg {
 
 
     var timer:stopwatch;
+    var retDiameter:int;
     // We only care for undirected graphs, they can be weighted or unweighted. 
-    var f1 = makeDistArray(Nv, int);
     /*
+    var f1 = makeDistArray(Nv, int);
     var f2 = makeDistArray(Nv, int);
     var f3 = makeDistArray(Nv, int);
     var f4 = makeDistArray(Nv, int);
@@ -1851,7 +1852,7 @@ module DiameterMsg {
 
         timer.clear();
         timer.start();
-        f1 = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
+        retDiameter  = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1860,7 +1861,7 @@ module DiameterMsg {
                             toSymEntry(ag.getSRC_R(), int).a, 
                             toSymEntry(ag.getDST_R(), int).a);
         timer.stop(); 
-        outMsg = "Time elapsed for fs mm cc: " + timer.elapsed():string;
+        outMsg = "Time elapsed for fs mm diameter: " + timer.elapsed():string;
         smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
@@ -1868,22 +1869,24 @@ module DiameterMsg {
    
 
     // The message that is sent back to the Python front-end. 
+    /*
     var comps = new set(int);
     for x in f1 {
       comps.add(x);
     }
     var num_comps = makeDistArray(numLocales, int); 
     num_comps[0] = comps.size;
+    */
     proc return_CC(ary:[?d] int): string throws {
       CCName = st.nextName();
       var CCEntry = new shared SymEntry(ary);
       st.addEntry(CCName, CCEntry);
 
-      var CCMsg =  'created ' + st.attrib(CCName);
-      return CCMsg;
+      var DiameterMsg =  'created ' + st.attrib(CCName);
+      return DiameterMsg;
     }
 
-    var repMsg = return_CC(num_comps);
+    var repMsg = retDiameter:string;
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
 

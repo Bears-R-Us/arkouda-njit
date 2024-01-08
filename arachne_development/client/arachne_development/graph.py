@@ -1549,7 +1549,7 @@ def graph_cc(graph: Graph) -> pdarray:
 
 
 @typechecked
-def graph_diameter(graph: Graph) -> pdarray:
+def graph_diameter(graph: Graph) -> int:
     """
         This function calculates the diameter of different connected components of a given graph.
         Returns
@@ -1572,7 +1572,7 @@ def graph_diameter(graph: Graph) -> pdarray:
              "Directed":graph.directed,"Weighted":graph.weighted,\
              "GraphName":graph.name}
     repMsg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(repMsg)
+    return int(repMsg)
 
 
 
