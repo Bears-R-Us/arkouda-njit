@@ -1213,6 +1213,7 @@ module DiameterMsg {
       writeln(CompSet);
       // handle all components
       var largestD=0:int;
+      var diameter=0:int ;
       for i in CompSet  {
           writeln("Handle component ",i);
           var numV=f.count(i);
@@ -1250,7 +1251,6 @@ module DiameterMsg {
               writeln("Allocate ",numV,"X",numV," matrix");
               var AdjMatrix=Matrix(numV,numV,eltType=int);
               AdjMatrix=0;
-              var diameter=0:int ;
               writeln("Assign diagnal");
               forall j in 0..numV-1 with (ref AdjMatrix) {
                    AdjMatrix[j,j]=1;
