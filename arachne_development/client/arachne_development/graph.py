@@ -24,6 +24,7 @@ __all__ = ["Graph","DiGraph", "PropGraph", "graph_query",
            "graph_bfs",
            "graph_triangle",
            "graph_cc",
+           "graph_diameter",
            "graph_tri_ctr",
            "stream_file_read",
            "stream_tri_cnt",
@@ -1544,6 +1545,36 @@ def graph_cc(graph: Graph) -> pdarray:
              "GraphName":graph.name}
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
+
+
+
+@typechecked
+def graph_diameter(graph: Graph) -> int:
+    """
+        This function calculates the diameter of different connected components of a given graph.
+        Returns
+        -------
+        pdarray
+            The component each vertex belongs to.
+
+        See Also
+        --------
+
+        Notes
+        -----
+        
+        Raises
+        ------  
+        RuntimeError
+        """
+    cmd = "segmentedGraphDiameter"
+    args = {"NumOfVertices":graph.n_vertices,"NumOfEdges":graph.n_edges,\
+             "Directed":graph.directed,"Weighted":graph.weighted,\
+             "GraphName":graph.name}
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return int(repMsg)
+
+
 
 @typechecked
 def stream_file_read(Ne:int, Nv:int,Ncol:int,directed:int, filename: str,\
