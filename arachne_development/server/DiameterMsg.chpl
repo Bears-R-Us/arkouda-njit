@@ -1351,9 +1351,9 @@ module DiameterMsg {
               largestD=max(largestD,diameter);
               writeln("The diameter of component ",i,"=",diameter );
           }
-          writeln("Size of the Components=",CompSet.size);
-          writeln("The largest diameter =",largestD);
       }
+      writeln("Size of the Components=",CompSet.size);
+      writeln("The largest diameter =",largestD);
       return largestD;
     }
 
