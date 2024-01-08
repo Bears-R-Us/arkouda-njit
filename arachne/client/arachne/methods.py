@@ -3,7 +3,8 @@
 from __future__ import annotations
 from typing import cast, Tuple
 from typeguard import typechecked
-from arachne.graphclasses import Graph, DiGraph
+from arachne.graphclass import Graph
+from arachne.digraphclass import DiGraph
 from arachne.propgraphclass import PropGraph
 import arkouda as ak
 from arkouda.client import generic_msg
