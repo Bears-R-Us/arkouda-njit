@@ -94,10 +94,10 @@ module BuildGraphMsg {
         var akarray_weight_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(weight_name, st);
 
         // Extract the data for use. 
-        var akarray_src_sym = toSymEntry(akarray_src_entry,int);
+        var akarray_src_sym = toSymEntry(akarray_src_entry, int);
         var src = akarray_src_sym.a;
 
-        var akarray_dst_sym = toSymEntry(akarray_dst_entry,int);
+        var akarray_dst_sym = toSymEntry(akarray_dst_entry, int);
         var dst = akarray_dst_sym.a;
 
         var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
@@ -170,7 +170,9 @@ module BuildGraphMsg {
         // Write the local subdomain low value to the ranges array.
         coforall loc in Locales with (ref ranges) {
             on loc {
-                var low_vertex = src[src.localSubdomain().low];
+                var low_vertex:int;
+                try {low_vertex = src[src.localSubdomain().low];}
+                catch {low_vertex = -1;}
 
                 coforall rloc in Locales with (ref ranges) do on rloc { 
                     ranges[loc.id] = (low_vertex,loc);

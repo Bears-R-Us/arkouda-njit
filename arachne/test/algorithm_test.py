@@ -1,7 +1,7 @@
 from base_test import ArkoudaTest
-import arkouda as ak
-import arachne as ar
 import networkx as nx
+import arachne as ar
+import arkouda as ak
 
 class AlgorithmTest(ArkoudaTest):
     """Test graph algorithm methods."""
@@ -76,8 +76,8 @@ class AlgorithmTest(ArkoudaTest):
             ar_all_layers.append(ar_layers)
             nx_all_layers.append(nx_layers)
 
-        return self.assertEqual(ar_all_layers, nx_all_layers)
-    
+        self.assertEqual(ar_all_layers, nx_all_layers)
+
     def test_directed_bfs_layers(self):
         """Tests Arachne bfs_layers() and compares against NetworkX."""
         # Read in graphs with Arachne and NetworkX.
@@ -103,7 +103,7 @@ class AlgorithmTest(ArkoudaTest):
             ar_all_layers.append(ar_layers)
             nx_all_layers.append(nx_layers)
 
-        return self.assertEqual(ar_all_layers, nx_all_layers)
+        self.assertEqual(ar_all_layers, nx_all_layers)
 
     def test_square_count(self):
         """Tests Arachne squares() and compares it against base case."""
@@ -113,7 +113,7 @@ class AlgorithmTest(ArkoudaTest):
         # Get the square count.
         sc = ar.squares(ar_graph)
 
-        return self.assertEqual(2, sc)
+        self.assertEqual(2, sc)
 
     def test_triangles(self):
         """Tests Arachne triangles() and compares it against NetworkX."""
@@ -132,57 +132,3 @@ class AlgorithmTest(ArkoudaTest):
         ret = [nx_tri_partial[v] for v in nodes]
         self.assertEqual(ret, ar_tri_partial.to_list())
         self.assertEqual(sum(nx_tri_full.values())/3, ar_tri_full/3)
-        return True
-
-    # FUNCTIONS BELOW ARE CURRENTLY NOT WORKING AND HAVE TO BE FIXED.
-    # def test_connected_components(self):
-    #     # Process graph with Arachne.
-    #     filepath,directed,weighted,only_extension = self.get_graph_file_and_attributes()
-    #     ar_graph = ar.read_edgelist(filepath, directed=directed, weighted=weighted, filetype=only_extension)
-    #     ar_cc = ar.connected_components(ar_graph)
-
-    #     # Process graph with NetworkX.
-    #     nx_file = open(filepath, "rb")
-    #     nx_graph = nx.from_scipy_sparse_array(sp.io.mmread(nx_file))
-    #     nx_cc = nx.connected_components(nx_graph)
-
-    #     return self.assertEqual(len(list(nx_cc)), len(ak.unique(ar_cc)))
-
-    # def test_k_truss(self):
-    #     # Process graph with Arachne.
-    #     filepath,directed,weighted,only_extension = self.get_graph_file_and_attributes()
-    #     ar_graph = ar.read_edgelist(filepath, directed=directed, weighted=weighted, filetype=only_extension)
-    #     ar_truss = ar.k_truss(ar_graph, 4)
-    #     ar_max_k = ar.k_truss(ar_graph, -1)
-
-    #     # Process graph with NetworkX.
-    #     nx_file = open(filepath, "rb")
-    #     nx_graph = nx.from_scipy_sparse_array(sp.io.mmread(nx_file))
-    #     nx_truss = nx.k_truss(nx_graph, 4)
-
-    #     max_k = 5
-        
-    #     num_e_ar = ak.value_counts(ar_truss)[1][0]
-    #     num_e_nx = nx_truss.size()
-        
-    #     max_test = self.assertEqual(ar_max_k[0], max_k)
-    #     truss_test = self.assertEqual(num_e_ar, num_e_nx)
-
-    #     # NOTE: truss decomposition NOT pytested, it uses code for both k_truss and max_truss.
-    #     return self.assertEqual(max_test,truss_test)
-    
-    # def test_triangle_centrality(self):
-    #     # Process graph with Arachne.
-    #     graph = ar.Graph()
-    #     src = ak.array([1, 1, 3, 3, 4, 4, 4, 5, 2, 2, 5, 5, 6])
-    #     dst = ak.array([3, 4, 4, 7, 7, 5, 8, 8, 5, 6, 6, 9, 9])
-    #     graph.add_edges_from(src, dst)
-
-    #     ar_tri_ctr = ar.triangle_centrality(graph).to_list()
-    #     ar_tri_ctr_true = [0.4, 0.4, 0.4666666666666667, 0.7333333333333333, 0.7333333333333333, 0.4666666666666667, 0.4, 0.4666666666666667, 0.4]
-    #     print(ar_tri_ctr)
-
-    #     return self.assertEqual(ar_tri_ctr, ar_tri_ctr_true)
-
-
-

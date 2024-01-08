@@ -1,12 +1,16 @@
 """Contains the graph class defintion for `PropGraph`."""
 
 from __future__ import annotations
-from typing import List
+from typing import List, Dict
 
 import arachne as ar
 import arkouda as ak
 
-__all__ = ["PropGraph"]
+__all__ = ["PropGraph", "no_filter"]
+
+def no_filter(attributes: ak.DataFrame):
+    """Default filtering method for property subgraph view generation."""
+    return ak.full(attributes.size, True, ak.akbool)
 
 class PropGraph(ar.DiGraph):
     """`PropGraph` is the base class to represent a property graph. It inherits from `DiGraph` since
@@ -20,16 +24,15 @@ class PropGraph(ar.DiGraph):
 
     Edges of a property graph each must contain one attribute called a `relationship`. If there are
     two instances of an edge, as in a multigraph, each edge must be uniquely identified by its
-    relationship. An edge without a uniquely identifiable relationship is removed from the 
-    `PropGraph` during construction. The user can specify the relationship for each edge typically
-    as a column composed of a `pdarray` of strings. If the user does not specify the relationship
-    while using any of the methods that loads attributes, such as `PropGraph.load_edge_attributes`
-    then we remove all duplicate edges and assign every edge the same unique identifier. Continuing
-    the example of the transaction network above, say we have two edges from the same buyer to an
-    item. One of these edges may be identifiable as a purchase with the relationship `Buys` or as
-    a return with the relationship `Returns`. This allows for multiple different interactions to be
-    logged between the same two pairs of nodes. **Currently, multiple edges are not allowed but it
-    is planned for a future release of Arachne.**
+    relationship. The user can specify the relationship for each edge typically as a column composed
+    of a `pdarray` of strings. If the user does not specify the relationship while using any of the 
+    methods that loads attributes, such as `PropGraph.load_edge_attributes` then we remove all 
+    duplicate edges and assign every edge the same unique identifier. Continuing the example of the 
+    transaction network above, say we have two edges from the same buyer to an item. One of these 
+    edges may be identifiable as a purchase with the relationship `Buys` or as a return with the 
+    relationship `Returns`. This allows for multiple different interactions to be logged between the
+    same two pairs of nodes. **Currently, multiple edges are not allowed but it is planned for a 
+    future release of Arachne.**
 
     Both nodes and edges can contain more properties to hold extra data for each node or edge. For
     example, a `Person` node can contain properties such as `Address`, `Phone Number`, and `Email`.
@@ -55,11 +58,11 @@ class PropGraph(ar.DiGraph):
     multied : int
         The graph is a multi graph (True) or not a multi graph (False).
     edge_attributes : ak.DataFrame
-        Dataframe containing the edges of the graph and their attributes. 
-    node_attributes : ak.DataFrame
-        Dataframe containing the nodes of the graph and their attributes.
+        Dataframe containing the edges of the graph and their attributes.
     relationship_mapper : Dict
         List of the attribute (column) names that correspond to relationships.
+    node_attributes : ak.DataFrame
+        Dataframe containing the nodes of the graph and their attributes.
     label_mapper : Dict
         List of the attribute (column) names that correspond to labels.
 
@@ -69,18 +72,19 @@ class PropGraph(ar.DiGraph):
         
     Notes
     -----
+    Capaiblity to store multiple edges is a work-in-progress.
     """
 
     def __init__(self) -> None:
-        """Initializes an empty graph instance."""
+        """Initializes an empty `PropGraph` instance."""
         super().__init__()
         self.multied = 0
         self.edge_attributes = ak.DataFrame()
-        self.relationship_mapper = dict()
+        self.relationship_mapper = {}
         self.node_attributes = ak.DataFrame()
-        self.label_mapper = dict()
+        self.label_mapper = {}
 
-    def add_node_labels(self, labels:ak.DataFrame) -> None:
+    def add_node_labels(self, labels:ak.DataFrame, assume_sorted:bool=True) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below. The column containing the nodes
         should be called `nodes`. Every column that is not the `nodes` column is inferred to be a
@@ -90,6 +94,8 @@ class PropGraph(ar.DiGraph):
         ----------
         labels : ak.DataFrame
             `ak.DataFrame({"nodes" : nodes, "labels1" : labels1, ..., "labelsN" : labelsN})`
+        assume_sorted : bool
+            If the edges are already sorted, skip a `ak.GroupBy`.
 
         Returns
         -------
@@ -135,11 +141,13 @@ class PropGraph(ar.DiGraph):
         labels = labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
 
-        # 4. GroupBy to sort the vertex ids and remove duplicates.
-        gb_vertex_ids = ak.GroupBy(vertex_ids)
-        inds = gb_vertex_ids.permutation[gb_vertex_ids.segments]
-        vertex_ids = vertex_ids[inds]
-        labels = labels[inds]
+        # 4. GroupBy to sort the vertex ids and remove duplicates. Perform only if the vertices have 
+        #    not been sorted previously.
+        if not assume_sorted:
+            gb_vertex_ids = ak.GroupBy(vertex_ids)
+            inds = gb_vertex_ids.permutation[gb_vertex_ids.segments]
+            vertex_ids = vertex_ids[inds]
+            labels = labels[inds]
 
         # 5. Prepare arguments to transmit to the Chapel back-end server.
         args = { "GraphName" : self.name,
@@ -192,6 +200,7 @@ class PropGraph(ar.DiGraph):
 
         # 2. Store the modified edge attributes into the class variable.
         self.node_attributes = node_attributes
+        self.node_attributes.reset_index(inplace=True)
 
         # 3. Extract the nodes column as a pdarray.
         nodes = self.node_attributes[node_column]
@@ -201,13 +210,13 @@ class PropGraph(ar.DiGraph):
             self.add_node_labels(ak.DataFrame({
                     "nodes":nodes,
                     "labels":self.node_attributes[label_columns]
-                })
+                }), assume_sorted=True
             )
             columns.remove(label_columns)
         elif isinstance(label_columns, list):
             labels_to_add = {col: node_attributes[col] for col in label_columns}
             labels_to_add["nodes"] = nodes
-            self.add_node_labels(ak.DataFrame(labels_to_add))
+            self.add_node_labels(ak.DataFrame(labels_to_add), assume_sorted=True)
 
         ### Prepare the columns that are to be sent to the back-end to be stored per node.
         # 1. From columns remove nodes and any other columns that were handled by adding node
@@ -232,7 +241,7 @@ class PropGraph(ar.DiGraph):
                }
         ak.generic_msg(cmd=cmd, args=args)
 
-    def add_edge_relationships(self, relationships:ak.DataFrame) -> None:
+    def add_edge_relationships(self, relationships:ak.DataFrame, assume_sorted:bool=False) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
         should follow the same format specified in the Parameters section below. The columns
         containing the edges should be called `source` for the source vertex of an edge and 
@@ -244,6 +253,8 @@ class PropGraph(ar.DiGraph):
         relationships : ak.DataFrame
             `ak.DataFrame({"src" : source, "dst" : destination, "relationship1" : relationship1,
                            ..., "relationshipN" : relationshipN})`
+        assume_sorted : bool
+            If the edges are already sorted, skip a `ak.GroupBy`.
 
         Returns
         -------
@@ -283,21 +294,18 @@ class PropGraph(ar.DiGraph):
             edge_relationships_symbol_table_ids.append(relationships[col].name)
             edge_relationships_mapper_symbol_table_ids.append(self.relationship_mapper[col].name)
 
-        # 3. Convert the source and destination vertex ids to the internal vertex_ids.
-        vertex_map = self.nodes()
-        src_vertex_ids = ak.find(src, vertex_map)
-        dst_vertex_ids = ak.find(dst, vertex_map)
+        # 3. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
+        #    Perform only if the edges have not been sorted previously.
+        if not assume_sorted:
+            gb_edges = ak.GroupBy([src,dst])
+            inds = gb_edges.permutation[gb_edges.segments]
+            src = src[inds]
+            dst = dst[inds]
+            relationships = relationships[inds]
 
-        # 4. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
-        gb_edges = ak.GroupBy([src_vertex_ids,dst_vertex_ids])
-        inds = gb_edges.permutation[gb_edges.segments]
-        src_vertex_ids = src_vertex_ids[inds]
-        dst_vertex_ids = dst_vertex_ids[inds]
-        relationships = relationships[inds]
-
-        # 5. Generate internal edge indices.
+        # 4. Generate internal edge indices.
         edges = self.edges()
-        internal_edge_indices = ak.find([src_vertex_ids,dst_vertex_ids],[edges[0],edges[1]])
+        internal_edge_indices = ak.find([src,dst],[edges[0],edges[1]])
 
         args = {  "GraphName" : self.name,
                   "InputIndicesName" : internal_edge_indices.name, 
@@ -344,13 +352,15 @@ class PropGraph(ar.DiGraph):
 
         ### Modify the inputted dataframe by sorting it and removing duplicates.
         # 1. Sort the data and remove duplicates.
-        edge_attributes_gb = edge_attributes.groupby( [ source_column, destination_column ] )
-        new_rows = edge_attributes_gb.permutation[edge_attributes_gb.segments]
-        edge_attributes = edge_attributes[new_rows]
-        self.multied = 0 # TODO: Allow for multigraphs in Arachne.
+        edge_attributes_gb = edge_attributes.groupby([source_column, destination_column])
+        edge_attributes = edge_attributes[edge_attributes_gb.permutation
+                                          [edge_attributes_gb.segments]
+                                        ]
+        self.multied = 0 # TODO: Multigraphs are planned work.
 
         # 2. Store the modified edge attributes into the class variable.
         self.edge_attributes = edge_attributes
+        self.edge_attributes.reset_index(inplace=True)
 
         # 3. Initialize our src and destination arrays.
         src = edge_attributes[source_column]
@@ -366,7 +376,7 @@ class PropGraph(ar.DiGraph):
                     "src":src,
                     "dst":dst,
                     "relationships":self.edge_attributes[relationship_columns]
-                })
+                }), assume_sorted=True
             )
             columns.remove(relationship_columns)
         elif isinstance(relationship_columns, list):
@@ -386,9 +396,6 @@ class PropGraph(ar.DiGraph):
 
         # 3. Generate internal indices for the edges.
         edges = self.edges()
-        nodes = self.nodes()
-        src = ak.find([src], [nodes])
-        dst = ak.find([dst], [nodes])
         internal_indices = ak.find([src,dst], [edges[0],edges[1]])
 
         args = { "GraphName" : self.name,
@@ -459,18 +466,19 @@ class PropGraph(ar.DiGraph):
         """
         return self.edge_attributes
 
-    def find_paths_of_length_one( self,
-                                  node_types: ak.DataFrame,
-                                  edge_types: ak.DataFrame) -> (ak.pdarray, ak.pdarray):
-        """Given two dataframes specifying the node and edge types to search form returns all paths
-        of length one that matches the given types.
+    def filter_edges(self,
+                     node_types: Dict,
+                     edge_types: Dict,
+                     op: str = "or") -> (ak.pdarray, ak.pdarray):
+        """Given two dictionaries specifying the node and edge types to search for, it returns all 
+        all edges with the matching types.
 
         Parameters
         ----------
-        node_types : ak.DataFrame
-            Dataframes specifying the node attribute names and values to search for. 
-        edge_types : ak.DataFrame
-            Dataframes specifying the edge attribute names and values to search for. 
+        node_types : Dict
+            Dictionary specifying the node attribute names and values to search for. 
+        edge_types : Dict
+            Dictionary specifying the edge attribute names and values to search for. 
 
         Returns
         -------
@@ -478,11 +486,11 @@ class PropGraph(ar.DiGraph):
             Edges that contain the given types.
         """
         # 1. Get the nodes and edges that contain the specified node and edge types.
-        nodes = ak.intx(self.node_attributes, node_types)
-        edges = ak.intx(self.edge_attributes, edge_types)
+        nodes = self.node_attributes[list(node_types.keys())].isin(node_types)
+        edges = self.edge_attributes[list(edge_types.keys())].isin(edge_types)
 
-        print(f"nodes = {nodes}")
-        print(f"edges = {edges}")
+        print(f"nodes = {nodes.__repr__}")
+        print(f"edges = {edges.__repr__}")
 
         # 2. Find the overlap of returned edges and returned nodes.
         src = ak.in1d(edges[0], nodes)
@@ -497,4 +505,54 @@ class PropGraph(ar.DiGraph):
         dst = edges[1][kept_edges]
 
         return (src, dst)
-    
+
+    def subgraph_view(self, filter_node=no_filter, filter_edge=no_filter):
+        """Given user-defined filters on nodes and edges, returns a subgraph that excludes the nodes
+        and edges based on the outcomes of `filter_node` and `filter_edge`.
+
+        Both `filter_node` and `filter_edge` take only one argument -- the dataframe induced by 
+        node and edge attributes -- and returns a Boolean `pdarray` that is either the size of the
+        node set or the edge set.
+
+        Then, only edges where both vertices are kept by `filter_node` are used to construct the
+        new graph.
+
+        Parameters
+        ----------
+        filter_node : callable, optional
+            A function taking a dataframe as input, which returns a Boolean `ak.pdarray` if the
+            nodes are kept by the filter.
+
+        filter_edge : callable, optional
+            A function taking a dataframe as input, which returns a Boolean `ak.pdarray` if the
+            edges are kept by the filter.
+
+        Returns
+        -------
+        graph : ar.DiGraph
+            A simple directed graph with the kept edge set.
+        """
+        filtered_nodes = filter_node(self.node_attributes)
+        filtered_edges = filter_edge(self.edge_attributes)
+
+        nodes = self.nodes()
+        edges = self.edges()
+
+        nodes = nodes[filtered_nodes]
+        src = edges[0][filtered_edges]
+        dst = edges[1][filtered_edges]
+
+        src_in_nodes = ak.in1d(src, nodes)
+        dst_in_nodes = ak.in1d(dst, nodes)
+
+        kept_edges = src_in_nodes & dst_in_nodes if filter_edge.__name__ != "no_filter" else\
+                     src_in_nodes | dst_in_nodes
+
+
+        src = src[kept_edges]
+        dst = dst[kept_edges]
+
+        new_graph = ar.DiGraph()
+        new_graph.add_edges_from(src,dst)
+
+        return new_graph
