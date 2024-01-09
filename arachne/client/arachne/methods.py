@@ -1,10 +1,12 @@
 """Contains all current Arachne functionality. Includes building methods and algorithmic kernels.
 """
 from __future__ import annotations
-from typing import cast, Tuple, Optional
+from typing import cast, Tuple
 from typeguard import typechecked
+from arachne.graphclass import Graph
+from arachne.digraphclass import DiGraph
+from arachne.propgraphclass import PropGraph
 import arkouda as ak
-from arachne.graphclasses import Graph, DiGraph, PropGraph
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 

@@ -8,6 +8,7 @@ module GraphArray {
     use Logging;
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
+    use SegmentedString;
 
     // Server message logger.
     private config const logLevel = LogLevel.DEBUG;
@@ -15,24 +16,16 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
-        SRC,                    // The source array of every edge in the graph
-        DST,                    // The destination array of every edge in the graph
-        SEGMENTS,               // The segments of adjacency lists for each vertex in DST
-        RANGES,                 // Keeps the range of the vertices the edge list stores per locale
-        EDGE_WEIGHT,            // Stores the edge weights of the graph, if applicable
-        NODE_MAP,               // Doing an index of NODE_MAP[u] gives you the original value of u
-        VERTEX_LABELS,          // Any labels that belong to a specific node
-        VERTEX_LABELS_MAP,      // Sorted array of vertex labels to integer id (array index)
-        EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
-        EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
-        VERTEX_PROPS,           // Any properties that belong to a specific node
-        VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
-        VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
-        VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column 
-        EDGE_PROPS,             // Any properties that belong to a specific edge
-        EDGE_PROPS_COL_MAP,     // Sorted array of edge property to integer id (array index)
-        EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
-        EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
+        SRC,                      // Array holding the source vertices of an edge
+        DST,                      // Array holding the destination vertices of an edge
+        SEGMENTS,                 // Array giving the segments of a neighborhood in DST
+        EDGE_WEIGHT,              // Array giving the edge weights of the graph
+        VERTEX_MAP,               // Array where VERTEX_MAP[u] gives the original value of u
+        RANGES,                   // Replicated array of the low vertex value in SRC per locale
+        VERTEX_LABELS,            // Map of type (string, (string,SegStringSymEntry)
+        EDGE_RELATIONSHIPS,       // Map of type (string, (string,SegStringSymEntry)
+        VERTEX_PROPS,             // Map of type (string, (string,string))
+        EDGE_PROPS,               // Map of type (string, (string,string))
 
         // For directed graphs we also want to maintain reversed edge arrays to easily find the
         // in-neighbors for each vertex. We will use the SRC_R and DST_R components below to 
@@ -76,23 +69,29 @@ module GraphArray {
         // The graph is a property graph (true) or not (false)
         var propertied: bool;
 
+        // The graph is a multigraph (true) or not (false)
+        var multied: bool = false;
+
         // Undirected graphs are in the old format (true) or not (false)
         var reversed: bool = false;
 
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
         */
-        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool) {
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool, multied:bool) {
             this.n_vertices = num_v;
             this.n_edges = num_e;
             this.directed = directed;
             this.weighted = weighted;
             this.propertied = propertied;
+            this.multied = multied;
         }
 
         proc isDirected():bool { return this.directed; }
         proc isWeighted():bool { return this.weighted; }
         proc isPropertied():bool { return this.propertied; }
+        proc isMultied():bool { return this.multied; }
+        proc isReversed():bool { return this.reversed; }
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
@@ -117,7 +116,10 @@ module GraphArray {
         }
     }
 
-    class SymEntryAD : GenSymEntry {
+    /**
+    * Allows storage of associative arrays in the Symbol Table (SymTab).
+    */
+    class AssociativeSymEntry : GenSymEntry {
         var aD: domain(int);
         var a: [aD] int;
         
@@ -128,21 +130,49 @@ module GraphArray {
         }
     }
 
-    class MapSymEntry : GenSymEntry {
-        var stored_map: map(string, string);
+    /**
+    * Allows storage of sparse arrays in the Symbol Table (SymTab).
+    * NOTE: Currently returns an error since assignment of an inputted sparse subdomain to an 
+    *       already-created sparse subdomain is not allowed. Workaround is incoming.
+    */
+    class SparseSymEntry : GenSymEntry {
+        type etype;
+        var bD: makeDistDom(1).type;
+        var sD: sparse subdomain(bD);
+        var a: [sD] etype;
         
-        proc init(ref map_to_store: map(string, string)) {
+        // TODO: fix error with sparse_subdomain assignment not being allowed.
+        proc init(in sparse_array: [?sparse_subdomain] ?etype) {
+            super.init(etype);
+            this.etype = etype;
+            this.sD = sparse_subdomain;
+            this.a = sparse_array;
+        }
+    }
+
+    class MapSymEntry : GenSymEntry {
+        type left;
+        type right;
+        var stored_map: map(left, right);
+        
+        proc init(ref map_to_store: map(?left, ?right)) {
             super.init(string);
+            this.left = left;
+            this.right = right;
             this.stored_map = map_to_store;
         }
     }
 
     proc toMapSymEntry(e) {
-        return try! e : borrowed MapSymEntry;
+        return try! e : borrowed MapSymEntry(?);
     }
 
-    proc toSymEntryAD(e) {
-        return try! e : borrowed SymEntryAD();
+    proc toAssociativeSymEntry(e) {
+        return try! e : borrowed AssociativeSymEntry();
+    }
+
+    proc toSparseSymEntry(e) {
+        return try! e : borrowed SparseSymEntry();
     }
 
     /**
@@ -164,5 +194,31 @@ module GraphArray {
     */
     proc toGraphSymEntry(entry: borrowed AbstractSymEntry): borrowed GraphSymEntry throws {
         return (entry: borrowed GraphSymEntry);
+    }
+
+    class PropertySegStringSymEntry : SegStringSymEntry(?) {
+        var indicesEntry: shared SymEntry(int);
+
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SymEntry(int), type etype) {
+            super.init(offsetsSymEntry, bytesSymEntry, etype);
+            this.indicesEntry = indicesSymEntry;
+        }
+    }
+
+    proc toPropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed PropertySegStringSymEntry);
+    }
+
+    class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
+        var indicesEntry: shared SparseSymEntry(int);
+
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(int), type etype) {
+            super.init(offsetsSymEntry, bytesSymEntry, etype);
+            this.indicesEntry = indicesSymEntry;
+        }
+    }
+
+    proc toSparsePropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed SparsePropertySegStringSymEntry);
     }
 }
