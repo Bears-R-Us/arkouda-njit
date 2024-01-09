@@ -56,9 +56,10 @@ module BuildGraphMsg {
         var num_edgesS = msgArgs.getValueOf("NumEdges");
 
         var propertied:bool;
-        if msgArgs.contains("IsPropGraph") {
-            propertied = true;
-        }
+        if msgArgs.contains("IsPropGraph") then propertied = true;
+
+        var multied:bool;
+        if msgArgs.contains("Multied") then multied = true;
 
         // Extract the names of the arrays and the data for the non-array variables.
         var src_name:string = (akarray_srcS:string);
@@ -93,10 +94,10 @@ module BuildGraphMsg {
         var akarray_weight_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(weight_name, st);
 
         // Extract the data for use. 
-        var akarray_src_sym = toSymEntry(akarray_src_entry,int);
+        var akarray_src_sym = toSymEntry(akarray_src_entry, int);
         var src = akarray_src_sym.a;
 
-        var akarray_dst_sym = toSymEntry(akarray_dst_entry,int);
+        var akarray_dst_sym = toSymEntry(akarray_dst_entry, int);
         var dst = akarray_dst_sym.a;
 
         var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
@@ -105,11 +106,12 @@ module BuildGraphMsg {
         var akarray_seg_sym = toSymEntry(akarray_seg_entry, int);
         var segments = akarray_seg_sym.a;
 
-        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied);
+        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied, multied);
+        graph.multied = multied;
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
             .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
             .withComp(new shared SymEntry(segments):GenSymEntry, "SEGMENTS")
-            .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
+            .withComp(new shared SymEntry(vmap):GenSymEntry, "VERTEX_MAP");
 
         if weighted {
             select akarray_weight_entry.dtype {
@@ -162,15 +164,17 @@ module BuildGraphMsg {
 
         // Create the ranges array that keeps track of the vertices the edge arrays store on each
         // locale.
-        var D_sbdmn = {0..numLocales-1} dmapped Replicated();
+        var D_sbdmn = {0..numLocales-1} dmapped replicatedDist();
         var ranges : [D_sbdmn] (int,locale);
 
         // Write the local subdomain low value to the ranges array.
-        coforall loc in Locales {
+        coforall loc in Locales with (ref ranges) {
             on loc {
-                var low_vertex = src[src.localSubdomain().low];
+                var low_vertex:int;
+                try {low_vertex = src[src.localSubdomain().low];}
+                catch {low_vertex = -1;}
 
-                coforall rloc in Locales do on rloc { 
+                coforall rloc in Locales with (ref ranges) do on rloc { 
                     ranges[loc.id] = (low_vertex,loc);
                 }
             }
@@ -223,9 +227,10 @@ module BuildGraphMsg {
         var num_edgesS = msgArgs.getValueOf("NumEdges");
 
         var propertied:bool;
-        if msgArgs.contains("IsPropGraph") {
-            propertied = true;
-        }
+        if msgArgs.contains("IsPropGraph") then propertied = true;
+
+        var multied:bool;
+        if msgArgs.contains("Multied") then multied = true;
 
         // Extract the names of the arrays and the data for the non-array variables.
         var src_name:string = (akarray_srcS:string);
@@ -295,7 +300,7 @@ module BuildGraphMsg {
         var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
         var vmap = akarray_vmap_sym.a;
 
-        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied);
+        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied, multied);
         graph.reversed = true;
         graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
             .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
@@ -305,7 +310,7 @@ module BuildGraphMsg {
             .withComp(new shared SymEntry(neiR):GenSymEntry, "NEIGHBOR_R")
             .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
             .withComp(new shared SymEntry(start_iR):GenSymEntry, "START_IDX_R")
-            .withComp(new shared SymEntry(vmap):GenSymEntry, "NODE_MAP");
+            .withComp(new shared SymEntry(vmap):GenSymEntry, "VERTEX_MAP");
 
         // Add graph to the specific symbol table entry. 
         var graphEntryName = st.nextName();
@@ -355,7 +360,7 @@ module BuildGraphMsg {
     
         // Start parsing through the file.
         var f = open(path, ioMode.r);
-        var r = f.reader(kind = ionative);
+        var r = f.reader();
         var line:string;
         var a,b,c:string;
 
