@@ -86,7 +86,7 @@ module GraphInfoMsg {
         // Extract the edge arrays.
         var timer:stopwatch;
         timer.start();
-        var nodes = toSymEntry(ag.getComp("NODE_MAP"), int).a;
+        var nodes = toSymEntry(ag.getComp("VERTEX_MAP"), int).a;
 
         // Add new copies of each to the symbol table.
         var repMsg = "";

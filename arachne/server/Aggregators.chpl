@@ -14,7 +14,7 @@ module Aggregators {
     * Declare our frontier queues here to be sets, done globally since refs cannot be a part of 
     * records yet. TODO: move these straight into SetDstAggregator when refs are allowed inside of 
     * records. */
-    var D_frontier_sets = {0..1} dmapped Replicated();
+    var D_frontier_sets = {0..1} dmapped replicatedDist();
     var frontier_sets : [D_frontier_sets] set(int, parSafe=true);
     var frontier_sets_idx : int;
 
@@ -80,7 +80,7 @@ module Aggregators {
                 _flushBuffer(loc, bufferIdx, freeData=false);
                 opsUntilYield = yieldFrequency;
             } else if opsUntilYield == 0 {
-                chpl_task_yield();
+                currentTask.yieldExecution();
                 opsUntilYield = yieldFrequency;
             } else {
                 opsUntilYield -= 1;

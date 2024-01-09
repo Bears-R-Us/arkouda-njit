@@ -1,2 +1,4 @@
-from arachne.graphclasses import *
+from arachne.graphclass import *
+from arachne.digraphclass import *
+from arachne.propgraphclass import *
 from arachne.methods import *

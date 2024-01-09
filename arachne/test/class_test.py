@@ -1,9 +1,9 @@
 import pathlib
 from base_test import ArkoudaTest
-import arkouda as ak
 import arachne as ar
 import networkx as nx
 import scipy as sp
+import arkouda as ak
 
 class ClassTest(ArkoudaTest):
     """Tests graph class methods."""
@@ -56,7 +56,8 @@ class ClassTest(ArkoudaTest):
     def test_add_edges_from(self):
         """Testing adding edges to undirected and directed graphs."""
         ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted = self.build_undirected_graph()
-        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted = self.build_directed_graph()
+        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted\
+            = self.build_directed_graph()
 
         ar_tuple_u = (len(ar_graph), ar_graph.size())
         nx_tuple_u = (len(nx_graph), nx_graph.size())
@@ -70,43 +71,38 @@ class ClassTest(ArkoudaTest):
         ar_tuple_dw = (len(ar_di_graph_weighted), ar_di_graph_weighted.size())
         nx_tuple_dw = (len(nx_di_graph_weighted), nx_di_graph_weighted.size())
 
-        undirected_test = self.assertEqual(ar_tuple_u, nx_tuple_u)
-        directed_test = self.assertEqual(ar_tuple_d, nx_tuple_d)
-        undirected_weighted_test = self.assertEqual(ar_tuple_uw, nx_tuple_uw)
-        directed_weighted_test = self.assertEqual(ar_tuple_dw, nx_tuple_dw)
-
-        check_undirected = self.assertEqual(undirected_test, undirected_weighted_test)
-        check_directed = self.assertEqual(directed_test, directed_weighted_test)
-
-        return self.assertEqual(check_undirected, check_directed)
+        self.assertEqual(ar_tuple_u, nx_tuple_u)
+        self.assertEqual(ar_tuple_d, nx_tuple_d)
+        self.assertEqual(ar_tuple_uw, nx_tuple_uw)
+        self.assertEqual(ar_tuple_dw, nx_tuple_dw)
 
     def test_nodes_and_edges(self):
         """Testing returning all the nodes and edges for a graph."""
         ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted = self.build_undirected_graph()
-        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted = self.build_directed_graph()
+        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted\
+            = self.build_directed_graph()
 
         ar_tuple_u = (len(ar_graph.nodes()), len(ar_graph.edges()[0]))
-        nx_tuple_u = (len(nx_graph.nodes()), len(nx_graph.edges())*2-nx.number_of_selfloops(nx_graph))
+        nx_tuple_u = (len(nx_graph.nodes()), 
+                      len(nx_graph.edges())*2-nx.number_of_selfloops(nx_graph)
+                    )
 
         ar_tuple_d = (len(ar_di_graph.nodes()), len(ar_di_graph.edges()[0]))
         nx_tuple_d = (len(nx_di_graph.nodes()), len(nx_di_graph.edges()))
 
         ar_tuple_uw = (len(ar_graph_weighted.nodes()), len(ar_graph_weighted.edges()[0]))
-        nx_tuple_uw = (len(nx_graph_weighted.nodes()), len(nx_graph_weighted.edges())*2-nx.number_of_selfloops(nx_graph_weighted))
+        nx_tuple_uw = (len(nx_graph_weighted.nodes()), 
+                       len(nx_graph_weighted.edges())*2-nx.number_of_selfloops(nx_graph_weighted)
+                    )
 
         ar_tuple_dw = (len(ar_di_graph_weighted.nodes()), len(ar_di_graph_weighted.edges()[0]))
         nx_tuple_dw = (len(nx_di_graph_weighted.nodes()), len(nx_di_graph_weighted.edges()))
 
-        undirected_test = self.assertEqual(ar_tuple_u, nx_tuple_u)
-        directed_test = self.assertEqual(ar_tuple_d, nx_tuple_d)
-        undirected_weighted_test = self.assertEqual(ar_tuple_uw, nx_tuple_uw)
-        directed_weighted_test = self.assertEqual(ar_tuple_dw, nx_tuple_dw)
+        self.assertEqual(ar_tuple_u, nx_tuple_u)
+        self.assertEqual(ar_tuple_d, nx_tuple_d)
+        self.assertEqual(ar_tuple_uw, nx_tuple_uw)
+        self.assertEqual(ar_tuple_dw, nx_tuple_dw)
 
-        check_undirected = self.assertEqual(undirected_test, undirected_weighted_test)
-        check_directed = self.assertEqual(directed_test, directed_weighted_test)
-
-        return self.assertEqual(check_undirected, check_directed)
-    
     def test_undirected_degree(self):
         """Testing returning the degree for all the vertices in a graph."""
         ar_graph, nx_graph, _, _ = self.build_undirected_graph()
@@ -117,14 +113,14 @@ class ClassTest(ArkoudaTest):
         ar_graph_degree = ar_graph_degree.to_list()
         temp = [0] * len(ar_graph)
         vertices = ar_graph.nodes().to_list()
-        
+
         for tup in nx_graph_degree:
             vertex = tup[0]
             degree = tup[1]
             temp[vertices.index(vertex)] = degree
         nx_graph_degree = temp
-        
-        return self.assertListEqual(ar_graph_degree, nx_graph_degree)
+
+        self.assertListEqual(ar_graph_degree, nx_graph_degree)
 
     def test_directed_degree(self):
         """Testing returning the in and out degrees for all the vertices in a directed graph."""
@@ -152,10 +148,8 @@ class ClassTest(ArkoudaTest):
             temp[vertices.index(vertex)] = degree
         nx_di_graph_out_degree = temp
 
-        in_degree_test = self.assertListEqual(ar_di_graph_in_degree, nx_di_graph_in_degree)
-        out_degree_test = self.assertListEqual(ar_di_graph_out_degree, nx_di_graph_out_degree)
-
-        return self.assertEqual(in_degree_test, out_degree_test)
+        self.assertListEqual(ar_di_graph_in_degree, nx_di_graph_in_degree)
+        self.assertListEqual(ar_di_graph_out_degree, nx_di_graph_out_degree)
 
     def test_read_matrix_market_file(self):
         """Tests reading a matrix market file."""
@@ -175,4 +169,4 @@ class ClassTest(ArkoudaTest):
         ar_tuple = (len(ar_graph), ar_graph.size())
         nx_tuple = (len(nx_graph), nx_graph.size())
 
-        return self.assertEqual(ar_tuple, nx_tuple)
+        self.assertEqual(ar_tuple, nx_tuple)

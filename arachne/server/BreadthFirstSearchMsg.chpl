@@ -66,7 +66,7 @@ module BreadthFirstSearchMsg {
         var g = gEntry.graph;
 
         // Convert root value to inner mapping.
-        var node_map = toSymEntry(g.getComp("NODE_MAP"),int).a;
+        var node_map = toSymEntry(g.getComp("VERTEX_MAP"),int).a;
         root = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, root);
         if (root == -1) {
             var errorMsg = "Source vertex not found in graph.";
