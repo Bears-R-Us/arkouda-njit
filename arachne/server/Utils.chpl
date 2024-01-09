@@ -1,30 +1,35 @@
 module Utils {
     // Chapel modules.
-    use IO;
-    use Map;
-    use Sort;
     use List;
-    use Set;
+    use Sort;
 
     // Arachne modules.
     use GraphArray;
 
-    // Arkouda modules. 
-    use Logging;
+    // Arkouda modules.
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
-    use ServerConfig;
-    use ArgSortMsg;
-    use AryUtil;
 
-    // Allow graphs to be printed server-side? Defaulted to false. MUST BE MANUALLY CHANGED.
-    // TODO: make this a param instead of a set variable?
-    var debug_print = false; 
+    /**
+    * Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
+    * graph data structure should probably be a class method of SegGraph.
+    *
+    * :arg u: source vertex to index for.
+    * :type u: int
+    * :arg v: destination vertex v to binary search for
+    * :type v: int
+    * :arg graph: Graph to search within.
+    * :type graph: borrowed SegGraph
+    *
+    * :returns: int
+    */
+    proc getEdgeId(u:int, v:int, ref dst:[?D1] int, ref seg:[?D2] int): int throws {
+        var start = seg[u];
+        var end = seg[u+1]-1;
+        var eid = bin_search_v(dst, start, end, v);
 
-    // Server message logger. 
-    private config const logLevel = LogLevel.DEBUG;
-    const smLogger = new Logger(logLevel);
-    private var outMsg:string;
+        return eid;
+    }
 
     /** 
     * Helper procedure to parse ranges and return the locale(s) we must write to.
@@ -141,41 +146,4 @@ module Utils {
         } // end of coforall
         return found;
     }// end bin_search
-
-    /**
-    * Print graph data structure server-side to visualize the raw array data.
-    *
-    * G: graph we want to print out. 
-    *
-    * returns: message back to Python.
-    */
-    proc print_graph_serverside(G: borrowed SegGraph) throws {
-        for comp in Component {
-            var curr_comp = comp:string;
-            if G.hasComp(curr_comp) {
-                select curr_comp {
-                    when "RELATIONSHIPS", "NODE_LABELS" {
-                        var X = toSymEntry(G.getComp(comp:string), list(string, parSafe=true)).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    when "NODE_PROPS", "EDGE_PROPS" {
-                        var X = toSymEntry(G.getComp(comp:string), list((string,string), parSafe=true)).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    when "EDGE_WEIGHT", "EDGE_WEIGHT_R" {
-                        var X = toSymEntry(G.getComp(comp:string), real).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    when "NODE_MAP_R" {
-                        var X = toSymEntryAD(G.getComp(comp:string)).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    otherwise {
-                        var X = toSymEntry(G.getComp(comp:string), int).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                }
-            }
-        }
-    } // end of print_graph_serverside
 }
