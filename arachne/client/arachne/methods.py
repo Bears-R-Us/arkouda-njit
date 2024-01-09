@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import cast, Tuple
 from typeguard import typechecked
+import arachne as ar
 from arachne.graphclass import Graph
 from arachne.digraphclass import DiGraph
 from arachne.propgraphclass import PropGraph
@@ -21,7 +22,9 @@ __all__ = ["read_matrix_market_file",
            ]
 
 @typechecked
-def read_matrix_market_file(filepath: str, directed = False, only_edges = False) -> Graph | DiGraph | Tuple:
+def read_matrix_market_file(filepath: str, 
+                            directed = False, 
+                            only_edges = False) -> Graph | DiGraph | Tuple:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -240,33 +243,28 @@ def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pd
     return create_pdarray(repMsg)
 
 @typechecked
-def triangle_centrality(graph: Graph) -> pdarray:
-    """ This function returns the triangle centrality of each vertex in a given graph.
-        
+def triangle_centrality(graph: ar.Graph) -> pdarray:
+    """
+    Given a graph, returns the triangle centrality for each node of the graph. The triangle 
+    centrality of a node is given by the number of triangles that surround a particular node. It is
+    based off the paper by Paul Burkardt (https://arxiv.org/abs/2105.00110). 
+
+    Parameters
+    ----------
+    G : ar.Graph
+        Main graph that will be searched into.
+
     Returns
     -------
     pdarray
-        The triangle centrality value of each vertex.
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
+        Array that is the same size of the number of vertices where each element is a centrality
+        measure.
     """
-    cmd="segmentedGraphTriCtr"
-    args = { "NumOfVertices":graph.n_vertices,
-                "NumOfEdges":graph.n_edges,
-                "Directed":graph.directed,
-                "Weighted": graph.weighted,
-                "GraphName":graph.name}
-    
-    repMsg = generic_msg(cmd=cmd,args=args)
-    return create_pdarray(repMsg)
+    cmd = "TriangleCentrality"
+    args = {"GraphName" : graph.name}
+
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(rep_msg)
 
 @typechecked
 def connected_components(graph: Graph) -> pdarray:
