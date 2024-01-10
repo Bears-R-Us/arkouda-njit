@@ -1,34 +1,10 @@
 module TriangleCount {
-    // Chapel modules.
-    use Time;
-    
     // Arachne modules.
     use GraphArray;
     use Utils;
 
     // Arkouda modules.
     use MultiTypeSymEntry;
-    
-    /**
-    * Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
-    * graph data structure should probably be a class method of SegGraph.
-    *
-    * :arg u: source vertex to index for.
-    * :type u: int
-    * :arg v: destination vertex v to binary search for
-    * :type v: int
-    * :arg graph: Graph to search within.
-    * :type graph: borrowed SegGraph
-    *
-    * :returns: int
-    */
-    proc getEdgeId(u:int, v:int, ref dst:[?D1] int, ref seg:[?D2] int): int throws {
-        var start = seg[u];
-        var end = seg[u+1]-1;
-        var eid = bin_search_v(dst, start, end, v);
-
-        return eid;
-    }
 
     /**
     * Returns the number of triangles found in the graph. 
@@ -104,7 +80,7 @@ module TriangleCount {
                 }
             }
         }
-        triCount = triCount / 2;
+        triCount = triCount / 2; // Each edge is processed twice, so divide by 2
         return triCount;
     } // end of minimum_search_triangle_count_per_vertex
 }// end of TriangleCount module
