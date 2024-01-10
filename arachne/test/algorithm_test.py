@@ -132,3 +132,21 @@ class AlgorithmTest(ArkoudaTest):
         ret = [nx_tri_partial[v] for v in nodes]
         self.assertEqual(ret, ar_tri_partial.to_list())
         self.assertEqual(sum(nx_tri_full.values())/3, ar_tri_full/3)
+
+    def test_triangle_centrality(self):
+        """Tests Arachne triangles() and compares it against NetworkX."""
+        # Read in the graph with Arachne.
+        src = [0, 1, 2, 3, 4, 4, 5, 6, 7, 8, 0]
+        dst = [1, 2, 0, 0, 3, 0, 6, 7, 5, 9, 0]
+        graph = ar.Graph()
+        graph.add_edges_from(ak.array(src), ak.array(dst))
+
+        # Get triangle centralities with Arachne.
+        triangle_centralities = ar.triangle_centrality(graph)
+        triangle_centralities = triangle_centralities * 10
+        triangle_centralities = ak.cast(triangle_centralities, ak.int64)
+
+        # Actual results.
+        results = [6, 4, 4, 4, 4, 3, 3, 3, 0, 0]
+
+        self.assertListEqual(results, triangle_centralities.to_list())
