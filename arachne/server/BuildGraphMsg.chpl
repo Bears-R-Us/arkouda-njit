@@ -355,7 +355,7 @@ module BuildGraphMsg {
             var f = open(path, ioMode.r);
             f.close();
         } catch {
-            smLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Error opening file.");
+            bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Error opening file.");
         }
     
         // Start parsing through the file.
