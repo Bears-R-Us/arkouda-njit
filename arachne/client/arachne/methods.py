@@ -76,9 +76,16 @@ def read_matrix_market_file(filepath: str,
         return di_graph
 
 @typechecked
-def bfs_layers(graph: Graph, source: int) -> pdarray:
+def bfs_layers(graph: ar.Graph | ar.DiGraph, source: int) -> pdarray:
     """ This function generates the breadth-first search sequence of the vertices in a given graph
     starting from the given source vertex.
+
+    Parameters
+    ----------
+    graph : ar.Graph | ar.DiGraph
+        The graph whose breadth-first search layers we want.
+    source : int
+        Starting vertex for breadth-first search.
         
     Returns
     -------
@@ -87,16 +94,6 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
         array correspond to the internal Chapel server vertex values. To properly index, the user
         must perform a find operation on "graph.nodes()" adn then use the returned pdarray to index
         into depths.
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
     """
     cmd = "segmentedGraphBFS"
     args = { "GraphName":graph.name,
@@ -106,7 +103,7 @@ def bfs_layers(graph: Graph, source: int) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def triangles(graph: Graph, vertices: pdarray = None) -> int | pdarray:
+def triangles(graph: ar.Graph, vertices: pdarray = None) -> int | pdarray:
     """
     Returns the number of triangles in a graph. If `vertices` exists and is nonempty, it returns the
     number of triangles that each vertex in `vertices` takes a part of. For example, if the input
@@ -187,6 +184,87 @@ def squares(graph: Graph) -> int:
     return int(rep_msg)
 
 @typechecked
+def triangle_centrality(graph: ar.Graph) -> pdarray:
+    """
+    Given a graph, returns the triangle centrality for each node of the graph. The triangle 
+    centrality of a node is given by the number of triangles that surround a particular node. It is
+    based off the paper by Paul Burkardt (https://arxiv.org/abs/2105.00110). 
+
+    Parameters
+    ----------
+    G : ar.Graph
+        Main undirected graph that will be searched into.
+
+    Returns
+    -------
+    pdarray
+        Array that is the same size of the number of vertices where each element is the triangle 
+        centrality measure.
+    """
+    cmd = "TriangleCentrality"
+    args = {"GraphName" : graph.name}
+
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(rep_msg)
+
+@typechecked
+def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
+    """
+    This function returns the number of triangles in a static graph for each edge that satisfies the
+    k requirement.
+    
+    Returns
+    -------
+    pdarray
+        The total number of triangles incident to each edge.
+    
+    See Also
+    --------
+    
+    Notes
+    -----
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    cmd = "segmentedTruss"
+    args = { "KValue":kTrussValue,
+             "NumOfVertices":graph.n_vertices,
+             "NumOfEdges":graph.n_edges,
+             "Directed":graph.directed,
+             "Weighted": graph.weighted,
+             "GraphName":graph.name }
+
+    repMsg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(repMsg)
+
+@typechecked
+def connected_components(graph: Graph) -> pdarray:
+    """ This function generates the connected components of a given graph.
+    
+    Returns
+    -------
+    pdarray
+        The label of the component each vertex belongs to.
+    
+    See Also
+    --------
+    
+    Notes
+    -----
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    cmd = "segmentedGraphCC"
+    args = { "GraphName":graph.name }
+    
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(repMsg)
+
+@typechecked
 def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pdarray:
     """
     Given a graph G and a subgraph H, perform a search in G matching all possible subgraphs that
@@ -240,85 +318,4 @@ def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pd
              "Type":type }
 
     repMsg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(repMsg)
-
-@typechecked
-def triangle_centrality(graph: ar.Graph) -> pdarray:
-    """
-    Given a graph, returns the triangle centrality for each node of the graph. The triangle 
-    centrality of a node is given by the number of triangles that surround a particular node. It is
-    based off the paper by Paul Burkardt (https://arxiv.org/abs/2105.00110). 
-
-    Parameters
-    ----------
-    G : ar.Graph
-        Main graph that will be searched into.
-
-    Returns
-    -------
-    pdarray
-        Array that is the same size of the number of vertices where each element is a centrality
-        measure.
-    """
-    cmd = "TriangleCentrality"
-    args = {"GraphName" : graph.name}
-
-    rep_msg = generic_msg(cmd=cmd,args=args)
-    return create_pdarray(rep_msg)
-
-@typechecked
-def connected_components(graph: Graph) -> pdarray:
-    """ This function generates the connected components of a given graph.
-    
-    Returns
-    -------
-    pdarray
-        The label of the component each vertex belongs to.
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
-    """
-    cmd = "segmentedGraphCC"
-    args = { "GraphName":graph.name }
-    
-    repMsg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(repMsg)
-
-@typechecked
-def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
-    """
-    This function returns the number of triangles in a static graph for each edge that satisfies the
-    k requirement.
-    
-    Returns
-    -------
-    pdarray
-        The total number of triangles incident to each edge.
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
-    """
-    cmd = "segmentedTruss"
-    args = { "KValue":kTrussValue,
-             "NumOfVertices":graph.n_vertices,
-             "NumOfEdges":graph.n_edges,
-             "Directed":graph.directed,
-             "Weighted": graph.weighted,
-             "GraphName":graph.name }
-
-    repMsg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(repMsg)
