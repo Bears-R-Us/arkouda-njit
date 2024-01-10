@@ -82,7 +82,7 @@ module TriangleCentrality {
 
         // Get the actual number of triangles for each vertex without repeats.
         var TriNumFixed = makeDistArray(graph.n_vertices, int);
-        forall (tris,tris_big) in zip(TriNumFixed, TriNum) do tris = tris_big.read() / 2 / 3;
+        forall (tris,tris_big) in zip(TriNumFixed, TriNum) do tris = tris_big.read() / 2;
 
         forall i in src.domain {
             var u = src[i];
@@ -104,7 +104,7 @@ module TriangleCentrality {
         for u in vertexMap.domain {
             var curnum = 0;
             ref neighborhood = dst[seg[u]..seg[u+1]-1];
-            for w in neighborhood do curnum += (TriNumFixed[w]);
+            for w in neighborhood do if w != u then curnum += (TriNumFixed[w]);
             writeln("curnum for ", u, " is ", curnum);
             writeln("NeiTriNum for ", u, " is ", NeiTriNum[u].read());
             writeln("TriNumFixed for ", u, " is ", TriNumFixed[u]);
