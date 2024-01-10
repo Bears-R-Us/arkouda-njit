@@ -11,28 +11,39 @@ module TriangleCentrality {
     use MultiTypeSymEntry;
 
     /**
-    * Returns the triangle centrality for each vertex of the graph.
-    *
-    * :arg graph: SegGraph whose triangles we want to find.
-    * :type graph: borrowed SegGraph
-    *
-    * :returns: int
+    Returns the triangle centrality for each vertex of the graph.
+    
+    :arg graph: SegGraph whose TriNum we want to find.
+    :arg triangleCentralities: array to store the triangle centrality for each vertex.
+    :type triangleCentralities: [?D] real
+    
+    :returns: int
     */
     proc minimum_search_triangle_centrality(graph: borrowed SegGraph, ref triangleCentralities) throws {
 	    ref src = toSymEntry(graph.getComp("SRC"), int).a;
         ref dst = toSymEntry(graph.getComp("DST"), int).a;
-        ref vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
         ref seg = toSymEntry(graph.getComp("SEGMENTS"), int).a;
+        ref vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
 
-        var numOpenTriangles = makeDistArray(graph.n_vertices, atomic int);
-        var numClosedTriangles = makeDistArray(graph.n_vertices, atomic int);
-        var triangles = makeDistArray(graph.n_vertices, atomic int);
-        var edgesWithTriangles = makeDistArray(graph.n_edges, bool);
+        var NeiTriNum = makeDistArray(graph.n_vertices, atomic int);
+        var NeiNonTriNum = makeDistArray(graph.n_vertices, atomic int);
+        var TriNum = makeDistArray(graph.n_vertices, atomic int);
+        var NeiAry = makeDistArray(graph.n_edges, bool);
 
-        edgesWithTriangles = false;
-        forall (x,y,z) in zip(numOpenTriangles, numClosedTriangles, triangles) {
+        NeiAry = false;
+        forall (x,y,z) in zip(NeiTriNum, NeiNonTriNum, TriNum) {
             x.write(0); y.write(0); z.write(0);
         }
+
+        writeln("\n\n\n\n\n");
+        writeln("src = ", src);
+        writeln("dst = ", dst);
+
+        writeln("\n\n\n\n\n");
+        writeln("NeiTriNum = ", NeiTriNum);
+        writeln("NeiNonTriNum = ", NeiNonTriNum);
+        writeln("TriNum = ", TriNum);
+        writeln("NeiAry = ", NeiAry);
 
         var triCount:int = 0;
         forall i in src.domain with (+ reduce triCount) { 
@@ -48,7 +59,7 @@ module TriangleCentrality {
                 var nextEnd = seg[s+1] - 1;
                 if (ds > 0) {
                     ref neighborhood = dst[nextStart..nextEnd];
-                    for (w,j) in zip(neighborhood,neighborhood.domain) { // get every neighbor of s
+                    for (w,j) in zip(neighborhood,nextStart..nextEnd) { // get every neighbor of s
                         var edge:int;
                         if (l != w && s != w) { // don't process l itself in neighbors of s
                             var dw = seg[w+1] - seg[w];
@@ -56,12 +67,12 @@ module TriangleCentrality {
                             else edge = getEdgeId(w,l,dst,seg); // w is smaller, search l in adjacency list of w
                             if (edge != -1) {
                                 triCount += 1;
-                                triangles[s].add(1);
-                                triangles[l].add(1);
-                                triangles[w].add(1);
-                                edgesWithTriangles[i] = true;
-                                edgesWithTriangles[j] = true;
-                                edgesWithTriangles[edge] = true;
+                                TriNum[s].add(1);
+                                TriNum[l].add(1);
+                                TriNum[w].add(1);
+                                NeiAry[i] = true;
+                                NeiAry[j] = true;
+                                NeiAry[edge] = true;
                             }
                         }
                     }
@@ -69,28 +80,50 @@ module TriangleCentrality {
             }      
         }
 
+        // Get the actual number of triangles for each vertex without repeats.
+        var TriNumFixed = makeDistArray(graph.n_vertices, int);
+        forall (tris,tris_big) in zip(TriNumFixed, TriNum) do tris = tris_big.read() / 2 / 3;
+
         forall i in src.domain {
             var u = src[i];
             var v = dst[i];
 
-            if edgesWithTriangles[i] {
-                numOpenTriangles[u].add(triangles[v].read());
-                numOpenTriangles[v].add(triangles[u].read());
-            } else {
-                numClosedTriangles[u].add(triangles[v].read());
-                numClosedTriangles[v].add(triangles[u].read());
-            }
+            if NeiAry[i] then NeiTriNum[u].add(TriNumFixed[v]);
+            else NeiNonTriNum[u].add(TriNumFixed[v]);
         }
 
-        forall u in vertexMap.domain {
-            var cumNeighborTriangleSum = 0;
+        writeln("\n\n\n\n\n");
+        writeln("NeiTriNum = ", NeiTriNum);
+        writeln("NeiNonTriNum = ", NeiNonTriNum);
+        writeln("TriNumFixed = ", TriNumFixed);
+        writeln("NeiAry = ", NeiAry);
+
+
+        writeln("\n\n\n\n\n");
+        writeln("triCount = ", triCount);
+        for u in vertexMap.domain {
+            var curnum = 0;
             ref neighborhood = dst[seg[u]..seg[u+1]-1];
-            for w in neighborhood do cumNeighborTriangleSum += triangles[w].read();
+            for w in neighborhood do curnum += (TriNumFixed[w]);
+            writeln("curnum for ", u, " is ", curnum);
+            writeln("NeiTriNum for ", u, " is ", NeiTriNum[u].read());
+            writeln("TriNumFixed for ", u, " is ", TriNumFixed[u]);
             triangleCentralities[u] = 
-                (   cumNeighborTriangleSum - 
-                    (numOpenTriangles[u].read()+triangles[u].read()) + 
-                    triangles[u].read()
-                ) / triCount;
+                (
+                    (TriNumFixed[u]) +
+                    (curnum - (NeiTriNum[u].read() + TriNumFixed[u]) * (2.0 / 3.0))
+                ):real / (triCount / 2.0):real;
+            writeln();
         }
+
+        writeln("\n\n\n\n\n");
+        writeln("NeiTriNum = ", NeiTriNum);
+        writeln("NeiNonTriNum = ", NeiNonTriNum);
+        writeln("TriNumFixed = ", TriNumFixed);
+        writeln("NeiAry = ", NeiAry);
+        writeln("triangleCentralities = ", triangleCentralities);
+
+        writeln("\n\n\n\n\n");
+
     } // end of minimum_search_triangle_count_kernel
 }// end of TriangleCentrality module
