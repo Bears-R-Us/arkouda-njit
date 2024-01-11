@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     random.seed(5)  # Setting seed for reproducibility
     #num_nodes = random.randint(0, 100000)
-    num_nodes = 10000000
+    num_nodes = 14000000
     random_directed_graph = nx.DiGraph()
 
     # Add nodes to the graph
