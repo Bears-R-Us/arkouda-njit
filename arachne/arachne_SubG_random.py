@@ -49,7 +49,7 @@ if __name__ == "__main__":
 
     random.seed(5)  # Setting seed for reproducibility
     #num_nodes = random.randint(0, 100000)
-    num_nodes = 510000
+    num_nodes = 10000000
     random_directed_graph = nx.DiGraph()
 
     # Add nodes to the graph
@@ -79,7 +79,7 @@ if __name__ == "__main__":
     subgraph.add_edges_from(subgraph_edges)
     print("End of preparing data")
     print()
-    
+    """
     start_time = time.time()
 
     # Use DiGraphMatcher to find subgraph isomorphisms
@@ -97,7 +97,7 @@ if __name__ == "__main__":
     elapsed_time = end_time - start_time
     print("Elapsed time:", elapsed_time, "seconds")
     print("*********************************************************************************")
-
+    """
     
     #print("Subgraph occurrences found:")
     #for iso_mapping in subgraph_isomorphisms:
