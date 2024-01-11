@@ -99,4 +99,4 @@ module TriangleCentrality {
             ):real / (triCount / 6.0):real;
         }
     } // end of minimum_search_triangle_centrality
-}// end of TriangleCentrality module
+} // end of TriangleCentrality module

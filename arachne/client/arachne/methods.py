@@ -17,12 +17,14 @@ __all__ = ["read_matrix_market_file",
            "triangles",
            "squares",
            "k_truss",
+           "truss_decomposition",
+           "max_truss",
            "triangle_centrality",
            "connected_components",
            ]
 
 @typechecked
-def read_matrix_market_file(filepath: str, 
+def read_matrix_market_file(filepath: str,
                             directed = False, 
                             only_edges = False) -> Graph | DiGraph | Tuple:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
@@ -208,36 +210,75 @@ def triangle_centrality(graph: ar.Graph) -> pdarray:
     return create_pdarray(rep_msg)
 
 @typechecked
-def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
+def k_truss(graph: ar.Graph, k:int) -> pdarray:
     """
-    This function returns the number of triangles in a static graph for each edge that satisfies the
-    k requirement.
+    This function returns an edge list of the edges that satisfied the `k` requirement in the passed
+    variable.
+
+    Parameters
+    ----------
+    G : ar.Graph
+        Main undirected graph that will be used to calculate the k_truss.
+    k : int
+        Value of k that must be greater than 2. 
     
     Returns
     -------
     pdarray
-        The total number of triangles incident to each edge.
-    
-    See Also
-    --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
+        The edges that satisfy the k requirement.
     """
     cmd = "segmentedTruss"
-    args = { "KValue":kTrussValue,
-             "NumOfVertices":graph.n_vertices,
-             "NumOfEdges":graph.n_edges,
-             "Directed":graph.directed,
-             "Weighted": graph.weighted,
-             "GraphName":graph.name }
+    args = { "GraphName":graph.name,
+             "K":k,
+             "TrussAlgorithm":0 }
 
-    repMsg = generic_msg(cmd=cmd,args=args)
-    return create_pdarray(repMsg)
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(rep_msg)
+
+@typechecked
+def truss_decomposition(graph: ar.Graph) -> pdarray:
+    """
+    This function returns an array that is the same size as the original edge list where each
+    element is the maximum k value for each edge before it is deleted. 
+
+    Parameters
+    ----------
+    G : ar.Graph
+        Main undirected graph that will be used for truss_decomposition.
+    
+    Returns
+    -------
+    pdarray
+        The edges that satisfy the k requirement.
+    """
+    cmd = "segmentedTruss"
+    args = { "GraphName":graph.name,
+             "TrussAlgorithm":1 }
+
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(rep_msg)
+
+@typechecked
+def max_truss(graph: ar.Graph) -> pdarray:
+    """
+    This function returns the maximum k value for the k_truss of a graph.
+
+    Parameters
+    ----------
+    G : ar.Graph
+        Main undirected graph that will be searched into.
+    
+    Returns
+    -------
+    int
+        Maximum k value.
+    """
+    cmd = "segmentedTruss"
+    args = { "GraphName":graph.name,
+             "TrussAlgorithm":2 }
+
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return int(rep_msg)
 
 @typechecked
 def connected_components(graph: Graph) -> pdarray:
