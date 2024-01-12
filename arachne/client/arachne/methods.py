@@ -265,24 +265,23 @@ def connected_components(graph: Graph) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pdarray:
+def subgraph_isomorphism(G: PropGraph, H:PropGraph) -> pdarray:
     """
     Given a graph G and a subgraph H, perform a search in G matching all possible subgraphs that
-    are isomorphic to H. Current contains implementations for Ullmann and VF2. 
+    are isomorphic to H. Uses a novel implementation of the VF2 algorithm 
+    (https://ieeexplore.ieee.org/document/1323804). 
 
     Parameters
     ----------
     G : PropGraph | DiGraph
         Main graph that will be searched into. 
     H : PropGraph | DiGraph
-        Subgraph (pattern) that will  be searched for. 
-    type : str
-        Algorithmic variation to run. 
+        Subgraph (pattern) that will  be searched for.
 
     Returns
     -------
     pdarray
-        Graph IDs of matching subgraphs from G. 
+        Mappings of vertices from G that match the vertices in H.
     
     See Also
     --------
@@ -294,28 +293,9 @@ def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pd
     ------  
     RuntimeError
     """
-    ### Preprocessing steps for subgraph isomorphism.
-    # 1. Sort vertices by degree in non-ascending order.
-    subgraph_vertex_map = H.nodes()
-    subgraph_internal_vertices = ak.arange(0,len(subgraph_vertex_map))
-    subgraph_in_degree = H.in_degree()
-    subgraph_out_degree = H.out_degree()
-    subgraph_degree = subgraph_in_degree + subgraph_out_degree # TODO: fix to inspect in- and out- degrees separately.
-    perm = ak.argsort(subgraph_degree)
-    subgraph_internal_vertices = subgraph_internal_vertices[perm]
-
-    # 2. Generate the cumulative degree for each vertex in graph.
-    graph_in_degree = G.in_degree()
-    graph_out_degree = G.out_degree()
-    graph_degree = graph_in_degree + graph_out_degree
-
     cmd = "subgraphIsomorphism"
     args = { "MainGraphName":G.name,
-             "SubGraphName":H.name,
-             "GraphDegreeName":graph_degree.name,
-             "SubGraphDegreeName":subgraph_degree.name,
-             "SubGraphInternalVerticesSortedName":subgraph_internal_vertices.name,
-             "Type":type }
+             "SubGraphName":H.name }
 
-    repMsg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(repMsg)
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(rep_msg)
