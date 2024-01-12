@@ -115,6 +115,7 @@ module BuildPropertyGraph {
         for i in attributes.domain {
             var attributeName = attributes[i];
             var dataArraySymTabId = attributeSymTabIds[i];
+            if dataArraySymTabId == "" then break;
             var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArraySymTabId, st);
             var etype = dataArrayEntry.dtype;
             select etype {

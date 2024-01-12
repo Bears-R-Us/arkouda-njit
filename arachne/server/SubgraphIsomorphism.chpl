@@ -37,7 +37,8 @@ module SubgraphIsomorphism {
         var srcRG1 = toSymEntry(g1.getComp("SRC_R"), int).a;
         var dstRG1 = toSymEntry(g1.getComp("DST_R"), int).a;
         var segRG1 = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG1 = toSymEntry(g1.getComp("NODE_MAP"), int).a;
+        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
+        writeln("WE GET HERE 1");
 
         // Extract the g2/H/h information from the SegGraph data structure.
         var srcNodesG2 = toSymEntry(g2.getComp("SRC"), int).a;
@@ -46,19 +47,31 @@ module SubgraphIsomorphism {
         var srcRG2 = toSymEntry(g2.getComp("SRC_R"), int).a;
         var dstRG2 = toSymEntry(g2.getComp("DST_R"), int).a;
         var segRG2 = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG2 = toSymEntry(g2.getComp("NODE_MAP"), int).a;
+        var nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
+        writeln("WE GET HERE 2");
 
         // OLIVER NOTE: Normalize node labels and edge relationships id values so those of H match
         //              those of G to speed up semantic checks. 
         // In the SegGraph data structure for property graphs, there could be many different types 
         // of labels and relationships. Therefore, we will do some preprocessing here to normalize
         // all labels and relationships and place them into sets for quick intersections.
+        //
+        // OLIVER NOTE: This assumes that all labels and relationships are strings BUT some labels
+        //              and relationships can be unsigned or regular integers. If this is the case
+        //              then borrowed SegStringSymEntry below would be empty. We currently do not do
+        //              a check for this since all of our test data has string labels and
+        //              relationships BUT we should fix this in the future. 
         var edgeRelationshipsGraphG1 = (g1.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
         var nodeLabelsGraphG1 = (g1.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
+        writeln("WE GET HERE 3");
+
         var edgeRelationshipsGraphG2 = (g2.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
         var nodeLabelsGraphG2 = (g2.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
+        writeln("WE GET HERE 4");
+
         var relationshipStringToInt, labelStringToInt = new map(string, int); 
 
+        // Create global relationship mapper for G1 and G2.
         var id = 0;
         for k in edgeRelationshipsGraphG1.keys() {
             var segString = getSegString(edgeRelationshipsGraphG1[k][1].name, st);
@@ -70,6 +83,7 @@ module SubgraphIsomorphism {
                 }
             }
         }
+        writeln("WE GET HERE 5");
         for k in edgeRelationshipsGraphG2.keys() {
             var segString = getSegString(edgeRelationshipsGraphG2[k][1].name, st);
             for i in 0..edgeRelationshipsGraphG2[k][1].size-1 {
@@ -80,6 +94,9 @@ module SubgraphIsomorphism {
                 }
             }
         }
+        writeln("WE GET HERE 6");
+        
+        // Create global label mapper for G1 and G2.
         id = 0;
         for k in nodeLabelsGraphG1.keys() {
             var segString = getSegString(nodeLabelsGraphG1[k][1].name, st);
@@ -91,6 +108,7 @@ module SubgraphIsomorphism {
                 }
             }
         }
+        writeln("WE GET HERE 7");
         for k in nodeLabelsGraphG2.keys() {
             var segString = getSegString(nodeLabelsGraphG2[k][1].name, st);
             for i in 0..nodeLabelsGraphG2[k][1].size-1 {
@@ -101,41 +119,45 @@ module SubgraphIsomorphism {
                 }
             }
         }
+        writeln("WE GET HERE 8");
 
+        // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
+        // internal hash table intersections via sets.
         var convertedRelationshipsG1 = makeDistArray(g1.n_edges, set(int, parSafe=true));
         var convertedRelationshipsG2 = makeDistArray(g2.n_edges, set(int, parSafe=true));
         var convertedLabelsG1 = makeDistArray(g1.n_vertices, set(int, parSafe=true));
         var convertedLabelsG2 = makeDistArray(g2.n_vertices, set(int, parSafe=true));
+
+        writeln("$$$$$ st = ", st);
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
             forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG1[i].add(relationshipStringToInt[mapper[x]]);
         }
+        writeln("WE GET HERE 9");
 
         for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
             forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG2[i].add(relationshipStringToInt[mapper[x]]);
         }
+        writeln("WE GET HERE 10");
 
         for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
             forall (x,i) in zip(arr, arr.domain) do convertedLabelsG1[i].add(labelStringToInt[mapper[x]]);
         }
+        writeln("WE GET HERE 11");
 
         for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
             forall (x,i) in zip(arr, arr.domain) do convertedLabelsG2[i].add(labelStringToInt[mapper[x]]);
         }
+        writeln("WE GET HERE 12");
 
-        var Orig_Label_Mapper_G_to_Pass: [0..1] string;
-        var Orig_Label_Mapper_H_to_Pass: [0..1] string;
-        var Orig_Relationships_Mapper_G_to_Pass: [0..1] string;
-        var Orig_Relationships_Mapper_H_to_Pass: [0..1] string;
-        
         // OLIVER NOTE: Commenting this out for now because I am honestly not sure if it actually 
         //              improves performance at all. 
         // // make them local
@@ -234,10 +256,12 @@ module SubgraphIsomorphism {
             // Initialize sets
             var mapping: set((int , int)); 
 
-            //to track the depth in the search tree
+            // NOTE: Not used, saved for future work to automatically return true once we reach 
+            // depth equal to the subgraph size.
             var depth: int;
             
-            // current cost of the mapping
+            // NOTE: Not used, saved for future work to allow comparison of edge weights and 
+            // attributes to only return the subgraphs that are less than the given cost. 
             var cost: real;
 
             // Tin tracks in-neighbors - nodes with edges to current partial mapping
