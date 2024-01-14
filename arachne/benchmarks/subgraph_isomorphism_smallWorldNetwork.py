@@ -1,3 +1,7 @@
+# Creating a small-world network by using the Watts-Strogatz model. 
+# This model starts with a regular ring lattice and then rewires some edges at random, 
+# introducing a small-world character (high clustering and short average path length) into the network.
+
 import argparse
 import time
 import arachne as ar
@@ -19,17 +23,32 @@ def create_parser():
 
     return script_parser
 
-def add_edges_pref_attach(src, dst, m, current_node, node_degrees):
-    """Add edges to new node using preferential attachment."""
-    total_degree = np.sum(node_degrees)
-    if total_degree > 0:
-        probs = node_degrees / total_degree
-        target_nodes = np.random.choice(a=current_node, size=m, replace=False, p=probs)
-        for target_node in target_nodes:
-            src.append(current_node)
-            dst.append(target_node)
-            node_degrees[target_node] += 1
-    return src, dst, node_degrees
+def create_small_world_network(n, k, p):
+    """Generate a small-world network using the Watts-Strogatz model."""
+    if k % 2 != 0:
+        raise ValueError("k must be even in the Watts-Strogatz model.")
+
+    src = []
+    dst = []
+    # Create a regular ring lattice
+    for i in range(n):
+        for j in range(1, k // 2 + 1):
+            src.append(i)
+            dst.append((i + j) % n)
+            src.append(i)
+            dst.append((i - j) % n)
+
+    # Rewire edges with probability p
+    for i in range(n):
+        for j in range(1, k // 2 + 1):
+            if np.random.random() < p:
+                while True:
+                    new_connection = np.random.randint(n)
+                    if new_connection != i and new_connection not in dst[src.index(i)]:
+                        dst[src.index(i)] = new_connection
+                        break
+
+    return src, dst
 
 if __name__ == "__main__":
     #### Command line parser and extraction.
@@ -40,37 +59,24 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-
     ### Get Arkouda server configuration information.
     config = ak.get_config()
     num_locales = config["numLocales"]
     num_pus = config["numPUs"]
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
-    ### Generate a scale-free network
-    m = 2  # Number of edges to attach from new node to existing nodes
-    m0 = max(5, m)  # Initial number of interconnected nodes
+    ### Generate a small-world network
+    n = args.n  # Number of nodes
+    k = 4  # Each node is connected to k nearest neighbors in ring topology
+    p = 0.5  # Probability of rewiring each edge
 
-    src = []
-    dst = []
-    node_degrees = np.zeros(args.n)
-
-    # Create initial interconnected network
-    for i in range(m0):
-        for j in range(i+1, m0):
-            src.append(i)
-            dst.append(j)
-            node_degrees[i] += 1
-            node_degrees[j] += 1
-
-    # Add new nodes with preferential attachment
-    for current_node in range(m0, args.n):
-        src, dst, node_degrees = add_edges_pref_attach(src, dst, m, current_node, node_degrees)
+    src, dst = create_small_world_network(n, k, p)
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
 
-# 2. Build temporary property graph to get sorted edges and nodes lists.
+
+    # 2. Build temporary property graph to get sorted edges and nodes lists.
     temp_prop_graph = ar.PropGraph()
     start = time.time()
     temp_prop_graph.add_edges_from(src_ak, dst_ak)
