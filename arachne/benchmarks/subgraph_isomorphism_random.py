@@ -1,3 +1,5 @@
+# random graph using the Erdős-Rényi model
+
 import argparse
 import time
 import arachne as ar
@@ -19,17 +21,19 @@ def create_parser():
 
     return script_parser
 
-def add_edges_pref_attach(src, dst, m, current_node, node_degrees):
-    """Add edges to new node using preferential attachment."""
-    total_degree = np.sum(node_degrees)
-    if total_degree > 0:
-        probs = node_degrees / total_degree
-        target_nodes = np.random.choice(a=current_node, size=m, replace=False, p=probs)
-        for target_node in target_nodes:
-            src.append(current_node)
-            dst.append(target_node)
-            node_degrees[target_node] += 1
-    return src, dst, node_degrees
+def create_random_graph(n, p):
+    """Generate a random graph using the Erdős-Rényi model."""
+    src = []
+    dst = []
+
+    # Iterate over all possible pairs of nodes
+    for i in range(n):
+        for j in range(i+1, n):
+            if np.random.random() < p:
+                src.append(i)
+                dst.append(j)
+
+    return src, dst
 
 if __name__ == "__main__":
     #### Command line parser and extraction.
@@ -40,37 +44,23 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-
     ### Get Arkouda server configuration information.
     config = ak.get_config()
     num_locales = config["numLocales"]
     num_pus = config["numPUs"]
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
-    ### Generate a scale-free network
-    m = 2  # Number of edges to attach from new node to existing nodes
-    m0 = max(5, m)  # Initial number of interconnected nodes
+    ### Generate an Erdős-Rényi random graph
+    n = args.n  # Number of nodes
+    p = 0.01  # Probability of edge creation
 
-    src = []
-    dst = []
-    node_degrees = np.zeros(args.n)
-
-    # Create initial interconnected network
-    for i in range(m0):
-        for j in range(i+1, m0):
-            src.append(i)
-            dst.append(j)
-            node_degrees[i] += 1
-            node_degrees[j] += 1
-
-    # Add new nodes with preferential attachment
-    for current_node in range(m0, args.n):
-        src, dst, node_degrees = add_edges_pref_attach(src, dst, m, current_node, node_degrees)
+    src, dst = create_random_graph(n, p)
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
 
-# 2. Build temporary property graph to get sorted edges and nodes lists.
+
+    # 2. Build temporary property graph to get sorted edges and nodes lists.
     temp_prop_graph = ar.PropGraph()
     start = time.time()
     temp_prop_graph.add_edges_from(src_ak, dst_ak)
