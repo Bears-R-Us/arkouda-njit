@@ -128,7 +128,7 @@ module SubgraphIsomorphism {
         var convertedLabelsG1 = makeDistArray(g1.n_vertices, set(int, parSafe=true));
         var convertedLabelsG2 = makeDistArray(g2.n_vertices, set(int, parSafe=true));
 
-        writeln("$$$$$ st = ", st);
+        // writeln("$$$$$ st = ", st);
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
