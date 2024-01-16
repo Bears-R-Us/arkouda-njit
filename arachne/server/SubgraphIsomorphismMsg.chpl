@@ -25,7 +25,17 @@ module SubgraphIsomorphismMsg {
 
     /**
     Parses message from Python and invokes the kernel to find subgraphs from G that are isomorphic
-    to H.*/
+    to H.
+    
+    :arg cmd: operation to perform. 
+    :type cmd: string
+    :arg msgArgs: arguments passed to backend. 
+    :type msgArgs: borrowed MessageArgs
+    :arg st: symbol table used for storage.
+    :type st: borrowed SymTab
+    
+    :returns: MsgTuple
+    */
     proc subgraphIsomorphismMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
         var repMsg, outMsg:string;
