@@ -1,8 +1,9 @@
 import argparse
 import time
 import arachne as ar
-import arkouda as ak
+import networkx as nx
 import numpy as np
+import arkouda as ak
 
 def create_parser():
     """Creates the command line parser for this script"""
@@ -16,6 +17,7 @@ def create_parser():
     script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
     script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
     script_parser.add_argument("s", type=int, default=2, help="Random seed for reproducibility")
+    script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
 
     return script_parser
 
@@ -40,14 +42,13 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-
-    ### Get Arkouda server configuration information.
+    #### Get Arkouda server configuration information.
     config = ak.get_config()
     num_locales = config["numLocales"]
     num_pus = config["numPUs"]
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
-    ### Generate a scale-free network
+    #### Generate a scale-free network
     m = 2  # Number of edges to attach from new node to existing nodes
     m0 = max(5, m)  # Initial number of interconnected nodes
 
@@ -70,7 +71,7 @@ if __name__ == "__main__":
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
 
-# 2. Build temporary property graph to get sorted edges and nodes lists.
+    # Build temporary property graph to get sorted edges and nodes lists.
     temp_prop_graph = ar.PropGraph()
     start = time.time()
     temp_prop_graph.add_edges_from(src_ak, dst_ak)
@@ -114,7 +115,7 @@ if __name__ == "__main__":
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
     rels2_subgraph = ak.array(["rel2", "rel2", "rel2"])
 
-    #2. Populate the subgraph.
+    # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph, "rels2":rels2_subgraph})
@@ -127,3 +128,99 @@ if __name__ == "__main__":
     ### Run subgraph isomorphism.
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
     print("isos = isos")
+
+    #### Run NetworkX subgraph isomorphism.
+    # Get the NetworkX version
+    print("NetworkX version:", nx.__version__)
+
+    # Grab vertex and edge data from the Arachne dataframes.
+    graph_node_information = prop_graph.get_node_attributes()
+    graph_edge_information = prop_graph.get_edge_attributes()
+    subgraph_node_information = subgraph.get_node_attributes()
+    subgraph_edge_information = subgraph.get_edge_attributes()
+
+    # The 4 for loops below convert internal integer labels to original strings.
+    for (column,array) in graph_node_information.items():
+        if column != "nodes":
+            mapper = prop_graph.label_mapper[column]
+            graph_node_information[column] = mapper[array]
+
+    for (column,array) in graph_edge_information.items():
+        if column not in ("src", "dst"):
+            mapper = prop_graph.relationship_mapper[column]
+            graph_edge_information[column] = mapper[array]
+
+    for (column,array) in subgraph_node_information.items():
+        if column != "nodes":
+            mapper = subgraph.label_mapper[column]
+            subgraph_node_information[column] = mapper[array]
+
+    for (column,array) in subgraph_edge_information.items():
+        if column not in ("src", "dst"):
+            mapper = subgraph.relationship_mapper[column]
+            subgraph_edge_information[column] = mapper[array]
+
+    # Convert Arkouda dataframes to Pandas dataframes to NetworkX graph attributes.
+    G = nx.from_pandas_edgelist(graph_edge_information.to_pandas(), source='src',
+                                target='dst', edge_attr=True, create_using=nx.DiGraph)
+    H = nx.from_pandas_edgelist(subgraph_edge_information.to_pandas(), source='src',
+                                target='dst', edge_attr=True, create_using=nx.DiGraph)
+
+    # Convert graph node attributes to Pandas dfs, remove nodes, and convert rows to dicts.
+    graph_node_attributes = graph_node_information.to_pandas()
+    graph_nodes_from_df = list(graph_node_attributes.pop("nodes"))
+    graph_node_attributes = graph_node_attributes.to_dict('index')
+    graph_node_attributes_final = {}
+
+    # Convert subgraph node attributes to Pandas dfs remove nodes, and convert rows to dicts.
+    subgraph_node_attributes = subgraph_node_information.to_pandas()
+    subgraph_nodes_from_df = list(subgraph_node_attributes.pop("nodes"))
+    subgraph_node_attributes = subgraph_node_attributes.to_dict('index')
+    subgraph_node_attributes_final = {}
+
+    # Convert Pandas index to original node index.
+    for key in graph_node_attributes:
+        graph_node_attributes_final[graph_nodes_from_df[key]] = graph_node_attributes[key]
+
+    for key in subgraph_node_attributes:
+        subgraph_node_attributes_final[subgraph_nodes_from_df[key]] = subgraph_node_attributes[key]
+
+    # Set the node attributes for G and H from dicts. 
+    nx.set_node_attributes(G, graph_node_attributes_final)
+    nx.set_node_attributes(H, subgraph_node_attributes_final)
+
+    # Measure execution time.
+    start_time = time.time()
+
+    # Find subgraph isomorphisms of H in G.
+    GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
+
+    # List of dicts. For each dict, keys is original graph vertex, values are subgraph vertices.
+    subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
+    elapsed_time = time.time() - start_time
+    print(f"NetworkX execution time: {elapsed_time} seconds")
+
+    #### Compare Arachne subgraph isomorphism to NetworkX.
+    isos_list = isos.to_list()
+    isos_sublists = [isos_list[i:i+4] for i in range(0, len(isos_list), 4)]
+
+    isos_as_dicts = []
+    subgraph_vertices = [0, 1, 2, 3]
+    for iso in isos_sublists:
+        isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
+
+    for iso in isos_as_dicts:
+        if iso not in subgraph_isomorphisms:
+            print("ERROR: Subgraph isomorphisms do not match!")
+            break
+
+    if args.print_isos:
+        for iso in isos_as_dicts:
+            print(iso)
+
+        print()
+
+        for iso in subgraph_isomorphisms:
+            print(iso)
+
+    ak.shutdown()

@@ -265,37 +265,41 @@ def connected_components(graph: Graph) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def subgraph_isomorphism(G: PropGraph, H:PropGraph) -> pdarray:
+def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph) -> pdarray:
     """
-    Given a graph G and a subgraph H, perform a search in G matching all possible subgraphs that
-    are isomorphic to H. Uses a novel implementation of the VF2 algorithm 
-    (https://ieeexplore.ieee.org/document/1323804). 
+    Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
+    are isomorphic to the subgraph. Uses implementation of the VF2 algorithm 
+    (https://ieeexplore.ieee.org/document/1323804).
 
     Parameters
     ----------
     G : PropGraph | DiGraph
         Main graph that will be searched into. 
     H : PropGraph | DiGraph
-        Subgraph (pattern) that will  be searched for.
+        Subgraph (pattern) that will be searched for.
 
     Returns
     -------
     pdarray
-        Mappings of vertices from G that match the vertices in H.
+        Mappings of vertices from graph that match the vertices in subgraph. If there are `n` 
+        vertices in the subgraph and the graph has `k` subgraphs that are isomorphic, then the size
+        of the returned `pdarray` is `nk`. The array can be thought of as a segmented array where 
+        slices of size `k` will give a complete subgraph from the main graph as long as they are 
+        made with the assumption that the array starts at index 0.
     
     See Also
     --------
-    
+    triangles, k_truss
+
     Notes
     -----
-    
-    Raises
-    ------  
-    RuntimeError
+    The vertices of the subgraph are remapped to a one-up range starting from 0 and this is how they
+    are portrayed in the returned `pdarray`. The graph vertices are also remapped internally BUT
+    the returned mappings are the original vertex values of the graph.
     """
     cmd = "subgraphIsomorphism"
-    args = { "MainGraphName":G.name,
-             "SubGraphName":H.name }
+    args = { "MainGraphName":graph.name,
+             "SubGraphName":subgraph.name }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(rep_msg)
