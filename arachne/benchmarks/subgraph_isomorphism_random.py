@@ -104,7 +104,7 @@ if __name__ == "__main__":
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
     rels2_subgraph = ak.array(["rel2", "rel2", "rel2"])
 
-    #2. Populate the subgraph.
+    # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph, "rels2":rels2_subgraph})

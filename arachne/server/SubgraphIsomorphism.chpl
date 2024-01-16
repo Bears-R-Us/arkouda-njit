@@ -163,7 +163,7 @@ module SubgraphIsomorphism {
         timerVF2.stop();
         TimerArrNew[1] += timerVF2.elapsed();
 
-        var IsoArr = nodeMapGraphG1[IsoArrtemp];
+        var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
 
         /** Returns the set of internal identifiers of relationships for a given edge. Performs a 
         binary search into the the given `dst` array of a graph.*/
@@ -294,7 +294,7 @@ module SubgraphIsomorphism {
             }
         } //end of State record
 
-        /**NOTE: Missing docstring.*/
+        /**Find vertices that point to this state and all vertices that this state points to.*/
         proc addToTinTout(ref state: State, u: int, v: int): State throws {
             var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
             var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
@@ -333,11 +333,11 @@ module SubgraphIsomorphism {
         }  //end of createInitialState
 
         /** Returns unmapped nodes for the current state of the graph.*/
-        proc getUnmappedNodes(graph, state) throws {
+        proc getUnmappedSubgraphNodes(graph, state) throws {
             var unmapped: list(int);
             for n in 0..<graph.n_vertices do if !state.isMappedn2(n) then unmapped.pushBack(n);
             return unmapped;
-        } // end of getUnmappedNodes
+        } // end of getUnmappedSubgraphNodes
 
         /** Create candidates based on current state and retuns a set of pairs.*/
         proc getCandidatePairsOpti(state:State) throws {
@@ -345,7 +345,7 @@ module SubgraphIsomorphism {
             timergetCandidatePairsOpti.start();
             
             var candidates = new set((int, int), parSafe = true);
-            var unmapped = getUnmappedNodes(g2, state);
+            var unmapped = getUnmappedSubgraphNodes(g2, state);
 
             // If Tout1 and Tout2 are both nonempty.
             if state.Tout1.size > 0 && state.Tout2.size > 0 {
@@ -520,7 +520,7 @@ module SubgraphIsomorphism {
             }
 
             return(subIsoArrToReturn);
-        } //end of VF2
+        } //end of vf2
         
         writeln("\n\n\n\n\n");
         for i in 0..13 {
