@@ -278,10 +278,9 @@ module BuildPropertyGraphMsg {
         
         // Print out debug information to arkouda server output. 
         bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        if repMsg.size == 0 then repMsg = "no arrays created";
         bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
+        if repMsg.size == 0 then repMsg = "no arrays created";
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of addEdgeRelationshipsMsg
 

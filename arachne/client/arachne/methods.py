@@ -306,41 +306,57 @@ def connected_components(graph: Graph) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph) -> pdarray:
+def subgraph_isomorphism(G: PropGraph, H:PropGraph, type: str = "ullmann") -> pdarray:
     """
-    Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
-    are isomorphic to the subgraph. Uses implementation of the VF2 algorithm 
-    (https://ieeexplore.ieee.org/document/1323804).
+    Given a graph G and a subgraph H, perform a search in G matching all possible subgraphs that
+    are isomorphic to H. Current contains implementations for Ullmann and VF2. 
 
     Parameters
     ----------
     G : PropGraph | DiGraph
         Main graph that will be searched into. 
     H : PropGraph | DiGraph
-        Subgraph (pattern) that will be searched for.
+        Subgraph (pattern) that will  be searched for. 
+    type : str
+        Algorithmic variation to run. 
 
     Returns
     -------
     pdarray
-        Mappings of vertices from graph that match the vertices in subgraph. If there are `n` 
-        vertices in the subgraph and the graph has `k` subgraphs that are isomorphic, then the size
-        of the returned `pdarray` is `nk`. The array can be thought of as a segmented array where 
-        slices of size `k` will give a complete subgraph from the main graph as long as they are 
-        made with the assumption that the array starts at index 0.
+        Graph IDs of matching subgraphs from G. 
     
     See Also
     --------
-    triangles, k_truss
-
+    
     Notes
     -----
-    The vertices of the subgraph are remapped to a one-up range starting from 0 and this is how they
-    are portrayed in the returned `pdarray`. The graph vertices are also remapped internally BUT
-    the returned mappings are the original vertex values of the graph.
+    
+    Raises
+    ------  
+    RuntimeError
     """
-    cmd = "subgraphIsomorphism"
-    args = { "MainGraphName":graph.name,
-             "SubGraphName":subgraph.name }
+    ### Preprocessing steps for subgraph isomorphism.
+    # 1. Sort vertices by degree in non-ascending order.
+    subgraph_vertex_map = H.nodes()
+    subgraph_internal_vertices = ak.arange(0,len(subgraph_vertex_map))
+    subgraph_in_degree = H.in_degree()
+    subgraph_out_degree = H.out_degree()
+    subgraph_degree = subgraph_in_degree + subgraph_out_degree # TODO: fix to inspect in- and out- degrees separately.
+    perm = ak.argsort(subgraph_degree)
+    subgraph_internal_vertices = subgraph_internal_vertices[perm]
 
-    rep_msg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(rep_msg)
+    # 2. Generate the cumulative degree for each vertex in graph.
+    graph_in_degree = G.in_degree()
+    graph_out_degree = G.out_degree()
+    graph_degree = graph_in_degree + graph_out_degree
+
+    cmd = "subgraphIsomorphism"
+    args = { "MainGraphName":G.name,
+             "SubGraphName":H.name,
+             "GraphDegreeName":graph_degree.name,
+             "SubGraphDegreeName":subgraph_degree.name,
+             "SubGraphInternalVerticesSortedName":subgraph_internal_vertices.name,
+             "Type":type }
+
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(repMsg)
