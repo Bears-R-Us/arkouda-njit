@@ -2,12 +2,6 @@ module SubgraphIsomorphism {
     // Chapel modules.
     use Reflection;
     use List;
-    use Random;
-    use List;
-    use IO;
-    use Time;
-    use Set;
-    use Map;
 
     // Arachne modules.
     use GraphArray;
@@ -18,520 +12,182 @@ module SubgraphIsomorphism {
     use MultiTypeSymEntry;
     use ServerConfig;
     use AryUtil;
-    use SegStringSort;
-    use SegmentedString;
 
-    /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
-    searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
-    array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
-        var TimerArrNew:[0..13] real(64) = 0.0;
+    // Global counter for isomorphisms
+    var globalIsoCounter: atomic int;
 
-        var timerpreproc:stopwatch;
-        timerpreproc.start();
-
-        // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1 = toSymEntry(g1.getComp("SRC"), int).a;
-        var dstNodesG1 = toSymEntry(g1.getComp("DST"), int).a;
-        var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS"), int).a;
-        var srcRG1 = toSymEntry(g1.getComp("SRC_R"), int).a;
-        var dstRG1 = toSymEntry(g1.getComp("DST_R"), int).a;
-        var segRG1 = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
-
-        // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2 = toSymEntry(g2.getComp("SRC"), int).a;
-        var dstNodesG2 = toSymEntry(g2.getComp("DST"), int).a;
-        var segGraphG2 = toSymEntry(g2.getComp("SEGMENTS"), int).a;
-        var srcRG2 = toSymEntry(g2.getComp("SRC_R"), int).a;
-        var dstRG2 = toSymEntry(g2.getComp("DST_R"), int).a;
-        var segRG2 = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
-
-        //******************************************************************************************
-        //******************************************************************************************
-        // OLIVER NOTE: 
-        // Relabeled node labels and edge relationships id values so those of H match those of G to 
-        // speed up semantic checks. 
-        // 
-        // In the SegGraph data structure for property graphs, there could be many different types 
-        // of labels and relationships. Therefore, we will do some preprocessing here to relabel
-        // all labels and relationships and place them into sets for quick intersections.
-        //
-        // This assumes that all labels and relationships are strings BUT some labels and 
-        // relationships can be unsigned or regular integers. If this is the case then borrowed 
-        // SegStringSymEntry below would be empty. We currently do not do a check for this since all
-        // of our test data has string labels and relationships BUT we should fix this in the 
-        // future. 
-        //
-        // All of the code contained between the //**** comments (roughly ~100 lines) should
-        // probably eventually be a function that lives where SegGraph is defined to perform a 
-        // globalized relabeling and creating arrays of sets to speed up comparing the labels and
-        // relationships of two or more different graphs.
-        var edgeRelationshipsGraphG1 = (g1.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
-        var nodeLabelsGraphG1 = (g1.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
-
-        var edgeRelationshipsGraphG2 = (g2.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
-        var nodeLabelsGraphG2 = (g2.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(string, (string, borrowed SegStringSymEntry)))).stored_map;
-
-        var relationshipStringToInt, labelStringToInt = new map(string, int); 
-
-        // Create global relationship mapper for G1 and G2.
-        var id = 0;
-        for k in edgeRelationshipsGraphG1.keys() {
-            var segString = getSegString(edgeRelationshipsGraphG1[k][1].name, st);
-            for i in 0..segString.size-1 {
-                var val = segString[i];
-                if !relationshipStringToInt.contains(val) {
-                    relationshipStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
-        for k in edgeRelationshipsGraphG2.keys() {
-            var segString = getSegString(edgeRelationshipsGraphG2[k][1].name, st);
-            for i in 0..edgeRelationshipsGraphG2[k][1].size-1 {
-                var val = segString[i];
-                if !relationshipStringToInt.contains(val) {
-                    relationshipStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
+    // Function to check if the vertex v of H can be added to the current mapping
+    // Returns true if it can be added, false otherwise
+    proc isIsomorphic(G: SegGraph, H: SegGraph, v: int, mapping: [?D] int): bool throws {
+        var i = mapping[v];  // Vertex i in G corresponds to vertex v in H
         
-        // Create global label mapper for G1 and G2.
-        id = 0;
-        for k in nodeLabelsGraphG1.keys() {
-            var segString = getSegString(nodeLabelsGraphG1[k][1].name, st);
-            for i in 0..nodeLabelsGraphG1[k][1].size-1 {
-                var val = segString[i];
-                if !labelStringToInt.contains(val) {
-                    labelStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
-        for k in nodeLabelsGraphG2.keys() {
-            var segString = getSegString(nodeLabelsGraphG2[k][1].name, st);
-            for i in 0..nodeLabelsGraphG2[k][1].size-1 {
-                var val = segString[i];
-                if !labelStringToInt.contains(val) {
-                    labelStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
+        // Extract the graph information needed for G and H. 
+        var nodeLabelsG = toSymEntry(G.getComp("VERTEX_LABELS"), domain(int)).a;
+        var edgeRelationshipsG = toSymEntry(G.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
+        var srcG = toSymEntry(G.getComp("SRC"), int).a;
+        var dstG = toSymEntry(G.getComp("DST"), int).a;
+        var segG = toSymEntry(G.getComp("SEGMENTS"), int).a;
+
+        var nodeLabelsH = toSymEntry(H.getComp("VERTEX_LABELS"), domain(int)).a;
+        var edgeRelationshipsH = toSymEntry(H.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
+        var srcH = toSymEntry(H.getComp("SRC"), int).a;
+        var dstH = toSymEntry(H.getComp("DST"), int).a;
+        var segH = toSymEntry(H.getComp("SEGMENTS"), int).a;
+
+        // Check if the node labels are the same
+        if nodeLabelsH[v] != nodeLabelsG[i] {
+            return false;
         }
 
-        // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
-        // internal hash table intersections via sets.
-        var convertedRelationshipsG1 = makeDistArray(g1.n_edges, set(int, parSafe=true));
-        var convertedRelationshipsG2 = makeDistArray(g2.n_edges, set(int, parSafe=true));
-        var convertedLabelsG1 = makeDistArray(g1.n_vertices, set(int, parSafe=true));
-        var convertedLabelsG2 = makeDistArray(g2.n_vertices, set(int, parSafe=true));
+        // Check if the in-degree + out-degree of every vertex in H is less than or equal to 
+        // the corresponding vertex in G
+        for u in 0..v-1 {
+            if mapping[u] > 0 {  // If u in H is mapped to some vertex in G
+                // Check if there is an edge from u to v in H
+                var adj_list_of_u_from_H_start = segH[u];
+                var adj_list_of_u_from_H_end = segH[u+1];
+                var v_found = bin_search_v(dstH, adj_list_of_u_from_H_start, adj_list_of_u_from_H_end, v);
+                if v_found {
+                    // Check if there is an edge from mapping[u] to mapping[v] in G
+                    // And check if the edge labels are the same
+                    var um = mapping[u];
+                    var vm = mapping[v];
 
-        for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG1[i].add(relationshipStringToInt[mapper[x]]);
-        }
+                    var adj_list_of_um_from_G_start = segG[um];
+                    var adj_list_of_um_from_G_end = segG[um+1];
+                    var vm_found = bin_search_v(dstG, adj_list_of_um_from_G_start, adj_list_of_um_from_G_end, vm);
 
-        for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG2[i].add(relationshipStringToInt[mapper[x]]);
-        }
-
-        for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedLabelsG1[i].add(labelStringToInt[mapper[x]]);
-        }
-
-        for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedLabelsG2[i].add(labelStringToInt[mapper[x]]);
-        }
-        //******************************************************************************************
-        //******************************************************************************************
-        timerpreproc.stop();
-        TimerArrNew[0] += timerpreproc.elapsed();
-        
-        var timerVF2:stopwatch;
-        timerVF2.start();
-        var IsoArrtemp = vf2(g1, g2);
-        timerVF2.stop();
-        TimerArrNew[1] += timerVF2.elapsed();
-
-        var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
-
-        /** Returns the set of internal identifiers of relationships for a given edge. Performs a 
-        binary search into the the given `dst` array of a graph.*/
-        proc getRelationships(seg, dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
-            var found: bool = false;
-            var start = seg[fromNode];
-            var end = seg[fromNode+1]-1;
-            
-            var edgeFound = bin_search_v(dst, start, end, toNode);
-            var emptyRels = new set(int, parSafe=true);
-
-            if edgeFound > -1 then {
-                found = true; 
-                var foundRels = edgeRelationships[edgeFound];
-                return(found, foundRels);
-            }
-            return (found, emptyRels);
-        }
-
-        /** Returns the set of internal identifiers of labels for a given vertex.*/
-        proc getLabels(node:int, ref nodeLabels) throws {
-            var found : bool = false;
-            var emptyLabels = new set(int, parSafe=true);
-
-            try {
-                var foundLabels = nodeLabels[node];
-                found = true;
-                return(found, foundLabels);
-            }
-            
-            return (found, emptyLabels);
-        }
-
-        /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
-        record State {
-            var n1, n2: int;
-            var core1, core2:  map(int, int);
-            var mapping: set((int , int)); 
-
-            // NOTE: Not used, saved for future work to automatically return true once we reach 
-            // depth equal to the subgraph size.
-            var depth: int;
-            
-            // NOTE: Not used, saved for future work to allow comparison of edge weights and 
-            // attributes to only return the subgraphs that are less than the given cost. 
-            var cost: real;
-
-            // Tin tracks in-neighbors - nodes with edges to current partial mapping.
-            // Tout tracks out-neighbors - nodes with edges from current mapping.
-            var Tin1, Tout1, Tin2, Tout2: domain(int);
-
-            /** State initializer.*/
-            proc init() {
-                this.n1 = 0;
-                this.n2 = 0;
-                this.core1 = new map(int, int);
-                this.core2 = new map(int, int);
-                this.mapping = new set((int, int));
-                this.depth = 0;
-                this.cost = 0.0;
-                this.Tin1  =  {1..0};
-                this.Tout1 =  {1..0};
-                this.Tin2  =  {1..0};
-                this.Tout2 =  {1..0};
-            }
-
-            /** Initialized based on given sizes `n1` and `n2`.*/
-            proc init(n1, n2) {
-                this.n1 = n1;
-                this.n2 = n2;
-                this.core1 = new map(int, int);
-                this.core2 = new map(int, int);
-                this.mapping = new set((int, int));
-                this.depth = 0;
-                this.cost = 0.0; 
-                this.Tin1  =  {1..0};
-                this.Tout1 =  {1..0};
-                this.Tin2  =  {1..0};
-                this.Tout2 =  {1..0};   
-            }
-
-            /** Copy current state information to a new state.*/
-            proc copy() {
-                var state = new State(n1, n2);
-                state.core1 = this.core1;
-                state.core2 = this.core2;
-                state.mapping = this.mapping;  
-                state.depth = this.depth;
-                state.cost = this.cost;
-                state.Tin1 = this.Tin1;
-                state.Tout1 = this.Tout1;
-                state.Tin2 = this.Tin2;
-                state.Tout2 = this.Tout2;
-                return state;
-            }
-
-            /** Reset vectors during backtracking.*/
-            proc reset() {
-                this.mapping.clear(); // reset to empty
-                this.core1.clear();
-                this.core2.clear();
-                this.depth -= 1;
-                this.cost -= 1;
-                this.Tin1.clear();
-                this.Tout1.clear();
-                this.Tin2.clear();
-                this.Tout2.clear(); 
-            }
-            
-            /** Add a vertex pair `(x1, x2)` to the mapping.*/
-            proc addPair(x1: int, x2: int) {
-                this.core1.add(x1, x2);
-                this.core2.add(x2, x1);
-                this.mapping.add((x1, x2));
-                this.depth += 1;
-            }
-
-            /** Check if a given node is mapped in g1.*/
-            proc isMappedn1(node: int): bool {
-                if this.core1.contains(node) then return true;
-                else return false;
-            }
-            
-            /** Check if a given node is mapped in g2.*/
-            proc isMappedn2(node: int): bool {
-                if this.core2.contains(node) then return true;
-                else return false;
-            }
-        } //end of State record
-
-        /**Find vertices that point to this state and all vertices that this state points to.*/
-        proc addToTinTout(ref state: State, u: int, v: int): State throws {
-            var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
-            var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-
-            // Add neighbors of u to Tin1 and Tout1 from g1
-            if state.Tin1.contains(u) then state.Tin1.remove(u);
-            if state.Tout1.contains(u) then state.Tout1.remove(u);
-
-            // Add unmapped neighbors to Tin1
-            for n1 in inNeighbors do if !state.core1.contains(n1) then state.Tin1.add(n1);
-
-            // Add unmapped neighbors to Tout1
-            for n1 in outNeighbors do if !state.core1.contains(n1) then state.Tout1.add(n1);
-
-            // Add neighbors of v to Tin2, Tout2 from g2
-            var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v + 1]];            
-            var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v + 1]];
-
-            if state.Tin2.contains(v) then state.Tin2.remove(v);
-            if state.Tout2.contains(v) then state.Tout2.remove(v);
-
-            // Add unmapped neighbors to Tin2
-            for n2 in inNeighborsg2 do if !state.core2.contains(n2) then state.Tin2.add(n2);
-            
-            // Add unmapped neighbors to Tout2
-            for n2 in outNeighborsg2 do if !state.core2.contains(n2) then state.Tout2.add(n2);
-
-            return state;
-        } // end of addToTinTout
-
-        /** Creates an initial, empty state. NOTE: Is this needed?*/
-        proc createInitialState(): State throws {
-            var state = new State();
-            state.init(g1.n_vertices, g2.n_vertices);
-            return state;
-        }  //end of createInitialState
-
-        /** Returns unmapped nodes for the current state of the graph.*/
-        proc getUnmappedSubgraphNodes(graph, state) throws {
-            var unmapped: list(int);
-            for n in 0..<graph.n_vertices do if !state.isMappedn2(n) then unmapped.pushBack(n);
-            return unmapped;
-        } // end of getUnmappedSubgraphNodes
-
-        /** Create candidates based on current state and retuns a set of pairs.*/
-        proc getCandidatePairsOpti(state:State) throws {
-            var timergetCandidatePairsOpti:stopwatch;
-            timergetCandidatePairsOpti.start();
-            
-            var candidates = new set((int, int), parSafe = true);
-            var unmapped = getUnmappedSubgraphNodes(g2, state);
-
-            // If Tout1 and Tout2 are both nonempty.
-            if state.Tout1.size > 0 && state.Tout2.size > 0 {
-                var minTout2 = min reduce state.Tout2;
-                for n1 in state.Tout1 do candidates.add((n1, minTout2));
-            } else {
-                //If Tin1 and Tin2 are both nonempty.
-                if state.Tin1.size > 0 && state.Tin2.size > 0 {
-                    var minTin2 = min reduce state.Tin2;
-                    for n1 in state.Tin1 do candidates.add((n1, minTin2));
-                } else { // not (Tin1 or Tin2) NOTE: What does this mean?
-                    if unmapped.size > 0 {
-                        var minUnmapped = min reduce unmapped;
-                        for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
-                    }
-                } 
-            }   
-            timergetCandidatePairsOpti.stop();
-            TimerArrNew[7] += timergetCandidatePairsOpti.elapsed();
-            return candidates;
-        } // end of getCandidatePairsOpti
-
-
-        /** Check that node labels are the same.*/
-        proc nodesLabelCompatible(n1: int, n2: int): bool throws {
-            var timernodesLabelCompatible:stopwatch;
-            timernodesLabelCompatible.start();
-
-            var label1 = getLabels(n1, convertedLabelsG1)[1];
-            var label2 = getLabels(n2, convertedLabelsG2)[1];
-
-            if (label1 & label2).size <= 0 {
-                timernodesLabelCompatible.stop();
-                TimerArrNew[4] += timernodesLabelCompatible.elapsed();                
-                return false;
-            }
-            timernodesLabelCompatible.stop();
-            TimerArrNew[4] += timernodesLabelCompatible.elapsed();
-            return true;
-        } // end of nodesLabelCompatible
-
-        /** Check if a pair of candidates are feasible.*/
-        proc isFeasible(state: State, n1: int, n2: int) throws {
-            var timerisFeasible:stopwatch;
-            timerisFeasible.start();
-
-            var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
-
-            if !nodesLabelCompatible(n1, n2) {
-                timerisFeasible.stop();
-                TimerArrNew[2] += timerisFeasible.elapsed();
-                return false;
-            }
-            
-            // Get out neighbors of G1 and G2
-            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
-         
-            // Check out neighbors of n2 
-            for Out2 in getOutN2 {
-                if state.isMappedn2(Out2) {
-                    var Out1 = state.core2(Out2);
-                    var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, n1, Out1);
-                    var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG1, n2, Out2);
-            
-                    if !flag1 || (label2 & label1).size < 0 {
-                        timerisFeasible.stop();
-                        TimerArrNew[2] += timerisFeasible.elapsed();
-                        return false;
-                    }
-                } 
-                else {
-                    if state.Tin2.contains(Out2) then termin2 += 1;
-                    if state.Tout2.contains(Out2) then termout2 += 1;
-                    if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;
-                }
-            }
-            
-            // Get in neighbors of G1 and G2
-            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
-
-            // Check in neighbors of n2 
-            for In2 in getInN2 {
-                if state.isMappedn2(In2) {
-                    var In1 = state.core2(In2);
-                    var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, In1, n1);
-                    var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG2, In2, n2);
-            
-                    if !flag1 || (label2 & label1).size <= 0 {
-                        timerisFeasible.stop();
-                        TimerArrNew[2] += timerisFeasible.elapsed();
+                    if !vm_found || edgeRelationshipsH[v_found] != edgeRelationshipsG[vm_found] {
                         return false;
                     }
                 }
-                else {
-                    if state.Tin2.contains(In2) then termin2 += 1;
-                    if state.Tout2.contains(In2) then termout2 += 1;
-                    if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
-                }
-            }
-            
-            // Check out neighbors of n1 
-            for Out1 in getOutN1 {
-                if !state.isMappedn1(Out1) {
-                    if state.Tin1.contains(Out1) then termin1 += 1;
-                    if state.Tout1.contains(Out1) then termout1 += 1;
-                    if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
-                }
-            }
-            
-            // Check in neighbors of n1 
-            for In1 in getInN1 {
-                if !state.isMappedn1(In1) {
-                    if state.Tin1.contains(In1) then termin1 += 1;
-                    if state.Tout1.contains(In1) then termout1 += 1;
-                    if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
-                }
-            }
-            timerisFeasible.stop();
-            TimerArrNew[2] += timerisFeasible.elapsed();
-            return termin2<=termin1 && termout2<=termout1 && (termin2+termout2+new2)<=(termin1+termout1+new1);
-        } // end of isFeasible
 
-        /** Depth-first-search-like steps to traverse a graph and return a list of all solution 
-        states.*/
-        proc dfs(ref initialState: State, g1: SegGraph, g2: SegGraph):list(set((int, int))) throws {
-            var timerDFS:stopwatch;
-            timerDFS.start();
+                // Check if there is an edge from v to u in H
+                var adj_list_of_v_from_H_start = segH[v];
+                var adj_list_of_v_from_H_end = segH[v+1];
+                var u_found = bin_search_v(dstH, adj_list_of_v_from_H_start, adj_list_of_v_from_H_end, u);
+                if u_found {
+                    // Check if there is an edge from mapping[u] to mapping[v] in G
+                    // And check if the edge labels are the same
+                    var um = mapping[u];
+                    var vm = mapping[v];
 
-            var allmappings: list (set((int, int)));
-            var stack:list(State, parSafe=true); // stack for backtracking
-            // NOTE: If algorithm is sequential, does parSafe need to be true?
-            
-            stack.pushBack(initialState); // Initialize stack.
+                    var adj_list_of_vm_from_G_start = segG[vm];
+                    var adj_list_of_vm_from_G_end = segG[vm+1];
+                    var um_found = bin_search_v(dstG, adj_list_of_vm_from_G_start, adj_list_of_vm_from_G_end, um);
 
-            while stack.size > 0 {
-                var state = stack.popBack();
-                if state.mapping.size == g2.n_vertices then allmappings.pushBack(state.mapping);
-
-                var candidatesOpti = getCandidatePairsOpti(state);
-
-                for (n1, n2) in candidatesOpti {
-                    if isFeasible(state, n1, n2) {
-                        var newState = state.copy();
-                        newState.addPair(n1, n2);
-                        newState = addToTinTout(newState, n1, n2);
-                        stack.pushBack(newState);
+                    if !um_found || edgeRelationshipsH[u_found] != edgeRelationshipsG[um_found] {
+                        return false;
                     }
                 }
-                state.reset();
             }
-            timerDFS.stop();
-            TimerArrNew[3] += timerDFS.elapsed();
-            return allmappings; // Isomappings
-        }  // end of dfs
-
-
-        /** Main procedure that invokes all of the vf2 steps using the graph data that is
-        initialized by `runVF2`.*/
-        proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
-            var initial = createInitialState();
-            var solutions = dfs(initial, g1, g2);
-            var subIsoArrToReturn: [0..(solutions.size*g2.n_vertices)-1](int);
-
-            var posOffset = 0;
-            for solSet in solutions {
-                for (n1, n2) in solSet {
-                    subIsoArrToReturn[posOffset + n2] = n1;
-                }
-                posOffset += g2.n_vertices;
-            }
-
-            return(subIsoArrToReturn);
-        } //end of vf2
-        
-        writeln("\n\n\n\n\n");
-        for i in 0..13 {
-            if i == 0 then writeln("Preprocessing total time = ", TimerArrNew[0]);
-            if i == 1 then writeln("VF2 total time = ", TimerArrNew[1]);        
-            if i == 2 then writeln("isFeasible total time = ", TimerArrNew[2]);
-            if i == 3 then writeln("DFS total time = ", TimerArrNew[3]);
-            if i == 4 then writeln("nodesLabelCompatible total time = ", TimerArrNew[4]);
-            if i == 7 then writeln("getCandidatePairsOpti total time = ", TimerArrNew[7]);
         }
-        writeln("\n\n\n\n\n");
-        return IsoArr;
-    } //end of runVF2
-} // end of SubgraphIsomorphism module
+        return true;
+    }
+    
+    // Recursive function for Ullmann's subgraph isomorphism algorithm
+    proc ullmannSubgraphIsomorphism11Helper(G: SegGraph, H: SegGraph, v: int, visited: [?D1] bool, mapping: [?D2] int, graphDegree: [?D3] int): list([1..H.n_vertices] int)  throws {
+        var isomorphismList: list(list(int));
+
+        var localIsoList: list([1..H.n_vertices] int);  // List to store the isomorphisms found in the current branch
+        var localIsoCounter = 0;  // Count the number of isomorphisms found in the current branch
+
+        writeln("$$$$$$ WE GET HERE 3");
+
+        for i in 0..G.n_vertices-1 {
+            writeln("$$$$$$ WE GET HERE 4");
+            if (!visited[i] && graphDegree[i] >= 1) { 
+                visited[i] = true;  // Mark the vertex as visited
+                mapping[v] = i;  // Add the vertex to the current mapping
+                // If the vertex can be added to the current mapping
+                if (isIsomorphic(G, H, v, mapping)) {
+                    // If all vertices in H have been visited
+                    if (v >= H.n_vertices-1) {
+                        var isComplete = true;  // Check if all vertices in the subgraph have been mapped
+                        for j in 0..H.n_vertices-1 {
+                            if (mapping[j] < 1) {
+                                isComplete = false;
+                                break;
+                            }
+                        }
+                        // If the mapping is complete, add the current mapping to the isomorphism list
+                        if (isComplete) {
+                            localIsoList.pushBack(mapping);
+                        }
+                    }
+                    else {
+                        // Recursively call the function for the next vertex
+                        var subIsoList = ullmannSubgraphIsomorphism11Helper(G, H, v+1, visited, mapping, graphDegree);
+                        if (subIsoList.size > 0) {
+                            // Add isomorphisms found in the sub-branch to the current isomorphism list
+                            for isoMapping in subIsoList {
+                                localIsoList.pushBack(isoMapping);
+                            }
+                        }
+                    }
+                }
+                writeln("$$$$$$ WE GET HERE 5");
+                // Backtrack: unvisit the vertex and remove it from the mapping
+                visited[i] = false;
+                mapping[v] = -1;
+            }
+        }
+        return localIsoList;  // Return the list of isomorphisms found in the current branch
+    } // end of ullmannSubgraphIsomorphism11Helper
+
+    // Ullmann's subgraph isomorphism algorithm
+    proc ullmannSubgraphIsomorphism11(G: SegGraph, H: SegGraph, subGraphVerticesSortedByDegree: [?D1] int, graphDegree: [?D2] int) throws {
+        // // Create an array to hold the vertices sorted by degree
+        // var subGraphVerticesSortedByDegree: [1..H.numVertices] int;
+        // for v in 1..H.numVertices {
+        //     subGraphVerticesSortedByDegree[v] = v;
+        // }
+
+        // // Sort the array based on degrees in descending order
+        // for i in 1..H.numVertices {
+        //     for j in i+1..H.numVertices {
+        //         if H.nodeDegree[subGraphVerticesSortedByDegree[i]] < H.nodeDegree[subGraphVerticesSortedByDegree[j]] {
+        //             var tmp = subGraphVerticesSortedByDegree[i];
+        //             subGraphVerticesSortedByDegree[i] = subGraphVerticesSortedByDegree[j];
+        //             subGraphVerticesSortedByDegree[j] = tmp;
+        //         }
+        //     }
+        // }
+
+        // Parallelize over the vertices of subGraph based on degree order!
+        // Check it realy changes the running time? I have doubt because of parallelism!
+        coforall idx in 0..H.n_vertices-1 {
+            var v = subGraphVerticesSortedByDegree[idx];
+            var visited: [0..G.n_vertices-1] bool;  // Array to keep track of visited vertices
+            var mapping: [0..H.n_vertices-1] int;  // Array for the current mapping
+            mapping = -1;  // Initialize the mapping array to -1 (indicating no mapping)
+            visited = false;  // Initialize all vertices as unvisited
+            // Find isomorphisms for the current vertex v
+            writeln("$$$$$$ WE GET HERE 1");
+            var subIsoList = ullmannSubgraphIsomorphism11Helper(G, H, v, visited, mapping, graphDegree);
+            writeln("$$$$$$ WE GET HERE 2");
+            if (subIsoList.size > 0) {
+                // Print isomorphisms found by the current task without merging
+                //writeln("Isomorphisms found by task ", v, ":");
+                var taskIsoCounter = 0;
+                for isoMapping in subIsoList {
+                    taskIsoCounter += 1;
+                    writeln("Isomorphism #", taskIsoCounter, ":");
+                    for k in 0..H.n_vertices-1 {
+                        var mappedVertex = isoMapping[k];
+                        if (mappedVertex > 0) {
+                            writeln("Subgraph vertex ", k, " -> Graph vertex ", mappedVertex);
+                        }
+                    }
+                    //writeln("----");
+                }
+                
+                // Add the number of isomorphisms found by the current task to the global counter
+                globalIsoCounter.add(taskIsoCounter);
+            }
+        }
+    
+        // Print the total number of isomorphisms found
+        writeln("Total isomorphisms found: ", globalIsoCounter.read());
+    } // end of ullmannSubgraphIsomorphism11
+} // end of module
