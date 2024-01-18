@@ -39,8 +39,13 @@ if __name__ == "__main__":
 
     # Adding nodes and edges to directed graphs
     G.add_nodes_from(range(0, 30))
-    G.add_edges_from([(3, 0), (1, 3), (4, 1), (2, 4), (5, 2), (3, 4), (4, 5),
-                      (3, 7), (7, 6), (4, 8), (5, 9), (1, 0), (2, 1), (8, 7), (7,4), (8, 5), (9,8)])
+    G.add_edges_from([(5, 0), (5, 1), (1, 6), (2, 1), (3, 2), (3, 7),(7, 1), (7, 10),(7, 2),
+                      (8, 4),(4, 9),(9, 5), (9, 8), (6, 9), (6, 5), (6, 7), (10, 6), (10 , 11),
+                      (11, 3), (11, 12), (6, 13), (14, 6), (14, 10), (10, 15), (15, 11),
+                      (16, 11), (16, 12), (12, 17), (17, 22), (17, 29), (20, 17),(16, 20), (17, 16),
+                      (20, 19), (19, 16),(15, 16), (15, 19), (15, 14), (13, 14), (13, 18), (14, 18), (14, 21),(21, 15), 
+                      (19, 21), (21, 23), (23, 25), (25, 26), (25, 24),(27,25), (27, 20), (27, 28),
+                      (26, 27)])
 
     H.add_nodes_from(range(0, 4))
     H.add_edges_from([(0, 1), (1, 2), (2, 0), (1, 3)])
@@ -67,18 +72,18 @@ if __name__ == "__main__":
 
     #### Run Arachne subgraph isomorphism.
     # 1. Create vertices, edges, and attributes for main property graph.
-    src_prop_graph = ak.array([1, 1, 2, 2, 3, 0, 3, 3, 4, 4, 4, 5, 5, 7, 7, 8, 8, 9])
-    dst_prop_graph = ak.array([3, 0, 1, 4, 0, 3, 4, 7, 1, 5, 8, 2, 9, 4, 6, 5, 7, 8])
-    labels1_prop_graph = ak.array(["lbl1"] * 10)
-    labels2_prop_graph = ak.array(["lbl2"] * 10)
-    rels1_prop_graph = ak.array(["rel1"] * 18)
-    rels2_prop_graph =  ak.array(["rel2"] * 18)
+    src_prop_graph = ak.array([5, 5, 1, 6, 6, 7, 7, 7 , 2, 10, 10, 10, 15, 15, 15, 15, 14, 14, 14, 14, 19, 19, 21, 21, 23, 25, 25, 26, 27, 27, 27, 20, 20, 17, 17, 3, 3, 11, 11, 12, 17, 16, 16, 6,  6, 13, 13, 9, 9, 8, 4])
+    dst_prop_graph = ak.array([0, 1, 6, 5, 7, 1, 2, 10, 1, 11, 6 , 15, 11, 16, 19, 14, 10,  6, 21, 18, 16, 21, 15, 23, 25, 24, 26, 27, 25, 28, 20, 17, 19, 22, 29, 2, 7,  3, 12, 17, 16, 12, 11, 9, 13, 14, 18, 5, 8, 4, 9])
+    labels1_prop_graph = ak.array(["lbl1"] * 30)
+    labels2_prop_graph = ak.array(["lbl2"] * 30)
+    rels1_prop_graph = ak.array(["rel1"] * 51)
+    rels2_prop_graph =  ak.array(["rel2"] * 51)
 
     # 2. Transer data above into main property graph.
     prop_graph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_prop_graph, "dst":dst_prop_graph,
                             "rels1":rels1_prop_graph, "rels2":rels2_prop_graph})
-    node_df_h = ak.DataFrame({"nodes": ak.arange(0,10), "lbls1":labels1_prop_graph,
+    node_df_h = ak.DataFrame({"nodes": ak.arange(0,30), "lbls1":labels1_prop_graph,
                               "lbls2":labels2_prop_graph})
     prop_graph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1","rels2"])
@@ -119,6 +124,7 @@ if __name__ == "__main__":
 
     for iso in isos_as_dicts:
         if iso not in subgraph_isomorphisms:
+            print("missing is: ", iso)
             print("ERROR: Subgraph isomorphisms do not match!")
             break
 

@@ -3,6 +3,7 @@ import argparse
 import time
 import arachne as ar
 import arkouda as ak
+import networkx as nx
 
 def create_parser():
     """Creates the command line parser for this script"""
@@ -74,6 +75,7 @@ if __name__ == "__main__":
                                     relationship_columns=["relationships"])
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["labels"])
 
+
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
     src_subgraph = ak.array([0, 1, 2])
@@ -92,7 +94,46 @@ if __name__ == "__main__":
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1","rels2"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
-
+    print("Till now it is fine")
     ### Run subgraph isomorphism.
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
-    print("isos = isos")
+    print("isos =", isos)
+
+
+    print("src prop = ", src)
+    print("dst prop = ", dst)    
+    
+    print("src subgraph = ", src_subgraph)
+    print("dst subgraph = ", dst_subgraph)
+ 
+    print("*************************NETWORKX******************")
+
+    ### Convert Arkouda graph to NetworkX graph
+    G = nx.DiGraph()
+    for src_node, dst_node in zip(src.to_ndarray(), dst.to_ndarray()):
+        G.add_edge(src_node, dst_node)
+
+    for u, v, attrs in G.edges(data=True):
+        print(f"Edge from {u} to {v} with attributes {attrs}")
+    ### Run subgraph isomorphism using NetworkX
+    subgraph_nodes = src_subgraph.to_ndarray()
+    subgraph_edges = list(zip(src_subgraph.to_ndarray(), dst_subgraph.to_ndarray()))
+
+    subG = nx.DiGraph()
+    subG.add_edges_from(subgraph_edges)
+    
+    start_time = time.time()
+
+    # Use NetworkX's isomorphism checker
+    matcher = nx.algorithms.isomorphism.DiGraphMatcher(G, subG)
+    isos_networkx = list(matcher.subgraph_monomorphisms_iter())
+    print()
+    print("Subgraph occurrences found:")
+    for iso_mapping in isos_networkx:
+        print("Isomorphism mapping:", iso_mapping)
+    print("NetworkX subgraph_isomorphism found ISOs:", len(isos_networkx))
+    end_time = time.time()
+    elapsed_time = end_time - start_time
+    print("Elapsed time:", elapsed_time, "seconds")
+
+    ak.shutdown()

@@ -345,7 +345,13 @@ module SubgraphIsomorphism {
             timergetCandidatePairsOpti.start();
             
             var candidates = new set((int, int), parSafe = true);
+            var timerunmapped:stopwatch;
+            timerunmapped.start();
+
             var unmapped = getUnmappedNodes(g2, state);
+
+            timerunmapped.stop();
+            TimerArrNew[5] += timerunmapped.elapsed();
 
             // If Tout1 and Tout2 are both nonempty.
             if state.Tout1.size > 0 && state.Tout2.size > 0 {
@@ -479,9 +485,11 @@ module SubgraphIsomorphism {
             var allmappings: list (set((int, int)));
             var stack:list(State, parSafe=true); // stack for backtracking
             // NOTE: If algorithm is sequential, does parSafe need to be true?
-            
+            var timerpush1:stopwatch;
+            timerpush1.start();
             stack.pushBack(initialState); // Initialize stack.
-
+            timerpush1.stop();
+            TimerArrNew[10] += timerpush1.elapsed();
             while stack.size > 0 {
                 var state = stack.popBack();
                 if state.mapping.size == g2.n_vertices then allmappings.pushBack(state.mapping);
@@ -491,12 +499,30 @@ module SubgraphIsomorphism {
                 for (n1, n2) in candidatesOpti {
                     if isFeasible(state, n1, n2) {
                         var newState = state.copy();
+                        var timeraddPair:stopwatch;
+                        timeraddPair.start();
                         newState.addPair(n1, n2);
+                        timeraddPair.stop();
+                        TimerArrNew[8] += timeraddPair.elapsed();
+                        
+                        var timeraddToTinTout:stopwatch;
+                        timeraddToTinTout.start();
                         newState = addToTinTout(newState, n1, n2);
+                        timeraddToTinTout.stop();
+                        TimerArrNew[9] += timeraddToTinTout.elapsed();
+                        
+                        var timerpush2:stopwatch;
+                        timerpush2.start();
                         stack.pushBack(newState);
+                        timerpush2.stop();
+                        TimerArrNew[11] += timerpush2.elapsed();
                     }
                 }
+                var timerreset:stopwatch;
+                timerreset.start();
                 state.reset();
+                timerreset.stop();
+                TimerArrNew[12] += timerreset.elapsed();
             }
             timerDFS.stop();
             TimerArrNew[3] += timerDFS.elapsed();
@@ -529,7 +555,14 @@ module SubgraphIsomorphism {
             if i == 2 then writeln("isFeasible total time = ", TimerArrNew[2]);
             if i == 3 then writeln("DFS total time = ", TimerArrNew[3]);
             if i == 4 then writeln("nodesLabelCompatible total time = ", TimerArrNew[4]);
+            if i == 5 then writeln("getUnmappedNodes total time = ", TimerArrNew[5]);
+            if i == 6 then writeln("nodesLabelCompatible total time = ", TimerArrNew[6]);
             if i == 7 then writeln("getCandidatePairsOpti total time = ", TimerArrNew[7]);
+            if i == 8 then writeln("addPair total time = ", TimerArrNew[8]);
+            if i == 9 then writeln("addToTinTout total time = ", TimerArrNew[9]);
+            if i == 10 then writeln("stack push 1 total time = ", TimerArrNew[10]);
+            if i == 11 then writeln("stack push 2 total time = ", TimerArrNew[11]);
+            if i == 12 then writeln("state reset total time = ", TimerArrNew[12]);
         }
         writeln("\n\n\n\n\n");
         return IsoArr;
