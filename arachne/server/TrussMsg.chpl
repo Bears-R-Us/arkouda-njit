@@ -34,19 +34,45 @@ module TrussMsg {
     proc trussMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
 
+        var trussAlgortihm = msgArgs.getValueOf("TrussAlgorithm"):int;
         var graphEntryName = msgArgs.getValueOf("GraphName");
         var graphEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
         var graph = graphEntry.graph;
 
-        var repMsg, outMsg: string;
+        var src = toSymEntry(graph.getComp("SRC"), int).a;
+        var repMsg, outMsg : string = "empty";
+        var k:int; 
+
+        if msgArgs.contains("K") then k = msgArgs.getValueOf("K"):int;
+
+        var containedEdges = makeDistArray(src.size, bool);
 
         var timer:stopwatch;
         if (!graph.isDirected()) {
-            when 
+            select trussAlgortihm {
+                when 0 {
+                    timer.start();
+                    k_truss(graph, k, containedEdges);
+                    timer.stop();
+                    outMsg = "Shared memory k truss took " + timer.elapsed():string + " sec";
+                }
+                when 1 {
+                    timer.start();
+                    truss_decomposition(graph, containedEdges);
+                    timer.stop();
+                    outMsg = "Shared memory truss decomposition took " + timer.elapsed():string + " sec";
+                }
+                when 2 {
+                    timer.start();
+                    max_truss(graph, containedEdges);
+                    timer.stop();
+                    outMsg = "Shared memory max truss took " + timer.elapsed():string + " sec";
+                }
+            }
 
         } else {
             var errorMsg = notImplementedError(pn, "DiGraph");
-            tcmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            tmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
         

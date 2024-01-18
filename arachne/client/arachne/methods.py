@@ -227,10 +227,13 @@ def k_truss(graph: ar.Graph, k:int) -> pdarray:
     pdarray
         The edges that satisfy the k requirement.
     """
-    cmd = "segmentedTruss"
+    cmd = "Truss"
     args = { "GraphName":graph.name,
              "K":k,
              "TrussAlgorithm":0 }
+
+    if k < 3:
+        raise ValueError(f"The chosen value of k ({k}) is less than 3; choose greater value.")
 
     rep_msg = generic_msg(cmd=cmd,args=args)
     return create_pdarray(rep_msg)
@@ -251,7 +254,7 @@ def truss_decomposition(graph: ar.Graph) -> pdarray:
     pdarray
         The edges that satisfy the k requirement.
     """
-    cmd = "segmentedTruss"
+    cmd = "Truss"
     args = { "GraphName":graph.name,
              "TrussAlgorithm":1 }
 
@@ -273,7 +276,7 @@ def max_truss(graph: ar.Graph) -> pdarray:
     int
         Maximum k value.
     """
-    cmd = "segmentedTruss"
+    cmd = "Truss"
     args = { "GraphName":graph.name,
              "TrussAlgorithm":2 }
 
