@@ -25,8 +25,14 @@ module Truss {
                 edgesDeleted[i] = k-1;
             }
         }
-
         var triCount = makeDistArray(src.size, atomic int);
+
+        writeln("BEFORE FIRST TRIANGLE COUNT");
+        writeln("src = ", src);
+        writeln("dst = ", dst);
+        writeln("tri = ", triCount);
+        writeln("del = ", edgesDeleted);
+        writeln();
 
         // Calculate the number of triangles per edge.
         forall i in src.domain { 
@@ -34,7 +40,7 @@ module Truss {
             var u = src[i];
             var v = dst[i];
             var count:int = 0;
-            if (edgesDeleted[i] <= -1) { // ignore edges that were deleted by degree or self-loops
+            if (edgesDeleted[i] == -1) { // only process edges that have not been deleted
                 var du = seg[u+1] - seg[u];
                 var dv = seg[v+1] - seg[v];
                 var s, l, ds, dl : int;
@@ -46,11 +52,11 @@ module Truss {
                     ref neighborhood = dst[nextStart..nextEnd];
                     for (w,j) in zip(neighborhood,nextStart..nextEnd) { // get every neighbor of s
                         var edge:int;
-                        if (l != w && s != w && edgesDeleted[j] <= -1) { // don't process l itself with w's or if the edge is deleted
+                        if (l != w && s != w && edgesDeleted[j] <= -1) { // don't process l or s with themselves
                             var dw = seg[w+1] - seg[w];
                             if (dl < dw) then edge = getEdgeId(l,w,dst,seg); // l is smaller, search w in adjacency list of l
                             else edge = getEdgeId(w,l,dst,seg); // w is smaller, search l in adjacency list of w
-                            if (edge != -1 && edgesDeleted[edge] <= -1) then count += 1;
+                            if (edge != -1 && edgesDeleted[edge] == -1 && edgesDeleted[j] == -1) then count += 1;
                         }
                     }
                 }
@@ -67,10 +73,10 @@ module Truss {
         }
 
         writeln("BEFORE WHILE LOOP");
-        writeln("edgesDeleted = ", edgesDeleted);
         writeln("src = ", src);
         writeln("dst = ", dst);
         writeln("tri = ", triCount);
+        writeln("del = ", edgesDeleted);
         writeln();
 
         var iteration = 0;
@@ -91,18 +97,17 @@ module Truss {
                         ref neighborhood = dst[nextStart..nextEnd];
                         for (w,j) in zip(neighborhood,nextStart..nextEnd) { // get every neighbor of s
                             var edge:int;
-                            if (l != w && s != w && edgesDeleted[j] <= -1) { // don't process l itself with w's or if the edge is deleted
+                            if (l != w && s != w && edgesDeleted[j] <= -1) { // don't process l or s with themselves
                                 var dw = seg[w+1] - seg[w];
                                 if (dl < dw) then edge = getEdgeId(l,w,dst,seg); // l is smaller, search w in adjacency list of l
                                 else edge = getEdgeId(w,l,dst,seg); // w is smaller, search l in adjacency list of w
                                 if (edge != -1 && edgesDeleted[edge] <= -1) {
-                                    if edgesDeleted[j] == -1 && edgesDeleted[edge] == -1 {
+                                    if edgesDeleted[j]==-1 && edgesDeleted[edge]==-1 {
                                         triCount[edge].sub(1);
                                         triCount[j].sub(1);
                                     }
-                                    if edgesDeleted[j] == -1 then triCount[j].sub(1);
-                                    if edgesDeleted[edge] == -1 then triCount[edge].sub(1);
-
+                                    if edgesDeleted[j]==-1 && (i<edge) then triCount[j].sub(1);
+                                    if edgesDeleted[edge]==-1 && (i<j) then triCount[edge].sub(1);
                                 }
                             }
                         }
@@ -116,16 +121,16 @@ module Truss {
                 forall i in triCount.domain with (ref removedEdges) {
                     if edgesDeleted[i] == -1 then if triCount[i].read() < k-2 {edgesDeleted[i] = 1-k; removedEdges.add(i);}
                 }
-
-                writeln("AFTER ITERATION ", iteration);
-                writeln("edgesDeleted = ", edgesDeleted);
-                writeln("src = ", src);
-                writeln("dst = ", dst);
-                writeln("tri = ", triCount);
-                writeln();
             }
             if removedEdges.size <= 0 then pendingDeleteEdges = false;
             iteration += 1;
+
+            writeln("AFTER ITERATION ", iteration);
+            writeln("src = ", src);
+            writeln("dst = ", dst);
+            writeln("tri = ", triCount);
+            writeln("del = ", edgesDeleted);
+            writeln();
         }
     }
 
