@@ -6,7 +6,7 @@
 import argparse
 import time
 import arachne as ar
-import arkouda as ak
+import networkx as nx
 import numpy as np
 import networkx as nx
 
@@ -49,8 +49,7 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-
-    ### Get Arkouda server configuration information.
+    #### Get Arkouda server configuration information.
     config = ak.get_config()
     num_locales = config["numLocales"]
     num_pus = config["numPUs"]
@@ -82,7 +81,7 @@ if __name__ == "__main__":
     dst_ak = ak.array(dst)
     print("here 3")
 
-# 2. Build temporary property graph to get sorted edges and nodes lists.
+    # Build temporary property graph to get sorted edges and nodes lists.
     temp_prop_graph = ar.PropGraph()
     start = time.time()
     temp_prop_graph.add_edges_from(src_ak, dst_ak)
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     edges = temp_prop_graph.edges()
     nodes = temp_prop_graph.nodes()
 
-    # 2. Generate sets of node labels and edge relationships.
+    # 2. Generate https://njit.webex.com/njit/j.php?MTID=m7cd808ee0056d40c8b8c04b308e8ca5fsets of node labels and edge relationships.
     labels_set = ak.array(["lbl" + str(x) for x in range(1, args.x +1)])
     relationships_set = ak.array(["rel" + str(y) for y in range(1, args.y+1)])
 
@@ -133,7 +132,7 @@ if __name__ == "__main__":
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
     rels2_subgraph = ak.array(["rel2", "rel2", "rel2"])
 
-    #2. Populate the subgraph.
+    # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph, "rels2":rels2_subgraph})
