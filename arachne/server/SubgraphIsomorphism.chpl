@@ -338,7 +338,17 @@ module SubgraphIsomorphism {
             for n in 0..<graph.n_vertices do if !state.isMappedn2(n) then unmapped.pushBack(n);
             return unmapped;
         } // end of getUnmappedSubgraphNodes
+        
+        proc getUnmappedGraphNodes(graph: SegGraph, state: State) throws {
+            var unmapped: list(int) = 0..#graph.n_vertices;
+            for key in state.core1.keys(){
+                unmapped.remove(key);
+            }
 
+            return unmapped;
+        } // end of getUnmappedNodesg1
+
+ 
         /** Create candidates based on current state and retuns a set of pairs.*/
         proc getCandidatePairsOpti(state:State) throws {
             var timergetCandidatePairsOpti:stopwatch;
@@ -365,7 +375,11 @@ module SubgraphIsomorphism {
                 } else { // not (Tin1 or Tin2) NOTE: What does this mean?
                     if unmapped.size > 0 {
                         var minUnmapped = min reduce unmapped;
-                        for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
+                        var unmappedG1= getUnmappedGraphNodes(g1, state);
+                        for umg1 in unmappedG1 {
+                            candidates.add((umg1,minUnmapped2));
+                        } 
+                        //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
                     }
                 } 
             }   
