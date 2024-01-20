@@ -52,9 +52,14 @@ module TrussMsg {
             select trussAlgortihm {
                 when 0 {
                     timer.start();
-                    k_truss(graph, k, containedEdges);
+                    var edgesKept = k_truss(graph, k, containedEdges);
                     timer.stop();
                     outMsg = "Shared memory k truss took " + timer.elapsed():string + " sec";
+
+                    var edgesKeptName = st.nextName();
+                    var edgesKeptEntry = new shared SymEntry(edgesKept);
+                    st.addEntry(edgesKeptName, edgesKeptEntry);
+                    repMsg = 'created ' + st.attrib(edgesKeptName);
                 }
                 when 1 {
                     timer.start();

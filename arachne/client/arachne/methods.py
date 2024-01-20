@@ -25,7 +25,7 @@ __all__ = ["read_matrix_market_file",
 
 @typechecked
 def read_matrix_market_file(filepath: str,
-                            directed = False, 
+                            directed = False,
                             only_edges = False) -> Graph | DiGraph | Tuple:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
@@ -210,7 +210,7 @@ def triangle_centrality(graph: ar.Graph) -> pdarray:
     return create_pdarray(rep_msg)
 
 @typechecked
-def k_truss(graph: ar.Graph, k:int) -> pdarray:
+def k_truss(graph: ar.Graph, k:int) -> Tuple:
     """
     This function returns an edge list of the edges that satisfied the `k` requirement in the passed
     variable.
@@ -236,7 +236,13 @@ def k_truss(graph: ar.Graph, k:int) -> pdarray:
         raise ValueError(f"The chosen value of k ({k}) is less than 3; choose greater value.")
 
     rep_msg = generic_msg(cmd=cmd,args=args)
-    return create_pdarray(rep_msg)
+    bool_edges = create_pdarray(rep_msg)
+    edges = graph.edges()
+
+    new_src = edges[0][bool_edges]
+    new_dst = edges[1][bool_edges]
+
+    return (new_src, new_dst)
 
 @typechecked
 def truss_decomposition(graph: ar.Graph) -> pdarray:
