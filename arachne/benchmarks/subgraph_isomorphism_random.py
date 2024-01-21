@@ -1,4 +1,4 @@
-# random graph using the Erdős-Rényi model
+"""Generate random graph with the Erdős-Rényi model."""
 
 import argparse
 import time
@@ -6,6 +6,7 @@ import arachne as ar
 import arkouda as ak
 import numpy as np
 import networkx as nx
+import random
 
 def create_parser():
     """Creates the command line parser for this script"""
@@ -37,6 +38,25 @@ def create_random_graph(n, p):
 
     return src, dst
 
+def create_dindoost_random_graph(n):
+    num_nodes = n
+    random_directed_graph = nx.DiGraph()
+    random_edges_per_node = [random.randint(5,10) for _ in range(num_nodes)]
+    random_directed_graph.add_nodes_from(range(num_nodes))
+
+    # Add directed edges with random weights
+    for i in range(num_nodes):
+        for _ in range(random_edges_per_node[i]):
+            if random.random() < 0.5:  # Adjusted probability for edge creation (denser graph)
+                j = random.randint(0, num_nodes - 1)  # Random destination node
+                random_directed_graph.add_edge(i, j, weight=random.random())
+    
+    edges = random_directed_graph.edges()
+    src = [edge[0] for edge in edges]
+    dst = [edge[1] for edge in edges]
+
+    return src, dst
+
 if __name__ == "__main__":
     #### Command line parser and extraction.
     parser = create_parser()
@@ -53,20 +73,20 @@ if __name__ == "__main__":
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
     ### Generate an Erdős-Rényi random graph
-    # This approach will create a random graph where the presence of 
+    # This approach will create a random graph where the presence of
     # each edge is determined independently with probability p. The Erdős-Rényi
-    # model is effective for creating graphs with a specified average degree, 
-    # but it's important to note that it produces graphs with a Poisson degree distribution, 
+    # model is effective for creating graphs with a specified average degree,
+    # but it's important to note that it produces graphs with a Poisson degree distribution,
     # which might not always accurately model real-world networks!
     n = args.n  # Number of nodes
     p = 0.01  # Probability of edge creation
 
-    src, dst = create_random_graph(n, p)
+    # src, dst = create_random_graph(n, p)
+    src, dst = create_dindoost_random_graph(n)
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
 
-    print("here 1")
     # 2. Build temporary property graph to get sorted edges and nodes lists.
     temp_prop_graph = ar.PropGraph()
     start = time.time()
@@ -101,42 +121,39 @@ if __name__ == "__main__":
     prop_graph.load_edge_attributes(edge_df, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1"])
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
+    # print(node_df.__str__)
+    # print(edge_df.__str__)
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([0, 1, 2])
-    dst_subgraph = ak.array([1, 2, 0])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1"])
-    labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2"])
-    rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
-    rels2_subgraph = ak.array(["rel2", "rel2", "rel2"])
+    src_subgraph = ak.array([0, 1, 2, 1])
+    dst_subgraph = ak.array([1, 2, 0, 3])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
+    labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
+    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
+    rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
     # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": src_subgraph, "lbls1":labels1_subgraph,
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph,
                               "lbls2":labels2_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1","rels2"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
-
-    print("here 2")
+    # print(node_df_h.__str__)
+    # print(edge_df_h.__str__)
 
     ### Run subgraph isomorphism.
     start_time = time.time()
-    
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
-    #print("isos =", isos)
-    
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    
+    print(f"Arachne found: {len(isos)/4} isos")
+
 
     #### Run NetworkX subgraph isomorphism.
-    # Get the NetworkX version
-    print("NetworkX version:", nx.__version__)
-
     # Grab vertex and edge data from the Arachne dataframes.
     graph_node_information = prop_graph.get_node_attributes()
     graph_edge_information = prop_graph.get_edge_attributes()
@@ -182,6 +199,12 @@ if __name__ == "__main__":
     subgraph_node_attributes = subgraph_node_attributes.to_dict('index')
     subgraph_node_attributes_final = {}
 
+    # print(f"graph_node_attributes = {graph_node_attributes}")
+    # print(f"graph_nodes_from_df = {graph_nodes_from_df}")
+
+    # print(f"graph_node_attributes = {graph_node_attributes}")
+    # print(f"graph_nodes_from_df = {graph_nodes_from_df}")
+
     # Convert Pandas index to original node index.
     for key in graph_node_attributes:
         graph_node_attributes_final[graph_nodes_from_df[key]] = graph_node_attributes[key]
@@ -189,27 +212,27 @@ if __name__ == "__main__":
     for key in subgraph_node_attributes:
         subgraph_node_attributes_final[subgraph_nodes_from_df[key]] = subgraph_node_attributes[key]
 
-    # Set the node attributes for G and H from dicts. 
+    # print(f"graph_node_attributes_final = {graph_node_attributes_final}")
+    # print(f"subgraph_node_attributes_final = {subgraph_node_attributes_final}")
+
+    # Set the node attributes for G and H from dicts.
     nx.set_node_attributes(G, graph_node_attributes_final)
     nx.set_node_attributes(H, subgraph_node_attributes_final)
 
-    # Measure execution time.
-    start_time = time.time()
-
     # Find subgraph isomorphisms of H in G.
+    start_time = time.time()
     GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
-
-    # List of dicts. For each dict, keys is original graph vertex, values are subgraph vertices.
     subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
+    print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
 
     #### Compare Arachne subgraph isomorphism to NetworkX.
     isos_list = isos.to_list()
-    isos_sublists = [isos_list[i:i+3] for i in range(0, len(isos_list), 3)]
+    isos_sublists = [isos_list[i:i+4] for i in range(0, len(isos_list), 4)]
 
     isos_as_dicts = []
-    subgraph_vertices = [0, 1, 2]
+    subgraph_vertices = [0, 1, 2, 3]
     for iso in isos_sublists:
         isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
 

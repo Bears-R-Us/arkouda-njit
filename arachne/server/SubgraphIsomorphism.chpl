@@ -31,22 +31,27 @@ module SubgraphIsomorphism {
         timerpreproc.start();
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1 = toSymEntry(g1.getComp("SRC"), int).a;
-        var dstNodesG1 = toSymEntry(g1.getComp("DST"), int).a;
-        var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS"), int).a;
-        var srcRG1 = toSymEntry(g1.getComp("SRC_R"), int).a;
-        var dstRG1 = toSymEntry(g1.getComp("DST_R"), int).a;
-        var segRG1 = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
+        var srcNodesG1Dist = toSymEntry(g1.getComp("SRC"), int).a;
+        var dstNodesG1Dist = toSymEntry(g1.getComp("DST"), int).a;
+        var segGraphG1Dist = toSymEntry(g1.getComp("SEGMENTS"), int).a;
+        var srcRG1Dist = toSymEntry(g1.getComp("SRC_R"), int).a;
+        var dstRG1Dist = toSymEntry(g1.getComp("DST_R"), int).a;
+        var segRG1Dist = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
+        var nodeMapGraphG1Dist = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2 = toSymEntry(g2.getComp("SRC"), int).a;
-        var dstNodesG2 = toSymEntry(g2.getComp("DST"), int).a;
-        var segGraphG2 = toSymEntry(g2.getComp("SEGMENTS"), int).a;
-        var srcRG2 = toSymEntry(g2.getComp("SRC_R"), int).a;
-        var dstRG2 = toSymEntry(g2.getComp("DST_R"), int).a;
-        var segRG2 = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
+        var srcNodesG2Dist = toSymEntry(g2.getComp("SRC"), int).a;
+        var dstNodesG2Dist = toSymEntry(g2.getComp("DST"), int).a;
+        var segGraphG2Dist = toSymEntry(g2.getComp("SEGMENTS"), int).a;
+        var srcRG2Dist = toSymEntry(g2.getComp("SRC_R"), int).a;
+        var dstRG2Dist = toSymEntry(g2.getComp("DST_R"), int).a;
+        var segRG2Dist = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
+        var nodeMapGraphG2Dist = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
+
+        var nG1 = nodeMapGraphG1Dist.size;
+        var mG1 = srcNodesG1Dist.size;
+        var nG2 = nodeMapGraphG2Dist.size;
+        var mG2 = srcNodesG2Dist.size;
 
         //******************************************************************************************
         //******************************************************************************************
@@ -124,36 +129,59 @@ module SubgraphIsomorphism {
 
         // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
         // internal hash table intersections via sets.
-        var convertedRelationshipsG1 = makeDistArray(g1.n_edges, set(int, parSafe=true));
-        var convertedRelationshipsG2 = makeDistArray(g2.n_edges, set(int, parSafe=true));
-        var convertedLabelsG1 = makeDistArray(g1.n_vertices, set(int, parSafe=true));
-        var convertedLabelsG2 = makeDistArray(g2.n_vertices, set(int, parSafe=true));
+        var convertedRelationshipsG1Dist = makeDistArray(g1.n_edges, domain(int));
+        var convertedRelationshipsG2Dist = makeDistArray(g2.n_edges, domain(int));
+        var convertedLabelsG1Dist = makeDistArray(g1.n_vertices, domain(int));
+        var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int));
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG1[i].add(relationshipStringToInt[mapper[x]]);
+            forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG1Dist[i].add(relationshipStringToInt[mapper[x]]);
         }
 
         for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG2[i].add(relationshipStringToInt[mapper[x]]);
+            forall (x,i) in zip(arr, arr.domain) do convertedRelationshipsG2Dist[i].add(relationshipStringToInt[mapper[x]]);
         }
 
         for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedLabelsG1[i].add(labelStringToInt[mapper[x]]);
+            forall (x,i) in zip(arr, arr.domain) do convertedLabelsG1Dist[i].add(labelStringToInt[mapper[x]]);
         }
 
         for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do convertedLabelsG2[i].add(labelStringToInt[mapper[x]]);
+            forall (x,i) in zip(arr, arr.domain) do convertedLabelsG2Dist[i].add(labelStringToInt[mapper[x]]);
         }
         //******************************************************************************************
         //******************************************************************************************
+
+        //************************************LOCALIZATION******************************************
+        var srcNodesG1: [0..<mG1] int = srcNodesG1Dist;
+        var dstNodesG1: [0..<mG1] int = dstNodesG1Dist;
+        var segGraphG1: [0..<nG1+1] int = segGraphG1Dist;
+        var srcRG1: [0..<mG1] int = srcRG1Dist;
+        var dstRG1: [0..<mG1] int = dstRG1Dist;
+        var segRG1: [0..<nG1+1] int = segRG1Dist;
+        var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Dist;
+        var convertedRelationshipsG1: [0..<mG1] domain(int) = convertedRelationshipsG1Dist;
+        var convertedLabelsG1: [0..<nG1] domain(int) = convertedLabelsG1Dist;
+
+        var srcNodesG2: [0..<mG2] int = srcNodesG2Dist;
+        var dstNodesG2: [0..<mG2] int = dstNodesG2Dist;
+        var segGraphG2: [0..<nG2+1] int = segGraphG2Dist;
+        var srcRG2: [0..<mG2] int = srcRG2Dist;
+        var dstRG2: [0..<mG2] int = dstRG2Dist;
+        var segRG2: [0..<nG2+1] int = segRG2Dist;
+        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Dist;
+        var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
+        var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
+        //******************************************************************************************
+
         timerpreproc.stop();
         TimerArrNew[0] += timerpreproc.elapsed();
         
@@ -167,13 +195,13 @@ module SubgraphIsomorphism {
 
         /** Returns the set of internal identifiers of relationships for a given edge. Performs a 
         binary search into the the given `dst` array of a graph.*/
-        proc getRelationships(seg, dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
+        proc getRelationships(ref seg, ref dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
             var found: bool = false;
             var start = seg[fromNode];
             var end = seg[fromNode+1]-1;
             
             var edgeFound = bin_search_v(dst, start, end, toNode);
-            var emptyRels = new set(int, parSafe=true);
+            var emptyRels = domain(int);
 
             if edgeFound > -1 then {
                 found = true; 
@@ -186,7 +214,7 @@ module SubgraphIsomorphism {
         /** Returns the set of internal identifiers of labels for a given vertex.*/
         proc getLabels(node:int, ref nodeLabels) throws {
             var found : bool = false;
-            var emptyLabels = new set(int, parSafe=true);
+            var emptyLabels = domain(int);
 
             try {
                 var foundLabels = nodeLabels[node];
@@ -332,22 +360,19 @@ module SubgraphIsomorphism {
             return state;
         }  //end of createInitialState
 
-        /** Returns unmapped nodes for the current state of the graph.*/
+        /** Returns unmapped nodes for the current state of the subgraph.*/
         proc getUnmappedSubgraphNodes(graph, state) throws {
             var unmapped: list(int);
             for n in 0..<graph.n_vertices do if !state.isMappedn2(n) then unmapped.pushBack(n);
             return unmapped;
         } // end of getUnmappedSubgraphNodes
         
+        /** Returns unmapped nodes for the current state of the graph.*/
         proc getUnmappedGraphNodes(graph: SegGraph, state: State) throws {
             var unmapped: list(int) = 0..#graph.n_vertices;
-            for key in state.core1.keys(){
-                unmapped.remove(key);
-            }
-
+            for key in state.core1.keys() do unmapped.remove(key);
             return unmapped;
-        } // end of getUnmappedNodesg1
-
+        } // end of getUnmappedGraphNodes
  
         /** Create candidates based on current state and retuns a set of pairs.*/
         proc getCandidatePairsOpti(state:State) throws {
@@ -358,7 +383,7 @@ module SubgraphIsomorphism {
             var timerunmapped:stopwatch;
             timerunmapped.start();
 
-            var unmapped = getUnmappedNodes(g2, state);
+            var unmapped = getUnmappedSubgraphNodes(g2, state);
 
             timerunmapped.stop();
             TimerArrNew[5] += timerunmapped.elapsed();
@@ -374,8 +399,8 @@ module SubgraphIsomorphism {
                     for n1 in state.Tin1 do candidates.add((n1, minTin2));
                 } else { // not (Tin1 or Tin2) NOTE: What does this mean?
                     if unmapped.size > 0 {
-                        var minUnmapped = min reduce unmapped;
-                        var unmappedG1= getUnmappedGraphNodes(g1, state);
+                        var minUnmapped2 = min reduce unmapped;
+                        var unmappedG1 = getUnmappedGraphNodes(g1, state);
                         for umg1 in unmappedG1 {
                             candidates.add((umg1,minUnmapped2));
                         } 
@@ -394,10 +419,14 @@ module SubgraphIsomorphism {
             var timernodesLabelCompatible:stopwatch;
             timernodesLabelCompatible.start();
 
-            var label1 = getLabels(n1, convertedLabelsG1)[1];
-            var label2 = getLabels(n2, convertedLabelsG2)[1];
+            // var label1 = getLabels(n1, convertedLabelsG1)[1];
+            // var label2 = getLabels(n2, convertedLabelsG2)[1];
+            // var label1 = convertedLabelsG1[n1];
+            // var label2 = convertedLabelsG2[n2];
 
-            if (label1 & label2).size <= 0 {
+            var intersection = convertedLabelsG1[n1] & convertedLabelsG2[n2];
+
+            if intersection.size <= 0 {
                 timernodesLabelCompatible.stop();
                 TimerArrNew[4] += timernodesLabelCompatible.elapsed();                
                 return false;
@@ -428,10 +457,23 @@ module SubgraphIsomorphism {
             for Out2 in getOutN2 {
                 if state.isMappedn2(Out2) {
                     var Out1 = state.core2(Out2);
-                    var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, n1, Out1);
-                    var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG1, n2, Out2);
+                    var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
+                    var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
+
+                    // var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, n1, Out1);
+                    // var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG2, n2, Out2);
+
+                    if eid1 == -1 || eid2 == -1 {
+                        timerisFeasible.stop();
+                        TimerArrNew[2] += timerisFeasible.elapsed();
+                        return false;
+                    }
+
+                    // var label1 = convertedRelationshipsG1[eid1];
+                    // var label2 = convertedRelationshipsG2[eid2];
+                    var intersection = convertedRelationshipsG1[eid1] & convertedRelationshipsG2[eid2];
             
-                    if !flag1 || (label2 & label1).size < 0 {
+                    if intersection.size <= 0 {
                         timerisFeasible.stop();
                         TimerArrNew[2] += timerisFeasible.elapsed();
                         return false;
@@ -452,10 +494,23 @@ module SubgraphIsomorphism {
             for In2 in getInN2 {
                 if state.isMappedn2(In2) {
                     var In1 = state.core2(In2);
-                    var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, In1, n1);
-                    var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG2, In2, n2);
+                    var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
+                    var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
+                    
+                    // var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, In1, n1);
+                    // var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG2, In2, n2);
+
+                    if eid1 == -1 || eid2 == -1 {
+                        timerisFeasible.stop();
+                        TimerArrNew[2] += timerisFeasible.elapsed();
+                        return false;
+                    }
+
+                    // var label1 = convertedRelationshipsG1[eid1];
+                    // var label2 = convertedRelationshipsG2[eid2];
+                    var intersection = convertedRelationshipsG1[eid1] & convertedRelationshipsG2[eid2];
             
-                    if !flag1 || (label2 & label1).size <= 0 {
+                    if intersection.size <= 0 {
                         timerisFeasible.stop();
                         TimerArrNew[2] += timerisFeasible.elapsed();
                         return false;
