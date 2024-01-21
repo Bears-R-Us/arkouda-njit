@@ -67,7 +67,7 @@ module SubgraphIsomorphismVF2Msg {
         var subgraph_internal_vertices_degree_sorted_sym = toSymEntry(subgraph_internal_vertices_degree_sorted_entry, int);
         var subgraph_internal_vertices_degree_sorted = subgraph_internal_vertices_degree_sorted_sym.a;
 
-        writeln("$$$$$ graph_degree        = ", graph_degree);
+        // writeln("$$$$$ graph_degree        = ", graph_degree);
         writeln("$$$$$ subgraph_degree        = ", subgraph_degree);
         writeln("$$$$$ degree sorted subgraph = ", subgraph_internal_vertices_degree_sorted);
        

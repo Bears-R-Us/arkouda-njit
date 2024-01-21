@@ -30,10 +30,6 @@ def create_parser():
     )
     script_parser.add_argument("hostname", help="Hostname of arkouda server")
     script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
-    script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
-    script_parser.add_argument("m", type=int, default=2000, help="Number of edges for graph")
-    script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
-    script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
 
     return script_parser
 if __name__ == "__main__":
@@ -49,7 +45,7 @@ if __name__ == "__main__":
 
     random.seed(5)  # Setting seed for reproducibility
     #num_nodes = random.randint(0, 100000)
-    num_nodes = 14000000
+    num_nodes = 510000
     random_directed_graph = nx.DiGraph()
 
     # Add nodes to the graph
@@ -79,7 +75,7 @@ if __name__ == "__main__":
     subgraph.add_edges_from(subgraph_edges)
     print("End of preparing data")
     print()
-    """
+    
     start_time = time.time()
 
     # Use DiGraphMatcher to find subgraph isomorphisms
@@ -90,14 +86,14 @@ if __name__ == "__main__":
 
     print()
     print("Subgraph occurrences found:")
-    for iso_mapping in subgraph_isomorphisms:
-        print("Isomorphism mapping:", iso_mapping)
+    # for iso_mapping in subgraph_isomorphisms:
+    #     print("Isomorphism mapping:", iso_mapping)
     print("NetworkX subgraph_isomorphism found ISOs:", len(subgraph_isomorphisms))
     end_time = time.time()
     elapsed_time = end_time - start_time
     print("Elapsed time:", elapsed_time, "seconds")
     print("*********************************************************************************")
-    """
+
     
     #print("Subgraph occurrences found:")
     #for iso_mapping in subgraph_isomorphisms:
@@ -171,13 +167,13 @@ if __name__ == "__main__":
 
     mappings_df1 = ar.subgraph_isomorphism_VF2(prop_graph, subgraph, "VF2")
     #print(type(mappings_df)) 
-    for i in range(0, len(mappings_df1), 4):
-        print(mappings_df1[i:i+4])
+    # for i in range(0, len(mappings_df1), 4):
+    #     print(mappings_df1[i:i+4])
 
     
     # Access the DataFrame data
     print("VF2 subgraph_isomorphism run and this is the found ISOs")
-    print(len(mappings_df1))
+    print(len(mappings_df1)/4)
     
     end_time = time.time()
     elapsed_time = end_time - start_time
