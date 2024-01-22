@@ -167,7 +167,7 @@ module SubgraphIsomorphism {
 
         /** Returns the set of internal identifiers of relationships for a given edge. Performs a 
         binary search into the the given `dst` array of a graph.*/
-        proc getRelationships(seg, dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
+        proc getRelationships(ref seg, ref dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
             var found: bool = false;
             var start = seg[fromNode];
             var end = seg[fromNode+1]-1;
@@ -261,7 +261,7 @@ module SubgraphIsomorphism {
             }
 
             /** Reset vectors during backtracking.*/
-            proc reset() {
+            proc ref reset() {
                 this.mapping.clear(); // reset to empty
                 this.core1.clear();
                 this.core2.clear();
@@ -274,7 +274,7 @@ module SubgraphIsomorphism {
             }
             
             /** Add a vertex pair `(x1, x2)` to the mapping.*/
-            proc addPair(x1: int, x2: int) {
+            proc ref addPair(x1: int, x2: int) {
                 this.core1.add(x1, x2);
                 this.core2.add(x2, x1);
                 this.mapping.add((x1, x2));
