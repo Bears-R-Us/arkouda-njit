@@ -30,6 +30,7 @@ def create_parser():
     )
     script_parser.add_argument("hostname", help="Hostname of arkouda server")
     script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
+    script_parser.add_argument("nodes", type=int, default=10000, help="Port of arkouda server")
 
     return script_parser
 if __name__ == "__main__":
@@ -45,7 +46,7 @@ if __name__ == "__main__":
 
     random.seed(5)  # Setting seed for reproducibility
     #num_nodes = random.randint(0, 100000)
-    num_nodes = 510000
+    num_nodes = args.nodes
     random_directed_graph = nx.DiGraph()
 
     # Add nodes to the graph

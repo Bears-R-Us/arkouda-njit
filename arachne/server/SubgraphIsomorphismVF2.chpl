@@ -37,8 +37,8 @@ module SubgraphIsomorphismVF2 {
         var srcNodesG1Dis = toSymEntry(g1.getComp("SRC"), int).a;
         var dstNodesG1Dis = toSymEntry(g1.getComp("DST"), int).a;
         var segGraphG1Dis = toSymEntry(g1.getComp("SEGMENTS"), int).a;
-        var edgeRelationshipsGraphG1 = toSymEntry(g1.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
-        var nodeLabels_GraphG1 = toSymEntry(g1.getComp("VERTEX_LABELS"), domain(int)).a;
+        var edgeRelationshipsGraphG1Dis = toSymEntry(g1.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
+        var nodeLabels_GraphG1Dis = toSymEntry(g1.getComp("VERTEX_LABELS"), domain(int)).a;
         var nodeMap_GraphG1 = toSymEntry(g1.getComp("NODE_MAP"), int).a;
         var srcRG1Dis = toSymEntry(g1.getComp("SRC_R"), int).a;
         var dstRG1Dis = toSymEntry(g1.getComp("DST_R"), int).a;
@@ -49,18 +49,16 @@ module SubgraphIsomorphismVF2 {
         var segGraphG1: [0..<segGraphG1Dis.size] int;        segGraphG1 = segGraphG1Dis;
         //var edgeRelationshipsGraphG1: [0..<edgeRelationshipsGraphG1Dis.size] int;        edgeRelationshipsGraphG1 = edgeRelationshipsGraphG1Dis;
         //var nodeLabels_GraphG1: [0..<nodeLabels_GraphG1Dis.size] int;        nodeLabels_GraphG1 = nodeLabels_GraphG1Dis;
-        //var nodeMap_GraphG1: [0..<nodeMap_GraphG1Dis.size] int;        nodeMap_GraphG1 = nodeMap_GraphG1Dis;
         var srcRG1: [0..<srcRG1Dis.size] int;        srcRG1 = srcRG1Dis;
         var dstRG1: [0..<dstRG1Dis.size] int;        dstRG1 = dstRG1Dis;
         var segRG1: [0..<segRG1Dis.size] int;        segRG1 = segRG1Dis;
-
 
         // Extract the g2/H information from PropGraph DS
         var srcNodesG2Dis = toSymEntry(g2.getComp("SRC"), int).a;
         var dstNodesG2Dis = toSymEntry(g2.getComp("DST"), int).a;
         var segGraphG2Dis = toSymEntry(g2.getComp("SEGMENTS"), int).a;
-        var edgeRelationshipsGraphG2 = toSymEntry(g2.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
-        var nodeLabels_GraphG2 = toSymEntry(g2.getComp("VERTEX_LABELS"), domain(int)).a;
+        var edgeRelationshipsGraphG2Dis = toSymEntry(g2.getComp("EDGE_RELATIONSHIPS"), domain(int)).a;
+        var nodeLabels_GraphG2Dis = toSymEntry(g2.getComp("VERTEX_LABELS"), domain(int)).a;
         var nodeMap_GraphG2 = toSymEntry(g2.getComp("NODE_MAP"), int).a;
         var srcRG2Dis = toSymEntry(g2.getComp("SRC_R"), int).a;
         var dstRG2Dis = toSymEntry(g2.getComp("DST_R"), int).a;
@@ -71,10 +69,14 @@ module SubgraphIsomorphismVF2 {
         var segGraphG2: [0..<segGraphG2Dis.size] int;        segGraphG2 = segGraphG2Dis;
         //var edgeRelationshipsGraphG2: [0..<edgeRelationshipsGraphG2Dis.size] int;        edgeRelationshipsGraphG2 = edgeRelationshipsGraphG2Dis;
         //var nodeLabels_GraphG2: [0..<nodeLabels_GraphG2Dis.size] int;        nodeLabels_GraphG2 = nodeLabels_GraphG2Dis;
-        //var nodeMap_GraphG2: [0..<nodeMap_GraphG2Dis.size] int;        nodeMap_GraphG2 = nodeMap_GraphG2Dis;
         var srcRG2: [0..<srcRG2Dis.size] int;        srcRG2 = srcRG2Dis;
         var dstRG2: [0..<dstRG2Dis.size] int;        dstRG2 = dstRG2Dis;
         var segRG2: [0..<segRG2Dis.size] int;        segRG2 = segRG2Dis;
+
+        var edgeRelationshipsGraphG1: [0..<srcRG1Dis.size] domain(int) = edgeRelationshipsGraphG1Dis;
+        var nodeLabels_GraphG1: [0..<nodeMap_GraphG1.size] domain(int) = nodeLabels_GraphG1Dis;
+        var edgeRelationshipsGraphG2: [0..<srcRG2Dis.size] domain(int) = edgeRelationshipsGraphG2Dis;
+        var nodeLabels_GraphG2: [0..<nodeMap_GraphG2.size] domain(int) = nodeLabels_GraphG2Dis;
         
         timerpreproc.stop();
         TimerArrNew[0] += timerpreproc.elapsed();
@@ -304,12 +306,12 @@ module SubgraphIsomorphismVF2 {
             var adj_list_of_node_start = segRG1[u];
             var adj_list_of_node_end = segRG1[u + 1]-1;
 
-            var inNeighbors = dstRG1[adj_list_of_node_start..adj_list_of_node_end];
+            ref inNeighbors = dstRG1[adj_list_of_node_start..adj_list_of_node_end];
 
             adj_list_of_node_start = segGraphG1[u];
             adj_list_of_node_end = segGraphG1[u + 1]-1;
             
-            var outNeighbors = dstNodesG1[adj_list_of_node_start..adj_list_of_node_end];
+            ref outNeighbors = dstNodesG1[adj_list_of_node_start..adj_list_of_node_end];
 
             // Add neighbors of u to tin1, tout1 from g1
             if state.Tin1.contains(u) {
@@ -341,12 +343,12 @@ module SubgraphIsomorphismVF2 {
             adj_list_of_node_start = segRG2[v];
             adj_list_of_node_end = segRG2[v + 1]-1;
 
-            var inNeighborsg2 = dstRG2[adj_list_of_node_start..adj_list_of_node_end];
+            ref inNeighborsg2 = dstRG2[adj_list_of_node_start..adj_list_of_node_end];
 
             adj_list_of_node_start = segGraphG2[v];
             adj_list_of_node_end = segGraphG2[v + 1]-1;
             
-            var outNeighborsg2 = dstNodesG2[adj_list_of_node_start..adj_list_of_node_end];
+            ref outNeighborsg2 = dstNodesG2[adj_list_of_node_start..adj_list_of_node_end];
 
             if state.Tin2.contains(v) {
                 state.Tin2.remove(v); 
@@ -473,11 +475,10 @@ module SubgraphIsomorphismVF2 {
                                     //forall n1 in unmapped1 with (ref candidates){
                                     //for n1 in unmapped1 {
                                     //forall n1 in 0..#g1.n_vertices with (ref candidates) {
-                                    for n1 in 0..#g1.n_vertices{
-                                        if !state.core1.contains(n1){
-                                            candidates.add((n1, minUnmapped2));
-                                        }    
-                                    }
+                                    var unmappedG1 = getUnmappedNodesg1(g1, state);
+                                    for umg1 in unmappedG1 {
+                                        candidates.add((umg1,minUnmapped2));
+                                    } 
                                 }    
                             } 
                 }   
@@ -531,13 +532,13 @@ module SubgraphIsomorphismVF2 {
             var adj_list_of_node_start = segGraphG1[n1];
             var adj_list_of_node_end = segGraphG1[n1 + 1]-1;
             
-            var getOutN1 = dstNodesG1[adj_list_of_node_start..adj_list_of_node_end];
+            ref getOutN1 = dstNodesG1[adj_list_of_node_start..adj_list_of_node_end];
 
             // Out Neighbours of G2
             adj_list_of_node_start = segGraphG2[n2];
             adj_list_of_node_end = segGraphG2[n2 + 1]-1;
             
-            var getOutN2 = dstNodesG2[adj_list_of_node_start..adj_list_of_node_end];
+            ref getOutN2 = dstNodesG2[adj_list_of_node_start..adj_list_of_node_end];
          
             // Check out neighbors of n2 
             for Out2 in getOutN2 {
@@ -571,13 +572,13 @@ module SubgraphIsomorphismVF2 {
             adj_list_of_node_start = segRG1[n1];
             adj_list_of_node_end = segRG1[n1 + 1]-1;
 
-            var getInN1 = dstRG1[adj_list_of_node_start..adj_list_of_node_end];
+            ref getInN1 = dstRG1[adj_list_of_node_start..adj_list_of_node_end];
             
             // In Neighbours of G2
             adj_list_of_node_start = segRG2[n2];
             adj_list_of_node_end = segRG2[n2 + 1]-1;
 
-            var getInN2 = dstRG2[adj_list_of_node_start..adj_list_of_node_end];
+            ref getInN2 = dstRG2[adj_list_of_node_start..adj_list_of_node_end];
 
             // Check In neighbors of n2 
             for In2 in getInN2 {
