@@ -24,7 +24,7 @@ module BreadthFirstSearch {
     * graph: graph to run bfs on. 
     *
     * returns: success string message. */
-    proc bfs_kernel_und_smem(graph:SegGraph, root:int, depth: [?D] int):string throws {
+    proc bfs_kernel_und_smem(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
         // Extract graph data.
         var src = toSymEntry(graph.getComp("SRC"),int).a;
         var dst = toSymEntry(graph.getComp("DST"),int).a;
@@ -73,9 +73,9 @@ module BreadthFirstSearch {
     * graph: graph to run bfs on. 
     *
     * returns: success string message. */
-    proc bfs_kernel_und_dmem(graph:SegGraph, root:int, depth: [?D] int):string throws {
+    proc bfs_kernel_und_dmem(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
         // Initialize the frontiers on each of the locales.
-        coforall loc in Locales do on loc {
+        coforall loc in Locales with (ref frontier_sets) do on loc {
             frontier_sets[0] = new set(int, parSafe=true);
             frontier_sets[1] = new set(int, parSafe=true);
         } 
@@ -93,7 +93,7 @@ module BreadthFirstSearch {
 
         while true { 
             var pending_work:bool;
-            coforall loc in Locales with(|| reduce pending_work) {
+            coforall loc in Locales with(|| reduce pending_work, ref depth, ref frontier_sets) {
                 on loc {
                     var src_low = src.localSubdomain().low;
                     var src_high = src.localSubdomain().high;
