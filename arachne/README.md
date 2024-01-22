@@ -11,14 +11,10 @@ python3 module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/
 ```
 
 ## Usage
-To see an example on how to run and use Arachne, please use `arkouda-njit/arachne/arachne_sample.py` to build a random graph and run breadth-first search on it. This assumes that you have started an Arkouda server using `./arkouda_server` in the Arkouda home directory. The file is executed as follows:
-```bash
-python3 arachne_sample.py node port n m x y
-```
-Where `n` is the number of vertices in the graph, `m` is the number of edges, `host` is the locale that the Arkouda server is running on, and `port` is where the Arkouda server is listening on for messages. Further, the graph is populated with `x` labels and `y` relationships.
+To see an example on how to run and use Arachne, please use `arkouda-njit/arachne/arachne_sample.ipynb` to build a random property graph and run queries. This assumes that you have started an Arkouda server using `./arkouda_server` in the Arkouda home directory.
 
 ## Testing
 The Arachne tests are executed from the arkouda-njit/arachne directory as follows with pytest:
 ```bash
-python3 -m pytest test/algorithm_test.py test/class_test.py
+python3 -m pytest test/algorithm_test.py test/class_test.py test/prop_graph_test.py
 ```

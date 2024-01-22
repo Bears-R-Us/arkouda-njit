@@ -2,8 +2,8 @@
 This is an external repository to build functionality for [Arkouda](https://github.com/Bears-R-Us/Arkouda) with a focus on advanced graph processing. It is built with the same structure as [arkouda-contrib](https://github.com/Bears-R-Us/arkouda-contrib) to manage modules and easily swap between the production (`arachne`) and development (`arachne_development`) directories.
 
 ## Prerequisites
-1. Download and build [Chapel](https://chapel-lang.org/download.html). **Use version 1.31.0. There are some [reported performance issues](https://github.com/chapel-lang/chapel/issues/23680) with 1.32.0 that are being looked at.**
-2. Download but **do not build** [Arkouda](https://github.com/Bears-R-Us/arkouda). **We recommend using the most recent release v2023.10.06.**
+1. Download and build [Chapel](https://chapel-lang.org/download.html). **Chapel version 1.32.0 and 1.33.0 are supported.**
+2. Download but **do not build** [Arkouda](https://github.com/Bears-R-Us/arkouda). **We recommend using the most recent release v2023.11.15.**
 3. Follow instructions to activate the Arkouda environment and install all [prerequisites](https://github.com/Bears-R-Us/arkouda#prerequisites-toc). **We recommend using `Anaconda` to manage all dependencies.** 
 
 ## Installation
