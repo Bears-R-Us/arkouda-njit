@@ -195,35 +195,35 @@ module SubgraphIsomorphism {
 
         /** Returns the set of internal identifiers of relationships for a given edge. Performs a 
         binary search into the the given `dst` array of a graph.*/
-        proc getRelationships(ref seg, ref dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
-            var found: bool = false;
-            var start = seg[fromNode];
-            var end = seg[fromNode+1]-1;
+        // proc getRelationships(ref seg, ref dst, ref edgeRelationships, fromNode:int, toNode:int) throws {
+        //     var found: bool = false;
+        //     var start = seg[fromNode];
+        //     var end = seg[fromNode+1]-1;
             
-            var edgeFound = bin_search_v(dst, start, end, toNode);
-            var emptyRels = domain(int);
+        //     var edgeFound = bin_search_v(dst, start, end, toNode);
+        //     var emptyRels = domain(int);
 
-            if edgeFound > -1 then {
-                found = true; 
-                var foundRels = edgeRelationships[edgeFound];
-                return(found, foundRels);
-            }
-            return (found, emptyRels);
-        }
+        //     if edgeFound > -1 then {
+        //         found = true; 
+        //         var foundRels = edgeRelationships[edgeFound];
+        //         return(found, foundRels);
+        //     }
+        //     return (found, emptyRels);
+        // }
 
         /** Returns the set of internal identifiers of labels for a given vertex.*/
-        proc getLabels(node:int, ref nodeLabels) throws {
-            var found : bool = false;
-            var emptyLabels = domain(int);
+        // proc getLabels(node:int, ref nodeLabels) throws {
+        //     var found : bool = false;
+        //     var emptyLabels = domain(int);
 
-            try {
-                var foundLabels = nodeLabels[node];
-                found = true;
-                return(found, foundLabels);
-            }
+        //     try {
+        //         var foundLabels = nodeLabels[node];
+        //         found = true;
+        //         return(found, foundLabels);
+        //     }
             
-            return (found, emptyLabels);
-        }
+        //     return (found, emptyLabels);
+        // }
 
         /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
         record State {
@@ -324,12 +324,14 @@ module SubgraphIsomorphism {
 
         /**Find vertices that point to this state and all vertices that this state points to.*/
         proc addToTinTout(ref state: State, u: int, v: int): State throws {
-            var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
-            var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+            ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
+            ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
 
             // Add neighbors of u to Tin1 and Tout1 from g1
-            if state.Tin1.contains(u) then state.Tin1.remove(u);
-            if state.Tout1.contains(u) then state.Tout1.remove(u);
+            // if state.Tin1.contains(u) then state.Tin1.remove(u);
+            // if state.Tout1.contains(u) then state.Tout1.remove(u);
+            state.Tin1.remove(u);
+            state.Tout1.remove(u);
 
             // Add unmapped neighbors to Tin1
             for n1 in inNeighbors do if !state.core1.contains(n1) then state.Tin1.add(n1);
@@ -338,11 +340,13 @@ module SubgraphIsomorphism {
             for n1 in outNeighbors do if !state.core1.contains(n1) then state.Tout1.add(n1);
 
             // Add neighbors of v to Tin2, Tout2 from g2
-            var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v + 1]];            
-            var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v + 1]];
+            ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
+            ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
 
-            if state.Tin2.contains(v) then state.Tin2.remove(v);
-            if state.Tout2.contains(v) then state.Tout2.remove(v);
+            // if state.Tin2.contains(v) then state.Tin2.remove(v);
+            // if state.Tout2.contains(v) then state.Tout2.remove(v);
+            state.Tin2.remove(v);
+            state.Tout2.remove(v);
 
             // Add unmapped neighbors to Tin2
             for n2 in inNeighborsg2 do if !state.core2.contains(n2) then state.Tin2.add(n2);
@@ -424,9 +428,12 @@ module SubgraphIsomorphism {
             // var label1 = convertedLabelsG1[n1];
             // var label2 = convertedLabelsG2[n2];
 
-            var intersection = convertedLabelsG1[n1] & convertedLabelsG2[n2];
+            var labelsG1n1 = convertedLabelsG1[n1];
+            var labelsG2n2 = convertedLabelsG2[n2];
+            //var intersection = labelsG1n1 & labelsG2n2;
 
-            if intersection.size <= 0 {
+            // if intersection.size <= 0 {
+            if labelsG1n1 != labelsG2n2 {
                 timernodesLabelCompatible.stop();
                 TimerArrNew[4] += timernodesLabelCompatible.elapsed();                
                 return false;
@@ -471,9 +478,12 @@ module SubgraphIsomorphism {
 
                     // var label1 = convertedRelationshipsG1[eid1];
                     // var label2 = convertedRelationshipsG2[eid2];
-                    var intersection = convertedRelationshipsG1[eid1] & convertedRelationshipsG2[eid2];
+                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
+                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
+                    // var intersection = relationshipsG1eid1 & relationshipsG2eid2;
             
-                    if intersection.size <= 0 {
+                    // if intersection.size <= 0 {
+                    if relationshipsG1eid1 != relationshipsG2eid2 {;
                         timerisFeasible.stop();
                         TimerArrNew[2] += timerisFeasible.elapsed();
                         return false;
@@ -508,9 +518,12 @@ module SubgraphIsomorphism {
 
                     // var label1 = convertedRelationshipsG1[eid1];
                     // var label2 = convertedRelationshipsG2[eid2];
-                    var intersection = convertedRelationshipsG1[eid1] & convertedRelationshipsG2[eid2];
+                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
+                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
+                    //var intersection = relationshipsG1eid1 & relationshipsG2eid2;
             
-                    if intersection.size <= 0 {
+                    // if intersection.size <= 0 {
+                    if relationshipsG1eid1 != relationshipsG2eid2 {;
                         timerisFeasible.stop();
                         TimerArrNew[2] += timerisFeasible.elapsed();
                         return false;
@@ -553,7 +566,6 @@ module SubgraphIsomorphism {
 
             var allmappings: list (set((int, int)));
             var stack:list(State, parSafe=true); // stack for backtracking
-            // NOTE: If algorithm is sequential, does parSafe need to be true?
             var timerpush1:stopwatch;
             timerpush1.start();
             stack.pushBack(initialState); // Initialize stack.
