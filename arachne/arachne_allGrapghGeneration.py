@@ -16,7 +16,13 @@ def create_barabasi_albert_graph(num_nodes, m):
     Returns:
     nx.DiGraph: A directed Barabási-Albert graph.
     """
-    return nx.barabasi_albert_graph(num_nodes, m, seed=42, create_using=nx.DiGraph())
+    UndirectedG = nx.barabasi_albert_graph(num_nodes, m, seed=42)
+    DirectedG = UndirectedG.to_directed()
+    for u, v in list(DirectedG.edges()):
+        if random.random() < 0.5:  # probability for edge removal
+            DirectedG.remove_edge(v, u)  # Remove one direction of the edge
+
+    return DirectedG    
 
 def create_watts_strogatz_graph(num_nodes, k, p):
     """
@@ -43,7 +49,7 @@ def create_watts_strogatz_graph(num_nodes, k, p):
     return directed_graph    
 def create_random_directed_graph(num_nodes, p):
     """
-    Generates a random directed graph (Erdős–Rényi model).
+    Generates a random directed graph (Erdős-Rényi model).
     
     Parameters:
     num_nodes (int): Number of nodes in the graph.
@@ -55,7 +61,133 @@ def create_random_directed_graph(num_nodes, p):
     # Create a random graph using Erdős–Rényi model
     random_graph = nx.gnp_random_graph(num_nodes, p, seed=42, directed=True)
     return random_graph
+def create_linear_directed_graph(num_nodes, extra_nodes):
+    """
+    Generates a linear directed graph with specified number of nodes.
+    
+    Parameters:
+    num_nodes (int): Number of nodes in the graph, where each node has an edge to the next.
+    
+    Returns:
+    nx.DiGraph: A linear directed graph.
+    """
+    G = nx.DiGraph()
+    G.add_nodes_from(range(num_nodes))
+    
+    # Add edges for the linear path
+    for i in range(num_nodes - 1):
+        G.add_edge(i, i + 1)
 
+    # Add extra random nodes
+    max_node = max(G.nodes)
+    for i in range(extra_nodes):
+        new_node = max_node + 1 + i
+        G.add_node(new_node)
+
+        # Connect the new node to a random existing node
+        random_node = random.choice(list(G.nodes))
+        if random.random() < 0.5:
+            # Randomly decide the direction of the edge
+            G.add_edge(new_node, random_node)
+        else:
+            G.add_edge(random_node, new_node)
+
+    return G
+def create_complex_graph(m, X, Y, T):
+    """
+    Creates a complex graph based on specified parameters.
+    
+    Parameters:
+    m (int): Number of nodes in the initial ring.
+    X (int): Number of linear paths to add.
+    Y (int): Size of each linear path.
+    T (int): Number of additional random edges.
+    
+    Returns:
+    nx.DiGraph: The generated complex graph.
+    """
+    G = nx.DiGraph()
+    
+    # Create a ring graph
+    G.add_nodes_from(range(m))
+    for i in range(m):
+        G.add_edge(i, (i + 1) % m, weight=random.random())  # Ring structure
+    
+    # Add X linear paths of size Y
+    max_node = max(G.nodes)
+    for _ in range(X):
+        start_node = random.choice(list(G.nodes))
+        for i in range(Y):
+            new_node = max_node + 1
+            if random.random() < 0.5:
+                G.add_edge(start_node, new_node, weight=random.random())
+            else:
+                G.add_edge(new_node, start_node, weight=random.random())
+            start_node = new_node
+            max_node = new_node
+    
+    # Add T random edges
+    for _ in range(T):
+        node_a, node_b = random.sample(G.nodes(), 2)
+        if random.random() < 0.5:
+            G.add_edge(node_a, node_b, weight=random.random())
+        else:
+            G.add_edge(node_b, node_a, weight=random.random())
+
+    return G
+def create_random_directed_graph(num_nodes, p):
+    """
+    Generates a random directed graph (Erdős-Rényi model) with randomly chosen edge directions
+    and no self-loops.
+    
+    Parameters:
+    num_nodes (int): Number of nodes in the graph.
+    p (float): Probability of creating an edge between two nodes.
+    
+    Returns:
+    nx.DiGraph: A random directed graph.
+    """
+    random_graph = nx.DiGraph()
+
+    # Add nodes
+    random_graph.add_nodes_from(range(num_nodes))
+
+    # Add edges with random direction
+    for i in range(num_nodes):
+        for j in range(num_nodes):
+            if i != j and random.random() < p:
+                if random.random() < 0.5:
+                    # Add edge with one direction
+                    random_graph.add_edge(i, j)
+                else:
+                    # Add edge with opposite direction
+                    random_graph.add_edge(j, i)
+
+    return random_graph
+def modify_graph_with_self_loops(graph, percentage=0.10):
+    """
+    Randomly deletes a percentage of edges and adds the same number of self-loops.
+    
+    Parameters:
+    graph (nx.DiGraph): The directed graph to modify.
+    percentage (float): Percentage of edges to delete and number of self-loops to add.
+    """
+    num_edges_to_remove = int(graph.number_of_edges() * percentage)
+    edges = list(graph.edges())
+    nodes = list(graph.nodes())
+
+    # Randomly remove edges
+    for _ in range(num_edges_to_remove):
+        edge_to_remove = random.choice(edges)
+        graph.remove_edge(*edge_to_remove)
+        edges.remove(edge_to_remove)
+
+    # Add self-loops
+    for _ in range(num_edges_to_remove):
+        node_for_self_loop = random.choice(nodes)
+        graph.add_edge(node_for_self_loop, node_for_self_loop)
+
+    return graph
 def create_parser():
     """Creates the command line parser for this script"""
     script_parser = argparse.ArgumentParser(
@@ -82,23 +214,38 @@ if __name__ == "__main__":
 
     num_nodes = args.nodes
     #random_directed_graph = nx.DiGraph()
-
+    """
     # Parameters for random model
     p = 0.05  # Probability of edge creation
     random_directed_graph = create_random_directed_graph(num_nodes, p)
-    """
+    
     # Parameters for small-world model
     k = 4  # Number of nearest neighbors
     p = 0.1  # Rewiring probability
     random_directed_graph = create_watts_strogatz_graph(num_nodes, k, p)
     
     # Parameters for scale-free model
-    m = 2  # Number of edges to attach from a new node to existing nodes
-
+    m = 15  # Number of edges to attach from a new node to existing nodes
+    
     # Generate a directed Barabási-Albert graph using the function
     random_directed_graph = create_barabasi_albert_graph(num_nodes, m)
+    
+    random_directed_graph = create_linear_directed_graph(args.nodes, 500)
+    
+    m = 5   # Size of the ring
+    X = 5    # Number of linear paths
+    Y = 100    # Size of each linear path
+    T = 5000   # Number of additional random nodes
+    random_directed_graph = create_complex_graph(m, X, Y, T)
+    
+    p = 0.05         # Probability of edge creation
+    random_directed_graph_temp = create_random_directed_graph(num_nodes, p)
+    random_directed_graph = modify_graph_with_self_loops(random_directed_graph_temp, 0.10)
     """
-
+    m = 15  # Number of edges to attach from a new node to existing nodes
+    
+    # Generate a directed Barabási-Albert graph using the function
+    random_directed_graph = create_barabasi_albert_graph(num_nodes, m)
     # Set node labels and edge labels
     nx.set_node_attributes(random_directed_graph, 'label', 'label1')
     nx.set_edge_attributes(random_directed_graph, 'label', 'Y1')
