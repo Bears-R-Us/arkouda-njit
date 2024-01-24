@@ -16,7 +16,6 @@ def create_parser():
     script_parser.add_argument("hostname", help="Hostname of arkouda server")
     script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
     script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
-    script_parser.add_argument("m", type=int, default=2000, help="Number of edges for graph")
     script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
     script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
     script_parser.add_argument("s", type=int, default=2, help="Random seed for reproducibility")
@@ -128,20 +127,18 @@ if __name__ == "__main__":
     # 1. Create labels and relationships to search for.
     src_subgraph = ak.array([0, 1, 2, 1])
     dst_subgraph = ak.array([1, 2, 0, 3])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
-    labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
-    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
-    rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
+    labels1_subgraph = ak.array(["lbl0", "lbl0", "lbl0", "lbl0"])
+    # labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
+    rels1_subgraph = ak.array(["rel0", "rel0", "rel0", "rel0"])
+    # rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
     # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
-    edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
-                            "rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph,
-                              "lbls2":labels2_subgraph})
+    edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels1":rels1_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
-                                    relationship_columns=["rels1","rels2"])
-    subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
+                                    relationship_columns=["rels1"])
+    subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
     # print(node_df_h.__str__)
     # print(edge_df_h.__str__)
 
