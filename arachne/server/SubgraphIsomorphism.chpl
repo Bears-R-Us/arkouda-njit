@@ -324,36 +324,78 @@ module SubgraphIsomorphism {
 
         /**Find vertices that point to this state and all vertices that this state points to.*/
         proc addToTinTout(ref state: State, u: int, v: int): State throws {
+            var timeraddto1:stopwatch;
+            timeraddto1.start();
             ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
             ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-
+            timeraddto1.stop();
+            TimerArrNew[12] += timeraddto1.elapsed();
             // Add neighbors of u to Tin1 and Tout1 from g1
             // if state.Tin1.contains(u) then state.Tin1.remove(u);
             // if state.Tout1.contains(u) then state.Tout1.remove(u);
+            var timeraddto2:stopwatch;
+            timeraddto2.start();
             state.Tin1.remove(u);
             state.Tout1.remove(u);
-
+            timeraddto2.stop();
+            TimerArrNew[13] += timeraddto2.elapsed();
+            
             // Add unmapped neighbors to Tin1
+            var timeraddto3:stopwatch;
+            timeraddto3.start();
+            
             for n1 in inNeighbors do if !state.core1.contains(n1) then state.Tin1.add(n1);
 
+            timeraddto3.stop();
+            TimerArrNew[14] += timeraddto3.elapsed();
             // Add unmapped neighbors to Tout1
+            var timeraddto4:stopwatch;
+            timeraddto4.start();
+
+            
             for n1 in outNeighbors do if !state.core1.contains(n1) then state.Tout1.add(n1);
 
+            timeraddto4.stop();
+            TimerArrNew[15] += timeraddto4.elapsed();
             // Add neighbors of v to Tin2, Tout2 from g2
+            var timeraddto5:stopwatch;
+            timeraddto5.start();
+
+            
             ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
             ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
 
+
+            timeraddto5.stop();
+            TimerArrNew[16] += timeraddto5.elapsed();
             // if state.Tin2.contains(v) then state.Tin2.remove(v);
             // if state.Tout2.contains(v) then state.Tout2.remove(v);
+            var timeraddto6:stopwatch;
+            timeraddto6.start();
+
             state.Tin2.remove(v);
             state.Tout2.remove(v);
 
+            timeraddto6.stop();
+            TimerArrNew[17] += timeraddto6.elapsed();
             // Add unmapped neighbors to Tin2
-            for n2 in inNeighborsg2 do if !state.core2.contains(n2) then state.Tin2.add(n2);
-            
-            // Add unmapped neighbors to Tout2
-            for n2 in outNeighborsg2 do if !state.core2.contains(n2) then state.Tout2.add(n2);
+            var timeraddto7:stopwatch;
+            timeraddto7.start();
 
+            
+            for n2 in inNeighborsg2 do if !state.core2.contains(n2) then state.Tin2.add(n2);
+
+
+            timeraddto7.stop();
+            TimerArrNew[18] += timeraddto7.elapsed();
+            // Add unmapped neighbors to Tout2
+            var timeraddto8:stopwatch;
+            timeraddto8.start();
+
+            
+            for n2 in outNeighborsg2 do if !state.core2.contains(n2) then state.Tout2.add(n2);
+            timeraddto8.stop();
+            TimerArrNew[19] += timeraddto8.elapsed();
             return state;
         } // end of addToTinTout
 
@@ -599,11 +641,11 @@ module SubgraphIsomorphism {
                         TimerArrNew[11] += timerpush2.elapsed();
                     }
                 }
-                var timerreset:stopwatch;
-                timerreset.start();
-                state.reset();
-                timerreset.stop();
-                TimerArrNew[12] += timerreset.elapsed();
+                //var timerreset:stopwatch;
+                //timerreset.start();
+                //state.reset();
+                //timerreset.stop();
+                //TimerArrNew[12] += timerreset.elapsed();
             }
             timerDFS.stop();
             TimerArrNew[3] += timerDFS.elapsed();
@@ -643,7 +685,15 @@ module SubgraphIsomorphism {
             if i == 9 then writeln("addToTinTout total time = ", TimerArrNew[9]);
             if i == 10 then writeln("stack push 1 total time = ", TimerArrNew[10]);
             if i == 11 then writeln("stack push 2 total time = ", TimerArrNew[11]);
-            if i == 12 then writeln("state reset total time = ", TimerArrNew[12]);
+            if i == 12 then writeln("\n\n IN-OUT neighbor G1 time = ", TimerArrNew[12]);
+            if i == 13 then writeln("Tin Tout N1 remove time = ", TimerArrNew[13]);
+            if i == 14 then writeln("for over in-nei N1 time = ", TimerArrNew[14]);
+            if i == 15 then writeln("for over out-nei N1 time = ", TimerArrNew[15]);
+            if i == 16 then writeln("\n\n IN-OUT neighbor G2 time = ", TimerArrNew[16]);
+            if i == 17 then writeln("Tin Tout N2 remove time = ", TimerArrNew[17]);
+            if i == 18 then writeln("for over in-nei N2 time = ", TimerArrNew[18]);
+            if i == 19 then writeln("for over out-nei N2 time = ", TimerArrNew[19]);
+
         }
         writeln("\n\n\n\n\n");
         return IsoArr;
