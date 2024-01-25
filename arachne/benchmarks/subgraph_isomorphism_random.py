@@ -16,9 +16,10 @@ def create_parser():
     script_parser.add_argument("hostname", help="Hostname of arkouda server")
     script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
     script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
+    #script_parser.add_argument("m", type=int, default=2000, help="Number of edges for graph")
     script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
     script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
-    script_parser.add_argument("s", type=int, default=2, help="Random seed for reproducibility")
+    #script_parser.add_argument("s", type=int, default=2, help="Random seed for reproducibility")
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
 
     return script_parser
@@ -55,6 +56,25 @@ def create_dindoost_random_graph(n):
     dst = [edge[1] for edge in edges]
 
     return src, dst
+def create_random_directed_graph(num_nodes, p):
+    """
+    Generates a random directed graph (Erdős-Rényi model) and returns the src and dst arrays.
+    
+    Parameters:
+    num_nodes (int): Number of nodes in the graph.
+    p (float): Probability of creating an edge between two nodes.
+    
+    Returns:
+    tuple: A tuple containing two lists (src, dst) representing the source and destination of each edge.
+    """
+    # Create a random graph using Erdős–Rényi model
+    random_graph = nx.gnp_random_graph(num_nodes, p, seed=42, directed=True)
+
+    # Extract src and dst arrays
+    src = [edge[0] for edge in random_graph.edges()]
+    dst = [edge[1] for edge in random_graph.edges()]
+
+    return src, dst
 
 if __name__ == "__main__":
     #### Command line parser and extraction.
@@ -77,11 +97,11 @@ if __name__ == "__main__":
     # model is effective for creating graphs with a specified average degree,
     # but it's important to note that it produces graphs with a Poisson degree distribution,
     # which might not always accurately model real-world networks!
-    n = args.n  # Number of nodes
-    p = 0.01  # Probability of edge creation
-
+    num_nodes = args.n  # Number of nodes
+    p = 0.05  # Probability of edge creation
+    print("Random Directed graph with P= ",p)
     # src, dst = create_random_graph(n, p)
-    src, dst = create_dindoost_random_graph(n)
+    src, dst = create_random_directed_graph(num_nodes, p)
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
@@ -120,27 +140,33 @@ if __name__ == "__main__":
     prop_graph.load_edge_attributes(edge_df, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1"])
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
-    # print(node_df.__str__)
-    # print(edge_df.__str__)
+    #print(node_df.__str__)
+    #print(edge_df.__str__)
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
     src_subgraph = ak.array([0, 1, 2, 1])
     dst_subgraph = ak.array([1, 2, 0, 3])
-    labels1_subgraph = ak.array(["lbl0", "lbl0", "lbl0", "lbl0"])
-    # labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
-    rels1_subgraph = ak.array(["rel0", "rel0", "rel0", "rel0"])
-    # rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
+    #labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
+    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
+    #rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
     # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
-    edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels1":rels1_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph})
+    edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
+                            "rels1":rels1_subgraph})
+                            #"rels1":rels1_subgraph, "rels2":rels2_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph,
+                              })
+                              #"lbls2":labels2_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1"])
+                                    #relationship_columns=["rels1","rels2"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
-    # print(node_df_h.__str__)
-    # print(edge_df_h.__str__)
+    #subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
+    #print(node_df_h.__str__)
+    #print(edge_df_h.__str__)
 
     ### Run subgraph isomorphism.
     start_time = time.time()
@@ -230,13 +256,16 @@ if __name__ == "__main__":
 
     isos_as_dicts = []
     subgraph_vertices = [0, 1, 2, 3]
+    print("making dict")
     for iso in isos_sublists:
         isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
+    print("checking for correctness")
 
     for iso in isos_as_dicts:
         if iso not in subgraph_isomorphisms:
             print("ERROR: Subgraph isomorphisms do not match!")
             break
+    print("checking for printing or not")
 
     if args.print_isos:
         for iso in isos_as_dicts:

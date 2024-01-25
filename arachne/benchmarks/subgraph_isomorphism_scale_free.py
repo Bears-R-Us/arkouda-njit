@@ -6,6 +6,7 @@
 import argparse
 import time
 import arachne as ar
+import arkouda as ak
 import networkx as nx
 import numpy as np
 import networkx as nx
@@ -26,19 +27,26 @@ def create_parser():
 
     return script_parser
 
-def add_edges_pref_attach(src, dst, m, current_node, node_degrees):
-    """Add edges to new node using preferential attachment."""
-    total_degree = np.sum(node_degrees)
-    if total_degree > 0:
-        probs = node_degrees[:current_node] / total_degree  # Consider only existing nodes
-        existing_nodes = np.arange(current_node)  # Array of existing node indices
-        target_nodes = np.random.choice(existing_nodes, size=m, replace=False, p=probs)
-        for target_node in target_nodes:
-            src.append(current_node)
-            dst.append(target_node)
-            node_degrees[target_node] += 1
-    return src, dst, node_degrees
+def create_scale_free_directed_graph(num_nodes, alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2, delta_out=0):
+    """
+    Generates a scale-free directed graph and returns the source and destination nodes for each edge.
 
+    Parameters:
+    num_nodes (int): Number of nodes in the graph.
+    alpha (float): Probability for adding a new node connected to an existing node chosen randomly according to the in-degree distribution.
+    beta (float): Probability for adding an edge between two existing nodes.
+    gamma (float): Probability for adding a new node connected to an existing node chosen randomly according to the out-degree distribution.
+    delta_in (float): Bias for choosing nodes from in-degree distribution.
+    delta_out (float): Bias for choosing nodes from out-degree distribution.
+
+    Returns:
+    Tuple of Lists: (List of source nodes, List of destination nodes)
+    """
+    G = nx.scale_free_graph(num_nodes, alpha=alpha, beta=beta, gamma=gamma, delta_in=delta_in, delta_out=delta_out, seed=42).to_directed()
+
+    # Extract src and dst lists
+    src, dst = zip(*G.edges())
+    return list(src), list(dst)
 
 if __name__ == "__main__":
     #### Command line parser and extraction.
@@ -56,26 +64,9 @@ if __name__ == "__main__":
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
     ### Generate a scale-free network
-    m = 5  # Number of edges to attach from new node to existing nodes
-    m0 = max(5, m)  # Initial number of interconnected nodes
-
-    src = []
-    dst = []
-    node_degrees = np.zeros(args.n) #n is number of vertices for graph
+    num_nodes = args.n  # Number of nodes
+    src, dst = create_scale_free_directed_graph(num_nodes)
     print("here 1")
-
-    # Create initial interconnected network
-    for i in range(m0):
-        for j in range(i+1, m0):
-            src.append(i)
-            dst.append(j)
-            node_degrees[i] += 1
-            node_degrees[j] += 1
-    print("here 2")
-    # Add new nodes with preferential attachment
-    for current_node in range(m0, args.n):
-        src, dst, node_degrees = add_edges_pref_attach(src, dst, m, current_node, node_degrees)
-
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
@@ -122,35 +113,38 @@ if __name__ == "__main__":
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([0, 1, 0])
-    dst_subgraph = ak.array([1, 2, 2])
-    
-
-    
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1"])
-    labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2"])
-    rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
-    rels2_subgraph = ak.array(["rel2", "rel2", "rel2"])
+    src_subgraph = ak.array([0, 1, 2, 1])
+    dst_subgraph = ak.array([1, 2, 0, 3])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
+    #labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
+    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
+    #rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
     # 2. Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
-                            "rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2]), "lbls1":labels1_subgraph,
-                              "lbls2":labels2_subgraph})
+                            "rels1":rels1_subgraph})
+                            #"rels1":rels1_subgraph, "rels2":rels2_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph,
+                              })
+                              #"lbls2":labels2_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
-                                    relationship_columns=["rels1","rels2"])
-    subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
+                                    relationship_columns=["rels1"])
+                                    #relationship_columns=["rels1","rels2"])
+    subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
+    #subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
+    #print(node_df_h.__str__)
+    #print(edge_df_h.__str__)
     print("here 5")
 
     ### Run subgraph isomorphism.
     start_time = time.time()
-
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
-    #print("isos =", isos)
-    
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+
 
     #### Run NetworkX subgraph isomorphism.
     # Get the NetworkX version
@@ -222,13 +216,14 @@ if __name__ == "__main__":
     subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
+    print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
 
     #### Compare Arachne subgraph isomorphism to NetworkX.
     isos_list = isos.to_list()
-    isos_sublists = [isos_list[i:i+3] for i in range(0, len(isos_list), 3)]
+    isos_sublists = [isos_list[i:i+4] for i in range(0, len(isos_list), 4)]
 
     isos_as_dicts = []
-    subgraph_vertices = [0, 1, 2]
+    subgraph_vertices = [0, 1, 2, 3]
     for iso in isos_sublists:
         isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
 
