@@ -25,7 +25,7 @@ module SubgraphIsomorphism {
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
     proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
-        var TimerArrNew:[0..13] real(64) = 0.0;
+        var TimerArrNew:[0..25] real(64) = 0.0;
 
         var timerpreproc:stopwatch;
         timerpreproc.start();
@@ -228,8 +228,9 @@ module SubgraphIsomorphism {
         /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
         record State {
             var n1, n2: int;
-            var core1, core2:  map(int, int);
-            var mapping: set((int , int)); 
+            var D_core: domain(1) = {0..1};
+            var core: [D_core] int;
+            var mapping: set((int , int));
 
             // NOTE: Not used, saved for future work to automatically return true once we reach 
             // depth equal to the subgraph size.
@@ -247,8 +248,7 @@ module SubgraphIsomorphism {
             proc init() {
                 this.n1 = 0;
                 this.n2 = 0;
-                this.core1 = new map(int, int);
-                this.core2 = new map(int, int);
+                this.core = -1;
                 this.mapping = new set((int, int));
                 this.depth = 0;
                 this.cost = 0.0;
@@ -262,8 +262,9 @@ module SubgraphIsomorphism {
             proc init(n1, n2) {
                 this.n1 = n1;
                 this.n2 = n2;
-                this.core1 = new map(int, int);
-                this.core2 = new map(int, int);
+                var new_dom: domain(1) = {0..<n2};
+                D_core = new_dom; // modifies how much core can store
+                this.core = -1;
                 this.mapping = new set((int, int));
                 this.depth = 0;
                 this.cost = 0.0; 
@@ -276,8 +277,8 @@ module SubgraphIsomorphism {
             /** Copy current state information to a new state.*/
             proc copy() {
                 var state = new State(n1, n2);
-                state.core1 = this.core1;
-                state.core2 = this.core2;
+                state.D_core = this.D_core;
+                state.core = this.core;
                 state.mapping = this.mapping;  
                 state.depth = this.depth;
                 state.cost = this.cost;
@@ -303,22 +304,21 @@ module SubgraphIsomorphism {
             
             /** Add a vertex pair `(x1, x2)` to the mapping.*/
             proc addPair(x1: int, x2: int) {
-                this.core1.add(x1, x2);
-                this.core2.add(x2, x1);
+                this.core[x2] = x1;
                 this.mapping.add((x1, x2));
                 this.depth += 1;
             }
 
             /** Check if a given node is mapped in g1.*/
             proc isMappedn1(node: int): bool {
-                if this.core1.contains(node) then return true;
-                else return false;
+                if this.core[node] != -1 then return true;
+                return false;
             }
             
             /** Check if a given node is mapped in g2.*/
             proc isMappedn2(node: int): bool {
-                if this.core2.contains(node) then return true;
-                else return false;
+                for u in this.core do if u == node then return true;
+                return false;
             }
         } //end of State record
 
@@ -344,7 +344,8 @@ module SubgraphIsomorphism {
             var timeraddto3:stopwatch;
             timeraddto3.start();
             
-            for n1 in inNeighbors do if !state.core1.contains(n1) then state.Tin1.add(n1);
+            // for n1 in inNeighbors do if !state.core1.contains(n1) then state.Tin1.add(n1);
+            for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
 
             timeraddto3.stop();
             TimerArrNew[14] += timeraddto3.elapsed();
@@ -352,8 +353,8 @@ module SubgraphIsomorphism {
             var timeraddto4:stopwatch;
             timeraddto4.start();
 
-            
-            for n1 in outNeighbors do if !state.core1.contains(n1) then state.Tout1.add(n1);
+            // for n1 in outNeighbors do if !state.core1.contains(n1) then state.Tout1.add(n1);
+            for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
 
             timeraddto4.stop();
             TimerArrNew[15] += timeraddto4.elapsed();
@@ -381,10 +382,9 @@ module SubgraphIsomorphism {
             // Add unmapped neighbors to Tin2
             var timeraddto7:stopwatch;
             timeraddto7.start();
-
             
-            for n2 in inNeighborsg2 do if !state.core2.contains(n2) then state.Tin2.add(n2);
-
+            // for n2 in inNeighborsg2 do if !state.core2.contains(n2) then state.Tin2.add(n2);
+            for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
 
             timeraddto7.stop();
             TimerArrNew[18] += timeraddto7.elapsed();
@@ -392,8 +392,9 @@ module SubgraphIsomorphism {
             var timeraddto8:stopwatch;
             timeraddto8.start();
 
+            // for n2 in outNeighborsg2 do if !state.core2.contains(n2) then state.Tout2.add(n2);
+            for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
             
-            for n2 in outNeighborsg2 do if !state.core2.contains(n2) then state.Tout2.add(n2);
             timeraddto8.stop();
             TimerArrNew[19] += timeraddto8.elapsed();
             return state;
@@ -407,17 +408,24 @@ module SubgraphIsomorphism {
         }  //end of createInitialState
 
         /** Returns unmapped nodes for the current state of the subgraph.*/
-        proc getUnmappedSubgraphNodes(graph, state) throws {
+        proc getUnmappedSubgraphNodes(state) throws {
+            // var unmapped: list(int);
+            // for n in 0..<graph.n_vertices do if !state.isMappedn2(n) then unmapped.pushBack(n);
+            // return unmapped;
             var unmapped: list(int);
-            for n in 0..<graph.n_vertices do if !state.isMappedn2(n) then unmapped.pushBack(n);
+            for (u,i) in zip(state.core,state.core.domain) do if u == -1 then unmapped.pushBack(i);
             return unmapped;
         } // end of getUnmappedSubgraphNodes
         
         /** Returns unmapped nodes for the current state of the graph.*/
-        proc getUnmappedGraphNodes(graph: SegGraph, state: State) throws {
-            var unmapped: list(int) = 0..#graph.n_vertices;
-            for key in state.core1.keys() do unmapped.remove(key);
-            return unmapped;
+        proc getUnmappedGraphNodes(state) throws {
+            // var unmapped: list(int) = 0..#graph.n_vertices;
+            // for key in state.core1.keys() do unmapped.remove(key);
+            // return unmapped;
+            var temp: [{0..<nodeMapGraphG1.size}] int;
+            forall i in temp.domain do temp[i] = i;
+            forall i in state.core do if i == -1 then temp[i] = -1;
+            return temp;
         } // end of getUnmappedGraphNodes
  
         /** Create candidates based on current state and retuns a set of pairs.*/
@@ -429,7 +437,8 @@ module SubgraphIsomorphism {
             var timerunmapped:stopwatch;
             timerunmapped.start();
 
-            var unmapped = getUnmappedSubgraphNodes(g2, state);
+            var unmapped = getUnmappedSubgraphNodes(state);
+            writeln("unmapped = ", unmapped);
 
             timerunmapped.stop();
             TimerArrNew[5] += timerunmapped.elapsed();
@@ -446,9 +455,9 @@ module SubgraphIsomorphism {
                 } else { // not (Tin1 or Tin2) NOTE: What does this mean?
                     if unmapped.size > 0 {
                         var minUnmapped2 = min reduce unmapped;
-                        var unmappedG1 = getUnmappedGraphNodes(g1, state);
+                        var unmappedG1 = getUnmappedGraphNodes(state);
                         for umg1 in unmappedG1 {
-                            candidates.add((umg1,minUnmapped2));
+                            if umg1 != -1 then candidates.add((umg1,minUnmapped2));
                         } 
                         //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
                     }
@@ -502,10 +511,11 @@ module SubgraphIsomorphism {
             var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
             var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
          
-            // Check out neighbors of n2 
+            // Check out neighbors of n2
             for Out2 in getOutN2 {
                 if state.isMappedn2(Out2) {
-                    var Out1 = state.core2(Out2);
+                    var Out1 = state.core.find(Out2);
+                    writeln("Out1 = ", Out1);
                     var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
                     var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
 
@@ -542,10 +552,11 @@ module SubgraphIsomorphism {
             var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
             var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
 
-            // Check in neighbors of n2 
+            // Check in neighbors of n2
             for In2 in getInN2 {
                 if state.isMappedn2(In2) {
-                    var In1 = state.core2(In2);
+                    var In1 = state.core.find(In2);
+                    writeln("In1 = ", In1);
                     var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
                     var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
                     
@@ -578,7 +589,7 @@ module SubgraphIsomorphism {
                 }
             }
             
-            // Check out neighbors of n1 
+            // Check out neighbors of n1
             for Out1 in getOutN1 {
                 if !state.isMappedn1(Out1) {
                     if state.Tin1.contains(Out1) then termin1 += 1;
@@ -587,7 +598,7 @@ module SubgraphIsomorphism {
                 }
             }
             
-            // Check in neighbors of n1 
+            // Check in neighbors of n1
             for In1 in getInN1 {
                 if !state.isMappedn1(In1) {
                     if state.Tin1.contains(In1) then termin1 += 1;
@@ -618,6 +629,7 @@ module SubgraphIsomorphism {
                 if state.mapping.size == g2.n_vertices then allmappings.pushBack(state.mapping);
 
                 var candidatesOpti = getCandidatePairsOpti(state);
+                writeln("candidatesOpti = ", candidatesOpti);
 
                 for (n1, n2) in candidatesOpti {
                     if isFeasible(state, n1, n2) {
@@ -631,6 +643,10 @@ module SubgraphIsomorphism {
                         var timeraddToTinTout:stopwatch;
                         timeraddToTinTout.start();
                         newState = addToTinTout(newState, n1, n2);
+                        writeln("\n");
+                        writeln("state = ", state);
+                        writeln("newState = ", newState);
+                        writeln("\n");
                         timeraddToTinTout.stop();
                         TimerArrNew[9] += timeraddToTinTout.elapsed();
                         
