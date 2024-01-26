@@ -38,7 +38,7 @@ module Aggregators {
 
         /**
         * Allocate the remote buffers on each locale allocated. */
-        proc postinit() {
+        proc ref postinit() {
             for loc in myLocaleSpace {
                 rBuffers[loc] = new remoteBuffer(aggType, bufferSize, loc);
             }
@@ -46,13 +46,13 @@ module Aggregators {
     
         /**
         * Flush all of the buffers during deinitialization. */
-        proc deinit() {
+        proc ref deinit() {
             flush();
         }
 
         /** 
         * For every locale allocated, flush their buffers. */
-        proc flush() {
+        proc ref flush() {
             for loc in myLocaleSpace {
                 _flushBuffer(loc, bufferIdxs[loc], freeData=true);
             }
@@ -64,7 +64,7 @@ module Aggregators {
         *
         * loc: id of remote locale.
         * srcVal: value to be copied to the remote locale. */
-        inline proc copy(const loc, const in srcVal: elemType) {
+        inline proc ref copy(const loc, const in srcVal: elemType) {
             // Get our current index into the buffer for the destination locale.
             ref bufferIdx = bufferIdxs[loc];
 
@@ -93,7 +93,7 @@ module Aggregators {
         * loc: id of locale to flush. 
         * bufferIdx: id of buffer to PUT items into. 
         * freeData: did the last flush happen and have all remote buffers been freed? */
-        proc _flushBuffer(loc: int, ref bufferIdx, freeData) {
+        proc ref _flushBuffer(loc: int, ref bufferIdx, freeData) {
             // Get the buffer id to extract the buffered values.
             const myBufferIdx = bufferIdx;
             if myBufferIdx == 0 then return;
