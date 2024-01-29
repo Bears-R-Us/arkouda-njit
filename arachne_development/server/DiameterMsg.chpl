@@ -97,8 +97,10 @@ module DiameterMsg {
           var numCurF=1:int;
           var topdown=0:int;
           var bottomup=0:int;
+          var update=false:bool;
           while (numCurF>0) {
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -119,16 +121,17 @@ module DiameterMsg {
 
                        {//top down
                            topdown+=1;
-                           forall i in SetCurF with (ref SetNextF) {
+                           forall i in SetCurF with (ref SetNextF, ref update) {
                               if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
                                   var    numNF=nf[i];
                                   var    edgeId=sf[i];
                                   var nextStart=max(edgeId,edgeBegin);
                                   var nextEnd=min(edgeEnd,edgeId+numNF-1);
                                   ref NF=df[nextStart..nextEnd];
-                                  forall j in NF with (ref SetNextF){
+                                  forall j in NF with (ref SetNextF,ref update){
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
+                                               update=true;
                                                SetNextF.add(j);
                                          }
                                   }
@@ -139,9 +142,10 @@ module DiameterMsg {
                                   var nextStart=max(edgeId,edgeBegin);
                                   var nextEnd=min(edgeEnd,edgeId+numNF-1);
                                   ref NF=dfR[nextStart..nextEnd];
-                                  forall j in NF with (ref SetNextF)  {
+                                  forall j in NF with (ref SetNextF,ref update)  {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
+                                               update=true;
                                                SetNextF.add(j);
                                          }
                                   }
@@ -150,7 +154,9 @@ module DiameterMsg {
                        }
                    }//end on loc
                 }//end coforall loc
-                cur_level+=1;
+                if ( update) {
+                    cur_level+=1;
+                }
                 numCurF=SetNextF.getSize();
                 SetCurF<=>SetNextF;
                 SetNextF.clear();
@@ -950,7 +956,7 @@ module DiameterMsg {
 
 
     // Contour variant: a  mapping based connected components algorithm
-    proc cc_mm(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int): int throws {
+    proc cc_mm_diameter(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int): int throws {
       // Initialize the parent vectors f that will form stars. 
       var f = makeDistArray(Nv, int); 
       var af = makeDistArray(Nv, atomic int); 
@@ -1219,13 +1225,13 @@ module DiameterMsg {
           writeln("Handle component ",i);
           var numV=f.count(i);
           if numV<=2 {
-              writeln("Only two vertices, contiune");
+              writeln("no more than  two vertices, contiune");
               continue;
           }
           if numV>2500 {
               var depth=f;
               depth=-1;
-              
+              depth[i]=0; 
               var level=fo_bag_bfs_kernel_u(nei, start_i,src, dst,
                         neiR, start_iR,srcR, dstR, 
                         depth,i);
@@ -1238,6 +1244,7 @@ module DiameterMsg {
               }
               for s in longestvertexSet {
                   depth=-1;
+                  depth[s]=0;
                   level=fo_bag_bfs_kernel_u(nei, start_i,src, dst,
                         neiR, start_iR,srcR, dstR, 
                         depth,s);
@@ -1524,335 +1531,18 @@ module DiameterMsg {
 
 
 
-    // UPS: Paul's min update, label propogation and symmetrization method
-    proc cc_ups(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var l = makeDistArray(Nv, int); 
-      var af = makeDistArray(Nv, atomic int); 
-      var src2 = makeDistArray(Ne*2, int); 
-      var dst2 = makeDistArray(Ne*2, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      var lu = makeDistArray(Nv, atomic int); 
-
-      localtimer.clear();
-      localtimer.start(); 
-      coforall loc in Locales with (ref l, ref lu, ref af) {
-        on loc {
-          var vertexBegin = l.localSubdomain().lowBound;
-          var vertexEnd = l.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd  with (ref l, ref lu, ref af){
-            l[i] = i;
-            lu[i].write(l[i]);
-            af[i].write(l[i]);
-          }
-        }
-      }
-      var count:int=0;
-      
-      coforall loc in Locales with (ref src2, ref dst2) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-            forall x in src.localSubdomain()  with (ref src2, ref dst2){
-                  src2[x*2]=src[x];
-                  dst2[x*2]=dst[x];
-                  src2[x*2+1]=dst[x];
-                  dst2[x*2+1]=src[x];
-            }
-
-
-          }
-      }
-
-      localtimer.stop(); 
-      //executime=localtimer.elapsed();
-      //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-
-      var converged:bool = false;
-      var itera = 1;
-
-      if (numLocales>1 && MultiLocale==1) {
-           while (!converged)  {
-             localtimer.clear();
-             localtimer.start(); 
-
-             
-             coforall loc in Locales with ( + reduce count, ref src2, ref dst2, ref af ) {
-                     on loc {
-                             var locall:[0..Nv-1] int;
-                             var locallu:[0..Nv-1] atomic int;
-                             var lconverged:bool = false;
-                             var litera = 1;
-                             var lcount:int=0;
-                             forall i in 0..Nv-1 {
-                                 locall[i]=af[i].read();
-                                 locallu[i].write(locall[i]);
-                             }
-                             while (!lconverged) {
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                    var u = src2[2*x];
-                                    var v = dst2[2*x];
-                                    if (v!=locall[u]) {
-                                        var old=locallu[v].read();
-                                        var tmp =min(old,locall[u]);
-                                        while (old>tmp) {
-                                          locallu[v].compareAndSwap(old,tmp);
-                                          old=locallu[v].read();
-                                          lcount+=1;
-                                        }
-                                        src2[2*x]=v;
-                                        dst2[2*x]=locall[u];
-                                    } else {
-                                        src2[2*x]=v;
-                                        dst2[2*x]=u;
-                                    }
-
-
-                                    u = src2[2*x+1];
-                                    v = dst2[2*x+1];
-                                    if (v!=locall[u]) {
-                                        var old=locallu[v].read();
-                                        var tmp =min(old,locall[u]);
-                                        while (old>tmp) {
-                                          locallu[v].compareAndSwap(old,tmp);
-                                          old=locallu[v].read();
-                                          lcount+=1;
-                                        }
-                                        src2[2*x+1]=v;
-                                        dst2[2*x+1]=locall[u];
-                                    } else {
-                                        src2[2*x+1]=v;
-                                        dst2[2*x+1]=u;
-                                    }
-                                    //writeln("2 Myid=",here.id," <",u,",",v,">-><",src2[2*x+1],",",dst2[2*x+1],">", " L[",u,"]=",locall[u]," L[",v,"]=",locall[v], " Lu[",v,"]=",locallu[v].read());
-
-                                }//end forall
-                                if( (lcount==0) ) {
-                                    lconverged = true;
-                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
-                                }
-                                else {
-                                    lconverged = false;
-                                    lcount=0;
-                                    forall x in 0..Nv-1    {
-                                         var val=locallu[x].read();
-                                         if locall[x]>val {
-                                             locall[x]=val;
-                                         }
-                                    }
-                                }
-                                litera+=1;
-                             }// while
-                             writeln("Converge local ------------------------------------------");
-                             forall i in 0..Nv-1 with (+ reduce count) {
-                                 var old=af[i].read();
-                                 var newval=locall[i];
-                                 while old>newval {
-                                     af[i].compareAndSwap(old,newval);
-                                     old=af[i].read();
-                                     count+=1;
-                                 }
-                             }
-
-                     }// end of on loc 
-                 }// end of coforall loc 
-
-                 if( (count==0) ) {
-                      converged = true;
-                 }
-                 else {
-                     converged = false;
-                     count=0;
-                 }
-                 itera += 1;
-                 writeln(" -----------------------------------------------------------------");
-                 writeln(" outter iteration=", itera);
-
-           }//while
-
-           forall i in 0..Nv-1 with (+ reduce count) {
-                    l[i]=af[i].read();
-           }
-      } else {
-
-
-          while (!converged) {
-                localtimer.clear();
-                localtimer.start(); 
-                coforall loc in Locales with ( + reduce count, ref lu, ref src2, ref dst2) {
-                  on loc {
-
-                    forall x in src.localSubdomain()  with ( + reduce count)  {
-                      var u = src2[2*x];
-                      var v = dst2[2*x];
-                      if (v!=l[u]) {
-                          var old=lu[v].read();
-                          var tmp =min(old,l[u]);
-                          while (old>tmp) {
-                            lu[v].compareAndSwap(old,tmp);
-                            old=lu[v].read();
-                            count+=1;
-                          }
-                          src2[2*x]=v;
-                          dst2[2*x]=l[u];         
-                      } else {
-                          src2[2*x]=v;
-                          dst2[2*x]=u;         
-                      }
-                      u = src2[2*x+1];
-                      v = dst2[2*x+1];
-                      if (v!=l[u]) {
-                          src2[2*x+1]=v;
-                          dst2[2*x+1]=l[u];         
-                          var old=lu[v].read();
-                          var tmp =min(old,l[u]);
-                          while (old>tmp) {
-                            lu[v].compareAndSwap(old,tmp);
-                            old=lu[v].read();
-                            count+=1;
-                          }
-                      } else {
-                          src2[2*x+1]=v;
-                          dst2[2*x+1]=u;         
-                      }
-
-                    }//end of forall
-                  }//loc
-                }//coforall
-
-
-                if( (count==0) ) {
-                  converged = true;
-                }
-                else {
-                  converged = false;
-                  count=0;
-                  coforall loc in Locales with ( + reduce count, ref l) {
-                    on loc {
-                        forall x in l.localSubdomain() with (ref l) {
-                           l[x]=lu[x].read();
-                        }
-                    }
-                  }
-                }
-                itera += 1;
-                localtimer.stop(); 
-                executime=localtimer.elapsed();
-                //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-                //writeln("Efficiency is ", myefficiency, " time is ",executime);
-          }//while
-      }//else
-
-
-      writeln("Number of iterations = ", itera-1);
-
-      return l;
-    }
-
 
 
     var timer:stopwatch;
     var retDiameter:int;
-    // We only care for undirected graphs, they can be weighted or unweighted. 
-    /*
-    var f1 = makeDistArray(Nv, int);
-    var f2 = makeDistArray(Nv, int);
-    var f3 = makeDistArray(Nv, int);
-    var f4 = makeDistArray(Nv, int);
-    var f5 = makeDistArray(Nv, int);
-    var f6 = makeDistArray(Nv, int);
-    var f7 = makeDistArray(Nv, int);
-    var f8 = makeDistArray(Nv, int);
-    var f9 = makeDistArray(Nv, int);
-    */
     if (Directed == 0) {
 
-        /*
-        timer.clear();
-        timer.start(); 
-        f1 = cc_fast_sv_dist( toSymEntry(ag.getNEIGHBOR(), int).a, 
-                                toSymEntry(ag.getSTART_IDX(), int).a, 
-                                toSymEntry(ag.getSRC(), int).a, 
-                                toSymEntry(ag.getDST(), int).a, 
-                                toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                                toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                                toSymEntry(ag.getSRC_R(), int).a, 
-                                toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fast sv dist cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 
 
         timer.clear();
         timer.start();
-        f2 = cc_connectit(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for Connectit cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f3 = cc_1m1m(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for 1m1m cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-
-
-
-        timer.clear();
-        timer.start();
-        f4 = cc_1(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs c1  cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        timer.clear();
-        timer.start();
-        f1 = cc_2(  toSymEntry(ag.getNEIGHBOR(), int).a, 
-                            toSymEntry(ag.getSTART_IDX(), int).a, 
-                            toSymEntry(ag.getSRC(), int).a, 
-                            toSymEntry(ag.getDST(), int).a, 
-                            toSymEntry(ag.getNEIGHBOR_R(), int).a, 
-                            toSymEntry(ag.getSTART_IDX_R(), int).a, 
-                            toSymEntry(ag.getSRC_R(), int).a, 
-                            toSymEntry(ag.getDST_R(), int).a);
-        timer.stop(); 
-        outMsg = "Time elapsed for fs c2 cc: " + timer.elapsed():string;
-        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        */
-
-
-
-        timer.clear();
-        timer.start();
-        retDiameter  = cc_mm( toSymEntry(ag.getNEIGHBOR(), int).a, 
+        retDiameter  = cc_mm_diameter( toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
@@ -1868,23 +1558,6 @@ module DiameterMsg {
     }
    
 
-    // The message that is sent back to the Python front-end. 
-    /*
-    var comps = new set(int);
-    for x in f1 {
-      comps.add(x);
-    }
-    var num_comps = makeDistArray(numLocales, int); 
-    num_comps[0] = comps.size;
-    */
-    proc return_CC(ary:[?d] int): string throws {
-      CCName = st.nextName();
-      var CCEntry = new shared SymEntry(ary);
-      st.addEntry(CCName, CCEntry);
-
-      var DiameterMsg =  'created ' + st.attrib(CCName);
-      return DiameterMsg;
-    }
 
     var repMsg = retDiameter:string;
     return new MsgTuple(repMsg, MsgType.NORMAL);
