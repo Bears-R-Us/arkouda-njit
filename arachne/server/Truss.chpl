@@ -27,9 +27,11 @@ module Truss {
         }
         var triCount = makeDistArray(src.size, atomic int);
 
+        var ind = makeDistArray(src.size, int);
+        forall i in ind.domain do ind[i] = i;
         proc writeArray(ref arr) {
             for u in arr {
-                if u < 0 then write(u, " ");
+                if u < 0 || u > 9 then write(u, " ");
                 else write(" ", u, " ");
             }
             write("\n");
@@ -37,13 +39,14 @@ module Truss {
 
         proc writeAtomicArray(ref arr) {
             for u in arr {
-                if u.read() < 0 then write(u.read(), " ");
+                if u.read() < 0 || u.read() > 9 then write(u.read(), " ");
                 else write(" ", u.read(), " ");
             }
             write("\n");
         }
 
         writeln("BEFORE FIRST TRIANGLE COUNT");
+        write("ind = "); writeArray(ind);
         write("src = "); writeArray(src);
         write("dst = "); writeArray(dst);
         write("tri = "); writeAtomicArray(triCount);
@@ -91,6 +94,7 @@ module Truss {
         }
 
         writeln("BEFORE WHILE LOOP");
+        write("ind = "); writeArray(ind);
         write("src = "); writeArray(src);
         write("dst = "); writeArray(dst);
         write("tri = "); writeAtomicArray(triCount);
@@ -118,7 +122,7 @@ module Truss {
                             var edge:int;
                             if (l != w && s != w && edgesDeleted[j] <= -1) { // don't process l or s with themselves
                                 var dw = seg[w+1] - seg[w];
-                                writeln("s = ", s, " l = ", l, " w = ", w, " ds = ", ds, " dl = ", dl, " dw = ", dw);
+                                // writeln("s = ", s, " l = ", l, " w = ", w, " ds = ", ds, " dl = ", dl, " dw = ", dw);
                                 if (dl < dw) {
                                     edge = getEdgeId(l,w,dst,seg); // l is smaller, search w in adjacency list of l
                                 } else {
@@ -129,37 +133,35 @@ module Truss {
                                     var vedge = dst[edge];
                                     var uj = src[j];
                                     var vj = dst[j];
-                                    writeln("i  = ", i, " j = ", j, " edge = ", edge);
+                                    // writeln("i  = ", i, " j = ", j, " edge = ", edge);
                                     if uedge < vedge && uj < vj {
                                         if edgesDeleted[edge] <= -1 {
                                             if edgesDeleted[j] == -1 && edgesDeleted[edge] == -1 {
                                                 triCount[edge].sub(1);
                                                 triCount[j].sub(1);
-                                                writeln("Deleting triangle case 1 for ", src[edge], "-", dst[edge]);
-                                                writeln("Deleting triangle case 1 for ", src[j], "-", dst[j]);
+                                                // writeln("Deleting triangle case 1 for ", src[edge], "-", dst[edge]);
+                                                // writeln("Deleting triangle case 1 for ", src[j], "-", dst[j]);
                                             } else {
                                                 if edgesDeleted[j] == -1 {
                                                     triCount[j].sub(1);
-                                                    writeln("Deleting triangle case 2 for ", src[j], "-", dst[j]);
+                                                    // writeln("Deleting triangle case 2 for ", src[j], "-", dst[j]);
                                                 }
                                                 if edgesDeleted[edge] == -1 {
                                                     triCount[edge].sub(1);
-                                                    writeln("Deleting triangle case 3 for ", src[edge], "-", dst[edge]);
+                                                    // writeln("Deleting triangle case 3 for ", src[edge], "-", dst[edge]);
                                                 }
                                             }
                                         }
                                     }
-                                    writeln();
+                                    // writeln();
                                 }
                             }
                         }
                     }
-                    writeln();
+                    // writeln();
                 }
             }
-            writeln();
-            writeln();
-            writeln();
+            // writeln("\n\n");
 
             forall i in removedEdges do edgesDeleted[i] = 1-k;
             removedEdges.clear();
@@ -184,6 +186,7 @@ module Truss {
                 if edgesDeleted[i] == -1 then if triCount[i].read() < k-2 {edgesDeleted[i] = 1-k; removedEdges.add(i);}
             }
 
+            write("ind = "); writeArray(ind);
             write("src = "); writeArray(src);
             write("dst = "); writeArray(dst);
             write("tri = "); writeAtomicArray(triCount);
