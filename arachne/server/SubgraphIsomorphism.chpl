@@ -220,6 +220,7 @@ module SubgraphIsomorphism {
         writeln("after state.reset");
         writeln("state = ", state);
         
+        
         */
         timerpreproc.stop();
         TimerArrNew[0] += timerpreproc.elapsed();
@@ -270,10 +271,8 @@ module SubgraphIsomorphism {
         record State {
             var n1, n2: int;
 
-            var D_core1: domain(1) = {0..1};
             var D_core2: domain(1) = {0..1};
 
-            var core1: [D_core1] int;
             var core2: [D_core2] int;
             
             var Tin1: domain(int);
@@ -281,22 +280,13 @@ module SubgraphIsomorphism {
 
             var Tin2: domain(int);
             var Tout2: domain(int);
-
-            var Tin1Num: int = 0;
-            var Tout1Num: int = 0;
-
-            var Tin2Num: int = 0;
-            var Tout2Num: int = 0;
             
-            var depth: int;
-            var cost: real;
 
             /** State initializer.*/
             proc init() {
                 this.n1 = 0;
                 this.n2 = 0;
                 
-                this.core1 = -1;
                 this.core2 = -1;
 
 
@@ -304,14 +294,6 @@ module SubgraphIsomorphism {
                 this.Tout1 =  {1..0};
                 this.Tin2  =  {1..0};
                 this.Tout2 =  {1..0};
-
-                this.Tin1Num  = 0;
-                this.Tout1Num = 0;
-                this.Tin2Num  = 0;
-                this.Tout2Num = 0;
-
-                this.depth = 0;
-                this.cost = 0.0;
 
             }
             /** Initialized based on given sizes `n1` and `n2`.*/
@@ -319,13 +301,10 @@ module SubgraphIsomorphism {
                 this.n1 = n1;
                 this.n2 = n2;
 
-                var new_dom1: domain(1) = {0..<n1};
                 var new_dom2: domain(1) = {0..<n2};
      
-                this.D_core1 = new_dom1; // modifies how much core can store
                 this.D_core2 = new_dom2; // modifies how much core can store
 
-                this.core1 = -1;
                 this.core2 = -1;
                 
                 this.Tin1  =  {1..0};
@@ -333,19 +312,17 @@ module SubgraphIsomorphism {
 
                 this.Tin2  =  {1..0};
                 this.Tout2 =  {1..0};
-
-                this.depth = 0;
-                this.cost = 0.0; 
  
             }
 
             /** Copy current state information to a new state.*/
             proc copy() {
                 var state = new State(n1, n2);
-                state.D_core1 = this.D_core1;
+                state.n1 = this.n1;
+                state.n2 = this.n2;
+
                 state.D_core2 = this.D_core2;
 
-                state.core1 = this.core1;
                 state.core2 = this.core2;
                 
                 state.Tin1 = this.Tin1;
@@ -353,14 +330,6 @@ module SubgraphIsomorphism {
 
                 state.Tin2 = this.Tin2;
                 state.Tout2 = this.Tout2;
-
-                state.Tin1Num = this.Tin1Num;
-                state.Tout1Num = this.Tout1Num;
-                state.Tin2Num = this.Tin2Num;
-                state.Tout2Num = this.Tout2Num;
-
-                state.depth = this.depth;
-                state.cost = this.cost;
 
                 return state;
             }
@@ -370,8 +339,8 @@ module SubgraphIsomorphism {
                 //this.mapping.clear(); // reset to empty
                 //this.core1.clear();
                 //this.core2.clear();
-                this.core1 = -1;
                 this.core2 = -1;
+                this.D_core2 = {0..1};
 
                 this.Tin1  =  {1..0};
                 this.Tout1 =  {1..0};
@@ -379,31 +348,25 @@ module SubgraphIsomorphism {
                 this.Tin2  =  {1..0};
                 this.Tout2 =  {1..0};
 
-
-                this.Tin1Num = 0;
-                this.Tout1Num = 0;
-                this.Tin2Num = 0;
-                this.Tout2Num =0 ;
-
-                this.depth = 0;
-                this.cost = 0;
             }
             
             /** Add a vertex pair `(x1, x2)` to the mapping.*/
-            proc addPair(x1: int, x2: int) {
+/*            proc addPair(x1: int, x2: int) {
                 //this.core1.add(x1, x2);
                 //this.core2.add(x2, x1);
-                this.core1[x1] = x2;  // Map x2 in g2 to x1 in g1
                 this.core2[x2] = x1;  // Map x2 in g2 to x1 in g1
                 //this.mapping.add((x1, x2));
-                this.depth += 1;
             }
-
+*/
             /** Check if a given node is mapped in g1.*/
             proc isMappedn1(n1: int): bool {
                 //if this.core1.contains(node) then return true;
                 //else return false;
-                return (this.core1[n1] != -1);  // Check if the node is mapped in g1
+                var Mapflag: bool = false;
+                for i in D_core2{
+                    if this.core2[i] == n1 then Mapflag = true;
+                }
+                return (Mapflag);  // Check if the node is mapped in g1
             }
             
             /** Check if a given node is mapped in g2.*/
@@ -412,9 +375,11 @@ module SubgraphIsomorphism {
                 //else return false;
                 return (this.core2[n2] != -1);  // Check if the node is mapped in g2
             }
-            
+                
             proc addToTinTout (u: int, v: int){
-
+                
+                this.core2[v] = u;  // Map x2 in g2 to x1 in g1
+                //writeln("after add to core2 = ", this.core2);
                 //writeln("addToTinTout begin\n\n");
                 ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
                 ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
@@ -459,53 +424,49 @@ module SubgraphIsomorphism {
                 return unmapped;
             } // end of getUnmappedGraphNodes
 
+            proc getBothUnmappedNodes() throws {
+                var UnmappedG1: list(int) = 0..#g1.n_vertices;
+                var UnmappedG2: list(int) = 0..#g2.n_vertices;
+                //writeln("core2 now is: ", this.core2);
+
+                for i in this.D_core2 {
+                    //writeln("this.core2[i] = ", this.core2[i] );
+                    if this.core2[i] != -1 then UnmappedG2.remove(i);
+                    else UnmappedG1.remove(this.core2[i]);
+                }
+                //writeln("\nUnmappedG1 now is: ", UnmappedG1);
+                //writeln("UnmappedG2 now is: ", UnmappedG2);
+                return (UnmappedG1, UnmappedG2);
+            }
+
             /** Create candidates based on current state and retuns a set of pairs.*/
             proc getCandidatePairsOpti() throws {
                 //writeln(" getCandidatePairsOpti begin");
                 var candidates = new set((int, int), parSafe = true);
 
-                var unmapped = this.getUnmappedSubgraphNodes();
-                //writeln("\nunmapped SUBG = ", unmapped);
-                //writeln("this.Tout1Num = ",this.Tout1Num);
-                //writeln("this.Tout1 = ",this.Tout1);
-                //writeln("this.Tout2Num = ",this.Tout2Num);
-                //writeln("this.Tout2 = ",this.Tout2);
+                var (unmappedG1,unmappedG2) = this.getBothUnmappedNodes();
+                //writeln("unmappedG2 = ", unmappedG2);
+                //writeln("unmappedG1 = ", unmappedG1);
 
-                //writeln("Tin1Num = ",Tin1Num);
-                //writeln("Tin2Num = ",Tin2Num);
-                //writeln("this.Tout2 = ",this.Tout2);
                 // If Tout1 and Tout2 are both nonempty.
-                if this.Tout1Num > 0 && this.Tout2Num > 0 {
-                    //var minTout2 = min reduce this.Tout2;
-                    var minTout2: int = -1;
-                    for i in D_core2 {
-                        if this.Tout2[i] != -1 {
-                            minTout2 = i;
-                            break;
-                        }
-                    }
+                if this.Tout1.size > 0 && this.Tout2.size > 0 {
 
-                    //for n1 in this.Tout1 do candidates.add((n1, minTout2));
-                    for i in D_core1 {
-                        if this.Tout1[i] != -1 then candidates.add((i, minTout2));
-                    }
+                    var minTout2 = min reduce this.Tout2;
+                    
+                    for n1 in this.Tout1 do candidates.add((n1, minTout2));
+                
                 } else {
                     //If Tin1 and Tin2 are both nonempty.
-                    if Tin1Num > 0 && Tin2Num > 0 {
+                    if this.Tin1.size > 0 && this.Tin2.size > 0 {
                         var minTin2 = min reduce this.Tin2;
-                        //for n1 in this.Tin1 do candidates.add((n1, minTin2));
-                        for i in D_core1 {
-                            if this.Tin1[i] != -1 then candidates.add((i, minTin2));
-                        }
+                        for n1 in this.Tin1 do candidates.add((n1, minTin2));
+                    
                     } else { // not (Tin1 or Tin2) NOTE: What does this mean?
-                        if unmapped.size > 0 {
-                            var minUnmapped2 = min reduce unmapped;
-                            
-                            var unmappedG1 = this.getUnmappedGraphNodes();
-                            //writeln("unmapped Graph = ", unmappedG1);
+                        if unmappedG2.size > 0 {
+                            var minUnmapped2 = min reduce unmappedG2;
 
                             for umg1 in unmappedG1 {
-                                candidates.add((umg1,minUnmapped2));
+                                if umg1 != -1 then candidates.add((umg1,minUnmapped2));
                             } 
                             //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
                         }
@@ -555,13 +516,10 @@ module SubgraphIsomorphism {
                         }
                     } 
                     else {
-                        //if state.Tin2.contains(Out2) then termin2 += 1;
-                        //if state.Tout2.contains(Out2) then termout2 += 1;
-                        //if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;                    
-                        
-                        if this.Tin2[Out2] == 1 then termin2 += 1;
-                        if this.Tout2[Out2] == 1 then termout2 += 1;
-                        if this.Tin2[Out2] != 1 && this.Tout2[Out2] != 1 then new2 += 1;
+                        if this.Tin2.contains(Out2) then termin2 += 1;
+                        if this.Tout2.contains(Out2) then termout2 += 1;
+                        if !this.Tin2.contains(Out2) && !this.Tout2.contains(Out2) then new2 += 1;                    
+                       
                     }
                 }
                 
@@ -598,29 +556,27 @@ module SubgraphIsomorphism {
                         }
                     }
                     else {
-                        if Tin2(In2) == 1 then termin2 += 1;
-                        if Tout2(In2) == 1 then termout2 += 1;
-                        if Tin2(In2) != 1 && Tout2(In2) != 1 then new2 += 1;
+                        if this.Tin2.contains(In2) then termin2 += 1;
+                        if this.Tout2.contains(In2) then termout2 += 1;
+                        if !this.Tin2.contains(In2) && !this.Tout2.contains(In2) then new2 += 1;
                     }
                 }
                 
                 // Check out neighbors of n1 
                 for Out1 in getOutN1 {
-                    //if !state.isMappedn1(Out1) {
-                    if core1(Out1) == -1 {
-                        if Tin1(Out1) == 1 then termin1 += 1;
-                        if Tout1(Out1) == 1 then termout1 += 1;
-                        if Tin1(Out1) != 1 && Tout1(Out1) != 1 then new1 += 1;
+                    if !this.isMappedn1(Out1) {
+                        if this.Tin1.contains(Out1) then termin1 += 1;
+                        if this.Tout1.contains(Out1) then termout1 += 1;
+                        if !this.Tin1.contains(Out1) && !this.Tout1.contains(Out1) then new1 += 1;
                     }
                 }
                 
-                // Check in neighbors of n1 
+                // Check in neighbors of n1
                 for In1 in getInN1 {
-                    //if !state.isMappedn1(In1) {
-                    if core1(In1) == -1 {
-                        if Tin1(In1) == 1 then termin1 += 1;
-                        if Tout1(In1) == 1 then termout1 += 1;
-                        if Tin1(In1) != 1 && Tout1(In1) != 1 then new1 += 1;
+                    if !this.isMappedn1(In1) {
+                        if this.Tin1.contains(In1) then termin1 += 1;
+                        if this.Tout1.contains(In1) then termout1 += 1;
+                        if !this.Tin1.contains(In1) && !this.Tout1.contains(In1) then new1 += 1;
                     }
                 }
 
@@ -628,17 +584,17 @@ module SubgraphIsomorphism {
                     return false;
                 }
 
-
+/*
                 ////Label check
                 if !nodesLabelCompatible(n1, n2) {
 
                     return false;
                 }
-
+*/
                 return true;
             } // end of isFeasible
 
-        } //end of State record
+        } //////////////////////////////////////////////////////////////end of State record
 
         /** Creates an initial, empty state. NOTE: Is this needed?*/
         proc createInitialState(n1: int, n2: int): State throws {
@@ -697,7 +653,7 @@ module SubgraphIsomorphism {
                 //if state.mapping.size == g2.n_vertices then allmappings.pushBack(state.mapping);
                 if (min reduce state.core2 != -1 ){
                     allmappings.pushBack(state.core2);
-                    //writeln("current mapping # ", numIso," = ",state.core2 );
+                    //writeln("current mapping # = ",state.core2 );
                     //numIso += 1;
 
                 } 
@@ -706,7 +662,8 @@ module SubgraphIsomorphism {
                 var candidatesOpti = state.getCandidatePairsOpti();
                 //writeln("candidatesOpti = ", candidatesOpti);
                 for (n1, n2) in candidatesOpti {
-                    if state.isFeasible(n1, n2) {
+                    if state.isFeasible(n1, n2) && nodesLabelCompatible(n1, n2){
+                        //writeln("is feasible for, ", n1,", ",n2, "passed");
                         var newState = state.copy();
 
                         //writeln("state = ", state);
@@ -718,14 +675,14 @@ module SubgraphIsomorphism {
                         //newState.Tout2 = Tout2glob;
                         
                         
-                        newState.addPair(n1, n2);
+                        //newState.addPair(n1, n2);
                         
                         
                         //writeln("after addPair newState = ","(", n1, ", ", n2,")" ,newState);
 
                         //newState = addToTinTout(newState, n1, n2);
                         newState.addToTinTout(n1, n2);
-                        //writeln("after addToTinTout newState = ", newState);
+                        //writeln("\nafter addToTinTout newState = ", newState);
                         
                         stack.pushBack(newState);
 
