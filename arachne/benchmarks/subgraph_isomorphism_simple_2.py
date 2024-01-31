@@ -127,7 +127,7 @@ if __name__ == "__main__":
             print("missing is: ", iso)
             print("ERROR: Subgraph isomorphisms do not match!")
             break
-
+    print("here new")
     if args.print_isos:
         for iso in isos_as_dicts:
             print(iso)

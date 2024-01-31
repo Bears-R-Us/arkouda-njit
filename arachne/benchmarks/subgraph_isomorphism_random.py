@@ -167,9 +167,10 @@ if __name__ == "__main__":
     #subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
     #print(node_df_h.__str__)
     #print(edge_df_h.__str__)
-
+    print("Running Arachne ")
     ### Run subgraph isomorphism.
     start_time = time.time()
+    print("start_time = ", start_time)
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
@@ -263,6 +264,7 @@ if __name__ == "__main__":
 
     for iso in isos_as_dicts:
         if iso not in subgraph_isomorphisms:
+            print("missing is: ", iso)
             print("ERROR: Subgraph isomorphisms do not match!")
             break
     print("checking for printing or not")

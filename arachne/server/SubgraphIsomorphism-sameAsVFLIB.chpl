@@ -276,11 +276,11 @@ module SubgraphIsomorphism {
             var core1: [D_core1] int;
             var core2: [D_core2] int;
             
-            var Tin1: domain(int);
-            var Tout1: domain(int);
+            var Tin1: [D_core1] int;
+            var Tout1: [D_core1] int;
 
-            var Tin2: domain(int);
-            var Tout2: domain(int);
+            var Tin2: [D_core2] int;
+            var Tout2: [D_core2] int;
 
             var Tin1Num: int = 0;
             var Tout1Num: int = 0;
@@ -295,15 +295,14 @@ module SubgraphIsomorphism {
             proc init() {
                 this.n1 = 0;
                 this.n2 = 0;
-                
                 this.core1 = -1;
                 this.core2 = -1;
 
 
-                this.Tin1  =  {1..0};
-                this.Tout1 =  {1..0};
-                this.Tin2  =  {1..0};
-                this.Tout2 =  {1..0};
+                this.Tin1  = -1;
+                this.Tout1 = -1;
+                this.Tin2  = -1;
+                this.Tout2 = -1;
 
                 this.Tin1Num  = 0;
                 this.Tout1Num = 0;
@@ -328,11 +327,11 @@ module SubgraphIsomorphism {
                 this.core1 = -1;
                 this.core2 = -1;
                 
-                this.Tin1  =  {1..0};
-                this.Tout1 =  {1..0};
+                this.Tin1 = -1;
+                this.Tout1 = -1;
 
-                this.Tin2  =  {1..0};
-                this.Tout2 =  {1..0};
+                this.Tin2 = -1;
+                this.Tout2 = -1;
 
                 this.depth = 0;
                 this.cost = 0.0; 
@@ -350,7 +349,6 @@ module SubgraphIsomorphism {
                 
                 state.Tin1 = this.Tin1;
                 state.Tout1 = this.Tout1;
-
                 state.Tin2 = this.Tin2;
                 state.Tout2 = this.Tout2;
 
@@ -373,12 +371,11 @@ module SubgraphIsomorphism {
                 this.core1 = -1;
                 this.core2 = -1;
 
-                this.Tin1  =  {1..0};
-                this.Tout1 =  {1..0};
+                this.Tin1 = -1;
+                this.Tout1 = -1;
 
-                this.Tin2  =  {1..0};
-                this.Tout2 =  {1..0};
-
+                this.Tin2 = -1;
+                this.Tout2 = -1;
 
                 this.Tin1Num = 0;
                 this.Tout1Num = 0;
@@ -422,23 +419,57 @@ module SubgraphIsomorphism {
                 //writeln("inNeighbors = ", inNeighbors);
                 //writeln("outNeighbors = ", outNeighbors);
 
-                this.Tin1.remove(u);
-                this.Tout1.remove(u);
-    
-                for n1 in inNeighbors do if !this.isMappedn1(n1) then this.Tin1.add(n1);
-                for n1 in outNeighbors do if !this.isMappedn1(n1) then this.Tout1.add(n1);
-   
+                this.Tin1[u] = -1;
+                if this.Tin1Num > 0 {
+                    this.Tin1Num -= 1;
+                }
+                else { this.Tin1Num = 0;}
+
+                this.Tout1[u] = -1;
+                if this.Tout1Num > 0 {
+                    this.Tout1Num -= 1;
+                }
+                else{
+                    this.Tout1Num = 0;
+                }
+                
+                for n1 in inNeighbors do if !this.isMappedn1(n1) {
+                    this.Tin1[n1] = 1;
+                    this.Tin1Num +=1;
+                }    
+                for n1 in outNeighbors do if !this.isMappedn1(n1) {
+                    this.Tout1[n1] = 1;
+                    this.Tout1Num +=1 ;
+                }
                 
                 ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
                 ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
 
+                this.Tin2[v] = -1;
+                if this.Tin2Num > 0 {
+                    this.Tin2Num -= 1;
+                }
+                else {
+                    this.Tin2Num = 0;
+                }
 
-                this.Tin2.remove(v);
-                this.Tout2.remove(v);
-                
-                for n2 in inNeighborsg2 do if !this.isMappedn2(n2) then this.Tin2.add(n2);
-                for n2 in outNeighborsg2 do if !this.isMappedn2(n2) then this.Tout2.add(n2);
+                this.Tout2[v] = -1;
+                if this.Tout2Num > 0 {
+                    this.Tout2Num -= 1;
+                }
+                else{
+                    this.Tout2Num = 0;
+                }
 
+                for n2 in inNeighborsg2 do if this.core2(n2) == -1 {
+                    this.Tin2(n2) = 1;
+                    this.Tin2Num += 1;
+                }
+
+                for n2 in outNeighborsg2 do if this.core2(n2) == -1 {
+                    this.Tout2(n2) = 1;
+                    this.Tout2Num += 1;
+                }
                             
                 return ;
             }
@@ -777,11 +808,11 @@ module SubgraphIsomorphism {
         } //end of vf2
         
         writeln("\n\n");
+        for i in 0..30 {
+            if i == 0 then writeln("Preprocessing total time = ", TimerArrNew[0]);
 
-        writeln("Preprocessing total time = ", TimerArrNew[0]);
 
-
- 
+        }
         writeln("\n\n\n\n\n");
         return IsoArr;
     } //end of runVF2
