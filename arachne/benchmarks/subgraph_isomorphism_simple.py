@@ -105,6 +105,7 @@ if __name__ == "__main__":
     # 5. Run the subgraph isomorphism.
     start_time = time.time()
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    print("isos = ",isos)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
 
@@ -190,8 +191,9 @@ if __name__ == "__main__":
 
     for iso in isos_as_dicts:
         if iso not in subgraph_isomorphisms:
+            print (iso)
             print("ERROR: Subgraph isomorphisms do not match!")
-            break
+            
 
     if args.print_isos:
         for iso in isos_as_dicts:
