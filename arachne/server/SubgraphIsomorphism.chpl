@@ -376,9 +376,27 @@ module SubgraphIsomorphism {
                 return (this.core2[n2] != -1);  // Check if the node is mapped in g2
             }
                 
-            proc addToTinTout (u: int, v: int){
+            
+        } 
+        //////////////////////////////////////////////////////////////end of State record
+            proc getBothUnmappedNodes(ref state) throws {
+                var UnmappedG1: list(int) = 0..#g1.n_vertices;
+                var UnmappedG2: list(int) = 0..#g2.n_vertices;
+                //writeln("core2 now is: ", this.core2);
+
+                for i in state.D_core2 {
+                    //writeln("this.core2[i] = ", this.core2[i] );
+                    if state.core2[i] != -1 then UnmappedG2.remove(i);
+                    else UnmappedG1.remove(state.core2[i]);
+                }
+                //writeln("\nUnmappedG1 now is: ", UnmappedG1);
+                //writeln("UnmappedG2 now is: ", UnmappedG2);
+                return (UnmappedG1, UnmappedG2);
+            }
+            proc addToTinTout (u: int, v: int, ref state){
                 
                 this.core2[v] = u;  // Map x2 in g2 to x1 in g1
+                
                 //writeln("after add to core2 = ", this.core2);
                 //writeln("addToTinTout begin\n\n");
                 ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
@@ -387,97 +405,29 @@ module SubgraphIsomorphism {
                 //writeln("inNeighbors = ", inNeighbors);
                 //writeln("outNeighbors = ", outNeighbors);
 
-                this.Tin1.remove(u);
-                this.Tout1.remove(u);
+                state.Tin1.remove(u);
+                state.Tout1.remove(u);
     
-                for n1 in inNeighbors do if !this.isMappedn1(n1) then this.Tin1.add(n1);
-                for n1 in outNeighbors do if !this.isMappedn1(n1) then this.Tout1.add(n1);
+                for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
+                for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
    
                 
                 ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
                 ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
 
 
-                this.Tin2.remove(v);
-                this.Tout2.remove(v);
+                state.Tin2.remove(v);
+                state.Tout2.remove(v);
                 
-                for n2 in inNeighborsg2 do if !this.isMappedn2(n2) then this.Tin2.add(n2);
-                for n2 in outNeighborsg2 do if !this.isMappedn2(n2) then this.Tout2.add(n2);
+                for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
+                for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
 
                             
                 return ;
             }
-            /** Returns unmapped nodes for the current state of the subgraph.*/
-            proc getUnmappedSubgraphNodes() throws {
-                var unmapped: list(int);
-                for n in this.D_core2 do if this.core2[n] == -1 then unmapped.pushBack(n);
-                return unmapped;
-            } // end of getUnmappedSubgraphNodes
-            
-            /** Returns unmapped nodes for the current state of the graph.*/
-            proc getUnmappedGraphNodes() throws {
-                var unmapped: list(int) = 0..#this.n1;
-                //writeln("getUnmappedGraphNodes begin");
-                //writeln("unmapped = ", unmapped);
-                //for key in state.core1.keys() do unmapped.remove(key);
-                for key in this.core2 do unmapped.remove(key);
-                return unmapped;
-            } // end of getUnmappedGraphNodes
-
-            proc getBothUnmappedNodes() throws {
-                var UnmappedG1: list(int) = 0..#g1.n_vertices;
-                var UnmappedG2: list(int) = 0..#g2.n_vertices;
-                //writeln("core2 now is: ", this.core2);
-
-                for i in this.D_core2 {
-                    //writeln("this.core2[i] = ", this.core2[i] );
-                    if this.core2[i] != -1 then UnmappedG2.remove(i);
-                    else UnmappedG1.remove(this.core2[i]);
-                }
-                //writeln("\nUnmappedG1 now is: ", UnmappedG1);
-                //writeln("UnmappedG2 now is: ", UnmappedG2);
-                return (UnmappedG1, UnmappedG2);
-            }
-
-            /** Create candidates based on current state and retuns a set of pairs.*/
-            proc getCandidatePairsOpti() throws {
-                //writeln(" getCandidatePairsOpti begin");
-                var candidates = new set((int, int), parSafe = true);
-
-                var (unmappedG1,unmappedG2) = this.getBothUnmappedNodes();
-                //writeln("unmappedG2 = ", unmappedG2);
-                //writeln("unmappedG1 = ", unmappedG1);
-
-                // If Tout1 and Tout2 are both nonempty.
-                if this.Tout1.size > 0 && this.Tout2.size > 0 {
-
-                    var minTout2 = min reduce this.Tout2;
-                    
-                    for n1 in this.Tout1 do candidates.add((n1, minTout2));
-                
-                } else {
-                    //If Tin1 and Tin2 are both nonempty.
-                    if this.Tin1.size > 0 && this.Tin2.size > 0 {
-                        var minTin2 = min reduce this.Tin2;
-                        for n1 in this.Tin1 do candidates.add((n1, minTin2));
-                    
-                    } else { // not (Tin1 or Tin2) NOTE: What does this mean?
-                        if unmappedG2.size > 0 {
-                            var minUnmapped2 = min reduce unmappedG2;
-
-                            for umg1 in unmappedG1 {
-                                if umg1 != -1 then candidates.add((umg1,minUnmapped2));
-                            } 
-                            //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
-                        }
-                    } 
-                }   
-
-                //writeln(" candidates = ", candidates);
-                return candidates;
-            } // end of getCandidatePairsOpti
             /** Check if a pair of candidates are feasible.*/
-            proc isFeasible(n1: int, n2: int) throws {
+
+            proc isFeasible(n1: int, n2: int, ref state:State) throws {
                 var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
 
 
@@ -516,9 +466,9 @@ module SubgraphIsomorphism {
                         }
                     } 
                     else {
-                        if this.Tin2.contains(Out2) then termin2 += 1;
-                        if this.Tout2.contains(Out2) then termout2 += 1;
-                        if !this.Tin2.contains(Out2) && !this.Tout2.contains(Out2) then new2 += 1;                    
+                        if state.Tin2.contains(Out2) then termin2 += 1;
+                        if state.Tout2.contains(Out2) then termout2 += 1;
+                        if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;                    
                        
                     }
                 }
@@ -556,27 +506,27 @@ module SubgraphIsomorphism {
                         }
                     }
                     else {
-                        if this.Tin2.contains(In2) then termin2 += 1;
-                        if this.Tout2.contains(In2) then termout2 += 1;
-                        if !this.Tin2.contains(In2) && !this.Tout2.contains(In2) then new2 += 1;
+                        if state.Tin2.contains(In2) then termin2 += 1;
+                        if state.Tout2.contains(In2) then termout2 += 1;
+                        if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
                     }
                 }
                 
                 // Check out neighbors of n1 
                 for Out1 in getOutN1 {
-                    if !this.isMappedn1(Out1) {
-                        if this.Tin1.contains(Out1) then termin1 += 1;
-                        if this.Tout1.contains(Out1) then termout1 += 1;
-                        if !this.Tin1.contains(Out1) && !this.Tout1.contains(Out1) then new1 += 1;
+                    if !state.isMappedn1(Out1) {
+                        if state.Tin1.contains(Out1) then termin1 += 1;
+                        if state.Tout1.contains(Out1) then termout1 += 1;
+                        if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
                     }
                 }
                 
                 // Check in neighbors of n1
                 for In1 in getInN1 {
-                    if !this.isMappedn1(In1) {
-                        if this.Tin1.contains(In1) then termin1 += 1;
-                        if this.Tout1.contains(In1) then termout1 += 1;
-                        if !this.Tin1.contains(In1) && !this.Tout1.contains(In1) then new1 += 1;
+                    if !state.isMappedn1(In1) {
+                        if state.Tin1.contains(In1) then termin1 += 1;
+                        if state.Tout1.contains(In1) then termout1 += 1;
+                        if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
                     }
                 }
 
@@ -594,8 +544,43 @@ module SubgraphIsomorphism {
                 return true;
             } // end of isFeasible
 
-        } //////////////////////////////////////////////////////////////end of State record
+/** Create candidates based on current state and retuns a set of pairs.*/
+            proc getCandidatePairsOpti(ref state: State) throws {
+                //writeln(" getCandidatePairsOpti begin");
+                var candidates = new set((int, int), parSafe = true);
 
+                var (unmappedG1,unmappedG2) = state.getBothUnmappedNodes();
+                //writeln("unmappedG2 = ", unmappedG2);
+                //writeln("unmappedG1 = ", unmappedG1);
+
+                // If Tout1 and Tout2 are both nonempty.
+                if state.Tout1.size > 0 && state.Tout2.size > 0 {
+
+                    var minTout2 = min reduce state.Tout2;
+                    
+                    for n1 in state.Tout1 do candidates.add((n1, minTout2));
+                
+                } else {
+                    //If Tin1 and Tin2 are both nonempty.
+                    if state.Tin1.size > 0 && state.Tin2.size > 0 {
+                        var minTin2 = min reduce state.Tin2;
+                        for n1 in state.Tin1 do candidates.add((n1, minTin2));
+                    
+                    } else { // not (Tin1 or Tin2) NOTE: What does this mean?
+                        if unmappedG2.size > 0 {
+                            var minUnmapped2 = min reduce unmappedG2;
+
+                            for umg1 in unmappedG1 {
+                                if umg1 != -1 then candidates.add((umg1,minUnmapped2));
+                            } 
+                            //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
+                        }
+                    } 
+                }   
+
+                //writeln(" candidates = ", candidates);
+                return candidates;
+            } // end of getCandidatePairsOpti
         /** Creates an initial, empty state. NOTE: Is this needed?*/
         proc createInitialState(n1: int, n2: int): State throws {
             var state = new State();
@@ -670,7 +655,7 @@ module SubgraphIsomorphism {
                 //writeln("after adding allmappings is now = ", allmappings);
                 var timer14:stopwatch;
                 timer14.start();
-                var candidatesOpti = state.getCandidatePairsOpti();
+                var candidatesOpti = getCandidatePairsOpti(ref state);
                 timer14.stop();
                 TimerArrNew[14] += timer14.elapsed();
 
@@ -696,7 +681,7 @@ module SubgraphIsomorphism {
                     var timerisFeasible:stopwatch;
                     timerisFeasible.start();
 
-                    flagisFeasible = state.isFeasible(n1, n2);
+                    flagisFeasible = isFeasible(n1, n2, ref state);
                     
                     timerisFeasible.stop();
                     TimerArrNew[5] += timerisFeasible.elapsed();
