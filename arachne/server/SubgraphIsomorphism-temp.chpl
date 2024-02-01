@@ -359,7 +359,7 @@ module SubgraphIsomorphism {
             }
 */
             /** Check if a given node is mapped in g1.*/
-            proc isMappedn1(n1: int): bool {
+/*            proc isMappedn1(n1: int): bool {
                 //if this.core1.contains(node) then return true;
                 //else return false;
                 var Mapflag: bool = false;
@@ -368,14 +368,14 @@ module SubgraphIsomorphism {
                 }
                 return (Mapflag);  // Check if the node is mapped in g1
             }
-            
+ */           
             /** Check if a given node is mapped in g2.*/
-            proc isMappedn2(n2: int): bool {
+ /*           proc isMappedn2(n2: int): bool {
                 //if this.core2.contains(node) then return true;
                 //else return false;
                 return (this.core2[n2] != -1);  // Check if the node is mapped in g2
             }
-                
+ */               
             
         } 
         //////////////////////////////////////////////////////////////end of State record
@@ -588,8 +588,7 @@ module SubgraphIsomorphism {
                             var minUnmapped2 = unmappedG2(0);
 
                             for umg1 in unmappedG1 {
-                                //if umg1 != -1 then candidates.add((umg1,minUnmapped2));
-                                candidates.add((umg1,minUnmapped2));
+                                if umg1 != -1 then candidates.add((umg1,minUnmapped2));
                             } 
                             //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
                         }
@@ -684,7 +683,7 @@ module SubgraphIsomorphism {
                 var timer15:stopwatch;
                 timer15.start();
 
-                forall (n1, n2) in candidatesOpti with (ref state, ref stack) {
+                for (n1, n2) in candidatesOpti {
                     var flagisFeasible: bool;
                     var flaglabel: bool;
 
@@ -711,10 +710,8 @@ module SubgraphIsomorphism {
                         var timer10:stopwatch;
                         timer10.start();
                         
-                        //var newState = state.copy();
-                        var newState = new State(g1.n_vertices, g2.n_vertices);;
-                        newState = state;
-
+                        var newState = state.copy();
+                                                 
                         timer10.stop();
                         TimerArrNew[10] += timer10.elapsed();
                         //writeln("state = ", state);
