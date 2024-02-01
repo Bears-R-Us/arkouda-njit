@@ -379,7 +379,7 @@ module SubgraphIsomorphism {
             
         } 
         //////////////////////////////////////////////////////////////end of State record
-            proc getBothUnmappedNodes(ref state) throws {
+            proc getBothUnmappedNodes(ref state:State) throws {
                 var UnmappedG1: list(int) = 0..#g1.n_vertices;
                 var UnmappedG2: list(int) = 0..#g2.n_vertices;
                 //writeln("core2 now is: ", this.core2);
@@ -393,9 +393,9 @@ module SubgraphIsomorphism {
                 //writeln("UnmappedG2 now is: ", UnmappedG2);
                 return (UnmappedG1, UnmappedG2);
             }
-            proc addToTinTout (u: int, v: int, ref state){
+            proc addToTinTout (u: int, v: int, ref state:State){
                 
-                this.core2[v] = u;  // Map x2 in g2 to x1 in g1
+                state.core2[v] = u;  // Map x2 in g2 to x1 in g1
                 
                 //writeln("after add to core2 = ", this.core2);
                 //writeln("addToTinTout begin\n\n");
@@ -439,9 +439,9 @@ module SubgraphIsomorphism {
                 // Check out neighbors of n2 
                 for Out2 in getOutN2 {
                     //if state.isMappedn2(Out2) {
-                    if core2(Out2) != -1 {
+                    if state.core2(Out2) != -1 {
                         //var Out1 = state.core2(Out2);
-                        var Out1 = core2(Out2);
+                        var Out1 = state.core2(Out2);
                         var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
                         var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
 
@@ -480,9 +480,9 @@ module SubgraphIsomorphism {
                 // Check in neighbors of n2 
                 for In2 in getInN2 {
                     //if state.isMappedn2(In2) {
-                    if core2[In2] != -1 {
+                    if state.core2[In2] != -1 {
                         //var In1 = state.core2(In2);
-                        var In1 = core2(In2);
+                        var In1 = state.core2(In2);
                         var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
                         var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
                         
@@ -548,27 +548,44 @@ module SubgraphIsomorphism {
             proc getCandidatePairsOpti(ref state: State) throws {
                 //writeln(" getCandidatePairsOpti begin");
                 var candidates = new set((int, int), parSafe = true);
+                var timer16:stopwatch;
+                timer16.start();
+                
+                var (unmappedG1,unmappedG2) = getBothUnmappedNodes(state);
 
-                var (unmappedG1,unmappedG2) = state.getBothUnmappedNodes();
+                timer16.stop();
+                TimerArrNew[16] += timer16.elapsed();
+
                 //writeln("unmappedG2 = ", unmappedG2);
                 //writeln("unmappedG1 = ", unmappedG1);
 
                 // If Tout1 and Tout2 are both nonempty.
                 if state.Tout1.size > 0 && state.Tout2.size > 0 {
 
-                    var minTout2 = min reduce state.Tout2;
+                    var minTout2: int;
+                    for elem in state.Tout2{
+                        minTout2 = elem;
+                        break;
+                    }
+                    //var minTout2 = min reduce state.Tout2;
                     
                     for n1 in state.Tout1 do candidates.add((n1, minTout2));
                 
                 } else {
                     //If Tin1 and Tin2 are both nonempty.
                     if state.Tin1.size > 0 && state.Tin2.size > 0 {
-                        var minTin2 = min reduce state.Tin2;
+                        //var minTin2 = min reduce state.Tin2;
+                        var minTin2: int;
+                        for elem in state.Tin2{
+                            minTin2 = elem;
+                            break;
+                        }
                         for n1 in state.Tin1 do candidates.add((n1, minTin2));
                     
                     } else { // not (Tin1 or Tin2) NOTE: What does this mean?
                         if unmappedG2.size > 0 {
-                            var minUnmapped2 = min reduce unmappedG2;
+                            //var minUnmapped2 = min reduce unmappedG2;
+                            var minUnmapped2 = unmappedG2(0);
 
                             for umg1 in unmappedG1 {
                                 if umg1 != -1 then candidates.add((umg1,minUnmapped2));
@@ -655,20 +672,12 @@ module SubgraphIsomorphism {
                 //writeln("after adding allmappings is now = ", allmappings);
                 var timer14:stopwatch;
                 timer14.start();
-                var candidatesOpti = getCandidatePairsOpti(ref state);
+                var candidatesOpti = getCandidatePairsOpti(state);
                 timer14.stop();
                 TimerArrNew[14] += timer14.elapsed();
 
                 //writeln("candidatesOpti = ", candidatesOpti);
                 
-
-                var core2Glob = state.core2;
-                
-                var Tin1Glob = state.Tin1;
-                var Tout1Glob = state.Tout1;
-
-                var Tin2Glob = state.Tin2;
-                var Tout2Glob = state.Tout2;
 
 
                 var timer15:stopwatch;
@@ -681,7 +690,7 @@ module SubgraphIsomorphism {
                     var timerisFeasible:stopwatch;
                     timerisFeasible.start();
 
-                    flagisFeasible = isFeasible(n1, n2, ref state);
+                    flagisFeasible = isFeasible(n1, n2,  state);
                     
                     timerisFeasible.stop();
                     TimerArrNew[5] += timerisFeasible.elapsed();
@@ -701,16 +710,7 @@ module SubgraphIsomorphism {
                         var timer10:stopwatch;
                         timer10.start();
                         
-                        //var newState = state.copy();
-                        var newState = new State(g1.n_vertices, g2.n_vertices);
-                        
-                        newState.core2 = core2Glob;
-                        
-                        newState.Tin1 = Tin1Glob;
-                        newState.Tout1 = Tout1Glob;
-
-                        newState.Tin2 = Tin2Glob;
-                        newState.Tout2 = Tout2Glob;
+                        var newState = state.copy();
                                                  
                         timer10.stop();
                         TimerArrNew[10] += timer10.elapsed();
@@ -732,7 +732,7 @@ module SubgraphIsomorphism {
                         var timeraddToTinTout:stopwatch;
                         timeraddToTinTout.start();
 
-                        newState.addToTinTout(n1, n2);
+                        addToTinTout(n1, n2, newState);
                         
                         timeraddToTinTout.stop();
                         TimerArrNew[4] += timeraddToTinTout.elapsed();
@@ -753,11 +753,11 @@ module SubgraphIsomorphism {
                 timer15.stop();
                 TimerArrNew[15] += timer15.elapsed();
 
-                var timerreset:stopwatch;
-                timerreset.start();
+                //var timerreset:stopwatch;
+                //timerreset.start();
                 //state.reset();
-                timerreset.stop();
-                TimerArrNew[11] += timerreset.elapsed();
+                //timerreset.stop();
+                //TimerArrNew[11] += timerreset.elapsed();
             }
             return allmappings; // Isomappings
         }  // end of dfs
@@ -815,6 +815,7 @@ module SubgraphIsomorphism {
         writeln("allmapping + reduce time = ", TimerArrNew[13]);
         writeln("getCandidatePairsOpti time = ", TimerArrNew[14]);
         writeln("for over candidatestime = ", TimerArrNew[15]);
+        writeln("get both unmapped total time = ", TimerArrNew[16]);
 
 
  
