@@ -621,11 +621,11 @@ module SubgraphIsomorphism {
             // if intersection.size <= 0 {
             if labelsG1n1 != labelsG2n2 {
                 timernodesLabelCompatible.stop();
-                TimerArrNew[4] += timernodesLabelCompatible.elapsed();                
+                TimerArrNew[25] += timernodesLabelCompatible.elapsed();                
                 return false;
             }
             timernodesLabelCompatible.stop();
-            TimerArrNew[4] += timernodesLabelCompatible.elapsed();
+            TimerArrNew[25] += timernodesLabelCompatible.elapsed();
             return true;
         } // end of nodesLabelCompatible
 
@@ -803,6 +803,7 @@ module SubgraphIsomorphism {
         writeln("DFS total time = ", TimerArrNew[3]);
 
         writeln("node label total time = ", TimerArrNew[6]);
+        writeln("INSIDE node label total time = ", TimerArrNew[25]);
         writeln("state copy total time = ", TimerArrNew[10]);
         writeln("state reset total time = ", TimerArrNew[11]);
         writeln("state solution total time = ", TimerArrNew[12]);
