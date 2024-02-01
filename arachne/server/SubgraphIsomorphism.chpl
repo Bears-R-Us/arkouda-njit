@@ -647,9 +647,14 @@ module SubgraphIsomorphism {
 
             while stack.size > 0 {
                 
+                var timerstackpopBack:stopwatch;
+                timerstackpopBack.start();
                 
                 var state = stack.popBack();
 
+                timerstackpopBack.stop();
+                TimerArrNew[3] += timerstackpopBack.elapsed();
+                
                 //if state.mapping.size == g2.n_vertices then allmappings.pushBack(state.mapping);
                 if (min reduce state.core2 != -1 ){
                     allmappings.pushBack(state.core2);
@@ -662,7 +667,27 @@ module SubgraphIsomorphism {
                 var candidatesOpti = state.getCandidatePairsOpti();
                 //writeln("candidatesOpti = ", candidatesOpti);
                 for (n1, n2) in candidatesOpti {
-                    if state.isFeasible(n1, n2) && nodesLabelCompatible(n1, n2){
+                    var flagisFeasible: bool;
+                    var flaglabel: bool;
+
+                    var timerisFeasible:stopwatch;
+                    timerisFeasible.start();
+
+                    flagisFeasible = state.isFeasible(n1, n2);
+                    
+                    timerisFeasible.stop();
+                    TimerArrNew[5] += timerisFeasible.elapsed();
+                    
+                    
+                    var timernodesLabelCompatible:stopwatch;
+                    timernodesLabelCompatible.start();
+                    
+                    flaglabel = nodesLabelCompatible(n1, n2);
+                    
+                    timernodesLabelCompatible.stop();
+                    TimerArrNew[6] += timernodesLabelCompatible.elapsed();
+
+                    if  flagisFeasible && flaglabel {
                         //writeln("is feasible for, ", n1,", ",n2, "passed");
                         var newState = state.copy();
 
@@ -681,10 +706,23 @@ module SubgraphIsomorphism {
                         //writeln("after addPair newState = ","(", n1, ", ", n2,")" ,newState);
 
                         //newState = addToTinTout(newState, n1, n2);
+                        var timeraddToTinTout:stopwatch;
+                        timeraddToTinTout.start();
+
                         newState.addToTinTout(n1, n2);
+                        
+                        timeraddToTinTout.stop();
+                        TimerArrNew[4] += timeraddToTinTout.elapsed();
+
                         //writeln("\nafter addToTinTout newState = ", newState);
+                        var timerstackpushBack:stopwatch;
+                        timerstackpushBack.start();
                         
                         stack.pushBack(newState);
+
+                        timerstackpushBack.stop();
+                        TimerArrNew[2] += timerstackpushBack.elapsed();
+                        
 
                     }
                 }
@@ -736,6 +774,12 @@ module SubgraphIsomorphism {
         writeln("\n\n");
 
         writeln("Preprocessing total time = ", TimerArrNew[0]);
+        writeln("PushBack total time = ", TimerArrNew[2]);
+        writeln("PopBack total time = ", TimerArrNew[3]);
+        writeln("Addto TinTout + AddPair total time = ", TimerArrNew[4]);
+        writeln("isFeasible total time = ", TimerArrNew[5]);
+
+        writeln("node label total time = ", TimerArrNew[6]);
 
 
  
