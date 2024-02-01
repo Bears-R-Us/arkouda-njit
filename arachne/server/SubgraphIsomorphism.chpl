@@ -676,6 +676,16 @@ module SubgraphIsomorphism {
 
                 //writeln("candidatesOpti = ", candidatesOpti);
                 
+
+                var core2Glob = state.core2;
+                
+                var Tin1Glob = state.Tin1;
+                var Tout1Glob = state.Tout1;
+
+                var Tin2Glob = state.Tin2;
+                var Tout2Glob = state.Tout2;
+
+
                 var timer15:stopwatch;
                 timer15.start();
 
@@ -700,13 +710,23 @@ module SubgraphIsomorphism {
                     timernodesLabelCompatible.stop();
                     TimerArrNew[6] += timernodesLabelCompatible.elapsed();
 
+                    
                     if  flagisFeasible && flaglabel {
                         //writeln("is feasible for, ", n1,", ",n2, "passed");
                         var timer10:stopwatch;
                         timer10.start();
                         
-                        var newState = state.copy();
+                        //var newState = state.copy();
+                        var newState = new State(g1.n_vertices, g2.n_vertices);
+                        
+                        newState.core2 = core2Glob;
+                        
+                        newState.Tin1 = Tin1Glob;
+                        newState.Tout1 = Tout1Glob;
 
+                        newState.Tin2 = Tin2Glob;
+                        newState.Tout2 = Tout2Glob;
+                                                 
                         timer10.stop();
                         TimerArrNew[10] += timer10.elapsed();
                         //writeln("state = ", state);
@@ -750,7 +770,7 @@ module SubgraphIsomorphism {
 
                 var timerreset:stopwatch;
                 timerreset.start();
-                state.reset();
+                //state.reset();
                 timerreset.stop();
                 TimerArrNew[11] += timerreset.elapsed();
             }
