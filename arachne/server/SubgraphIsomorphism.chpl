@@ -653,19 +653,32 @@ module SubgraphIsomorphism {
                 var state = stack.popBack();
 
                 timerstackpopBack.stop();
-                TimerArrNew[3] += timerstackpopBack.elapsed();
+                TimerArrNew[8] += timerstackpopBack.elapsed();
                 
                 //if state.mapping.size == g2.n_vertices then allmappings.pushBack(state.mapping);
+                var timer13:stopwatch;
+                timer13.start();
                 if (min reduce state.core2 != -1 ){
                     allmappings.pushBack(state.core2);
                     //writeln("current mapping # = ",state.core2 );
                     //numIso += 1;
 
                 } 
-                
+                timer13.stop();
+                TimerArrNew[13] += timer13.elapsed();
+
                 //writeln("after adding allmappings is now = ", allmappings);
+                var timer14:stopwatch;
+                timer14.start();
                 var candidatesOpti = state.getCandidatePairsOpti();
+                timer14.stop();
+                TimerArrNew[14] += timer14.elapsed();
+
                 //writeln("candidatesOpti = ", candidatesOpti);
+                
+                var timer15:stopwatch;
+                timer15.start();
+
                 for (n1, n2) in candidatesOpti {
                     var flagisFeasible: bool;
                     var flaglabel: bool;
@@ -689,8 +702,13 @@ module SubgraphIsomorphism {
 
                     if  flagisFeasible && flaglabel {
                         //writeln("is feasible for, ", n1,", ",n2, "passed");
+                        var timer10:stopwatch;
+                        timer10.start();
+                        
                         var newState = state.copy();
 
+                        timer10.stop();
+                        TimerArrNew[10] += timer10.elapsed();
                         //writeln("state = ", state);
                         //writeln("newState = ", newState);
                         //if state == newState then writeln("we are ok in copying");
@@ -726,11 +744,15 @@ module SubgraphIsomorphism {
 
                     }
                 }
-                //var timerreset:stopwatch;
-                //timerreset.start();
+
+                timer15.stop();
+                TimerArrNew[15] += timer15.elapsed();
+
+                var timerreset:stopwatch;
+                timerreset.start();
                 state.reset();
-                //timerreset.stop();
-                //TimerArrNew[12] += timerreset.elapsed();
+                timerreset.stop();
+                TimerArrNew[11] += timerreset.elapsed();
             }
             return allmappings; // Isomappings
         }  // end of dfs
@@ -767,7 +789,7 @@ module SubgraphIsomorphism {
                 posOffset += g2.n_vertices;
             }
             timersolution.stop();
-            TimerArrNew[20] += timersolution.elapsed();
+            TimerArrNew[12] += timersolution.elapsed();
             return(subIsoArrToReturn);
         } //end of vf2
         
@@ -775,11 +797,18 @@ module SubgraphIsomorphism {
 
         writeln("Preprocessing total time = ", TimerArrNew[0]);
         writeln("PushBack total time = ", TimerArrNew[2]);
-        writeln("PopBack total time = ", TimerArrNew[3]);
+        writeln("PopBack total time = ", TimerArrNew[8]);
         writeln("Addto TinTout + AddPair total time = ", TimerArrNew[4]);
         writeln("isFeasible total time = ", TimerArrNew[5]);
+        writeln("DFS total time = ", TimerArrNew[3]);
 
         writeln("node label total time = ", TimerArrNew[6]);
+        writeln("state copy total time = ", TimerArrNew[10]);
+        writeln("state reset total time = ", TimerArrNew[11]);
+        writeln("state solution total time = ", TimerArrNew[12]);
+        writeln("allmapping + reduce time = ", TimerArrNew[13]);
+        writeln("getCandidatePairsOpti time = ", TimerArrNew[14]);
+        writeln("for over candidatestime = ", TimerArrNew[15]);
 
 
  
