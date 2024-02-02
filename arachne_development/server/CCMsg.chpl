@@ -2943,6 +2943,265 @@ module CCMsg {
     }
 
 
+    // UPS: Paul's min update, label propogation method
+    proc cc_up(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
+      // Initialize the parent vectors f that will form stars. 
+      var l = makeDistArray(Nv, int); 
+      var af = makeDistArray(Nv, atomic int); 
+      var src2 = makeDistArray(Ne*2, int); 
+      var dst2 = makeDistArray(Ne*2, int); 
+      var localtimer:stopwatch;
+      var myefficiency:real;
+      var executime:real;
+
+      var lu = makeDistArray(Nv, atomic int); 
+
+      localtimer.clear();
+      localtimer.start(); 
+      coforall loc in Locales with (ref l, ref lu, ref af) {
+        on loc {
+          var vertexBegin = l.localSubdomain().lowBound;
+          var vertexEnd = l.localSubdomain().highBound;
+          forall i in vertexBegin..vertexEnd  with (ref l, ref lu, ref af){
+            l[i] = i;
+            lu[i].write(l[i]);
+            af[i].write(l[i]);
+          }
+        }
+      }
+      var count:int=0;
+      
+      coforall loc in Locales with (ref src2, ref dst2) {
+          on loc {
+            var edgeBegin = src.localSubdomain().lowBound;
+            var edgeEnd = src.localSubdomain().highBound;
+            forall x in src.localSubdomain()  with (ref src2, ref dst2){
+                  src2[x*2]=src[x];
+                  dst2[x*2]=dst[x];
+                  src2[x*2+1]=dst[x];
+                  dst2[x*2+1]=src[x];
+            }
+
+
+          }
+      }
+
+      localtimer.stop(); 
+      //executime=localtimer.elapsed();
+      //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+
+      var converged:bool = false;
+      var itera = 1;
+
+      if (numLocales>1 && MultiLocale==1) {
+           while (!converged)  {
+             localtimer.clear();
+             localtimer.start(); 
+
+             
+             coforall loc in Locales with ( + reduce count, ref src2, ref dst2, ref af ) {
+                     on loc {
+                             var locall:[0..Nv-1] int;
+                             var locallu:[0..Nv-1] atomic int;
+                             var lconverged:bool = false;
+                             var litera = 1;
+                             var lcount:int=0;
+                             forall i in 0..Nv-1 {
+                                 locall[i]=af[i].read();
+                                 locallu[i].write(locall[i]);
+                             }
+                             while (!lconverged) {
+                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
+                                    var u = src2[2*x];
+                                    var v = dst2[2*x];
+                                    if (v!=locall[u]) {
+                                        var old=locallu[v].read();
+                                        var tmp =min(old,locall[u]);
+                                        while (old>tmp) {
+                                          locallu[v].compareAndSwap(old,tmp);
+                                          old=locallu[v].read();
+                                          lcount+=1;
+                                        }
+                                        src2[2*x]=v;
+                                        dst2[2*x]=locall[u];
+                                    } else {
+                                        var tmp=locallu[v].read();
+                                        var old =v;
+                                        while (old>tmp) {
+                                          locallu[u].compareAndSwap(old,tmp);
+                                          old=locallu[u].read();
+                                          lcount+=1;
+                                        }
+                                        src2[2*x]=tmp;
+                                        dst2[2*x]=u;
+                                    }
+
+
+                                    u = src2[2*x+1];
+                                    v = dst2[2*x+1];
+                                    if (v!=locall[u]) {
+                                        var old=locallu[v].read();
+                                        var tmp =min(old,locall[u]);
+                                        while (old>tmp) {
+                                          locallu[v].compareAndSwap(old,tmp);
+                                          old=locallu[v].read();
+                                          lcount+=1;
+                                        }
+                                        src2[2*x+1]=v;
+                                        dst2[2*x+1]=locall[u];
+                                    } else {
+                                        var tmp=locallu[v].read();
+                                        var old =v;
+                                        while (old>tmp) {
+                                          locallu[u].compareAndSwap(old,tmp);
+                                          old=locallu[u].read();
+                                          lcount+=1;
+                                        }
+                                        src2[2*x+1]=tmp;
+
+                                        //src2[2*x+1]=v;
+                                        dst2[2*x+1]=u;
+                                    }
+                                    //writeln("2 Myid=",here.id," <",u,",",v,">-><",src2[2*x+1],",",dst2[2*x+1],">", " L[",u,"]=",locall[u]," L[",v,"]=",locall[v], " Lu[",v,"]=",locallu[v].read());
+
+                                }//end forall
+                                if( (lcount==0) ) {
+                                    lconverged = true;
+                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
+                                }
+                                else {
+                                    lconverged = false;
+                                    lcount=0;
+                                    forall x in 0..Nv-1    {
+                                         var val=locallu[x].read();
+                                         if locall[x]>val {
+                                             locall[x]=val;
+                                         }
+                                    }
+                                }
+                                litera+=1;
+                             }// while
+                             writeln("Converge local ------------------------------------------");
+                             forall i in 0..Nv-1 with (+ reduce count) {
+                                 var old=af[i].read();
+                                 var newval=locall[i];
+                                 while old>newval {
+                                     af[i].compareAndSwap(old,newval);
+                                     old=af[i].read();
+                                     count+=1;
+                                 }
+                             }
+
+                     }// end of on loc 
+                 }// end of coforall loc 
+
+                 if( (count==0) ) {
+                      converged = true;
+                 }
+                 else {
+                     converged = false;
+                     count=0;
+                 }
+                 itera += 1;
+                 writeln(" -----------------------------------------------------------------");
+                 writeln(" outter iteration=", itera);
+
+           }//while
+
+           forall i in 0..Nv-1 with (+ reduce count) {
+                    l[i]=af[i].read();
+           }
+      } else {
+
+
+          while (!converged) {
+                localtimer.clear();
+                localtimer.start(); 
+                coforall loc in Locales with ( + reduce count, ref lu, ref src2, ref dst2) {
+                  on loc {
+
+                    forall x in src.localSubdomain()  with ( + reduce count)  {
+                      var u = src2[2*x];
+                      var v = dst2[2*x];
+                      if (v!=l[u]) {
+                          var old=lu[v].read();
+                          var tmp =min(old,l[u]);
+                          while (old>tmp) {
+                            lu[v].compareAndSwap(old,tmp);
+                            old=lu[v].read();
+                            count+=1;
+                          }
+                          src2[2*x]=v;
+                          dst2[2*x]=l[u];         
+                      } else {
+                          var tmp=lu[v].read();
+                          var old =v;
+                          while (old>tmp) {
+                            lu[u].compareAndSwap(old,tmp);
+                            old=lu[u].read();
+                            count+=1;
+                          }
+                          src2[2*x]=tmp;
+                          //src2[2*x]=v;
+                          dst2[2*x]=u;         
+                      }
+                      u = src2[2*x+1];
+                      v = dst2[2*x+1];
+                      if (v!=l[u]) {
+                          src2[2*x+1]=v;
+                          dst2[2*x+1]=l[u];         
+                          var old=lu[v].read();
+                          var tmp =min(old,l[u]);
+                          while (old>tmp) {
+                            lu[v].compareAndSwap(old,tmp);
+                            old=lu[v].read();
+                            count+=1;
+                          }
+                      } else {
+                          var tmp=lu[v].read();
+                          var old =v;
+                          while (old>tmp) {
+                            lu[u].compareAndSwap(old,tmp);
+                            old=lu[u].read();
+                            count+=1;
+                          }
+                          src2[2*x+1]=tmp;
+                          //src2[2*x+1]=v;
+                          dst2[2*x+1]=u;         
+                      }
+
+                    }//end of forall
+                  }//loc
+                }//coforall
+
+
+                if( (count==0) ) {
+                  converged = true;
+                }
+                else {
+                  converged = false;
+                  count=0;
+                  coforall loc in Locales with ( + reduce count, ref l) {
+                    on loc {
+                        forall x in l.localSubdomain() with (ref l) {
+                           l[x]=lu[x].read();
+                        }
+                    }
+                  }
+                }
+                itera += 1;
+                localtimer.stop(); 
+                executime=localtimer.elapsed();
+                //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
+                //writeln("Efficiency is ", myefficiency, " time is ",executime);
+          }//while
+      }//else
+
+
+      writeln("Number of iterations = ", itera-1);
+
+      return l;
+    }
 
 
     var timer:stopwatch;
@@ -3067,7 +3326,7 @@ module CCMsg {
 
         timer.clear();
         timer.start();
-        f8 = cc_syn(  toSymEntry(ag.getNEIGHBOR(), int).a, 
+        f8 = cc_up(  toSymEntry(ag.getNEIGHBOR(), int).a, 
                             toSymEntry(ag.getSTART_IDX(), int).a, 
                             toSymEntry(ag.getSRC(), int).a, 
                             toSymEntry(ag.getDST(), int).a, 
