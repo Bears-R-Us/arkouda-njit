@@ -390,6 +390,7 @@ module SubgraphIsomorphism {
                 //writeln("UnmappedG2 now is: ", UnmappedG2);
                 return (UnmappedG1, UnmappedG2);
             }
+            /*
             proc addToTinTout (u: int, v: int, ref state:State){
                 
                 state.core2[v] = u;  // Map x2 in g2 to x1 in g1
@@ -425,7 +426,76 @@ module SubgraphIsomorphism {
 
                             
                 return ;
-            } 
+            }
+            */
+            proc addToTinToutnew (u: int, v: int, ref state:State){
+                var core2 = state.core2;
+                
+                var Tin1 = state.Tin1;
+                var Tout1 = state.Tout1;                
+                
+                var Tin2 = state.Tin1;
+                var Tout2 = state.Tout2;
+
+                var depth = state.depth;
+
+                if depth < 4 {
+                    writeln("///////////////////////////////////////inside addToTinTout 1");
+                    
+                    core2[v] = u;  // Map x2 in g2 to x1 in g1
+                    var counter: int =0;
+                    for elem in core2{
+                        if elem != -1 then counter += 1;
+                    }
+                    depth = counter;
+                    //writeln("after add to core2 = ", this.core2);
+                    //writeln("addToTinTout begin\n\n");
+                    ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
+                    ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+                    //writeln("IN-OUT G1 node = ", u);
+                    //writeln("inNeighbors = ", inNeighbors);
+                    //writeln("outNeighbors = ", outNeighbors);
+
+                    Tin1.remove(u);
+                    Tout1.remove(u);
+        
+                    for n1 in inNeighbors do if !state.isMappedn1(n1) then Tin1.add(n1);
+                    for n1 in outNeighbors do if !state.isMappedn1(n1) then Tout1.add(n1);
+    
+                    
+                    ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
+                    ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
+
+
+                    Tin2.remove(v);
+                    Tout2.remove(v);
+                    
+                    for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then Tin2.add(n2);
+                    for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then Tout2.add(n2);
+
+                    var newstate = new State(g2.n_vertices);
+                    //writeln("newstate = ", newstate);
+                    writeln("newstate loading...");
+                    
+                    newstate.core2 = core2;
+                    
+                    newstate.Tin1 = Tin1;
+                    newstate.Tout1 = Tout1;
+
+                    newstate.Tin2 = Tin2;
+                    newstate.Tout2 = Tout2;
+
+                    newstate.depth = depth;
+                    writeln("newstate before return = ", newstate);
+                    writeln("//////////////////////////////////////////////////");
+                    return newstate;
+
+                }
+                else {
+                    writeln("Iso founded because depth is ", depth);
+                    return state;
+                }
+            }
             /** Check if a pair of candidates are feasible.*/
 
             proc isFeasible(n1: int, n2: int, ref state:State) throws {
@@ -549,14 +619,9 @@ module SubgraphIsomorphism {
             proc getCandidatePairsOpti(ref state: State) throws {
                 //writeln(" getCandidatePairsOpti begin");
                 //var candidates = new set((int, int), parSafe = true);
-                var candidates = new set((int, int), parSafe = true);
-
                 
-
-
-                //writeln("unmappedG2 = ", unmappedG2);
-                //writeln("unmappedG1 = ", unmappedG1);
-
+                var candidates: list(int);
+                var pairToPass: int;
                 // If Tout1 and Tout2 are both nonempty.
                 if state.Tout1.size > 0 && state.Tout2.size > 0 {
 
@@ -566,8 +631,8 @@ module SubgraphIsomorphism {
                         break;
                     }
                     //var minTout2 = min reduce state.Tout2;
-                    
-                    for n1 in state.Tout1 do candidates.add((n1, minTout2));
+                    pairToPass = minTout2;
+                    for n1 in state.Tout1 do candidates.pushBack(n1);
                 
                 } else {
                     //If Tin1 and Tin2 are both nonempty.
@@ -578,7 +643,8 @@ module SubgraphIsomorphism {
                             minTin2 = elem;
                             break;
                         }
-                        for n1 in state.Tin1 do candidates.add((n1, minTin2));
+                        pairToPass = minTin2;
+                        for n1 in state.Tin1 do candidates.pushBack(n1);
                     
                     } else { // not (Tin1 or Tin2) NOTE: What does this mean?
                         var timer16:stopwatch;
@@ -590,11 +656,12 @@ module SubgraphIsomorphism {
                         TimerArrNew[16] += timer16.elapsed();
                         if unmappedG2.size > 0 {
                             //var minUnmapped2 = min reduce unmappedG2;
-                            var minUnmapped2 = unmappedG2(0);
+                            //var minUnmapped2 = unmappedG2(0);
+                            pairToPass = unmappedG2(0);
 
                             for umg1 in unmappedG1 {
                                 //if umg1 != -1 then candidates.add((umg1,minUnmapped2));
-                                candidates.add((umg1,minUnmapped2));
+                                candidates.pushBack(umg1);
                             } 
                             //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
                         }
@@ -602,8 +669,9 @@ module SubgraphIsomorphism {
                 }   
 
                 //writeln(" candidates = ", candidates);
-                return candidates;
+                return (candidates, pairToPass);
             } // end of getCandidatePairsOpti
+
         /** Creates an initial, empty state. NOTE: Is this needed?*/
         proc createInitialState(n2: int): State throws {
             var state = new State();
@@ -652,7 +720,7 @@ module SubgraphIsomorphism {
             
            
             stack.pushBack(initialState); // Initialize stack.
-
+            writeln("stack.size = ", stack.size);
             while stack.size > 0 {
                 
                 var timerstackpopBack:stopwatch;
@@ -679,25 +747,26 @@ module SubgraphIsomorphism {
                 //writeln("after adding allmappings is now = ", allmappings);
                 var timer14:stopwatch;
                 timer14.start();
-                var candidatesOpti = getCandidatePairsOpti(state);
+                var (candidatesOpti, pair) = getCandidatePairsOpti(state);
                 timer14.stop();
                 TimerArrNew[14] += timer14.elapsed();
 
-                //writeln("candidatesOpti = ", candidatesOpti);
+                writeln("candidatesOpti = ", candidatesOpti);
+                writeln("pair = ", pair);
                 
 
 
                 var timer15:stopwatch;
                 timer15.start();
-
-                for (n1, n2) in candidatesOpti {
+                writeln("Before For over candidates");
+                for n1 in candidatesOpti {
                     var flagisFeasible: bool;
                     var flaglabel: bool;
 
                     var timerisFeasible:stopwatch;
                     timerisFeasible.start();
 
-                    flagisFeasible = isFeasible(n1, n2,  state);
+                    flagisFeasible = isFeasible(n1, pair,  state);
                     
                     timerisFeasible.stop();
                     TimerArrNew[5] += timerisFeasible.elapsed();
@@ -706,7 +775,7 @@ module SubgraphIsomorphism {
                     var timernodesLabelCompatible:stopwatch;
                     timernodesLabelCompatible.start();
                     
-                    flaglabel = nodesLabelCompatible(n1, n2);
+                    flaglabel = nodesLabelCompatible(n1, pair);
                     
                     timernodesLabelCompatible.stop();
                     TimerArrNew[6] += timernodesLabelCompatible.elapsed();
@@ -717,16 +786,37 @@ module SubgraphIsomorphism {
                         var timer10:stopwatch;
                         timer10.start();
                         
-                        var newState = state;
+                        //var newState = state.copy();
                                                  
                         timer10.stop();
                         TimerArrNew[10] += timer10.elapsed();
+                        //writeln("state = ", state);
+                        //writeln("newState = ", newState);
+                        //if state == newState then writeln("we are ok in copying");
+                        //newState.Tin1 = Tin1glob;
+                        //newState.Tout1 = Tout1glob;
+                        //newState.Tin2 = Tin2glob;
+                        //newState.Tout2 = Tout2glob;
+                        
+                        
+                        //newState.addPair(n1, n2);
+                        
+                        
+                        //writeln("after addPair newState = ","(", n1, ", ", n2,")" ,newState);
 
+                        //newState = addToTinTout(newState, n1, n2);
                         var timeraddToTinTout:stopwatch;
                         timeraddToTinTout.start();
 
-                        addToTinTout(n1, n2, newState);
+                        writeln("Before calling addToTinTout");
+                        writeln("state = ", state);
 
+                        var newState = addToTinToutnew(n1, pair, state);
+                        writeln("After calling addToTinTout");
+
+                        writeln("state = ", state);
+                        writeln("newState = ", newState);
+                        writeln("********************************************************\n");
                         timeraddToTinTout.stop();
                         TimerArrNew[4] += timeraddToTinTout.elapsed();
 
@@ -735,14 +825,14 @@ module SubgraphIsomorphism {
                         timerstackpushBack.start();
                         
                         stack.pushBack(newState);
-
+                        writeln("pushed to stack");
                         timerstackpushBack.stop();
                         TimerArrNew[2] += timerstackpushBack.elapsed();
                         
 
                     }
                 }
-
+                writeln("End of for///////////////////////////////////////////////////");
                 timer15.stop();
                 TimerArrNew[15] += timer15.elapsed();
 
