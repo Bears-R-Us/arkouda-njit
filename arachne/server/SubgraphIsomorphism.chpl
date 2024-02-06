@@ -181,6 +181,8 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
+        var UnmappedG1: [0..<g1.n_vertices](int) = -1;
+        var UnmappedG2: [0..<g2.n_vertices](int) = -1;
         /*
         var IsoArr:[0..3] int =0;
         var state = createInitialState(g2.n_vertices);
@@ -367,9 +369,9 @@ module SubgraphIsomorphism {
             
         } 
         //////////////////////////////////////////////////////////////end of State record
-            proc getBothUnmappedNodes(ref state:State) throws {
-                var UnmappedG1: [0..<g1.n_vertices](int) = -1;
-                var UnmappedG2: [0..<g2.n_vertices](int) = -1;
+            proc getBothUnmappedNodes(ref state:State, ref UnmappedG1, ref UnmappedG2) {
+                //var UnmappedG1: [0..<g1.n_vertices](int) = -1;
+                //var UnmappedG2: [0..<g2.n_vertices](int) = -1;
                 //writeln("core2 now is: ", state.core2);
 
                 for i in state.D_core2 {
@@ -379,7 +381,7 @@ module SubgraphIsomorphism {
                 }
                 //writeln("\nUnmappedG1 now is: ", UnmappedG1);
                 //writeln("UnmappedG2 now is: ", UnmappedG2);
-                return (UnmappedG1, UnmappedG2);
+                //return (UnmappedG1, UnmappedG2);
             }
             proc addToTinTout (u: int, v: int, ref state:State){
                 
@@ -576,7 +578,8 @@ module SubgraphIsomorphism {
                         var timer16:stopwatch;
                         timer16.start();
                         
-                        var (unmappedG1,unmappedG2) = getBothUnmappedNodes(state);
+                        //var (unmappedG1,unmappedG2) = getBothUnmappedNodes(state);
+                        getBothUnmappedNodes(state,UnmappedG1, UnmappedG2 );
 
                         timer16.stop();
                         TimerArrNew[16] += timer16.elapsed();
@@ -584,7 +587,7 @@ module SubgraphIsomorphism {
                         var flagunmappedG2 = false;
                         var minUnmapped2 : int;
 
-                        for elem in unmappedG2{
+                        for elem in UnmappedG2{
                             if elem != -1{
                                 minUnmapped2 = elem;
                                 flagunmappedG2 = true;
@@ -595,7 +598,7 @@ module SubgraphIsomorphism {
                             //var minUnmapped2 = min reduce unmappedG2;
 
                             for i in 0..<g1.n_vertices {
-                                if unmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
+                                if UnmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
                                 //candidates.add((umg1,minUnmapped2));
                             } 
                             //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
