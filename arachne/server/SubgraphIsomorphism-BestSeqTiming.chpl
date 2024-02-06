@@ -183,36 +183,45 @@ module SubgraphIsomorphism {
         //******************************************************************************************
         /*
         var IsoArr:[0..3] int =0;
-        var state = createInitialState(g2.n_vertices);
+        var state = createInitialState(g1.n_vertices, g2.n_vertices);
        
         writeln("state = ", state);
         
         writeln("***********************Candidate pair******************");
 
-        var candidatesOpti = getCandidatePairsOpti(state);
+        var candidatesOpti = state.getCandidatePairsOpti();
         writeln("candidatesOpti = ", candidatesOpti);
 
-        addToTinTout(9, 0, state);
+        state.addPair(9, 0);
+
+        writeln("\nAfter adding 9 , 0");
+        writeln("state = ", state);
+
+        state.addToTinTout(9, 0);
         writeln("\n after addToTinTout = ", state);
         writeln("\n***********************Candidate pair******************");
 
-        candidatesOpti = getCandidatePairsOpti(state);
+        candidatesOpti = state.getCandidatePairsOpti();
         writeln("candidatesOpti = ", candidatesOpti);
         
         writeln("***********************isFeasible*************************");
-        writeln("isFeasible(8, 1) = ", isFeasible(8, 1, state));
+        writeln("isFeasible(8, 1) = ", state.isFeasible(8, 1));
         
+        state.addPair(8, 1);
 
-        addToTinTout(8, 1, state);
+        writeln("\nAfter adding 8 , 1");
+        writeln("state = ", state);
+
+        state.addToTinTout(8, 1);
         writeln("\n after addToTinTout = ", state);
 
-        //state.reset();
+        state.reset();
 
-        //writeln("after state.reset");
-        //writeln("state = ", state);
+        writeln("after state.reset");
+        writeln("state = ", state);
+        
+        
         */
-        
-        
 
         timerpreproc.stop();
         TimerArrNew[0] += timerpreproc.elapsed();
@@ -368,14 +377,14 @@ module SubgraphIsomorphism {
         } 
         //////////////////////////////////////////////////////////////end of State record
             proc getBothUnmappedNodes(ref state:State) throws {
-                var UnmappedG1: [0..<g1.n_vertices](int) = -1;
-                var UnmappedG2: [0..<g2.n_vertices](int) = -1;
-                //writeln("core2 now is: ", state.core2);
+                var UnmappedG1: list(int) = 0..#g1.n_vertices;
+                var UnmappedG2: list(int) = 0..#g2.n_vertices;
+                //writeln("core2 now is: ", this.core2);
 
                 for i in state.D_core2 {
                     //writeln("this.core2[i] = ", this.core2[i] );
-                    if state.core2[i] != -1 then UnmappedG2[i] = 0;
-                    else UnmappedG1[state.core2[i]] = 0;
+                    if state.core2[i] != -1 then UnmappedG2.remove(i);
+                    else UnmappedG1.remove(state.core2[i]);
                 }
                 //writeln("\nUnmappedG1 now is: ", UnmappedG1);
                 //writeln("UnmappedG2 now is: ", UnmappedG2);
@@ -539,7 +548,6 @@ module SubgraphIsomorphism {
 /** Create candidates based on current state and retuns a set of pairs.*/
             proc getCandidatePairsOpti(ref state: State) throws {
                 //writeln(" getCandidatePairsOpti begin");
-                //writeln("state = ", state);
                 //var candidates = new set((int, int), parSafe = true);
                 var candidates = new set((int, int), parSafe = true);
 
@@ -580,23 +588,13 @@ module SubgraphIsomorphism {
 
                         timer16.stop();
                         TimerArrNew[16] += timer16.elapsed();
-                        
-                        var flagunmappedG2 = false;
-                        var minUnmapped2 : int;
-
-                        for elem in unmappedG2{
-                            if elem != -1{
-                                minUnmapped2 = elem;
-                                flagunmappedG2 = true;
-                            }
-                        }
-                        //writeln("flagunmappedG2 = ", flagunmappedG2);
-                        if !flagunmappedG2 {
+                        if unmappedG2.size > 0 {
                             //var minUnmapped2 = min reduce unmappedG2;
+                            var minUnmapped2 = unmappedG2(0);
 
-                            for i in 0..<g1.n_vertices {
-                                if unmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
-                                //candidates.add((umg1,minUnmapped2));
+                            for umg1 in unmappedG1 {
+                                //if umg1 != -1 then candidates.add((umg1,minUnmapped2));
+                                candidates.add((umg1,minUnmapped2));
                             } 
                             //for n1 in 0..#g1.n_vertices do if !state.core1.contains(n1) then candidates.add((n1, minUnmapped));
                         }
@@ -687,26 +685,23 @@ module SubgraphIsomorphism {
 
                 //writeln("candidatesOpti = ", candidatesOpti);
                 
-                var candidatesOptiFlagged = new set((int, int), parSafe = true);
+
 
                 var timer15:stopwatch;
                 timer15.start();
 
                 for (n1, n2) in candidatesOpti {
                     var flagisFeasible: bool;
+                    var flaglabel: bool;
 
                     var timerisFeasible:stopwatch;
                     timerisFeasible.start();
 
                     flagisFeasible = isFeasible(n1, n2,  state);
-                    if flagisFeasible then candidatesOptiFlagged.add((n1, n2));
-
+                    
                     timerisFeasible.stop();
                     TimerArrNew[5] += timerisFeasible.elapsed();
-                }    
-                for (n1, n2) in candidatesOptiFlagged {    
-                    var flaglabel: bool;
-
+                    
                     
                     var timernodesLabelCompatible:stopwatch;
                     timernodesLabelCompatible.start();
@@ -717,7 +712,7 @@ module SubgraphIsomorphism {
                     TimerArrNew[6] += timernodesLabelCompatible.elapsed();
 
                     
-                    if  flaglabel {
+                    if  flagisFeasible && flaglabel {
                         //writeln("is feasible for, ", n1,", ",n2, "passed");
                         var timer10:stopwatch;
                         timer10.start();
