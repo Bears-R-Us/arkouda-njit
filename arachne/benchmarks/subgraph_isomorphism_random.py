@@ -98,7 +98,7 @@ if __name__ == "__main__":
     # but it's important to note that it produces graphs with a Poisson degree distribution,
     # which might not always accurately model real-world networks!
     num_nodes = args.n  # Number of nodes
-    p = 0.5  # Probability of edge creation
+    p = 0.0005  # Probability of edge creation
     print("Random Directed graph with P= ",p)
     # src, dst = create_random_graph(n, p)
     src, dst = create_random_directed_graph(num_nodes, p)
@@ -170,7 +170,7 @@ if __name__ == "__main__":
     print("Running Arachne ")
     ### Run subgraph isomorphism.
     start_time = time.time()
-    print("start_time = ", start_time)
+    #print("start_time = ", start_time)
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
