@@ -271,11 +271,13 @@ module SubgraphIsomorphism {
         
         var IsoArrtemp = vf2(g1, g2);
         
-        writeln("IsoArrtemp = ", IsoArrtemp);
-        
-        var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
+        //writeln("IsoArrtemp = ", IsoArrtemp);
+            writeln("core dumped point 18");
 
-        writeln("IsoArr = ", IsoArr);
+        var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
+            writeln("core dumped point 19");
+
+        //writeln("IsoArr = ", IsoArr);
 
 
                
@@ -492,78 +494,121 @@ module SubgraphIsomorphism {
             var labelsG2n2 = convertedLabelsG2[n2];
 
             if labelsG1n1 != labelsG2n2 {
-              
+                //writeln("core dumped point 12");
+
                 return false;
             }
+            //writeln("core dumped point 13");
 
             return true;
         } // end of nodesLabelCompatible
 
 
-        proc vf2Helper(state: owned State, depth: int): list([0..#g2.n_vertices] int) throws {
-            
-            var allmappings: list([0..#g2.n_vertices] int);
+        proc vf2Helper(state: owned State, depth: int): list(int) throws {
+            //writeln("/*******************vf2Helper begining****************************/");
+
+            //writeln("core dumped point 3");
+
+            //var allmappings: list([0..#g2.n_vertices]);
+            var allmappings: list(int, parSafe=true);
 
             // Base case: check if a complete mapping is found
             if depth == g2.n_vertices {
                     // Process the found solution
-                    allmappings.pushBack(state.core2);
+                    for elem in state.core2{
+                        allmappings.pushBack(elem);
+                    }
+                    //allmappings.pushBack(state.core2);
+                    //writeln("core dumped point 4");
+
                     //writeln("Founded = ", state.core2);
                     return allmappings;
                 }
 
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
+                    //writeln("core dumped point 5");
 
                 // Iterate over candidate pairs
+                //for (n1, n2) in candidatePairs {
                 forall (n1, n2) in candidatePairs with(ref state, ref allmappings){
                     if isFeasible(n1, n2, state) {
+                                    //writeln("core dumped point 7");
+
                         var newState = state.clone();
+            //writeln("core dumped point 8");
 
                         // Update state with the new mapping
                         addToTinTout(n1, n2, newState);
+            //writeln("core dumped point 9");
 
                         // Recursive call with updated state and increased depth
                         var newMappings = vf2Helper(newState, depth+1);
-
+                        //writeln("newMappings = ", newMappings);
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings {
                             allmappings.pushBack(mapping);
+            //writeln("core dumped point 10");
+
                         }
                         // Backtrack: remove the mapping added earlier
-                        newState.core2[n2] = -1;
+                        //newState.core2[n2] = -1;
                     }
                 }
-                writeln("allmappings before return = ", allmappings);
+                //writeln("allmappings before return = ", allmappings);
+            //writeln("core dumped point 11");
+            //writeln("///////////////////////vf2Helper return/////////////////////////////");
+                //writeln("allmappings.size = ", allmappings.size);
                 return allmappings;
         }
         
         // Main procedure that invokes all of the vf2 steps using the graph data that is
         // initialized by `runVF2`./
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
+            writeln("/*******************VF2 begining****************************/");
+            writeln("core dumped point 1");
+
             var initial = createInitialState(g1.n_vertices, g2.n_vertices);
+            writeln("core dumped point 2");
+
             var solutions = vf2Helper(initial, 0);
-            var subIsoArrToReturn: [0..(solutions.size*g2.n_vertices)-1](int);
+            //writeln("solutions = ", solutions);
+            
+            writeln("solutions.size = ", solutions.size);
+            
+            //var subIsoArrToReturn: [0..(solutions.size*g2.n_vertices)-1](int);
+            var subIsoArrToReturn: [0..#solutions.size](int);
             //var subIsoArrToReturn: [0..g2.n_vertices-1](int);
-
-
+            writeln("subIsoArrToReturn created");
+            for i in 0..#solutions.size{
+                subIsoArrToReturn[i] = solutions(i);
+            }
+            /*
             var posOffset = 0;
-            for solSet in solutions {
+            for i in 0..#solutions.size {
+            //writeln("i = ", i);
+            writeln("solutions[i] = ", solutions[i]);
+
                 //writeln("solSet = ", solSet);
                 var indx = 0;
-                for elem in solSet {
+                for elem in solutions[i] {
                     subIsoArrToReturn[posOffset + indx] = elem;
                     indx +=1;
                     //writeln(elem," add to subIsoArrToReturn");
                 }
                 posOffset += g2.n_vertices;
+                writeln("i counter of solutions is now = ", i);
+                //writeln("subIsoArrToReturn = ", subIsoArrToReturn);
             }
-
+            //writeln("subIsoArrToReturn = ",subIsoArrToReturn );
+            writeln("////////////////////////vf2 return/////////////////////////");
+*/
+            //return(solutions.toArray());
             return(subIsoArrToReturn);
         } //end of vf2
         
  
-        writeln("\n\n\n\n\n");
+        writeln("\n************************************************************\n");
         return IsoArr;
     } //end of runVF2
 } // end of SubgraphIsomorphism module

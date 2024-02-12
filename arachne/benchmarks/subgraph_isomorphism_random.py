@@ -99,9 +99,10 @@ if __name__ == "__main__":
     # which might not always accurately model real-world networks!
     num_nodes = args.n  # Number of nodes
     p = 0.0005  # Probability of edge creation
-    print("Random Directed graph with P= ",p)
+    print("Begining of Random Directed graph with P= ",p)
     # src, dst = create_random_graph(n, p)
     src, dst = create_random_directed_graph(num_nodes, p)
+    print("Random Directed graph created")
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
@@ -266,7 +267,7 @@ if __name__ == "__main__":
         if iso not in subgraph_isomorphisms:
             print("missing is: ", iso)
             print("ERROR: Subgraph isomorphisms do not match!")
-            break
+            #break
     print("checking for printing or not")
 
     if args.print_isos:
@@ -274,7 +275,7 @@ if __name__ == "__main__":
             print(iso)
 
         print()
-
+        print("NetworkX:")
         for iso in subgraph_isomorphisms:
             print(iso)
 
