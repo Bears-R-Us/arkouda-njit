@@ -21,14 +21,101 @@ module SubgraphIsomorphism {
     use SegStringSort;
     use SegmentedString;
 
+        /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
+        class State {
+            var n1: int;
+            var n2: int;
+        
+            var D_core2: domain(1) = {0..<n2};
+
+            var core2: [0..<n2] int;
+            
+            var Tin1: domain(int);
+            var Tout1: domain(int);
+
+            var Tin2: domain(int);
+            var Tout2: domain(int);
+            
+            var depth:int;
+
+            // State initializer./
+            proc init(n1: int, n2: int) {
+                this.n1 = n1;
+                this.n2 = n2;
+                
+                this.D_core2 = {0..<n2};
+                
+                this.core2 = -1;
+                
+                this.Tin1 = {1..0};
+                this.Tout1 = {1..0};
+                
+                this.Tin2 = {1..0};
+                this.Tout2 = {1..0};
+                
+                this.depth = 0;
+            }
+            // Reset vectors during backtracking./
+            proc reset() {
+                //this.mapping.clear(); // reset to empty
+                //this.core1.clear();
+                //this.core2.clear();
+                this.core2 = -1;
+                this.D_core2 = {0..1};
+
+                this.Tin1  =  {1..0};
+                this.Tout1 =  {1..0};
+
+                this.Tin2  =  {1..0};
+                this.Tout2 =  {1..0};
+
+                this.depth = 0;
+
+            }
+            // Method to create a copy of the instance
+            proc clone(): owned State throws {
+                var newState = new owned State(this.n1, this.n2);
+
+                newState.core2 = this.core2;
+
+                newState.Tin1 = this.Tin1;
+                newState.Tout1 = this.Tout1;
+                
+                newState.Tin2 = this.Tin2;
+                newState.Tout2 = this.Tout2;
+                
+                newState.depth = this.depth;
+
+                return newState;
+            }
+
+            // Check if a given node is mapped in g1./
+            proc isMappedn1(n1: int): bool {
+                //if this.core1.contains(node) then return true;
+                //else return false;
+                var Mapflag: bool = false;
+                for i in D_core2{
+                    if this.core2[i] == n1 then Mapflag = true;
+                }
+                return (Mapflag);  // Check if the node is mapped in g1
+            }
+            
+            // Check if a given node is mapped in g2./
+            proc isMappedn2(n2: int): bool {
+                //if this.core2.contains(node) then return true;
+                //else return false;
+                return (this.core2[n2] != -1);  // Check if the node is mapped in g2
+            }
+
+        } 
+        //////////////////////////////////////////////////////////////end of State record
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
     proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
-        var timerpreproc:stopwatch;
-        timerpreproc.start();
+
 
         // Extract the g1/G/g information from the SegGraph data structure.
         var srcNodesG1Dist = toSymEntry(g1.getComp("SRC"), int).a;
@@ -181,322 +268,194 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-
-        
-        var IsoArr:[0..3] int =0;
-        var state = createInitialState(g1.n_vertices, g2.n_vertices);
-       
-        writeln("state = ", state);
-/*
-        writeln("***********************Candidate pair******************");
-
-        var candidatesOpti = getCandidatePairsOpti(state);
-        writeln("candidatesOpti = ", candidatesOpti);
-
-        addToTinTout(9, 0, state);
-        writeln("\n after addToTinTout = ", state);
-        writeln("\n***********************Candidate pair******************");
-
-        candidatesOpti = getCandidatePairsOpti(state);
-        writeln("candidatesOpti = ", candidatesOpti);
-        
-        writeln("***********************isFeasible*************************");
-        writeln("isFeasible(8, 1) = ", isFeasible(8, 1, state));
-        
-
-        addToTinTout(8, 1, state);
-        writeln("\n after addToTinTout = ", state);
-
-        //state.reset();
-
-        //writeln("after state.reset");
-        //writeln("state = ", state);
-        
-        
-        
-
-        timerpreproc.stop();
-        TimerArrNew[0] += timerpreproc.elapsed();
-        
-        var timerVF2:stopwatch;
-        timerVF2.start();
         
         var IsoArrtemp = vf2(g1, g2);
         
-        timerVF2.stop();
-        TimerArrNew[1] += timerVF2.elapsed();
+        writeln("IsoArrtemp = ", IsoArrtemp);
         
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
-*/
-        
 
-        /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
-        class State {
-            var n1: int;
-            var n2: int;
+        writeln("IsoArr = ", IsoArr);
 
-            var D_core2: domain(1) = {0..1};
 
-            var core2: [D_core2] int;
-            
-            var Tin1: domain(int);
-            var Tout1: domain(int);
-
-            var Tin2: domain(int);
-            var Tout2: domain(int);
-            
-            var depth:int;
-
-            /** State initializer.*/
-            proc init(n1: int, n2: int) {
-                this.n1 = n1;
-                this.n2 = n2;
+               
+        proc addToTinTout (u: int, v: int, state: State){
                 
-                this.D_core2 = {0..<n2};
-                
-                this.core2 = -1;
-                
-                this.Tin1 = {1..0};
-                this.Tout1 = {1..0};
-                
-                this.Tin2 = {1..0};
-                this.Tout2 = {1..0};
-                
-                this.depth = 0;
-            }
+            state.core2[v] = u;  // Map x2 in g2 to x1 in g1
 
-            /** Reset vectors during backtracking.*/
-            proc reset() {
-                //this.mapping.clear(); // reset to empty
-                //this.core1.clear();
-                //this.core2.clear();
-                this.core2 = -1;
-                this.D_core2 = {0..1};
+            state.depth += 1;
 
-                this.Tin1  =  {1..0};
-                this.Tout1 =  {1..0};
+            ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
+            ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
 
-                this.Tin2  =  {1..0};
-                this.Tout2 =  {1..0};
-
-                this.depth = 0;
-
-            }
-
-            /** Check if a given node is mapped in g1.*/
-            proc isMappedn1(n1: int): bool {
-                //if this.core1.contains(node) then return true;
-                //else return false;
-                var Mapflag: bool = false;
-                for i in D_core2{
-                    if this.core2[i] == n1 then Mapflag = true;
-                }
-                return (Mapflag);  // Check if the node is mapped in g1
-            }
-            
-            /** Check if a given node is mapped in g2.*/
-            proc isMappedn2(n2: int): bool {
-                //if this.core2.contains(node) then return true;
-                //else return false;
-                return (this.core2[n2] != -1);  // Check if the node is mapped in g2
-            }
-                
-            proc addToTinTout (u: int, v: int){
-                
-                this.core2[v] = u;  // Map x2 in g2 to x1 in g1
-
-                this.depth += 1;
-                //writeln("after add to core2 = ", this.core2);
-                //writeln("addToTinTout begin\n\n");
-                ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
-                ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-                //writeln("IN-OUT G1 node = ", u);
-                //writeln("inNeighbors = ", inNeighbors);
-                //writeln("outNeighbors = ", outNeighbors);
-
-                this.Tin1.remove(u);
-                this.Tout1.remove(u);
+            state.Tin1.remove(u);
+            state.Tout1.remove(u);
     
-                for n1 in inNeighbors do if !this.isMappedn1(n1) then this.Tin1.add(n1);
-                for n1 in outNeighbors do if !this.isMappedn1(n1) then this.Tout1.add(n1);
+            for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
+            for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
    
                 
-                ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
-                ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
+            ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
+            ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
 
 
-                this.Tin2.remove(v);
-                this.Tout2.remove(v);
+            state.Tin2.remove(v);
+            state.Tout2.remove(v);
                 
-                for n2 in inNeighborsg2 do if !this.isMappedn2(n2) then this.Tin2.add(n2);
-                for n2 in outNeighborsg2 do if !this.isMappedn2(n2) then this.Tout2.add(n2);
+            for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
+            for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
 
                             
-                return ;
-            } 
+            return ;
+        } 
 
-            proc isFeasible(n1: int, n2: int) throws {
-                var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
+        proc isFeasible(n1: int, n2: int, state: State) throws {
+            var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
 
-                // Get out neighbors of G1 and G2
-                var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-                var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
+            // Get out neighbors of G1 and G2
+            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
             
-                // Check out neighbors of n2 
-                for Out2 in getOutN2 {
-                    //if state.isMappedn2(Out2) {
-                    if this.core2(Out2) != -1 {
-                        //var Out1 = state.core2(Out2);
-                        var Out1 = this.core2(Out2);
-                        var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
-                        var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
+            // Check out neighbors of n2 
+            for Out2 in getOutN2 {
+                if state.core2(Out2) != -1 {
 
-                        // var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, n1, Out1);
-                        // var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG2, n2, Out2);
+                    var Out1 = state.core2(Out2);
+                    var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
+                    var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
 
-                        if eid1 == -1 || eid2 == -1 {
+                    if eid1 == -1 || eid2 == -1 {
 
-                            return false;
-                        }
+                        return false;
+                    }
 
-                        // var label1 = convertedRelationshipsG1[eid1];
-                        // var label2 = convertedRelationshipsG2[eid2];
-                        var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-                        var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-                        // var intersection = relationshipsG1eid1 & relationshipsG2eid2;
-                
-                        // if intersection.size <= 0 {
-                        if relationshipsG1eid1 != relationshipsG2eid2 {;
+                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
+                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
 
-                            return false;
-                        }
-                    } 
-                    else {
-                        if this.Tin2.contains(Out2) then termin2 += 1;
-                        if this.Tout2.contains(Out2) then termout2 += 1;
-                        if !this.Tin2.contains(Out2) && !this.Tout2.contains(Out2) then new2 += 1;                    
+                    if relationshipsG1eid1 != relationshipsG2eid2 {;
+
+                        return false;
+                    }
+                } 
+                else {
+                    if state.Tin2.contains(Out2) then termin2 += 1;
+                    if state.Tout2.contains(Out2) then termout2 += 1;
+                    if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;                    
                        
-                    }
                 }
-                
-                // Get in neighbors of G1 and G2
-                var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-                var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
-
-                // Check in neighbors of n2 
-                for In2 in getInN2 {
-                    //if state.isMappedn2(In2) {
-                    if this.core2[In2] != -1 {
-                        //var In1 = state.core2(In2);
-                        var In1 = this.core2(In2);
-                        var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
-                        var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
-                        
-                        // var (flag1, label1) = getRelationships(segGraphG1, dstNodesG1, convertedRelationshipsG1, In1, n1);
-                        // var (flag2, label2) = getRelationships(segGraphG2, dstNodesG2, convertedRelationshipsG2, In2, n2);
-
-                        if eid1 == -1 || eid2 == -1 {
-                            return false;
-                        }
-
-                        // var label1 = convertedRelationshipsG1[eid1];
-                        // var label2 = convertedRelationshipsG2[eid2];
-                        var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-                        var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-                        //var intersection = relationshipsG1eid1 & relationshipsG2eid2;
-                
-                        // if intersection.size <= 0 {
-                        if relationshipsG1eid1 != relationshipsG2eid2 {;
-
-                            return false;
-                        }
-                    }
-                    else {
-                        if this.Tin2.contains(In2) then termin2 += 1;
-                        if this.Tout2.contains(In2) then termout2 += 1;
-                        if !this.Tin2.contains(In2) && !this.Tout2.contains(In2) then new2 += 1;
-                    }
-                }
-                
-                // Check out neighbors of n1 
-                for Out1 in getOutN1 {
-                    if !this.isMappedn1(Out1) {
-                        if this.Tin1.contains(Out1) then termin1 += 1;
-                        if this.Tout1.contains(Out1) then termout1 += 1;
-                        if !this.Tin1.contains(Out1) && !this.Tout1.contains(Out1) then new1 += 1;
-                    }
-                }
-                
-                // Check in neighbors of n1
-                for In1 in getInN1 {
-                    if !this.isMappedn1(In1) {
-                        if this.Tin1.contains(In1) then termin1 += 1;
-                        if this.Tout1.contains(In1) then termout1 += 1;
-                        if !this.Tin1.contains(In1) && !this.Tout1.contains(In1) then new1 += 1;
-                    }
-                }
-
-                if !(termin2<=termin1 && termout2<=termout1 && (termin2+termout2+new2)<=(termin1+termout1+new1)) {
-                    return false;
-                }
-                ////Label check
-                if !nodesLabelCompatible(n1, n2) {
-
-                    return false;
-                }
-                return true;
-            } // end of isFeasible
-
-            proc getBothUnmappedNodes(): ([0..<this.n1]int, [0..<this.n2]int) throws {
-                var UnMapG1: [0..<this.n1]int = -1;
-                var UnMapG2: [0..<this.n2]int = -1;
-
-                for i in this.D_core2 {
-                    if this.core2[i] != -1 then UnMapG2[i] = 0; // Node i in G2 is mapped
-                    else UnMapG1[this.core2[i]] = 0; // Corresponding node in G1 is mapped
-                }
-                return (UnMapG1, UnMapG2);
             }
-            /** Create candidates based on current state and retuns a set of pairs.*/
-            proc getCandidatePairsOpti(): set((int, int)) throws {
-                //writeln(" getCandidatePairsOpti begin");
-                //writeln("state = ", state);
-                //var candidates = new set((int, int), parSafe = true);
-                var candidates = new set((int, int), parSafe = true);
+                
+            // Get in neighbors of G1 and G2
+            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
 
-                if this.Tout1.size > 0 && this.Tout2.size > 0 {
+            // Check in neighbors of n2 
+            for In2 in getInN2 {
 
-                    var minTout2: int;
-                    for elem in this.Tout2{
-                        minTout2 = elem;
+                if state.core2[In2] != -1 {
+
+                    var In1 = state.core2(In2);
+                    var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
+                    var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
+
+                    if eid1 == -1 || eid2 == -1 {
+                        return false;
+                    }
+
+
+                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
+                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
+
+                    if relationshipsG1eid1 != relationshipsG2eid2 {;
+
+                        return false;
+                    }
+                }
+                else {
+                    if state.Tin2.contains(In2) then termin2 += 1;
+                    if state.Tout2.contains(In2) then termout2 += 1;
+                    if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
+                }
+            }
+                
+            // Check out neighbors of n1 
+            for Out1 in getOutN1 {
+                if !state.isMappedn1(Out1) {
+                    if state.Tin1.contains(Out1) then termin1 += 1;
+                    if state.Tout1.contains(Out1) then termout1 += 1;
+                    if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
+                }
+            }
+                
+            // Check in neighbors of n1
+            for In1 in getInN1 {
+                if !state.isMappedn1(In1) {
+                    if state.Tin1.contains(In1) then termin1 += 1;
+                    if state.Tout1.contains(In1) then termout1 += 1;
+                    if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
+                }
+            }
+
+            if !(termin2<=termin1 && termout2<=termout1 && (termin2+termout2+new2)<=(termin1+termout1+new1)) {
+                return false;
+            }
+            ////Label check
+            if !nodesLabelCompatible(n1, n2) {
+
+                return false;
+            }
+
+            return true;
+        } // end of isFeasible
+
+        proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, [0..<state.n2]int) throws {
+            var UnMapG1: [0..<state.n1]int = -1;
+            var UnMapG2: [0..<state.n2]int = -1;
+
+            for i in state.D_core2 {
+                if state.core2[i] != -1 then UnMapG2[i] = 0; // Node i in G2 is mapped
+                else UnMapG1[state.core2[i]] = 0; // Corresponding node in G1 is mapped
+            }
+            
+            return (UnMapG1, UnMapG2);
+        }
+        // Create candidates based on current state and retuns a set of pairs.
+        proc getCandidatePairsOpti(state: State): set((int, int)) throws {
+
+            var candidates = new set((int, int), parSafe = true);
+
+            if state.Tout1.size > 0 && state.Tout2.size > 0 {
+
+                var minTout2: int;
+                for elem in state.Tout2{
+                    minTout2 = elem;
+                    break;
+                }
+                    
+                for n1 in state.Tout1 do candidates.add((n1, minTout2));
+                
+            } else {
+
+                if state.Tin1.size > 0 && state.Tin2.size > 0 {
+                        //var minTin2 = min reduce state.Tin2;
+                    var minTin2: int;
+                    for elem in state.Tin2{
+                        minTin2 = elem;
                         break;
                     }
-                    //var minTout2 = min reduce state.Tout2;
+                    for n1 in state.Tin1 do candidates.add((n1, minTin2));
                     
-                    for n1 in this.Tout1 do candidates.add((n1, minTout2));
-                
-                } else {
-                    //If Tin1 and Tin2 are both nonempty.
-                    if this.Tin1.size > 0 && this.Tin2.size > 0 {
-                        //var minTin2 = min reduce state.Tin2;
-                        var minTin2: int;
-                        for elem in this.Tin2{
-                            minTin2 = elem;
-                            break;
-                        }
-                        for n1 in this.Tin1 do candidates.add((n1, minTin2));
-                    
-                    } else { // not (Tin1 or Tin2) NOTE: What does this mean?
+                } else { // not (Tin1 or Tin2) NOTE: What does this mean?
                         
-                        var UnMG = this.getBothUnmappedNodes();
-                        var unmappedG1 = UnMG(0);
+                        var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
+                        //var unmappedG1 = UnMG(0);
                         //var unmappedG2 = UnMG(1);
                         
                    
                         var flagunmappedG2 = false;
                         var minUnmapped2 : int;
 
-                        for elem in UnMG(1){
+                        for elem in unmappedG2{
                             if elem != -1{
                                 minUnmapped2 = elem;
                                 flagunmappedG2 = true;
@@ -506,23 +465,17 @@ module SubgraphIsomorphism {
                         if !flagunmappedG2 {
                             //var minUnmapped2 = min reduce unmappedG2;
 
-                            for i in 0..<this.n1 {
-                                if UnmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
+                            for i in 0..<state.n1 {
+                                if unmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
                             } 
                         }
                     } 
                 }   
 
-                //writeln(" candidates = ", candidates);
-                return candidates;
-            } // end of getCandidatePairsOpti
-        } 
-        //////////////////////////////////////////////////////////////end of State record
-
-
-            /** Check if a pair of candidates are feasible.*/
-
-
+            //writeln(" candidates = ", candidates);
+            return candidates;
+        } // end of getCandidatePairsOpti
+            
 
 
         /** Creates an initial, empty state. NOTE: Is this needed?*/
@@ -534,31 +487,20 @@ module SubgraphIsomorphism {
 
         /** Check that node labels are the same.*/
         proc nodesLabelCompatible(n1: int, n2: int): bool throws {
-            var timernodesLabelCompatible:stopwatch;
-            timernodesLabelCompatible.start();
-
-            // var label1 = getLabels(n1, convertedLabelsG1)[1];
-            // var label2 = getLabels(n2, convertedLabelsG2)[1];
-            // var label1 = convertedLabelsG1[n1];
-            // var label2 = convertedLabelsG2[n2];
 
             var labelsG1n1 = convertedLabelsG1[n1];
             var labelsG2n2 = convertedLabelsG2[n2];
-            //var intersection = labelsG1n1 & labelsG2n2;
 
-            // if intersection.size <= 0 {
             if labelsG1n1 != labelsG2n2 {
-                timernodesLabelCompatible.stop();
-                TimerArrNew[25] += timernodesLabelCompatible.elapsed();                
+              
                 return false;
             }
-            timernodesLabelCompatible.stop();
-            TimerArrNew[25] += timernodesLabelCompatible.elapsed();
+
             return true;
         } // end of nodesLabelCompatible
 
-/*
-        proc vf2Helper(state: owned State, depth: int)throws {
+
+        proc vf2Helper(state: owned State, depth: int): list([0..#g2.n_vertices] int) throws {
             
             var allmappings: list([0..#g2.n_vertices] int);
 
@@ -566,7 +508,7 @@ module SubgraphIsomorphism {
             if depth == g2.n_vertices {
                     // Process the found solution
                     allmappings.pushBack(state.core2);
-                    writeln("Founded = ", state.core2);
+                    //writeln("Founded = ", state.core2);
                     return allmappings;
                 }
 
@@ -574,32 +516,37 @@ module SubgraphIsomorphism {
                 var candidatePairs = getCandidatePairsOpti(state);
 
                 // Iterate over candidate pairs
-                for (n1, n2) in candidatePairs {
+                forall (n1, n2) in candidatePairs with(ref state, ref allmappings){
                     if isFeasible(n1, n2, state) {
-                        var newState = state;
+                        var newState = state.clone();
 
                         // Update state with the new mapping
                         addToTinTout(n1, n2, newState);
 
                         // Recursive call with updated state and increased depth
-                        vf2Helper(newState, depth+1);
-                        
+                        var newMappings = vf2Helper(newState, depth+1);
+
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings {
+                            allmappings.pushBack(mapping);
+                        }
                         // Backtrack: remove the mapping added earlier
                         newState.core2[n2] = -1;
                     }
                 }
+                writeln("allmappings before return = ", allmappings);
+                return allmappings;
         }
- */       
-        /** Main procedure that invokes all of the vf2 steps using the graph data that is
-        initialized by `runVF2`.*/
+        
+        // Main procedure that invokes all of the vf2 steps using the graph data that is
+        // initialized by `runVF2`./
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
             var initial = createInitialState(g1.n_vertices, g2.n_vertices);
-            //var solutions = vf2Helper(initial, 0);
+            var solutions = vf2Helper(initial, 0);
+            var subIsoArrToReturn: [0..(solutions.size*g2.n_vertices)-1](int);
+            //var subIsoArrToReturn: [0..g2.n_vertices-1](int);
 
-            //var subIsoArrToReturn: [0..(solutions.size*g2.n_vertices)-1](int);
-            var subIsoArrToReturn: [0..g2.n_vertices-1](int);
 
-/*
             var posOffset = 0;
             for solSet in solutions {
                 //writeln("solSet = ", solSet);
@@ -611,7 +558,7 @@ module SubgraphIsomorphism {
                 }
                 posOffset += g2.n_vertices;
             }
-*/
+
             return(subIsoArrToReturn);
         } //end of vf2
         
