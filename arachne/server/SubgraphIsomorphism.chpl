@@ -91,8 +91,6 @@ module SubgraphIsomorphism {
 
             // Check if a given node is mapped in g1./
             proc isMappedn1(n1: int): bool {
-                //if this.core1.contains(node) then return true;
-                //else return false;
                 var Mapflag: bool = false;
                 for i in D_core2{
                     if this.core2[i] == n1 then Mapflag = true;
@@ -102,8 +100,6 @@ module SubgraphIsomorphism {
             
             // Check if a given node is mapped in g2./
             proc isMappedn2(n2: int): bool {
-                //if this.core2.contains(node) then return true;
-                //else return false;
                 return (this.core2[n2] != -1);  // Check if the node is mapped in g2
             }
 
@@ -441,6 +437,7 @@ module SubgraphIsomorphism {
                     for n1 in state.Tin1 do candidates.add((n1, minTin2));
                     
                 } else { // not (Tin1 or Tin2) NOTE: What does this mean?
+                         // it means that Tins and Touts are empty
                         
                         var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
                         //var unmappedG1 = UnMG(0);
@@ -539,20 +536,12 @@ module SubgraphIsomorphism {
         // Main procedure that invokes all of the vf2 steps using the graph data that is
         // initialized by `runVF2`./
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
-            writeln("/*******************VF2 begining****************************/");
-            writeln("core dumped point 1");
 
             var initial = createInitialState(g1.n_vertices, g2.n_vertices);
-            writeln("core dumped point 2");
 
             var solutions = vf2Helper(initial, 0);
             
-            writeln("solutions.size = ", solutions.size);
-            
-            //var subIsoArrToReturn: [0..(solutions.size*g2.n_vertices)-1](int);
             var subIsoArrToReturn: [0..#solutions.size](int);
-            //var subIsoArrToReturn: [0..g2.n_vertices-1](int);
-            writeln("subIsoArrToReturn created");
             for i in 0..#solutions.size{
                 subIsoArrToReturn[i] = solutions(i);
             }
@@ -560,7 +549,6 @@ module SubgraphIsomorphism {
         } //end of vf2
         
  
-        writeln("\n************************************************************\n");
         return IsoArr;
     } //end of runVF2
 } // end of SubgraphIsomorphism module
