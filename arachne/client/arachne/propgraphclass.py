@@ -57,10 +57,14 @@ class PropGraph(ar.DiGraph):
     ----------
     multied : int
         The graph is a multi graph (True) or not a multi graph (False).
+    edge_names : List(str)
+        Names of the columns that signify the source and destination vertices of edges.
     edge_attributes : ak.DataFrame
         Dataframe containing the edges of the graph and their attributes.
     relationship_mapper : Dict
         List of the attribute (column) names that correspond to relationships.
+    node_name : str
+        Name of column within node_attributes that signifies the nodes column.
     node_attributes : ak.DataFrame
         Dataframe containing the nodes of the graph and their attributes.
     label_mapper : Dict
@@ -79,12 +83,17 @@ class PropGraph(ar.DiGraph):
         """Initializes an empty `PropGraph` instance."""
         super().__init__()
         self.multied = 0
+        self.edge_names = []
         self.edge_attributes = ak.DataFrame()
         self.relationship_mapper = {}
+        self.node_name = ""
         self.node_attributes = ak.DataFrame()
         self.label_mapper = {}
 
-    def add_node_labels(self, labels:ak.DataFrame, assume_sorted:bool=True) -> None:
+    def add_node_labels(self,
+                        labels:ak.DataFrame,
+                        node_column:str,
+                        assume_sorted:bool=True) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below. The column containing the nodes
         should be called `nodes`. Every column that is not the `nodes` column is inferred to be a
@@ -112,10 +121,10 @@ class PropGraph(ar.DiGraph):
         # 1. Extract the nodes from the dataframe and drop them from the labels dataframe.
         vertex_ids = None
         try:
-            vertex_ids = labels["nodes"]
+            vertex_ids = labels[node_column]
         except KeyError as exc:
-            raise KeyError("attribute (column) nodes does not exist in labels") from exc
-        labels.drop("nodes", axis=1, inplace=True)
+            raise KeyError("column for nodes does not exist in labels") from exc
+        labels.drop(node_column, axis=1, inplace=True)
 
         # 2. Convert labels to integers and store the index to label mapping in the label_mapper.
         vertex_labels_symbol_table_ids = []
@@ -205,11 +214,14 @@ class PropGraph(ar.DiGraph):
         # 3. Extract the nodes column as a pdarray.
         nodes = self.node_attributes[node_column]
 
-        # 2. Populate the graph object with labels if specified.
+        # 4. Store the name of the nodes column.
+        self.node_name = node_column
+
+        # 5. Populate the graph object with labels if specified.
         if label_columns is not None and isinstance(label_columns, list):
             labels_to_add = {col: node_attributes[col] for col in label_columns}
-            labels_to_add["nodes"] = nodes
-            self.add_node_labels(ak.DataFrame(labels_to_add), assume_sorted=True)
+            labels_to_add[node_column] = nodes
+            self.add_node_labels(ak.DataFrame(labels_to_add), node_column, assume_sorted=True)
 
         ### Prepare the columns that are to be sent to the back-end to be stored per node.
         # 1. From columns remove nodes and any other columns that were handled by adding node
@@ -234,7 +246,11 @@ class PropGraph(ar.DiGraph):
                }
         ak.generic_msg(cmd=cmd, args=args)
 
-    def add_edge_relationships(self, relationships:ak.DataFrame, assume_sorted:bool=False) -> None:
+    def add_edge_relationships(self,
+                               relationships:ak.DataFrame,
+                               source_column:str,
+                               desination_column:str,
+                               assume_sorted:bool=False) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
         should follow the same format specified in the Parameters section below. The columns
         containing the edges should be called `source` for the source vertex of an edge and 
@@ -264,10 +280,10 @@ class PropGraph(ar.DiGraph):
         # 1. Extract the nodes from the dataframe and drop them from the labels dataframe.
         src, dst = (None, None)
         try:
-            src, dst = (relationships["src"], relationships["dst"])
+            src, dst = (relationships[source_column], relationships[desination_column])
         except KeyError as exc:
-            raise KeyError("attribute (column) src or dst does not exist in relationship") from exc
-        relationships.drop(["src", "dst"], axis=1, inplace=True)
+            raise KeyError("source or destination columns do not exist in relationship") from exc
+        relationships.drop([source_column, desination_column], axis=1, inplace=True)
 
         # 2. Convert relationships to integers and store the index to relationship mapping in
         #    the relationship_mapper.
@@ -359,6 +375,9 @@ class PropGraph(ar.DiGraph):
         src = edge_attributes[source_column]
         dst = edge_attributes[destination_column]
 
+        # 4. Add edge source and destination column names to property graph.
+        self.edge_names = [source_column, destination_column]
+
         ### Build the graph and load in relationships.
         # 1. Populate the graph object with edges.
         super().add_edges_from(src, dst)
@@ -366,9 +385,11 @@ class PropGraph(ar.DiGraph):
         # 2. Populate the graph object with relationships.
         if relationship_columns is not None and isinstance(relationship_columns, list):
             relationships_to_add = {col: edge_attributes[col] for col in relationship_columns}
-            relationships_to_add["src"] = src
-            relationships_to_add["dst"] = dst
-            self.add_edge_relationships(ak.DataFrame(relationships_to_add))
+            relationships_to_add[source_column] = src
+            relationships_to_add[destination_column] = dst
+            self.add_edge_relationships(ak.DataFrame(relationships_to_add),
+                                                     source_column,
+                                                     destination_column)
 
         ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
         # 1. Remove edges since those are sent separately and any columns marked as relationships.
@@ -389,6 +410,7 @@ class PropGraph(ar.DiGraph):
                  "InputIndicesName" : internal_indices.name
                }
         ak.generic_msg(cmd=cmd, args=args)
+        ak.generic_msg(cmd=cmd, args=args)
 
     def get_node_labels(self) -> ak.DataFrame:
         """Returns a a dataframe with the nodes and their labels.
@@ -405,7 +427,7 @@ class PropGraph(ar.DiGraph):
         labels = None
         try:
             indexer = list(self.label_mapper.keys())
-            ns = ["nodes"]
+            ns = [self.node_name]
             ns.extend(indexer)
             labels = self.node_attributes[ns]
         except KeyError as exc:
@@ -434,7 +456,7 @@ class PropGraph(ar.DiGraph):
         relationships = None
         try:
             indexer = list(self.relationship_mapper.keys())
-            es = ["src", "dst"]
+            es = self.edge_names.copy()
             es.extend(indexer)
             relationships = self.edge_attributes[es]
         except KeyError as exc:
