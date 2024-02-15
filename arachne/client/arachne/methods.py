@@ -1,7 +1,7 @@
 """Contains all current Arachne functionality. Includes building methods and algorithmic kernels.
 """
 from __future__ import annotations
-from typing import cast, Tuple
+from typing import cast, Tuple, Union
 from typeguard import typechecked
 import arachne as ar
 from arachne.graphclass import Graph
@@ -22,9 +22,9 @@ __all__ = ["read_matrix_market_file",
            ]
 
 @typechecked
-def read_matrix_market_file(filepath: str, 
-                            directed = False, 
-                            only_edges = False) -> Graph | DiGraph | Tuple:
+def read_matrix_market_file(filepath: str,
+                            directed = False,
+                            only_edges = False) -> Union[Graph,DiGraph,Tuple]:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -76,7 +76,7 @@ def read_matrix_market_file(filepath: str,
         return di_graph
 
 @typechecked
-def bfs_layers(graph: ar.Graph | ar.DiGraph, source: int) -> pdarray:
+def bfs_layers(graph: Union[ar.Graph,ar.DiGraph], source: int) -> pdarray:
     """ This function generates the breadth-first search sequence of the vertices in a given graph
     starting from the given source vertex.
 
@@ -103,7 +103,7 @@ def bfs_layers(graph: ar.Graph | ar.DiGraph, source: int) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def triangles(graph: ar.Graph, vertices: pdarray = None) -> int | pdarray:
+def triangles(graph: ar.Graph, vertices: pdarray = None) -> Union[int,pdarray]:
     """
     Returns the number of triangles in a graph. If `vertices` exists and is nonempty, it returns the
     number of triangles that each vertex in `vertices` takes a part of. For example, if the input
@@ -208,7 +208,7 @@ def triangle_centrality(graph: ar.Graph) -> pdarray:
     return create_pdarray(rep_msg)
 
 @typechecked
-def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
+def k_truss(graph: Graph, k_truss_value:int) -> pdarray:
     """
     This function returns the number of triangles in a static graph for each edge that satisfies the
     k requirement.
@@ -229,7 +229,7 @@ def k_truss(graph: Graph, kTrussValue:int) -> pdarray:
     RuntimeError
     """
     cmd = "segmentedTruss"
-    args = { "KValue":kTrussValue,
+    args = { "KValue":k_truss_value,
              "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
              "Directed":graph.directed,

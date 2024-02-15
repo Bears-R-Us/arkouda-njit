@@ -16,7 +16,7 @@ class Graph:
     currently are only allowed to be integers. No attributes are allowed on nodes or vertices. 
     For this functionality please refer to `PropGraph`.
 
-    Edges are represented as links between nodes. 
+    Edges are represented as links between nodes.
 
     Attributes
     ----------
@@ -79,7 +79,7 @@ class Graph:
 
         return create_pdarray(returned_vals[0])
 
-    def edges(self) -> Tuple(pdarray, pdarray):
+    def edges(self) -> Tuple[pdarray, pdarray]:
         """Returns a tuple of pdarrays src and dst Use: 'G.edges()'.
 
         Returns
@@ -101,7 +101,7 @@ class Graph:
 
         return (src,dst)
 
-    def _internal_edges(self) -> Tuple(pdarray, pdarray):
+    def _internal_edges(self) -> Tuple[pdarray, pdarray]:
         """Returns a tuple of pdarrays src and dst with internal vertex names.
 
         Returns
@@ -120,7 +120,7 @@ class Graph:
         return (src,dst)
 
     def degree(self) -> pdarray:
-        """Returns the degree view for the whole graph as a pdarray. NOTE: self-loops count twice to 
+        """Returns the degree view for the whole graph as a pdarray. NOTE: self-loops count twice in 
         the degree count due to the sum of degree theorem.
 
         Returns
@@ -135,11 +135,31 @@ class Graph:
 
         return degree
 
-    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
-                       akarray_weight:Union[None,pdarray] = None) -> None:
+    def add_edges_from(self,
+                       input_src:pdarray,
+                       input_dst:pdarray,
+                       input_weight:Union[None,pdarray] = None,
+                       remove_self_loops:bool = False,
+                       assume_sorted:bool = False,
+                       generate_reversed_arrays:bool = True) -> None:
         """
-        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
-        reading version. 
+        Populates the graph with edges and vertices from the given input Arkouda arrays. Lets
+        weights also be declared.
+        
+        Parameters
+        ----------
+        input_src : pdarray
+            Source vertices of the graph to be inputted.
+        input_dst : pdarray
+            Destination vertices of the graph to be inputted.
+        remove_self_loops : bool
+            Remove self loops during graph building.
+        assume_sorted : bool
+            If the edges are already sorted, skips some operations. 
+        generate_reversed_arrays : bool
+            Some algorithms such as k-truss and connected components are optimized for the reversed
+            DI data structure that requires a modified view of the edge list. NOTE: Set to on by 
+            default, must be manually turned off.
 
         Returns
         -------
@@ -149,14 +169,14 @@ class Graph:
 
         ### Edge dedupping and delooping.
         # 1. Symmetrize the graph by concatenating the src to dst arrays and vice versa.
-        src = ak.concatenate([akarray_src, akarray_dst])
-        dst = ak.concatenate([akarray_dst, akarray_src])
+        src = ak.concatenate([input_src, input_dst])
+        dst = ak.concatenate([input_dst, input_src])
         num_original_edges = src.size
 
         # 1a. Initialize and symmetrize the weights of each edge, if applicable.
         wgt = ak.array([1.0])
-        if isinstance(akarray_weight,pdarray):
-            wgt = ak.concatenate([akarray_weight, akarray_weight])
+        if isinstance(input_weight, pdarray):
+            wgt = ak.concatenate([input_weight, input_weight])
             self.weighted = 1
 
         # 2. Sort the edges and remove duplicates.
@@ -176,15 +196,12 @@ class Graph:
         #    the dedupping in the step above.
         self_loops = src == dst
         self_loops = ak.value_counts(self_loops)[1]
-        if self_loops.size == 1:
-            self_loops = 0 # This is our x.
-        else:
-            self_loops = self_loops[1]  # This is our x.
+        self_loops = 0 if self_loops.size == 1 else self_loops[1]
 
         num_edges_after_dedup = src.size
         num_removed_edges = num_original_edges - num_edges_after_dedup # This is our z.
         num_dupped_edges = (num_removed_edges - self_loops) / 2 # This is solving for y.
-        num_edges = akarray_src.size - num_dupped_edges
+        num_edges = input_src.size - num_dupped_edges
 
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
@@ -228,7 +245,7 @@ class Graph:
         oriname = rep_msg
         self.name = oriname.strip()
 
-    def add_edges_from_compat(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+    def _generate_reversed_di(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
         """
         Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
         reading version, is here to provide compatibility with the original algorithmic 
