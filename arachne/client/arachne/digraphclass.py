@@ -13,9 +13,9 @@ class DiGraph(ar.Graph):
     """Base class for directed graphs. Inherits from `Graph`. This is the double index graph data 
     structure based graph representation. The graph data resides on the arkouda server.
 
-    Graphs hold undirected edges. Multiple edges are not allowed. Self loops are allowed. Nodes 
-    currently are only allowed to be integers. No attributes are allowed on nodes or vertices. 
-    For this functionality please refer to `PropGraph`.
+    DiGraphs hold directed edges. Multiple edges are not allowed. Self loops are allowed. Nodes 
+    currently are only allowed to be unsigned integers. No attributes are allowed on nodes or 
+    vertices. For this functionality please refer to `PropGraph`.
 
     Edges are represented as directed links between nodes.
 
@@ -66,27 +66,46 @@ class DiGraph(ar.Graph):
 
         return in_degree
 
-    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
-                       akarray_weight:Union[None,pdarray] = None) -> None:
+    def add_edges_from(self,
+                       input_src:pdarray,
+                       input_dst:pdarray,
+                       input_weight:Union[None,pdarray] = None,
+                       no_self_loops:bool = False,
+                       generate_reversed_arrays:bool = True) -> None:
         """
-        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
-        reading version. 
+        Populates the graph with edges and vertices from the given input Arkouda arrays. Lets
+        weights also be declared.
+        
+        Parameters
+        ----------
+        input_src : pdarray
+            Source vertices of the graph to be inputted.
+        input_dst : pdarray
+            Destination vertices of the graph to be inputted.
+        input_wgt : pdarray
+            Edge weights. 
+        no_self_loops : bool
+            Ignore self-loops during graph building.
+        generate_reversed_arrays : bool
+            Some algorithms such as k-truss and connected components are optimized for the reversed
+            DI data structure that requires a modified view of the edge list. NOTE: Set to on by 
+            default, must be manually turned off.
 
         Returns
         -------
         None
         """
-        cmd = "addEdgesFrom"
+        cmd = "insertComponents"
 
         ### Edge dedupping and delooping.
         # 1. Initialize the edge arrays.
-        src = akarray_src
-        dst = akarray_dst
+        src = input_src
+        dst = input_dst
 
         # 1a. Initialize the weights array, if applicable.
         wgt = ak.array([1.0])
-        if isinstance(akarray_weight,pdarray):
-            wgt = akarray_weight
+        if isinstance(input_weight,pdarray):
+            wgt = input_weight
             self.weighted = 1
 
         # 2. Sort the edges and remove duplicates.
@@ -95,6 +114,15 @@ class DiGraph(ar.Graph):
         dst = gb_edges.unique_keys[1]
         if self.weighted == 1:
             wgt = gb_edges.aggregate(wgt, "sum")[1]
+
+        # 3. Calculate the number of edges for the graph.
+        self_loops = src == dst
+        num_edges = 0
+        if no_self_loops:
+            src = src[~self_loops]
+            dst = dst[~self_loops]
+
+        num_edges = src.size
 
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
@@ -123,7 +151,7 @@ class DiGraph(ar.Graph):
 
         # 3. Extract the number of vertices, edges, and weighted flag from the graph.
         self.n_vertices = int(vmap.size)
-        self.n_edges = int(src.size)
+        self.n_edges = num_edges
 
         ### Create the reversed arrays for in-neighbor calculations.
         # 1. Reverse the edges and sort them.
@@ -144,18 +172,21 @@ class DiGraph(ar.Graph):
 
         ### Store everything in a graph object in the Chapel server.
         # 1. Store data into an Graph object in the Chapel server.
-        args = { "AkArraySrc" : src,
-                 "AkArrayDst" : dst,
-                 "AkArraySeg" : segs,
-                 "AkArraySrcR" : src_reversed,
-                 "AkArrayDstR" : dst_reversed,
-                 "AkArraySegR" : segs_reversed,
-                 "AkArrayWeight" : wgt,
-                 "AkArrayVmap" : vmap,
+        args = { "SRC_SDI" : src,
+                 "DST_SDI" : dst,
+                 "SEGMENTS_SDI" : segs,
+                 "SRS_R_SDI" : src_reversed,
+                 "DST_R_SDI" : dst_reversed,
+                 "SEGMENTS_R_SDI" : segs_reversed,
+                 "EDGE_WEIGHTS_SDI" : wgt,
+                 "VERTEX_MAP_SDI" : vmap,
                  "Directed": bool(self.directed),
                  "Weighted" : bool(self.weighted),
                  "NumVertices" : self.n_vertices,
                  "NumEdges" : self.n_edges }
+        
+        if generate_reversed_arrays:
+            raise NotImplementedError("reversed DI not implemented directed graphs, just use SDI")
 
         rep_msg = generic_msg(cmd=cmd, args=args)
         oriname = rep_msg

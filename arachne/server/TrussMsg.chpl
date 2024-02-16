@@ -1042,20 +1042,20 @@ module TrussMsg {
                 repMsg=kTrussMinSearch(kLow,
 
 
-                toSymEntry(ag.getComp("NEIGHBOR"), int).a,
-                toSymEntry(ag.getComp("START_IDX"), int).a,
-                toSymEntry(ag.getComp("SRC"), int).a,
-                toSymEntry(ag.getComp("DST"), int).a,
-                toSymEntry(ag.getComp("NEIGHBOR_R"), int).a,
-                toSymEntry(ag.getComp("START_IDX_R"), int).a,
-                toSymEntry(ag.getComp("SRC_R"), int).a,
-                toSymEntry(ag.getComp("DST_R"), int).a, aPlTriCount,lEdgeDeleted);
+                toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_RDI"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_R_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_R_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_R_RDI"), int).a, aPlTriCount,lEdgeDeleted);
                 forall i in 0..Ne-1 {// first keep last time's results
                              gEdgeDeleted[i]=lEdgeDeleted[i];
                              aPTriCount[i].write(aPlTriCount[i].read());
                              //EdgeDeleted and aPTricount will keep the latest value with no empty subgraph
                 }
-                kUp=getupK(toSymEntry(ag.getComp("NEIGHBOR"), int).a, toSymEntry(ag.getComp("NEIGHBOR_R"), int).a)+1;
+                kUp=getupK(toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a, toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a)+1;
                 outMsg="Estimated kUp="+(kUp-1):string;
                 smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
@@ -1076,14 +1076,14 @@ module TrussMsg {
 
                                  var tmpkUp=BatchMaxTrussMinSearch(kLow+1,
 
-                toSymEntry(ag.getComp("NEIGHBOR"), int).a,
-                toSymEntry(ag.getComp("START_IDX"), int).a,
-                toSymEntry(ag.getComp("SRC"), int).a,
-                toSymEntry(ag.getComp("DST"), int).a,
-                toSymEntry(ag.getComp("NEIGHBOR_R"), int).a,
-                toSymEntry(ag.getComp("START_IDX_R"), int).a,
-                toSymEntry(ag.getComp("SRC_R"), int).a,
-                toSymEntry(ag.getComp("DST_R"), int).a, aPlTriCount,lEdgeDeleted);
+                toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_RDI"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_R_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_R_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_R_RDI"), int).a, aPlTriCount,lEdgeDeleted);
                                  //writeln("After kUp-kLow<SmallKRange tmp kUp=",tmpkUp, " kLow=",kLow," kUp=",kUp, " kMid=",kMid);
                                  if AllRemoved {
                                      kUp=tmpkUp-1;
@@ -1109,14 +1109,14 @@ module TrussMsg {
 
                                 var tmpK =BatchMaxTrussMinSearch(kMid,
 
-                toSymEntry(ag.getComp("NEIGHBOR"), int).a,
-                toSymEntry(ag.getComp("START_IDX"), int).a,
-                toSymEntry(ag.getComp("SRC"), int).a,
-                toSymEntry(ag.getComp("DST"), int).a,
-                toSymEntry(ag.getComp("NEIGHBOR_R"), int).a,
-                toSymEntry(ag.getComp("START_IDX_R"), int).a,
-                toSymEntry(ag.getComp("SRC_R"), int).a,
-                toSymEntry(ag.getComp("DST_R"), int).a, aPlTriCount,lEdgeDeleted);
+                toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_RDI"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_R_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_R_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_R_RDI"), int).a, aPlTriCount,lEdgeDeleted);
                                 //writeln("1 After kMid>kLow  tmpK=",tmpK," kMid=",kMid,  " kLow=",kLow," kUp=",kUp);
                                 if (AllRemoved) {
                                     if tmpK>kMid {
@@ -1767,14 +1767,14 @@ module TrussMsg {
                 repMsg=kTrussMinSearch(kValue,
 
 
-                toSymEntry(ag.getComp("NEIGHBOR"), int).a,
-                toSymEntry(ag.getComp("START_IDX"), int).a,
-                toSymEntry(ag.getComp("SRC"), int).a,
-                toSymEntry(ag.getComp("DST"), int).a,
-                toSymEntry(ag.getComp("NEIGHBOR_R"), int).a,
-                toSymEntry(ag.getComp("START_IDX_R"), int).a,
-                toSymEntry(ag.getComp("SRC_R"), int).a,
-                toSymEntry(ag.getComp("DST_R"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_RDI"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_R_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_R_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_R_RDI"), int).a,
 
 
                       AtoTriCount,gEdgeDeleted);
@@ -1799,14 +1799,14 @@ module TrussMsg {
                 repMsg=MaxTrussMinSearch(kValue,
 
 
-                toSymEntry(ag.getComp("NEIGHBOR"), int).a,
-                toSymEntry(ag.getComp("START_IDX"), int).a,
-                toSymEntry(ag.getComp("SRC"), int).a,
-                toSymEntry(ag.getComp("DST"), int).a,
-                toSymEntry(ag.getComp("NEIGHBOR_R"), int).a,
-                toSymEntry(ag.getComp("START_IDX_R"), int).a,
-                toSymEntry(ag.getComp("SRC_R"), int).a,
-                toSymEntry(ag.getComp("DST_R"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_RDI"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_R_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_R_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_R_RDI"), int).a,
 
 
                       AtoTriCount,gEdgeDeleted);
@@ -1840,14 +1840,14 @@ module TrussMsg {
                 repMsg=TrussDecoMinSearch(kValue,
 
 
-                toSymEntry(ag.getComp("NEIGHBOR"), int).a,
-                toSymEntry(ag.getComp("START_IDX"), int).a,
-                toSymEntry(ag.getComp("SRC"), int).a,
-                toSymEntry(ag.getComp("DST"), int).a,
-                toSymEntry(ag.getComp("NEIGHBOR_R"), int).a,
-                toSymEntry(ag.getComp("START_IDX_R"), int).a,
-                toSymEntry(ag.getComp("SRC_R"), int).a,
-                toSymEntry(ag.getComp("DST_R"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_RDI"), int).a,
+                toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a,
+                toSymEntry(ag.getComp("START_IDX_R_RDI"), int).a,
+                toSymEntry(ag.getComp("SRC_R_RDI"), int).a,
+                toSymEntry(ag.getComp("DST_R_RDI"), int).a,
 
 
                       AtoTriCount,gEdgeDeleted);

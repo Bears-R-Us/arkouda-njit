@@ -26,9 +26,9 @@ module BreadthFirstSearch {
     * returns: success string message. */
     proc bfs_kernel_und_smem(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
         // Extract graph data.
-        var src = toSymEntry(graph.getComp("SRC"),int).a;
-        var dst = toSymEntry(graph.getComp("DST"),int).a;
-        var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
+        var src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
+        var dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
+        var seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
         
         // Generate the frontier sets.
         var frontier_sets : [{0..1}] list(int, parSafe=true);
@@ -80,16 +80,28 @@ module BreadthFirstSearch {
             frontier_sets[1] = new set(int, parSafe=true);
         } 
         frontier_sets_idx = 0;
-        var src = toSymEntry(graph.getComp("SRC"),int).a;
-        var dst = toSymEntry(graph.getComp("DST"),int).a;
-        var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
+        var src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
+        var dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
+        var seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
+        var ranges = toSymEntry(graph.getComp("RANGES_SDI"), (int,locale,int)).a;
         
         // Add the root to the locale that owns it and update size & depth.
-        for lc in find_locs(root, graph) {
+        for lc in find_locs(root, ranges) {
             on lc do frontier_sets[frontier_sets_idx].add(root);
         }
         var cur_level = 0;
         depth[root] = cur_level;
+
+        writeln(src);
+        writeln(dst);
+        writeln(seg);
+        writeln(ranges);
+        writeln(frontier_sets);
+        writeln(numLocales);
+
+        for loc in Locales do on loc {
+            writeln(src[src.localSubdomain().low..src.localSubdomain().high]);
+        }
 
         while true { 
             var pending_work:bool;
@@ -97,7 +109,7 @@ module BreadthFirstSearch {
                 on loc {
                     var src_low = src.localSubdomain().low;
                     var src_high = src.localSubdomain().high;
-                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new SetDstAggregator(int), var depth_agg = new DstAggregator(int)) {
+                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new SetDstAggregator(int)) {
                         var adj_list_start = seg[u];
                         var num_neighbors = seg[u+1] - adj_list_start;
                         if (num_neighbors != 0) {
@@ -111,12 +123,10 @@ module BreadthFirstSearch {
                             for v in neighborhood { 
                                 if (depth[v] == -1) {
                                     pending_work = true;
-                                    // depth[v] = cur_level + 1;
-                                    depth_agg.copy(depth[v], cur_level + 1);
-                                    var locs = find_locs(v, graph);
-                                    for lc in locs {
-                                        frontier_agg.copy(lc.id, v);
-                                    }
+                                    depth[v] = cur_level + 1;
+                                    var locs = find_locs(v, ranges);
+                                    writeln("for ", v, " found locs were ", locs);
+                                    for lc in locs do frontier_agg.copy(lc.id, v);
                                 }
                             }
                         }

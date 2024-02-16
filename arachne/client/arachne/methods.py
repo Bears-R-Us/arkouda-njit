@@ -11,14 +11,14 @@ import arkouda as ak
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 
-__all__ = ["read_matrix_market_file",
-           "bfs_layers",
-           "subgraph_isomorphism",
-           "triangles",
-           "squares",
-           "k_truss",
-           "triangle_centrality",
-           "connected_components",
+__all__ = [ "read_matrix_market_file",
+            "bfs_layers",
+            "subgraph_isomorphism",
+            "triangles",
+            "squares",
+            "k_truss",
+            "triangle_centrality",
+            "connected_components",
            ]
 
 @typechecked

@@ -20,10 +20,10 @@ module TriangleCentrality {
     :returns: void
     */
     proc minimum_search_triangle_centrality(graph: borrowed SegGraph, ref triangleCentralities) throws {
-	    ref src = toSymEntry(graph.getComp("SRC"), int).a;
-        ref dst = toSymEntry(graph.getComp("DST"), int).a;
-        ref seg = toSymEntry(graph.getComp("SEGMENTS"), int).a;
-        ref vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
+	    ref src = toSymEntry(graph.getComp("SRC_SDI"), int).a;
+        ref dst = toSymEntry(graph.getComp("DST_SDI"), int).a;
+        ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"), int).a;
+        ref vertexMap = toSymEntry(graph.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Number of triangles each neighbor of u is a part of
         var NeiTriNum = makeDistArray(graph.n_vertices, atomic int); 

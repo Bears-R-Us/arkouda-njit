@@ -15,32 +15,36 @@ module GraphArray {
     const graphLogger = new Logger(logLevel);
 
     // Component key names to be stored stored in the components map for future retrieval
-    enum Component {
-        SRC,                      // Array holding the source vertices of an edge
-        DST,                      // Array holding the destination vertices of an edge
-        SEGMENTS,                 // Array giving the segments of a neighborhood in DST
-        EDGE_WEIGHT,              // Array giving the edge weights of the graph
-        VERTEX_MAP,               // Array where VERTEX_MAP[u] gives the original value of u
-        RANGES,                   // Replicated array of the low vertex value in SRC per locale
-        VERTEX_LABELS,            // Map of type (string, (string,SegStringSymEntry)
-        EDGE_RELATIONSHIPS,       // Map of type (string, (string,SegStringSymEntry)
-        VERTEX_PROPS,             // Map of type (string, (string,string))
-        EDGE_PROPS,               // Map of type (string, (string,string))
+    enum Component {        
+        // Symmetrical Double-Index (SDI) Components (and Property Graph Components)
+        SRC_SDI,            // int array with source vertices for each edge
+        DST_SDI,            // int array with destination vertices for each edge
+        SEGMENTS_SDI,       // int array segmenting neighborhoods in DST_SDI
+        SRC_R_SDI,          // int array with source vertices for each edge, swapped with DST_SDI
+        DST_R_SDI,          // int array with destination vertices for each edge, swapped with SRC_SDI
+        SEGMENTS_R_SDI,     // int array segmenting neighborhoods in DST_R_SDI
+        EDGE_WEIGHT_SDI,    // int, real, int, or bool array with edge weights
+        VERTEX_MAP_SDI,     // int array where VERTEX_MAP_SDI[u] gives the original value of u
+        RANGES_SDI,         // int array with tuple of low values per locale of SRC_SDI
+        RANGES_R_SDI,       // int array with tuple of low values per locale of SRC_R_SDI
+        VERTEX_LABELS,      // map of type (string, (string,SegStringSymEntry))
+        EDGE_RELATIONSHIPS, // map of type (string, (string,SegStringSymEntry))
+        VERTEX_PROPERTIES,  // map of type (string, (string,string))
+        EDGE_PROPERTIES,    // map of type (string, (string,string))
 
-        // For directed graphs we also want to maintain reversed edge arrays to easily find the
-        // in-neighbors for each vertex. We will use the SRC_R and DST_R components below to 
-        // signify the reversed edge arrays as well as a SEGMENTS_R array defined here. 
-        SEGMENTS_R,
-
-        // TEMPORARY COMPONENTS BELOW FOR UNDIRECTED GRAPHS TO ENSURE COMPATIBILTIY WITH OLD CODE.
-        // We want to phase out the need for reversed arrays in undirected graph algorithms.
-        // Includes: connected components, triangle counting, k-truss, and triangle centrality.
-        SRC_R,                  // DST array
-        DST_R,                  // SRC array
-        START_IDX,              // Starting indices of vertices in SRC
-        START_IDX_R,            // Starting indices of vertices in SRC_R
-        NEIGHBOR,               // Number of neighbors for a given vertex based off SRC and DST
-        NEIGHBOR_R,             // Number of neighbors for a given vertex based off SRC_R and DST_R
+        // Reverse Double-Index (RDI) Components
+        SRC_RDI,           // int array with source vertices for each edge
+        DST_RDI,           // int array with destination vertices for each edge
+        SRC_R_RDI,         // int array with source vertices for each edge, swapped with DST_RDI
+        DST_R_RDI,         // int array with destination vertices for each edge, swapped with SRC_RDI
+        START_IDX_RDI,     // int array with starting indices for each vertex point in SRC_RDI
+        START_IDX_R_RDI,   // int array with starting indices for each vertex point in SRC_R_RDI
+        NEIGHBOR_RDI,      // int array with the number of neighbors for each vertex based off DST_RDI
+        NEIGHBOR_R_RDI,    // int array with the number of neighbors for each vertex based off DST_R_RDI
+        EDGE_WEIGHT_RDI,   // uint, real, int, or bool array with edge weights; must search index in SRC_RDI and DST_RDI
+        VERTEX_MAP_RDI,    // int array where VERTEX_MAP_RDI[u] gives the original value of u
+        RANGES_RDI,        // uint array with tuple of low values per locale of SRC_RDI
+        RANGES_R_RDI,      // uint array with tuple of low values per locale of SRC_R_RDI
     }
 
     /**
@@ -66,32 +70,23 @@ module GraphArray {
         // The graph is weighted (true) or unweighted (false)
         var weighted: bool;
 
-        // The graph is a property graph (true) or not (false)
-        var propertied: bool;
-
-        // The graph is a multigraph (true) or not (false)
-        var multied: bool = false;
-
-        // Undirected graphs are in the old format (true) or not (false)
-        var reversed: bool = false;
-
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
         */
-        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool, multied:bool) {
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool) {
             this.n_vertices = num_v;
             this.n_edges = num_e;
             this.directed = directed;
             this.weighted = weighted;
-            this.propertied = propertied;
-            this.multied = multied;
         }
 
         proc isDirected():bool { return this.directed; }
         proc isWeighted():bool { return this.weighted; }
-        proc isPropertied():bool { return this.propertied; }
-        proc isMultied():bool { return this.multied; }
-        proc isReversed():bool { return this.reversed; }
+        proc isPropertied():bool { return this.hasComp("VERTEX_LABELS") ||
+                                          this.hasComp("EDGE_RELATIONSHIPS") ||
+                                          this.hasComp("VERTEX_PROPERTIES") ||
+                                          this.hasComp("EDGE_PROPERTIES"); }
+        proc isReversed():bool { return this.hasComp("SRC_RDI"); }
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }

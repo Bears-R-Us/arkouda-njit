@@ -106,22 +106,22 @@ module SubgraphIsomorphism {
         var numIso: int = 0;
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1Dist = toSymEntry(g1.getComp("SRC"), int).a;
-        var dstNodesG1Dist = toSymEntry(g1.getComp("DST"), int).a;
-        var segGraphG1Dist = toSymEntry(g1.getComp("SEGMENTS"), int).a;
-        var srcRG1Dist = toSymEntry(g1.getComp("SRC_R"), int).a;
-        var dstRG1Dist = toSymEntry(g1.getComp("DST_R"), int).a;
-        var segRG1Dist = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG1Dist = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
+        var srcNodesG1Dist = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+        var dstNodesG1Dist = toSymEntry(g1.getComp("DST_SDI"), int).a;
+        var segGraphG1Dist = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+        var srcRG1Dist = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
+        var dstRG1Dist = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
+        var segRG1Dist = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
+        var nodeMapGraphG1Dist = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2Dist = toSymEntry(g2.getComp("SRC"), int).a;
-        var dstNodesG2Dist = toSymEntry(g2.getComp("DST"), int).a;
-        var segGraphG2Dist = toSymEntry(g2.getComp("SEGMENTS"), int).a;
-        var srcRG2Dist = toSymEntry(g2.getComp("SRC_R"), int).a;
-        var dstRG2Dist = toSymEntry(g2.getComp("DST_R"), int).a;
-        var segRG2Dist = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG2Dist = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
+        var srcNodesG2Dist = toSymEntry(g2.getComp("SRC_SDI"), int).a;
+        var dstNodesG2Dist = toSymEntry(g2.getComp("DST_SDI"), int).a;
+        var segGraphG2Dist = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+        var srcRG2Dist = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+        var dstRG2Dist = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+        var segRG2Dist = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+        var nodeMapGraphG2Dist = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Get the number of vertices and edges for each graph.
         var nG1 = nodeMapGraphG1Dist.size;
