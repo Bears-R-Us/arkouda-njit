@@ -262,12 +262,14 @@ if __name__ == "__main__":
     for iso in isos_sublists:
         isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
     print("checking for correctness")
-
+    counter = 0
     for iso in isos_as_dicts:
         if iso not in subgraph_isomorphisms:
-            print("missing is: ", iso)
-            print("ERROR: Subgraph isomorphisms do not match!")
+            #print("missing is: ", iso)
+            counter += 1
+            #print("ERROR: Subgraph isomorphisms do not match!")
             #break
+    print ("Number of missing is ", counter)
     print("checking for printing or not")
 
     if args.print_isos:
