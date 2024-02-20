@@ -105,9 +105,17 @@ def gnp(n: int, p: float,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) 
     return graph
 
 
-def karate_club_graph() -> Tuple[ak.pdarray]:
-   
+def karate_club_graph(create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
+    Parameters
+    ----------
+    create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+        Arachne graph constructor
+        constructors supported
+        ar.Graph
+        ar.DiGraph
+        ar.PropGraph
+
     Return's Zachary's Karate Club Graph
 
     Each node of the 34 nodes is labelled with a ground truth community.
@@ -149,7 +157,9 @@ def karate_club_graph() -> Tuple[ak.pdarray]:
                    0, 24, 25, 28, 32, 33, 2, 8, 14, 15, 18, 20, 22, 23, 29, 30,
                    31, 33, 8, 9, 13, 14, 15, 18, 19, 20, 22, 23, 26, 27, 28, 29,
                    30, 31, 32 ])
-    return (V, U)  #TODO: when community detection is implemented (C,U,V)
+    graph = empty_graph(create_using)
+    graph.add_edges_from(V,U)
+    return graph  #TODO: when community detection is implemented (C,U,V)
     
 
 def random_tree(n: int,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
@@ -187,7 +197,6 @@ def rmat(
     p: Union[float, Tuple[float]] = (0.57, 0.19, 0.19, 0.05),
     weighted: bool = False,
     permute: bool = True,
-    standardize: bool = True,
 ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Recursive MATrix random graph generator.
@@ -207,8 +216,7 @@ def rmat(
         output uniformly random weights in [0, 1] for each edge.
     permute : bool (default True)
         randomly relabel nodes and permute edges
-    standardize : bool (default True)
-        standardize edges afterwards
+    
 
     create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
         Arachne graph constructor
@@ -270,8 +278,7 @@ def rmat(
         return graph
     else:
         graph = empty_graph(create_using)
-        if standardize:
-            graph.add_edges_from(V, U)
+        graph.add_edges_from(V, U)
         return graph
 
 def get_perm(n: int) -> ak.pdarray:
@@ -301,9 +308,6 @@ def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) ->
     """
     V = ak.arange(n - 1)
     U = V + 1
-    if create_using is ar.Graph:
-        V, U = (ak.concatenate([V, U], ordered=False),
-                ak.concatenate([U, V], ordered=False))
     graph = empty_graph(create_using)
     graph.add_edges_from(V,U)
     return graph

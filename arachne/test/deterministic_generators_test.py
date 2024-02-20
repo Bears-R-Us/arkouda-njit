@@ -104,16 +104,26 @@ class DeterministicGeneratorsTest(ArkoudaTest):
         existing_karate_club_graph = ar.read_matrix_market_file(filepath)
 
         # Read in the graph with Arachne karate_club_graph()
-        V,U = ar.karate_club_graph()
-        ar_graph = ar.Graph()
-        ar_graph.add_edges_from(V,U)
+        ar_graph= ar.karate_club_graph(ar.Graph)
+        
         #Check Degree Equality per node
         ar_degrees = list(ar_graph.degree().to_ndarray())
         
         existing_karate_club_graph_degrees = list(existing_karate_club_graph.degree().to_ndarray())
         self.assertEqual(ar_degrees,existing_karate_club_graph_degrees)
 
-        
+        #DiGraph
+        """
+        #TODO
+        existing_karate_club_graph = ar.read_matrix_market_file(filepath,directed = True)
+        ar_graph= ar.karate_club_graph(ar.DiGraph)
+        ar_in_degrees = list(ar_graph.in_degree().to_ndarray())
+        ar_out_degrees = list(ar_graph.out_degree().to_ndarray())
+        existing_karate_club_graph_in_degrees = list(existing_karate_club_graph.in_degree().to_ndarray())
+        existing_karate_club_graph_out_degrees = list(existing_karate_club_graph.out_degree().to_ndarray())
+        self.assertEqual(ar_in_degrees,existing_karate_club_graph_in_degrees)
+        self.assertEqual(ar_out_degrees,existing_karate_club_graph_out_degrees)
+        """
 
 
     
