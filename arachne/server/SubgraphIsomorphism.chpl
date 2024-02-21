@@ -271,9 +271,17 @@ module SubgraphIsomorphism {
         //******************************************************************************************
         writeln("Main version which Oliver pushed to the server\n\n");
         var IsoArrtemp = vf2(g1, g2);
-        //writeln("IsoArrtemp = ", IsoArrtemp);
+        writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
+        
+        for i in 0..g1.n_vertices {
+            if !(IsoArrtemp[i] > -1 && IsoArrtemp[i] < g1.n_vertices+1){
+                writeln("There is an out of range ", IsoArrtemp[i]);
+            }
+        }
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
         
+        writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
+
         //writeln("IsoArr     = ", IsoArr);
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
@@ -383,12 +391,12 @@ module SubgraphIsomorphism {
         } // end of isFeasible
 
         /** Return the unmapped vertices for g1 and g2. */
-        proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, [0..<state.n2]int) throws {
+        proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, int) throws {
             var UnMapG1: [0..<state.n1] int = -1;
-            var UnMapG2: [0..<state.n2] int = -1;
+            var UnMapG2: int = -1;
 
-            for i in state.D_core {
-                if state.core[i] != -1 then UnMapG2[i] = 0; // Node i in G2 is mapped
+            for i in state.D_core by -1{
+                if state.core[i] == -1 then UnMapG2 = i; // Node i in G2 is mapped
                 else UnMapG1[state.core[i]] = 0; // Corresponding node in G1 is mapped
             }
             
@@ -417,19 +425,12 @@ module SubgraphIsomorphism {
 
                 } else { 
                     var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                    var flagunmappedG2 = false;
-                    var minUnmapped2 : int;
+                    //var flagunmappedG2 = false;
+                    //var minUnmapped2 : int;
 
-                    for i in state.D_core by -1{
-                        if unmappedG2[i] == -1 {
-                            minUnmapped2 = i;
-                            flagunmappedG2 = true;
-                        }
-                    }
-
-                    if flagunmappedG2 {
+                    if unmappedG2 != -1 {
                         for i in 0..<state.n1 {
-                            if unmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
+                            if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
                         } 
                     }
                 } 
@@ -458,7 +459,7 @@ module SubgraphIsomorphism {
 
             // Base case: check if a complete mapping is found
             if depth == g2.n_vertices {
-                writeln("Isos found = ", state.core);
+                //writeln("Isos found = ", state.core);
                 // Process the found solution
                 for elem in state.core do allmappings.pushBack(elem);
                 return allmappings;

@@ -172,10 +172,10 @@ if __name__ == "__main__":
     ### Run subgraph isomorphism.
     start_time = time.time()
     #print("start_time = ", start_time)
-    isos = ar.subgraph_isomorphism(prop_graph,subgraph)
+    Arachne_isos = ar.subgraph_isomorphism(prop_graph,subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/4} isos")
+    print(f"Arachne found: {len(Arachne_isos)/4} isos")
 
 
     #### Run NetworkX subgraph isomorphism.
@@ -247,46 +247,56 @@ if __name__ == "__main__":
     # Find subgraph isomorphisms of H in G.
     start_time = time.time()
     GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
-    subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
+    nx_isomorphisms = list(GM.subgraph_monomorphisms_iter())
+
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
-    print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
-
-    #### Compare Arachne subgraph isomorphism to NetworkX.
-    #print("isos = ", isos)
-    isos_list = isos.to_list()
-    isos_sublists = [isos_list[i:i+4] for i in range(0, len(isos_list), 4)]
-    for elm in isos_sublists:
-        #print(elm.len())
-        if len(elm) != 4:
-            print ("Error in len = ",len(elm))
-        
-    isos_as_dicts = []
-    subgraph_vertices = [0, 1, 2, 3]
-    print("making dict")
-    for iso in isos_sublists:
-        isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
+    print(f"NetworkX found: {len(nx_isomorphisms)} isos")
     
-    print("checking for correctness")
-    counter = 0
-    print("**********************************************")
-    for iso in isos_as_dicts:
-        if iso not in subgraph_isomorphisms:
-            print("missing is: ", iso)
-            counter += 1
-            #print("ERROR: Subgraph isomorphisms do not match!")
-            #break
-    print("checking for printing or not")
+    
+    
+    #### Compare Arachne subgraph isomorphism to NetworkX.
+    from collections import Counter
+    import numpy as np
+    
+    # Function to transform the list into a list of dictionaries
+    def transform_arachne_isos(arachne_isos):
+        transformed = []
+        for i in range(0, len(arachne_isos), 4):
+            mapping = {j: arachne_isos[i + j] for j in range(4)}
+            transformed.append(mapping)
+        return transformed
 
-    if args.print_isos:
-        for iso in isos_as_dicts:
-            print(iso)
+    transformed_Arachne_isos = transform_arachne_isos(Arachne_isos)
 
-        print()
-        print("NetworkX:")
-        for iso in subgraph_isomorphisms:
-            print(iso)
+    def dicts_to_sorted_tuples(dicts):
+        #Convert a list of dictionaries to a list of sorted tuples.
+        return [tuple(sorted(d.items())) for d in dicts]
 
-    print ("Number of missing is ", counter)
+    def compare_isomorphisms(isos1, isos2):
+        #Compare two lists of isomorphisms and return differences.
+        tuples1 = set(dicts_to_sorted_tuples(isos1))
+        tuples2 = set(dicts_to_sorted_tuples(isos2))
 
+        if tuples1 == tuples2:
+            return True, None, None
+
+        missing_in_isos2 = tuples1 - tuples2
+        missing_in_isos1 = tuples2 - tuples1
+
+        return False, missing_in_isos2, missing_in_isos1
+
+    # Compare the two lists of isomorphisms
+    print("begining the comparision")
+    equal, missing_in_nx, missing_in_arachne = compare_isomorphisms(nx_isomorphisms, transformed_Arachne_isos)
+
+    if equal:
+        print("Isomorphisms are equal")
+    else:
+        print("Isomorphisms are not equal")
+        if missing_in_nx:
+            print("Missing in transformed_Arachne_isos:", missing_in_nx)
+        if missing_in_arachne:
+            print("Missing in nx_isomorphisms:", missing_in_arachne)
+        
     ak.shutdown()
