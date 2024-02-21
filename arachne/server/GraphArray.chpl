@@ -160,11 +160,11 @@ module GraphArray {
             // TODO: Somehow once the array is stored in the symbol table, all replicands
             //       disappear.
             coforall loc in Locales do on loc {
-                this.a.replicand(Locales[loc.id]) = this.a.replicand(Locales[home]);
+                this.a = this.a.replicand(Locales[home]);
             }
-            // for loc in Locales do on loc {
-            //     writeln("this.a = ", this.a.replicand(Locales[loc.id]));
-            // }
+            for loc in Locales do on loc {
+                writeln("this.a = ", this.a.replicand(Locales[loc.id]));
+            }
         }
     }
 
