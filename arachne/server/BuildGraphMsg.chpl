@@ -63,11 +63,11 @@ module BuildGraphMsg {
                 catch {high_vertex = -1;}
 
                 coforall rloc in Locales with (ref ranges) do on rloc { 
-                    ranges[rloc.id] = (low_vertex,loc,high_vertex);
+                    ranges[loc.id] = (low_vertex,loc,high_vertex);
                 }
             }
         }
-        graph.withComp(new shared SymEntry(ranges):GenSymEntry, key2insert);
+        graph.withComp(new shared ReplicatedSymEntry(ranges):GenSymEntry, key2insert);
     }
 
     /**
@@ -101,6 +101,7 @@ module BuildGraphMsg {
         for key in msgArgs.keys() {
             if key == "EDGE_WEIGHT_SDI" || key == "EDGE_WEIGHT_RDI" then continue;
             var name = msgArgs.getValueOf(key);
+            if !st.contains(name) then continue;
             try { getGenericTypedArrayEntry(name, st); }
             catch { continue; }
             var entry = getGenericTypedArrayEntry(name, st);

@@ -41,7 +41,6 @@ module Utils {
         var locs = new list(locale);
 
         for low2lc2high in ranges {
-            writeln("low2lc2high = ", low2lc2high);
             if (val >= low2lc2high[0]) && (val <= low2lc2high[2]) {
                 locs.pushBack(low2lc2high[1]);
             }

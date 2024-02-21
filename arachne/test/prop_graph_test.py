@@ -76,10 +76,10 @@ class PropGraphTest(ArkoudaTest):
         self.assertListEqual(subgraph_nodes.nodes().to_list(), [0, 1, 3, 5, 6, 7, 8])
         self.assertListEqual(subgraph_edges.nodes().to_list(), [1, 3, 5, 6, 8])
         self.assertListEqual(subgraph_together.nodes().to_list(), [1, 6])
-    
+
     def test_prop_graph_and_networkx_graph_equality(self):
         prop_graph, nx_graph = self.build_prop_graph_and_networkx()
-        
+
         # 1. Check number of nodes
         self.assertEqual(len(prop_graph.nodes()), nx_graph.number_of_nodes())
 

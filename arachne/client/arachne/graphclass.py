@@ -140,7 +140,7 @@ class Graph:
                        input_dst:pdarray,
                        input_weight:Union[None,pdarray] = None,
                        no_self_loops:bool = False,
-                       generate_reversed_arrays:bool = True) -> None:
+                       generate_reversed_arrays:bool = False) -> None:
         """
         Populates the graph with edges and vertices from the given input Arkouda arrays. Lets
         weights also be declared.

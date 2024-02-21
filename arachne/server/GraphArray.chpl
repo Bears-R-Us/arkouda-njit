@@ -3,6 +3,7 @@ module GraphArray {
     use Map;
     use Reflection;
     use Utils;
+    use ReplicatedDist;
     
     // Arkouda modules.
     use Logging;
@@ -145,6 +146,28 @@ module GraphArray {
         }
     }
 
+    class ReplicatedSymEntry : GenSymEntry {
+        type etype;
+        var rD = {0..0} dmapped replicatedDist();
+        var a: [rD] etype;
+
+        proc init(in replicated_array: [?replicated_domain] ?etype) {
+            super.init(etype);
+            this.etype = etype;
+            this.rD = replicated_domain;
+            this.a = replicated_array;
+            var home = here.id;
+            // TODO: Somehow once the array is stored in the symbol table, all replicands
+            //       disappear.
+            coforall loc in Locales do on loc {
+                this.a.replicand(Locales[loc.id]) = this.a.replicand(Locales[home]);
+            }
+            // for loc in Locales do on loc {
+            //     writeln("this.a = ", this.a.replicand(Locales[loc.id]));
+            // }
+        }
+    }
+
     class MapSymEntry : GenSymEntry {
         type left;
         type right;
@@ -168,6 +191,10 @@ module GraphArray {
 
     proc toSparseSymEntry(e) {
         return try! e : borrowed SparseSymEntry();
+    }
+
+    proc toReplicatedSymEntry(e) {
+        return try! e : borrowed ReplicatedSymEntry();
     }
 
     /**

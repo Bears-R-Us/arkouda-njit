@@ -83,7 +83,14 @@ module BreadthFirstSearch {
         var src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
         var dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
         var seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
-        var ranges = toSymEntry(graph.getComp("RANGES_SDI"), (int,locale,int)).a;
+        var ranges = ((graph.getComp("RANGES_SDI")):borrowed ReplicatedSymEntry((int,locale,int))).a;
+
+        // NOTE: Workaround for ranges disappearing for all locales except home.
+        // TODO: Find a fix for this.
+        var home = here.id;
+        coforall loc in Locales do on loc {
+            ranges = ranges.replicand(Locales[home]);
+        }
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, ranges) {
@@ -91,17 +98,6 @@ module BreadthFirstSearch {
         }
         var cur_level = 0;
         depth[root] = cur_level;
-
-        writeln(src);
-        writeln(dst);
-        writeln(seg);
-        writeln(ranges);
-        writeln(frontier_sets);
-        writeln(numLocales);
-
-        for loc in Locales do on loc {
-            writeln(src[src.localSubdomain().low..src.localSubdomain().high]);
-        }
 
         while true { 
             var pending_work:bool;
@@ -125,7 +121,6 @@ module BreadthFirstSearch {
                                     pending_work = true;
                                     depth[v] = cur_level + 1;
                                     var locs = find_locs(v, ranges);
-                                    writeln("for ", v, " found locs were ", locs);
                                     for lc in locs do frontier_agg.copy(lc.id, v);
                                 }
                             }
