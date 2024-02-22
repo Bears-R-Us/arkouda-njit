@@ -278,6 +278,7 @@ module SubgraphIsomorphism {
                 writeln("There is an out of range ", IsoArrtemp[i]);
             }
         }
+        
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
         
         writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
