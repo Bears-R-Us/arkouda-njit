@@ -95,7 +95,7 @@ class ClassTest(ArkoudaTest):
         self.assertEqual(ar_tuple_uw, nx_tuple_uw)
         self.assertEqual(ar_tuple_dw, nx_tuple_dw)
 
-       # Test to ensure no self-loops when using associated paramater
+        #Tests to ensure no self-loops when using associated paramater
         ar_graph_weighted_no_loops,ar_digraph_weighted_no_loops = self.build_undirected_graph_no_loops()
         V,U = ar_graph_weighted_no_loops.edges()
         has_loops = (V == U).any()
