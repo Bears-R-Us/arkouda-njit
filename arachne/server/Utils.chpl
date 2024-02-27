@@ -37,20 +37,16 @@ module Utils {
     * val: value for which we want to find the locale that owns it. 
     * 
     * returns: array of the locale names. */
-    proc find_locs(val:int, graph:SegGraph) throws {
-        var ranges = toSymEntry(graph.getComp("RANGES"), (int,locale)).a;
+    proc find_locs(val:int, ranges) throws {
         var locs = new list(locale);
-        for i in 1..numLocales - 1 {
-            if (val >= ranges[i-1][0] && val <= ranges[i][0]) {
-                locs.pushBack(ranges[i-1][1]);
-            }
-            if (i == numLocales - 1) {
-                if val >= ranges[i][0] {
-                    locs.pushBack(ranges[i][1]);
-                }
+
+        for low2lc2high in ranges {
+            if (val >= low2lc2high[0]) && (val <= low2lc2high[2]) {
+                locs.pushBack(low2lc2high[1]);
             }
         }
-        return locs.toArray();
+
+        return locs;
     }
 
     /**

@@ -18,6 +18,7 @@ module BuildGraphMsg {
     // Arkouda modules.
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
+    use NumPyDType;
     use ServerConfig;
     use ServerErrors;
     use ServerErrorStrings;
@@ -32,6 +33,43 @@ module BuildGraphMsg {
     const bgmLogger = new Logger(logLevel, logChannel);
     var outMsg:string;
 
+    /** Helper function to insert a component.*/
+    proc insertComponent(graph, etype, entry, key) throws {
+        select etype {
+            when DType.Int64 {
+                var array = toSymEntry(entry, int).a;
+                graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+            }
+            when DType.UInt64 {
+                var array = toSymEntry(entry, uint).a : int;
+                graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+            }
+        }
+    }
+
+    /** Create array that keeps track of low vertex in each edges array on each locale.*/
+    proc generateRanges(graph, key, key2insert, ref array) throws {
+        var D_sbdmn = {0..numLocales-1} dmapped replicatedDist();
+        var ranges : [D_sbdmn] (int,locale,int);
+
+        // Write the local subdomain low value to the ranges array.
+        coforall loc in Locales with (ref ranges) {
+            on loc {
+                var low_vertex:int;
+                var high_vertex:int;
+                try {low_vertex = array[array.localSubdomain().low]:int;}
+                catch {low_vertex = -1;}
+                try {high_vertex = array[array.localSubdomain().high]:int;}
+                catch {high_vertex = -1;}
+
+                coforall rloc in Locales with (ref ranges) do on rloc { 
+                    ranges[loc.id] = (low_vertex,loc,high_vertex);
+                }
+            }
+        }
+        graph.withComp(new shared ReplicatedSymEntry(ranges):GenSymEntry, key2insert);
+    }
+
     /**
     * Convert akarrays to a graph object. 
     *
@@ -41,293 +79,132 @@ module BuildGraphMsg {
     *
     * returns: message back to Python.
     */
-    proc addEdgesFromMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc insertComponentsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
-        
-        // Parse the message from the Python front-end.
-        var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
-        var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
-        var akarray_segS = msgArgs.getValueOf("AkArraySeg");
-        var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
-        var akarray_weightS = msgArgs.getValueOf("AkArrayWeight");
-        var weightedS = msgArgs.getValueOf("Weighted");
-        var directedS = msgArgs.getValueOf("Directed");
-        var num_verticesS = msgArgs.getValueOf("NumVertices");
-        var num_edgesS = msgArgs.getValueOf("NumEdges");
 
-        var propertied:bool;
-        if msgArgs.contains("IsPropGraph") then propertied = true;
-
-        var multied:bool;
-        if msgArgs.contains("Multied") then multied = true;
-
-        // Extract the names of the arrays and the data for the non-array variables.
-        var src_name:string = (akarray_srcS:string);
-        var dst_name:string = (akarray_dstS:string);
-        var vmap_name:string = (akarray_vmapS:string);
-        var seg_name:string = (akarray_segS:string);
-        var weight_name:string = (akarray_weightS:string);
-
-        var weighted:bool;
-        weightedS = weightedS.toLower();
-        weighted = weightedS:bool;
-
-        var directed:bool;
-        directedS = directedS.toLower();
-        directed = directedS:bool;
-
-        var num_vertices:int;
-        num_vertices = num_verticesS:int;
-
-        var num_edges:int;
-        num_edges = num_edgesS:int;
-
-        // Timer for populating the graph data structure. 
         var timer:stopwatch;
         timer.start();
 
-        // Get the symbol table entries for the edge, weight, and node map arrays.
-        var akarray_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var akarray_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var akarray_vmap_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vmap_name, st);
-        var akarray_seg_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(seg_name, st);
-        var akarray_weight_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(weight_name, st);
+        var weighted = if msgArgs.contains("Weighted") 
+                       then (msgArgs.getValueOf("Weighted").toLower()):bool else false;
+        var directed = if msgArgs.contains("Directed")
+                       then (msgArgs.getValueOf("Directed").toLower()):bool else false;
+        var num_vertices = if msgArgs.contains("NumVertices") 
+                           then (msgArgs.getValueOf("NumVertices")):int else 0;
+        var num_edges = if msgArgs.contains("NumEdges")
+                        then (msgArgs.getValueOf("NumEdges")):int else 0;
+  
+        var graph = if !msgArgs.contains("GraphName") 
+                    then new shared SegGraph(num_vertices, num_edges, directed, weighted)
+                    else getGraphSymEntry(msgArgs.getValueOf("GraphName"), st).graph;
 
-        // Extract the data for use. 
-        var akarray_src_sym = toSymEntry(akarray_src_entry, int);
-        var src = akarray_src_sym.a;
+        for key in msgArgs.keys() {
+            if key == "EDGE_WEIGHT_SDI" || key == "EDGE_WEIGHT_RDI" then continue;
+            var name = msgArgs.getValueOf(key);
+            if !st.contains(name) then continue;
+            try { getGenericTypedArrayEntry(name, st); }
+            catch { continue; }
+            var entry = getGenericTypedArrayEntry(name, st);
+            var etype = entry.dtype;
+            if key == "START_IDX_RDI" || key == "START_IDX_R_RDI" {
+                var array = toSymEntry(entry, int).a;
+                graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                continue;
+            }
+            if !(etype == DType.Int64 || etype == DType.UInt64) {
+                var errorMsg = notImplementedError(pn,key+" cannot be type "+dtype2str(etype));
+                bgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+                return new MsgTuple(errorMsg, MsgType.ERROR);
+            }
+            select key {
+                when "SRC_SDI" { 
+                    insertComponent(graph, etype, entry, key);
+                    generateRanges(graph, key, "RANGES_SDI", toSymEntry(graph.getComp("SRC_SDI"),int).a);
+                }
+                when "DST_SDI" { insertComponent(graph, etype, entry, key); }
+                when "SEGMENTS_SDI" { insertComponent(graph, etype, entry, key); }
+                when "SRC_R_SDI" { 
+                    insertComponent(graph, etype, entry, key);
+                    generateRanges(graph, key, "RANGES_R_SDI", toSymEntry(graph.getComp("SRC_R_SDI"),int).a);
+                }
+                when "DST_R_SDI" { insertComponent(graph, etype, entry, key); }
+                when "SEGMENTS_R_SDI" { insertComponent(graph, etype, entry, key); }
+                when "VERTEX_MAP_SDI" { insertComponent(graph, etype, entry, key); }
+                when "SRC_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    generateRanges(graph, key, "RANGES_RDI", toSymEntry(graph.getComp("SRC_RDI"),int).a);
+                }
+                when "DST_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                }
+                when "SRC_R_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    generateRanges(graph, key, "RANGES_R_RDI", toSymEntry(graph.getComp("SRC_R_RDI"),int).a);
+                }
+                when "DST_R_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                }
+                when "NEIGHBOR_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                }
+                when "NEIGHBOR_R_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                }
+                when "VERTEX_MAP_RDI" { 
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                }
+            }
+        }
 
-        var akarray_dst_sym = toSymEntry(akarray_dst_entry, int);
-        var dst = akarray_dst_sym.a;
-
-        var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
-        var vmap = akarray_vmap_sym.a;
-
-        var akarray_seg_sym = toSymEntry(akarray_seg_entry, int);
-        var segments = akarray_seg_sym.a;
-
-        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied, multied);
-        graph.multied = multied;
-        graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
-            .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
-            .withComp(new shared SymEntry(segments):GenSymEntry, "SEGMENTS")
-            .withComp(new shared SymEntry(vmap):GenSymEntry, "VERTEX_MAP");
-
-        if weighted {
-            select akarray_weight_entry.dtype {
+        if graph.isWeighted() {
+            var key = if msgArgs.contains("EDGE_WEIGHT_SDI") then "EDGE_WEIGHT_SDI" 
+                      else "EDGE_WEIGHT_RDI";
+            var name = msgArgs.getValueOf(key);
+            var entry = getGenericTypedArrayEntry(name, st);
+            var etype = entry.dtype;
+            select etype {
                 when DType.Int64 {
-                    var akarray_weight_sym = toSymEntry(akarray_weight_entry, int);
-                    var e_weight = akarray_weight_sym.a;
-                    graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+                    var array = toSymEntry(entry, int).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
                 }
                 when DType.UInt64 {
-                    var akarray_weight_sym = toSymEntry(akarray_weight_entry, uint);
-                    var e_weight = akarray_weight_sym.a;
-                    graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+                    var array = toSymEntry(entry, uint).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
                 }
                 when DType.Float64 {
-                    var akarray_weight_sym = toSymEntry(akarray_weight_entry, real);
-                    var e_weight = akarray_weight_sym.a;
-                    graph.withComp(new shared SymEntry(e_weight):GenSymEntry, "EDGE_WEIGHT");
+                    var array = toSymEntry(entry, real).a;
+                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
                 }
                 otherwise {
-                    var errorMsg = notImplementedError(pn, akarray_weight_entry.dtype);
+                    var errorMsg = notImplementedError(pn,key+" cannot be type "+dtype2str(etype));
                     bgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
                     return new MsgTuple(errorMsg, MsgType.ERROR);
                 }
             }
         }
 
-        var akarray_srcRS, akarray_dstRS, akarray_segRS:string;
-        if directed {
-            akarray_srcRS = msgArgs.getValueOf("AkArraySrcR");
-            akarray_dstRS = msgArgs.getValueOf("AkArrayDstR");
-            akarray_segRS = msgArgs.getValueOf("AkArraySegR");
-
-            var akarray_srcR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(akarray_srcRS, st);
-            var akarray_dstR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(akarray_dstRS, st);
-            var akarray_segR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(akarray_segRS, st);
-
-            var akarray_srcR_sym = toSymEntry(akarray_srcR_entry,int);
-            var srcR = akarray_srcR_sym.a;
-
-            var akarray_dstR_sym = toSymEntry(akarray_dstR_entry,int);
-            var dstR = akarray_dstR_sym.a;
-
-            var akarray_segR_sym = toSymEntry(akarray_segR_entry, int);
-            var segmentsR = akarray_segR_sym.a;
-
-            graph.withComp(new shared SymEntry(srcR):GenSymEntry, "SRC_R")
-                .withComp(new shared SymEntry(dstR):GenSymEntry, "DST_R")
-                .withComp(new shared SymEntry(segmentsR):GenSymEntry, "SEGMENTS_R");
-        }
-
-        // Create the ranges array that keeps track of the vertices the edge arrays store on each
-        // locale.
-        var D_sbdmn = {0..numLocales-1} dmapped replicatedDist();
-        var ranges : [D_sbdmn] (int,locale);
-
-        // Write the local subdomain low value to the ranges array.
-        coforall loc in Locales with (ref ranges) {
-            on loc {
-                var low_vertex:int;
-                try {low_vertex = src[src.localSubdomain().low];}
-                catch {low_vertex = -1;}
-
-                coforall rloc in Locales with (ref ranges) do on rloc { 
-                    ranges[loc.id] = (low_vertex,loc);
-                }
-            }
-        }
-        graph.withComp(new shared SymEntry(ranges):GenSymEntry, "RANGES");
-
-        // Add graph to the specific symbol table entry. 
+        // Add graph to a specific symbol table entry.
         var graphEntryName = st.nextName();
         var graphSymEntry = new shared GraphSymEntry(graph);
         st.addEntry(graphEntryName, graphSymEntry);
         var repMsg = graphEntryName;
-        
-        // Print out the length of time it takes to read in and build a known graph file.
+        outMsg = "Inserting components took " + timer.elapsed():string + " sec";
         timer.stop();
-        outMsg = "Building graph from two edge arrays took " + timer.elapsed():string + " sec";
         
         // Print out debug information to arkouda server output. 
         bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of addEdgesFromMsg
 
-    /**
-    * Convert akarrays to a graph object so it can be compatible with functionality that used the
-    * original graph data structure.
-    *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
-    *
-    * returns: message back to Python.
-    */
-    proc addEdgesFromCompatMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-        param pn = Reflection.getRoutineName();
-        
-        // Parse the message from the Python front-end.
-        var akarray_srcS = msgArgs.getValueOf("AkArraySrc");
-        var akarray_dstS = msgArgs.getValueOf("AkArrayDst");
-        var akarray_srcRS = msgArgs.getValueOf("AkArraySrcR");
-        var akarray_dstRS = msgArgs.getValueOf("AkArrayDstR");
-        var akarray_neiS = msgArgs.getValueOf("AkArrayNei");
-        var akarray_neiRS = msgArgs.getValueOf("AkArrayNeiR");
-        var akarray_start_iS = msgArgs.getValueOf("AkArrayStartIdx");
-        var akarray_start_iRS = msgArgs.getValueOf("AkArrayStartIdxR");
-        var akarray_vmapS = msgArgs.getValueOf("AkArrayVmap");
-        var weightedS = msgArgs.getValueOf("Weighted");
-        var directedS = msgArgs.getValueOf("Directed");
-        var num_verticesS = msgArgs.getValueOf("NumVertices");
-        var num_edgesS = msgArgs.getValueOf("NumEdges");
-
-        var propertied:bool;
-        if msgArgs.contains("IsPropGraph") then propertied = true;
-
-        var multied:bool;
-        if msgArgs.contains("Multied") then multied = true;
-
-        // Extract the names of the arrays and the data for the non-array variables.
-        var src_name:string = (akarray_srcS:string);
-        var dst_name:string = (akarray_dstS:string);
-        var srcR_name:string = (akarray_srcRS:string);
-        var dstR_name:string = (akarray_dstRS:string);
-        var nei_name:string = (akarray_neiS:string);
-        var neiR_name:string = (akarray_neiRS:string);
-        var start_i_name:string = (akarray_start_iS:string);
-        var start_iR_name:string = (akarray_start_iRS:string);
-        var vmap_name:string = (akarray_vmapS:string);
-
-        var weighted:bool;
-        weightedS = weightedS.toLower();
-        weighted = weightedS:bool;
-
-        var directed:bool;
-        directedS = directedS.toLower();
-        directed = directedS:bool;
-
-        var num_vertices:int;
-        num_vertices = num_verticesS:int;
-
-        var num_edges:int;
-        num_edges = num_edgesS:int;
-
-        // Timer for populating the graph data structure. 
-        var timer:stopwatch;
-        timer.start();
-
-        // Get the symbol table entries for the edge, weight, and node map arrays.
-        var akarray_src_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(src_name, st);
-        var akarray_dst_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dst_name, st);
-        var akarray_srcR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(srcR_name, st);
-        var akarray_dstR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(dstR_name, st);
-        var akarray_nei_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(nei_name, st);
-        var akarray_neiR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(neiR_name, st);
-        var akarray_start_i_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(start_i_name, st);
-        var akarray_start_iR_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(start_iR_name, st);
-        var akarray_vmap_entry: borrowed GenSymEntry = getGenericTypedArrayEntry(vmap_name, st);
-
-        // Extract the data for use. 
-        var akarray_src_sym = toSymEntry(akarray_src_entry,int);
-        var src = akarray_src_sym.a;
-
-        var akarray_dst_sym = toSymEntry(akarray_dst_entry,int);
-        var dst = akarray_dst_sym.a;
-
-        var akarray_srcR_sym = toSymEntry(akarray_srcR_entry,int);
-        var srcR = akarray_srcR_sym.a;
-
-        var akarray_dstR_sym = toSymEntry(akarray_dstR_entry,int);
-        var dstR = akarray_dstR_sym.a;
-
-        var akarray_nei_sym = toSymEntry(akarray_nei_entry,int);
-        var nei = akarray_nei_sym.a;
-
-        var akarray_neiR_sym = toSymEntry(akarray_neiR_entry,int);
-        var neiR = akarray_neiR_sym.a;
-
-        var akarray_start_i_sym = toSymEntry(akarray_start_i_entry,int);
-        var start_i = akarray_start_i_sym.a;
-
-        var akarray_start_iR_sym = toSymEntry(akarray_start_iR_entry,int);
-        var start_iR = akarray_start_iR_sym.a;
-
-        var akarray_vmap_sym = toSymEntry(akarray_vmap_entry, int);
-        var vmap = akarray_vmap_sym.a;
-
-        var graph = new shared SegGraph(num_vertices, num_edges, directed, weighted, propertied, multied);
-        graph.reversed = true;
-        graph.withComp(new shared SymEntry(src):GenSymEntry, "SRC")
-            .withComp(new shared SymEntry(dst):GenSymEntry, "DST")
-            .withComp(new shared SymEntry(srcR):GenSymEntry, "SRC_R")
-            .withComp(new shared SymEntry(dstR):GenSymEntry, "DST_R")
-            .withComp(new shared SymEntry(nei):GenSymEntry, "NEIGHBOR")
-            .withComp(new shared SymEntry(neiR):GenSymEntry, "NEIGHBOR_R")
-            .withComp(new shared SymEntry(start_i):GenSymEntry, "START_IDX")
-            .withComp(new shared SymEntry(start_iR):GenSymEntry, "START_IDX_R")
-            .withComp(new shared SymEntry(vmap):GenSymEntry, "VERTEX_MAP");
-
-        // Add graph to the specific symbol table entry. 
-        var graphEntryName = st.nextName();
-        var graphSymEntry = new shared GraphSymEntry(graph);
-        st.addEntry(graphEntryName, graphSymEntry);
-        var repMsg = graphEntryName;
-        
-        // Print out the length of time it takes to read in and build a known graph file.
-        timer.stop();
-        outMsg = "Building graph from two edge arrays COMPAT took " + timer.elapsed():string + " sec";
-        
-        // Print out debug information to arkouda server output. 
-        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        bgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-
-        return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of addEdgesFromCompatMsg
+    }
 
     /**
     * Read in a matrix market file to pdarrays to eventually build a graph.
@@ -351,12 +228,11 @@ module BuildGraphMsg {
         directed = (directedS:bool);
 
         // Check to see if the file can be opened correctly. 
-        try {
-            var f = open(path, ioMode.r);
-            f.close();
-        } catch {
-            bgmLogger.error(getModuleName(),getRoutineName(),getLineNumber(), "Error opening file.");
-        }
+        try { var f = open(path, ioMode.r); f.close(); } 
+        catch { bgmLogger.error(    getModuleName(),
+                                    getRoutineName(),
+                                    getLineNumber(), 
+                                    "Error opening file."); }
     
         // Start parsing through the file.
         var f = open(path, ioMode.r);
@@ -366,9 +242,7 @@ module BuildGraphMsg {
 
         // Prase through the matrix market file header to get number of rows, columns, and entries.
         while (r.readLine(line)) {
-            if (line[0] == "%") {
-                continue;
-            }
+            if (line[0] == "%") then continue;
             else {
                 var temp = line.split();
                 a = temp[0];
@@ -436,19 +310,13 @@ module BuildGraphMsg {
 
         // Write the reply message back to Python. 
         var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
-        if weighted {
-            repMsg += "+ created " + st.attrib(wgt_name);
-        } else {
-            repMsg += "+ nil";
-        }
+        if weighted then repMsg += "+ created " + st.attrib(wgt_name);
+        else repMsg += "+ nil";
         
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readMatrixMarketFileMsg
 
-
-
     use CommandMap;
-    registerFunction("addEdgesFrom", addEdgesFromMsg, getModuleName());
-    registerFunction("addEdgesFromCompat", addEdgesFromCompatMsg, getModuleName());
+    registerFunction("insertComponents", insertComponentsMsg, getModuleName());
     registerFunction("readMatrixMarketFile", readMatrixMarketFileMsg, getModuleName());
 }
