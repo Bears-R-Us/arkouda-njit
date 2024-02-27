@@ -52,6 +52,25 @@ class ClassTest(ArkoudaTest):
         nx_di_graph_weighted.add_weighted_edges_from(ebunchw)
 
         return ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted
+    
+    def build_undirected_graph_no_loops(self):
+        src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
+        dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
+        wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
+        src = ak.array(src_list)
+        dst = ak.array(dst_list)
+        wgt = ak.array(wgt_list)
+
+        ar_graph_weighted = ar.Graph()
+        ar_graph_weighted.add_edges_from(src,dst,wgt,no_self_loops = True)
+
+        ar_digraph_weighted = ar.DiGraph()
+        ar_digraph_weighted.add_edges_from(src,dst,wgt,no_self_loops = True)
+
+
+        return ar_graph_weighted,ar_digraph_weighted
+        
+
 
     def test_add_edges_from(self):
         """Testing adding edges to undirected and directed graphs."""
@@ -75,6 +94,21 @@ class ClassTest(ArkoudaTest):
         self.assertEqual(ar_tuple_d, nx_tuple_d)
         self.assertEqual(ar_tuple_uw, nx_tuple_uw)
         self.assertEqual(ar_tuple_dw, nx_tuple_dw)
+
+        # Test to ensure no self-loops when using associated paramater
+        ar_graph_weighted_no_loops,ar_digraph_weighted_no_loops = self.build_undirected_graph_no_loops()
+        V,U = ar_graph_weighted_no_loops.edges()
+        has_loops = (V == U).any()
+        self.assertEqual(has_loops,False)
+
+        ar_digraph_weighted_no_loops
+        V,U = ar_graph_weighted_no_loops.edges()
+        has_loops = (V == U).any()
+        self.assertEqual(has_loops,False)
+
+
+        
+
 
     def test_nodes_and_edges(self):
         """Testing returning all the nodes and edges for a graph."""
