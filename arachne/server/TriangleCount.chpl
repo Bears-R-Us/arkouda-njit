@@ -15,9 +15,9 @@ module TriangleCount {
     * :returns: int
     */
     proc minimum_search_triangle_count_kernel(graph: borrowed SegGraph): int throws {
-	    ref src = toSymEntry(graph.getComp("SRC"), int).a;
-        ref dst = toSymEntry(graph.getComp("DST"), int).a;
-        ref seg = toSymEntry(graph.getComp("SEGMENTS"), int).a;
+	    ref src = toSymEntry(graph.getComp("SRC_SDI"), int).a;
+        ref dst = toSymEntry(graph.getComp("DST_SDI"), int).a;
+        ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"), int).a;
         var triCount:int = 0;
         forall i in src.domain with (+ reduce triCount) { 
             var u = src[i];
@@ -49,9 +49,9 @@ module TriangleCount {
     } // end of minimum_search_triangle_count_kernel
 
     proc minimum_search_triangle_count_per_vertex(graph: borrowed SegGraph, vertex:int) throws {
-      	ref src = toSymEntry(graph.getComp("SRC"), int).a;
-        ref dst = toSymEntry(graph.getComp("DST"), int).a;
-        ref seg = toSymEntry(graph.getComp("SEGMENTS"), int).a;
+      	ref src = toSymEntry(graph.getComp("SRC_SDI"), int).a;
+        ref dst = toSymEntry(graph.getComp("DST_SDI"), int).a;
+        ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"), int).a;
         var triCount:int = 0;
         var start = seg[vertex];
         var end = seg[vertex+1];

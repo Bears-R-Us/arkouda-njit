@@ -1,7 +1,7 @@
 """Contains the graph class defintion for `PropGraph`."""
 
 from __future__ import annotations
-from typing import List, Dict
+from typing import List, Dict, Tuple, Union
 
 import arachne as ar
 import arkouda as ak
@@ -171,7 +171,7 @@ class PropGraph(ar.DiGraph):
     def load_node_attributes(self,
                              node_attributes:ak.DataFrame,
                              node_column:str,
-                             label_columns:List[str]|None = None) -> None:
+                             label_columns:Union[List[str],None] = None) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Node
         properties are different from node labels where labels just extra identifiers for nodes.
         On the other hand, properties are key-value pairs more akin to storing the columns of a 
@@ -329,7 +329,7 @@ class PropGraph(ar.DiGraph):
                              edge_attributes:ak.DataFrame,
                              source_column:str,
                              destination_column:str,
-                             relationship_columns:List[str]|None = None) -> None:
+                             relationship_columns:Union[List[str]|None] = None) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Edge
         properties are different from edge relationships where relationships are used to tell apart
         multiple edges. On the other hand, properties are key-value pairs more akin to storing the 
@@ -410,15 +410,19 @@ class PropGraph(ar.DiGraph):
                  "InputIndicesName" : internal_indices.name
                }
         ak.generic_msg(cmd=cmd, args=args)
+        ak.generic_msg(cmd=cmd, args=args)
 
-    def get_node_labels(self) -> ak.Strings | ak.pdarray:
-        """Returns the `pdarray` or `Strings` object holding the nodel labels of the `PropGraph`
-        object. If return is -1 then no node labels found.
+    def get_node_labels(self) -> ak.DataFrame:
+        """Returns a a dataframe with the nodes and their labels.
 
         Returns
         -------
-        `ak.Strings` | `ak.pdarray` | `int`
-            The node labels of the property graph. If return is -1 then no node labels found.
+        `ak.DataFrame``
+            The node labels of the property graph.
+        
+        Raises
+        ------
+        KeyError
         """
         labels = None
         try:
@@ -441,15 +445,13 @@ class PropGraph(ar.DiGraph):
         """
         return self.node_attributes
 
-    def get_edge_relationships(self) -> ak.Strings | ak.pdarray:
-        """Returns the `pdarray` or `Strings` object holding the edge relationships of the 
-        `PropGraph` object. If return is -1 then no edge relationships found.
+    def get_edge_relationships(self) -> ak.DataFrame:
+        """Returns a a dataframe with the edges and their relationships.
 
         Returns
         -------
-        `ak.Strings` | `ak.pdarray` | `int`
-            The edge relationships of the property graph. If return is -1 then no edge relationships 
-            found.
+        `ak.DataFrame`
+            The edge relationships of the property graph.
         """
         relationships = None
         try:
@@ -474,7 +476,7 @@ class PropGraph(ar.DiGraph):
 
     def filter_edges(self,
                      node_types: Dict,
-                     edge_types: Dict) -> tuple[ak.pdarray, ak.pdarray]:
+                     edge_types: Dict) -> Tuple[ak.pdarray, ak.pdarray]:
         """Given two dictionaries specifying the node and edge types to search for, it returns all 
         all edges with the matching types.
 

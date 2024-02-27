@@ -43,8 +43,8 @@ module GraphInfoMsg {
         // Extract the edge arrays.
         var timer:stopwatch;
         timer.start();
-        var src = toSymEntry(ag.getComp("SRC"), int).a;
-        var dst = toSymEntry(ag.getComp("DST"), int).a;
+        var src = toSymEntry(ag.getComp("SRC_SDI"), int).a;
+        var dst = toSymEntry(ag.getComp("DST_SDI"), int).a;
 
         // Add new copies of each to the symbol table.
         var repMsg = "";
@@ -86,7 +86,7 @@ module GraphInfoMsg {
         // Extract the edge arrays.
         var timer:stopwatch;
         timer.start();
-        var nodes = toSymEntry(ag.getComp("VERTEX_MAP"), int).a;
+        var nodes = toSymEntry(ag.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Add new copies of each to the symbol table.
         var repMsg = "";

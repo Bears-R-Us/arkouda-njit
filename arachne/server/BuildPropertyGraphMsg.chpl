@@ -66,7 +66,7 @@ module BuildPropertyGraphMsg {
         
         // Extract the vertex domain for the graph, the domain also represents the internal
         // representations of the vertices of the graph.
-        var vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
+        var vertexMap = toSymEntry(graph.getComp("VERTEX_MAP_SDI"), int).a;
         var vertexDomain = vertexMap.domain;
 
         // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
@@ -150,7 +150,7 @@ module BuildPropertyGraphMsg {
 
         // Extract the vertex domain for the graph, the domain also represents the internal
         // representations of the vertices of the graph.
-        var vertexMap = toSymEntry(graph.getComp("VERTEX_MAP"), int).a;
+        var vertexMap = toSymEntry(graph.getComp("VERTEX_MAP_SDI"), int).a;
         var vertexDomain = vertexMap.domain;
         
         // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
@@ -185,7 +185,7 @@ module BuildPropertyGraphMsg {
         timer.stop();
 
         // Add the component for the vertex properties for the graph.
-        graph.withComp(new shared MapSymEntry(vertexProps):GenSymEntry, "VERTEX_PROPS");
+        graph.withComp(new shared MapSymEntry(vertexProps):GenSymEntry, "VERTEX_PROPERTIES");
         timer.stop();
         outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
         
@@ -236,7 +236,7 @@ module BuildPropertyGraphMsg {
         
         // Extract the edge domain for the graph, the domain represents the internal index
         // representations of the edges of the graph.
-        var src = toSymEntry(graph.getComp("SRC"), int).a;
+        var src = toSymEntry(graph.getComp("SRC_SDI"), int).a;
         var edgeDomain = src.domain;
 
         // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
@@ -321,7 +321,7 @@ module BuildPropertyGraphMsg {
 
         // Extract the edge domain for the graph, the domain represents the internal index
         // representations of the edges of the graph.
-        var src = toSymEntry(graph.getComp("SRC"), int).a;
+        var src = toSymEntry(graph.getComp("SRC_SDI"), int).a;
         var edgeDomain = src.domain;
 
         // Ensure input indices begin at 0 and end at n-1 and all values within are consecutive, 
@@ -356,7 +356,7 @@ module BuildPropertyGraphMsg {
         timer.stop();
 
         // Add the component for the edge properties for the graph.
-        graph.withComp(new shared MapSymEntry(edgeProps):GenSymEntry, "EDGE_PROPS");
+        graph.withComp(new shared MapSymEntry(edgeProps):GenSymEntry, "EDGE_PROPERTIES");
         timer.stop();
         outMsg = "addEdgeProperties took " + timer.elapsed():string + " sec ";
         
