@@ -46,14 +46,14 @@ module ConnectedComponents {
       var executime:real;
       var ORDERH:int = 512;
       const LargeScale=1000000;
-      var src = toSymEntry(graph.getComp("SRC"),int).a;
-      var dst = toSymEntry(graph.getComp("DST"),int).a;
-      var srcR = toSymEntry(graph.getComp("SRC_R"),int).a;
-      var dstR = toSymEntry(graph.getComp("DST_R"),int).a;
-      var start_i = toSymEntry(graph.getComp("START_IDX"),int).a;
-      var start_iR = toSymEntry(graph.getComp("START_IDX_R"),int).a;
-      var nei = toSymEntry(graph.getComp("NEIGHBOR"),int).a;
-      var neiR = toSymEntry(graph.getComp("NEIGHBOR_R"),int).a;
+      var src = toSymEntry(graph.getComp("SRC_RDI"),int).a;
+      var dst = toSymEntry(graph.getComp("DST_RDI"),int).a;
+      var srcR = toSymEntry(graph.getComp("SRC_R_RDI"),int).a;
+      var dstR = toSymEntry(graph.getComp("DST_R_RDI"),int).a;
+      var start_i = toSymEntry(graph.getComp("START_IDX_RDI"),int).a;
+      var start_iR = toSymEntry(graph.getComp("START_IDX_R_RDI"),int).a;
+      var nei = toSymEntry(graph.getComp("NEIGHBOR_RDI"),int).a;
+      var neiR = toSymEntry(graph.getComp("NEIGHBOR_R_RDI"),int).a;
       var Ne = graph.n_edges;
 
       coforall loc in Locales {

@@ -16,7 +16,7 @@ class Graph:
     currently are only allowed to be integers. No attributes are allowed on nodes or vertices. 
     For this functionality please refer to `PropGraph`.
 
-    Edges are represented as links between nodes. 
+    Edges are represented as links between nodes.
 
     Attributes
     ----------
@@ -79,7 +79,7 @@ class Graph:
 
         return create_pdarray(returned_vals[0])
 
-    def edges(self) -> Tuple(pdarray, pdarray):
+    def edges(self) -> Tuple[pdarray, pdarray]:
         """Returns a tuple of pdarrays src and dst Use: 'G.edges()'.
 
         Returns
@@ -101,7 +101,7 @@ class Graph:
 
         return (src,dst)
 
-    def _internal_edges(self) -> Tuple(pdarray, pdarray):
+    def _internal_edges(self) -> Tuple[pdarray, pdarray]:
         """Returns a tuple of pdarrays src and dst with internal vertex names.
 
         Returns
@@ -120,7 +120,7 @@ class Graph:
         return (src,dst)
 
     def degree(self) -> pdarray:
-        """Returns the degree view for the whole graph as a pdarray. NOTE: self-loops count twice to 
+        """Returns the degree view for the whole graph as a pdarray. NOTE: self-loops count twice in 
         the degree count due to the sum of degree theorem.
 
         Returns
@@ -135,28 +135,46 @@ class Graph:
 
         return degree
 
-    def add_edges_from(self, akarray_src:pdarray, akarray_dst:pdarray,
-                       akarray_weight:Union[None,pdarray] = None) -> None:
+    def add_edges_from(self,
+                       input_src:pdarray,
+                       input_dst:pdarray,
+                       input_weight:Union[None,pdarray] = None,
+                       no_self_loops:bool = False,
+                       generate_reversed_arrays:bool = False) -> None:
         """
-        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
-        reading version. 
+        Populates the graph with edges and vertices from the given input Arkouda arrays. Lets
+        weights also be declared.
+        
+        Parameters
+        ----------
+        input_src : pdarray
+            Source vertices of the graph to be inputted.
+        input_dst : pdarray
+            Destination vertices of the graph to be inputted.
+        input_wgt : pdarray
+            Edge weights. 
+        no_self_loops : bool
+            Ignore self-loops during graph building.
+        generate_reversed_arrays : bool
+            Some algorithms such as k-truss and connected components are optimized for the reversed
+            DI data structure that requires a modified view of the edge list. NOTE: Set to on by 
+            default, must be manually turned off.
 
         Returns
         -------
         None
         """
-        cmd = "addEdgesFrom"
+        cmd = "insertComponents"
 
         ### Edge dedupping and delooping.
         # 1. Symmetrize the graph by concatenating the src to dst arrays and vice versa.
-        src = ak.concatenate([akarray_src, akarray_dst])
-        dst = ak.concatenate([akarray_dst, akarray_src])
-        num_original_edges = src.size
+        src = ak.concatenate([input_src, input_dst])
+        dst = ak.concatenate([input_dst, input_src])
 
         # 1a. Initialize and symmetrize the weights of each edge, if applicable.
         wgt = ak.array([1.0])
-        if isinstance(akarray_weight,pdarray):
-            wgt = ak.concatenate([akarray_weight, akarray_weight])
+        if isinstance(input_weight, pdarray):
+            wgt = ak.concatenate([input_weight, input_weight])
             self.weighted = 1
 
         # 2. Sort the edges and remove duplicates.
@@ -166,25 +184,20 @@ class Graph:
         if bool(self.weighted):
             wgt = gb_edges.aggregate(wgt, "sum")[1]
 
-        # 3. Calculate the number of edges that were removed. Due to symmetrization there will be
-        #    an extra copy of self-loops. If the total number of edges removed is z after
-        #    symmetrization then x of these are an extra copy of the self-loop. If there are copies
-        #    of an edge either as u~v or v~u then there will be an extra copy yielded after
-        #    symmetrizing. We will refer to the number of dedupped edges as y. They yield a total of
-        #    2y to the total number of edges removed, z. Therefore, we are solving the basic
-        #    algebraic problem of 2y + x = z where x and z are known for the graph after performing
-        #    the dedupping in the step above.
+        # 3. Calculate the number of edges for the graph.
         self_loops = src == dst
-        self_loops = ak.value_counts(self_loops)[1]
-        if self_loops.size == 1:
-            self_loops = 0 # This is our x.
+        num_edges = 0
+        if no_self_loops:
+            src = src[~self_loops]
+            dst = dst[~self_loops]
+            num_edges_after_dedup = src.size
+            num_edges = num_edges_after_dedup / 2
         else:
-            self_loops = self_loops[1]  # This is our x.
-
-        num_edges_after_dedup = src.size
-        num_removed_edges = num_original_edges - num_edges_after_dedup # This is our z.
-        num_dupped_edges = (num_removed_edges - self_loops) / 2 # This is solving for y.
-        num_edges = akarray_src.size - num_dupped_edges
+            self_loops_count = ak.value_counts(self_loops)[1]
+            self_loops_count = 0 if self_loops_count.size == 1 else self_loops_count[1]
+            num_edges_with_self_loops_and_symmetrization = src.size
+            num_symmetrized_edges = num_edges_with_self_loops_and_symmetrization - self_loops_count
+            num_edges = (num_symmetrized_edges / 2) + self_loops_count
 
         ### Vertex remapping.
         # 1. Extract the unique vertex names of the graph.
@@ -214,11 +227,11 @@ class Graph:
 
         ### Store everything in a graph object in the Chapel server.
         # 1. Store data into an Graph object in the Chapel server.
-        args = { "AkArraySrc" : src,
-                 "AkArrayDst" : dst,
-                 "AkArraySeg" : segs,
-                 "AkArrayWeight" : wgt,
-                 "AkArrayVmap" : vmap,
+        args = { "SRC_SDI" : src,
+                 "DST_SDI" : dst,
+                 "SEGMENTS_SDI" : segs,
+                 "EDGE_WEIGHT_SDI" : wgt,
+                 "VERTEX_MAP_SDI" : vmap,
                  "Directed": bool(self.directed),
                  "Weighted" : bool(self.weighted),
                  "NumVertices" : self.n_vertices,
@@ -228,38 +241,52 @@ class Graph:
         oriname = rep_msg
         self.name = oriname.strip()
 
-    def add_edges_from_compat(self, akarray_src:pdarray, akarray_dst:pdarray) -> None:
+        if generate_reversed_arrays:
+            self._generate_reversed_di(input_src,input_dst,input_weight)
+
+    def _generate_reversed_di(self,input_src:pdarray,input_dst:pdarray,input_wgt:pdarray) -> None:
         """
-        Populates the graph object with edges as defined by the akarrays. Uses an Arkouda-based
-        reading version, is here to provide compatibility with the original algorithmic 
-        implementations for triangle counting, triangle centrality, k-truss, and connected
-        components.
+        Populates the graph object with edges as defined by the input arrays. Uses an Arkouda-based
+        reading version. Is here to provide compatibility with the original algorithmic 
+        implementations for k-truss and connected components.
 
         Returns
         -------
         None
         """
-        cmd = "addEdgesFromCompat"
-        src, dst = akarray_src, akarray_dst
-        srcR, dstR = akarray_dst, akarray_src
+        cmd = "insertComponents"
+
+        ### Ensure edges are ordered where u < v to allow for duplicates of the type u-v and v-u
+        ### to be removed.
+        order = input_src < input_dst
+        src = ak.concatenate([input_src[order], input_dst[~order]])
+        dst = ak.concatenate([input_dst[order], input_src[~order]])
+        src_reversed, dst_reversed = dst, src
+
+        ### Process the weights of the graph.
+        wgt = ak.array([1.0])
+        if isinstance(input_wgt, pdarray):
+            wgt = input_wgt
+            self.weighted = 1
 
         ### Remove self-loops from both the regular arrays and the reversed arrays.
         self_loops = src == dst
         src = src[~self_loops]
         dst = dst[~self_loops]
-        srcR = srcR[~self_loops]
-        dstR = dstR[~self_loops]
+        wgt = input_wgt[~self_loops] if input_wgt is not None else ak.array([-1])
+        src_reversed = src_reversed[~self_loops]
+        dst_reversed = dst_reversed[~self_loops]
 
-        ### Remove dupllicated edges from the graph.
+        ### Remove duplicated edges from the graph.
         # 1. First, for the regular edges.
         regular_edges_gb = ak.GroupBy([src, dst])
         src = regular_edges_gb.unique_keys[0]
         dst = regular_edges_gb.unique_keys[1]
 
         # 2. Secondly, for the reversed edges.
-        reversed_edges_gb = ak.GroupBy([srcR, dstR])
-        srcR = reversed_edges_gb.unique_keys[0]
-        dstR = reversed_edges_gb.unique_keys[1]
+        reversed_edges_gb = ak.GroupBy([src_reversed, dst_reversed])
+        src_reversed = reversed_edges_gb.unique_keys[0]
+        dst_reversed = reversed_edges_gb.unique_keys[1]
 
         ### Remap the vertex names to a one-up mapping.
         # 1. Get the vertex mapping.
@@ -268,7 +295,7 @@ class Graph:
 
         # 2. Concatenate all the arrays and broadcast new values to them.
         new_vertex_range = ak.arange(vertices.size)
-        all_vertices = ak.concatenate([src,dst,srcR,dstR])
+        all_vertices = ak.concatenate([src,dst,src_reversed,dst_reversed])
         all_vertices_gb = ak.GroupBy(all_vertices)
         vmap = all_vertices_gb.unique_keys
         all_vertices = all_vertices_gb.broadcast(new_vertex_range)
@@ -276,21 +303,21 @@ class Graph:
         # 3. Extract the high ranges for each array in the big concatenated GroupBy.
         src_high = src.size
         dst_high = src_high + src.size
-        srcR_high = dst_high + src.size
-        dstR_high = srcR_high + src.size
+        src_reversed_high = dst_high + src.size
+        dst_reversed_high = src_reversed_high + src.size
 
         # 4. Extract the actual arrays with slicing.
         src = all_vertices[0:src_high]
         dst = all_vertices[src_high:dst_high]
-        srcR = all_vertices[dst_high:srcR_high]
-        dstR = all_vertices[srcR_high:dstR_high]
+        src_reversed = all_vertices[dst_high:src_reversed_high]
+        dst_reversed = all_vertices[src_reversed_high:dst_reversed_high]
 
         ### Create vertex index arrays.
         # 1. Create full arrays of the size of the vertex set.
         nei = ak.full(vmap.size, 0, int)
-        neiR = ak.full(vmap.size, 0, int)
+        nei_reversed = ak.full(vmap.size, 0, int)
         start_i = ak.full(vmap.size, -1, int)
-        start_iR = ak.full(vmap.size, -1, int)
+        start_i_reversed = ak.full(vmap.size, -1, int)
 
         # 2. Extract the neighbor count by doing a count on the number of times each vertex appears
         #    in src.
@@ -298,35 +325,32 @@ class Graph:
         gb_src_indices, gb_src_neighbors = gb_src.count()
         nei[gb_src_indices] = gb_src_neighbors
 
-        # 2a. Same as 2 but for srcR.
-        gb_srcR = ak.GroupBy(srcR)
-        gb_srcR_indices, gb_srcR_neighbors = gb_srcR.count()
-        neiR[gb_srcR_indices] = gb_srcR_neighbors
+        # 2a. Same as 2 but for src_reversed.
+        gb_src_reversed = ak.GroupBy(src_reversed)
+        gb_src_reversed_indices, gb_src_reversed_neighbors = gb_src_reversed.count()
+        nei_reversed[gb_src_reversed_indices] = gb_src_reversed_neighbors
 
-        # 3. Find where each vertex starts inside of src and srcR.
+        # 3. Find where each vertex starts inside of src and src_reversed.
         start_i = ak.find(new_vertex_range, src)
-        start_iR = ak.find(new_vertex_range, srcR)
+        start_i_reversed = ak.find(new_vertex_range, src_reversed)
 
         # 4. Extract vertex and edge number information.
-        self.n_vertices = int(vmap.size)
-        self.n_edges = int(src.size)
-        self.weighted = 0
+        # TODO: commenting out, how do we deal with different vertex and edge counts per data 
+        #       structure?
+        # self.n_vertices = int(vmap.size)
+        # self.n_edges = int(src.size)
 
         ### Store everything in a graph object in the Chapel server.
-        args = { "AkArraySrc" : src,
-                 "AkArrayDst" : dst,
-                 "AkArraySrcR" : srcR,
-                 "AkArrayDstR" : dstR,
-                 "AkArrayNei" : nei,
-                 "AkArrayNeiR" : neiR,
-                 "AkArrayStartIdx" : start_i,
-                 "AkArrayStartIdxR" : start_iR,
-                 "AkArrayVmap" : vmap,
-                 "Directed": bool(self.directed),
-                 "Weighted" : bool(self.weighted),
-                 "NumVertices" : self.n_vertices,
-                 "NumEdges" : self.n_edges }
+        args = { "SRC_RDI" : src,
+                 "DST_RDI" : dst,
+                 "SRC_R_RDI" : src_reversed,
+                 "DST_R_RDI" : dst_reversed,
+                 "NEIGHBOR_RDI" : nei,
+                 "NEIGHBOR_R_RDI" : nei_reversed,
+                 "START_IDX_RDI" : start_i,
+                 "START_IDX_R_RDI" : start_i_reversed,
+                 "VERTEX_MAP_RDI" : vmap,
+                 "EDGE_WEIGHT_RDI" : wgt,
+                 "GraphName" : self.name}
 
-        rep_msg = generic_msg(cmd=cmd, args=args)
-        oriname = rep_msg
-        self.name = oriname.strip()
+        generic_msg(cmd=cmd, args=args)
