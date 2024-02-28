@@ -8,7 +8,6 @@ module SubgraphIsomorphism {
     use Time;
     use Set;
     use Map;
-    use Sort;
 
     // Arachne modules.
     use GraphArray;
@@ -270,338 +269,26 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        //writeln("srcNodesG1 = ", srcNodesG1);
-        //writeln("dstNodesG1 = ", dstNodesG1); 
-        
-        //writeln("\nsegGraphG1 = ", segGraphG1);
-        
-        //writeln("\nsrcRG1 = ", srcRG1); 
-        //writeln("dstRG1 = ", dstRG1);
-
-        //writeln("\nsegRG1 = ", segRG1);
-        /*
-        var candidatesStru = new set((int, int), parSafe = true);
-        var timer2:stopwatch;
-        timer2.start();
-
-         
-
-        forall v in 0..<g1.n_vertices with(ref candidatesStru){
-            var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
-            var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-
-
-            if (inNeighborsg1.size >= 1) && (outNeighborsg1.size >= 2){
-                //writeln("\nCandidate found = ", v);
-                candidatesStru.add((v, 1));
-            }
-        }
-        timer2.stop();
-        writeln(" timer2 = ", timer2.elapsed());
-        */
-        //writeln("Main version which Oliver pushed to the server\n\n");
+        writeln("Main version which Oliver pushed to the server\n\n");
         var IsoArrtemp = vf2(g1, g2);
-        /*
-        //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
+        writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
         
         for i in 0..g1.n_vertices {
             if !(IsoArrtemp[i] > -1 && IsoArrtemp[i] < g1.n_vertices+1){
                 writeln("There is an out of range ", IsoArrtemp[i]);
             }
         }
-        */
+        
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
         
-        //writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
+        writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
 
         //writeln("IsoArr     = ", IsoArr);
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
-        //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
-        //writeln("\nEquality check = ",IsoArrtemp.equals(IsoArr));
-//////////////////////////RI///////////////////////////////////////////////////
-        proc SortSubGraphbyDegree():[] int throws{
-            var NodeDegree:[0..<g2.n_vertices] int = 0;
-            writeln("inNeighborsg2 dstRG2 = ", dstRG2);
-            writeln("segRG2 = ", segRG2);
-            
-            
-            writeln("\n\noutNeighborsg2 dstNodesG2 = ", dstNodesG2);
-            writeln("segGraphG2 = ", segGraphG2);
+        writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
+        writeln("\nEquality check = ",IsoArrtemp.equals(IsoArr));
 
-            for v in 0..<g2.n_vertices{
-                var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
-                var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
-                writeln("v = ", v);
-                writeln("inNeighbors = ", inNeighborsg2);
-                writeln("outNeighbors = ", outNeighborsg2);
-
-                NodeDegree[v]= inNeighborsg2.size + outNeighborsg2.size;
-            }
-
-            // Create an array of tuples (value, original index)
-            var zipped: [NodeDegree.domain] (int, int);
-
-            // Populate the zipped array
-            for i in NodeDegree.domain {
-                zipped[i] = (NodeDegree[i], i);
-            }
-            // Define a custom comparator for sorting tuples
-            record Comparator { 
-                proc compare(a: (int, int), b: (int, int)) {
-                    // Return the difference between the first elements of the tuples
-                    return b(0) - a(0);
-                }
-            }
-
-            var TupleComparator: Comparator;
-
-            // Sort the zipped array using a lambda function as the comparator
-            sort(zipped, comparator=TupleComparator);
-
-            // Extract the sorted array and the indices
-            var sortedArray: [NodeDegree.domain] int;
-            var sortedIndices: [NodeDegree.domain] int;
-            for i in NodeDegree.domain{
-                sortedArray[i] = zipped[i](0);
-                sortedIndices[i] = zipped[i](1);
-            }
-
-            // Print the results
-            writeln("Sorted array: ", sortedArray);
-            writeln("Original indices of sorted elements: ", sortedIndices);
-            return (sortedIndices);
-        }      
-        //SortSubGraphbyDegree();
-        
-        
-        proc GreatestConstraintFirst() throws {
-            var u_0: int = -1;
-            var V: set(int);
-            for i in 0..<g2.n_vertices{
-                V.add(i);
-            }    
-
-            var Visited: [0..<g2.n_vertices] bool = false; 
-            var Miu:list(int) ; 
-            var ParentMiu:list(int) ; 
-            var step: int = 0;
-            var uRank: [0..2] int;
-            var u_m: int = -1;
-
-
-            var sortedIndices = SortSubGraphbyDegree();
-
-            u_0 = sortedIndices[0]; //Vertex u0 in the subgraph is the maximum (in + out degree) 
-            writeln("u_0 = ", u_0);
-            Miu.pushBack(u_0);
-            writeln("Miu = ", Miu);
-
-            Visited(u_0) = true;
-            writeln("Visited = ", Visited);
-
-            ParentMiu.pushBack(-1);
-            uRank = (-1, -1, -1);
-
-            V.remove(u_0);
-            writeln("V after removing u_0 = ", V);
-            writeln("Begining of the while");
-            //var counter =10;
-            while(V.size > 0 ) {
-                var m = Miu.size;
-                writeln("m is = ", m);
-
-
-                for u in 0..<g2.n_vertices {
-                    var V_u_vis :int = 0;
-                    var V_u_neig :int = 0;
-                    var V_u_unvis :int = 0;
-                    
-                    writeln("\nbegingig of the for With u = ", u);
-                    var inNeighborsg2_u = dstRG2[segRG2[u]..<segRG2[u+1]];            
-                    var outNeighborsg2_u = dstNodesG2[segGraphG2[u]..<segGraphG2[u+1]];
-                    //writeln("inNeighborsg2_u = ", inNeighborsg2_u);
-                    //writeln("outNeighborsg2_u = ", outNeighborsg2_u);
-
-                    if(Visited[u] == false) {
-                       writeln("Visited = ", Visited);
-                       writeln("u = ",u," is not visited");
-                       writeln("before loop Miu = ",Miu);
-
-                        //V_{u, vis}
-                        
-                        for MiuVal in Miu {
-                            writeln("here V_{u, vis} = ", MiuVal);
-                            //writeln("inNeighborsg2_u.find(MiuVal) = ", inNeighborsg2_u.find(MiuVal));
-                            //writeln("outNeighborsg2_u .find(MiuVal) = ", outNeighborsg2_u .find(MiuVal));
-                            if inNeighborsg2_u.find(MiuVal)!= -1 || outNeighborsg2_u .find(MiuVal) != -1{
-                            V_u_vis += 1 ;
-                            writeln("V_u_vis =", V_u_vis);
-                            }
-                        }
-                        //V_{u, neig}
-                        writeln("******************end of V_u_vis***************************\n");
-
-                        for MiuVal in Miu {
-                            writeln("here V_{u, neig} ", MiuVal);
-
-                            var inNeighborsg2_MiuVal = dstRG2[segRG2[MiuVal]..<segRG2[MiuVal+1]];            
-                            var outNeighborsg2_MiuVal = dstNodesG2[segGraphG2[MiuVal]..<segGraphG2[MiuVal+1]];
-                            
-                            var combinedSet_MiuVal: set(int);
-                            // Add elements of in-neigh to the set
-                            for elem in inNeighborsg2_MiuVal {
-                                combinedSet_MiuVal.add(elem);
-                            }
-
-                            // Add elements of out-neigh to the set
-                            for elem in outNeighborsg2_MiuVal {
-                                combinedSet_MiuVal.add(elem);
-                            }
-                            writeln("combinedSet_MiuVal = ", combinedSet_MiuVal);
-                            var combinedSet_u: set(int);
-                            
-                            // Add elements of arr1 to the set
-                            for elem in inNeighborsg2_u {
-                                combinedSet_u.add(elem);
-                            }
-
-                            // Add elements of arr2 to the set
-                            for elem in outNeighborsg2_u {
-                                combinedSet_u.add(elem);
-                            }
-                            writeln("combinedSet_u = ", combinedSet_u);
-
-                            // Find the intersection of the two sets
-                            var intersection = combinedSet_MiuVal & combinedSet_u;
-                            writeln("intersection = ", intersection);
-
-                            for elem in intersection {
-                                if Visited[elem] == false{
-                                    V_u_neig += 1;
-                                }
-                            }
-                            writeln("V_u_neig = ",V_u_neig );
-                            writeln("******************end of V_u_neig***************************\n");
-                        }
-                        //V_{u, unvis}
-                        var setMiu: set(int);
-                        for elem in Miu {
-                            setMiu.add(elem);
-                            var inNeighborsg2_MiuVal = dstRG2[segRG2[elem]..<segRG2[elem+1]];            
-                            var outNeighborsg2_MiuVal = dstNodesG2[segGraphG2[elem]..<segGraphG2[elem+1]];
-                            for elem in inNeighborsg2_MiuVal {
-                                setMiu.add(elem);
-                            }                            
-                            
-                            for elem in outNeighborsg2_MiuVal {
-                                setMiu.add(elem);
-                            }
-                        }
-
-                        for i in 0..<g2.n_vertices {
-                            if Visited[i] == false{
-                                for elem in inNeighborsg2_u {
-                                    if !setMiu.contains(elem) {
-                                        V_u_unvis += 1;
-                                    }
-                                }
-                                for elem in outNeighborsg2_u {
-                                    if !setMiu.contains(elem) {
-                                        V_u_unvis += 1;
-                                    }
-                                }
-                            }
-                        }
-                        writeln("V_u_unvis = ", V_u_unvis);
-                            writeln("******************end of V_u_unvis***************************\n");
-
-                    }
-
-                    if(V_u_vis > uRank[0]) {
-                        writeln("Here 1 checked");
-                        u_m = u;
-                        uRank[0] = V_u_vis;
-                        uRank[1] = V_u_neig;
-                        uRank[2] = V_u_unvis;
-                        writeln("Now u_m = " , u_m, " uRank changed to = ", uRank);
-                    }
-                    else if(V_u_vis == uRank[0]) {
-                        if(V_u_neig > uRank[1]) {
-                            writeln("Here 2 checked");
-
-                            u_m = u;
-                            uRank[0] = V_u_vis;
-                            uRank[1] = V_u_neig;
-                            uRank[2] = V_u_unvis;
-                        writeln("Now u_m = " , u_m, "uRank changed to = ", uRank);
-
-                        }
-                        else if(V_u_neig == uRank[1]) {
-                            if(V_u_unvis > uRank[2]) {
-                               writeln("Here 3 checked");
-
-                                u_m = u;
-                                uRank[0] = V_u_vis;
-                                uRank[1] = V_u_neig;
-                                uRank[2] = V_u_unvis;
-                        writeln("Now u_m = " , u_m, "uRank changed to = ", uRank);
-
-                            }
-                        }
-                    }
-
-
-                }
-                //writeln("uRank = ", uRank);
-                writeln("////////////////////////////lets update/////////////////////////////////////////\n\n");
-                var inNeighborsg2_u_m = dstRG2[segRG2[u_m]..<segRG2[u_m+1]];            
-                var outNeighborsg2_u_m = dstNodesG2[segGraphG2[u_m]..<segGraphG2[u_m+1]];
-                
-                var combinedSet_u_m: set(int);
-                // Add elements of in-neigh to the set
-                for elem in inNeighborsg2_u_m {
-                    combinedSet_u_m.add(elem);
-                }
-                
-                for elem in outNeighborsg2_u_m {
-                    combinedSet_u_m.add(elem);
-                }
-
-                writeln("u_m = ", u_m);
-                writeln("combinedSet_u_m = ", combinedSet_u_m);
-                var minIndex = -1;
-                
-                for elem in combinedSet_u_m{
-                    if Visited[elem] == true {
-                        if minIndex <= elem then minIndex = elem;
-                    }
-                }
-                writeln("minIndex = ", minIndex);
-                Miu.pushBack(u_m);
-                ParentMiu.pushBack(minIndex);
-                Visited(u_m) = true;
-
-
-                writeln("\n Updateing V , Miu, ParentMiu: ---------------");
-                writeln("V = ", V);
-                writeln("Miu = ", Miu);
-                writeln("ParentMiu = ", ParentMiu);
-                V.remove(u_m);
-                writeln("u_m removed now V = ", V);
-
-                writeln("V.size = ", V.size);
-
-            }// end While
-            writeln("end of the while");
-
-            writeln("Miu = ", Miu);
-            writeln("ParentMiu = ", ParentMiu);
-
-            return(Miu, ParentMiu);
-        }// end of GreatestConstraintFirst
-        //GreatestConstraintFirst();
-////////////////////////////////////////////////////////////////////////////////////
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
         proc addToTinTout (u: int, v: int, state: State) {
             state.core[v] = u; // v from g2 to a u from g1
@@ -780,24 +467,8 @@ module SubgraphIsomorphism {
             }
 
             // Generate candidate pairs (n1, n2) for mapping
-            var timer1:stopwatch;
-            timer1.start();
-
             var candidatePairs = getCandidatePairsOpti(state);
-            
-            timer1.stop();
-/*
-            if state.depth == 0 {
-                //writeln("candidatesStru = ",candidatesStru);
-                writeln("state is = ", state);
-                writeln("\ncandidatesStru.size = ",candidatesStru.size);                
-                writeln("candidatePairs.size = ",candidatePairs.size);
-                writeln("\ntimer1 = ", timer1.elapsed());
 
-                //writeln("\ncandidatePairs = ",candidatePairs);
-
-            }
-*/
             // Iterate in parallel over candidate pairs
             forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
             //for (n1, n2) in candidatePairs {

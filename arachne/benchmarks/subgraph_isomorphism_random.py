@@ -98,7 +98,7 @@ if __name__ == "__main__":
     # but it's important to note that it produces graphs with a Poisson degree distribution,
     # which might not always accurately model real-world networks!
     num_nodes = args.n  # Number of nodes
-    p = 1  # Probability of edge creation
+    p = 0.005  # Probability of edge creation
     print("Begining of Random Directed graph with P= ",p)
     # src, dst = create_random_graph(n, p)
     src, dst = create_random_directed_graph(num_nodes, p)
@@ -146,11 +146,11 @@ if __name__ == "__main__":
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([0, 1, 2, 1])
-    dst_subgraph = ak.array([1, 2, 0, 3])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
+    src_subgraph = ak.array([3, 0, 0, 2, 4])
+    dst_subgraph = ak.array([0, 1, 2, 3, 0])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1", "lbl1"])
     #labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
-    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
+    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1", "rel1"])
     #rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
     # 2. Populate the subgraph.
@@ -158,7 +158,7 @@ if __name__ == "__main__":
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph})
                             #"rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph,
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3,4]), "lbls1":labels1_subgraph,
                               })
                               #"lbls2":labels2_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
