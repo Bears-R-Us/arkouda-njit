@@ -106,22 +106,22 @@ module SubgraphIsomorphism {
         var numIso: int = 0;
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1 = toSymEntry(g1.getComp("SRC"), int).a;
-        var dstNodesG1 = toSymEntry(g1.getComp("DST"), int).a;
-        var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS"), int).a;
-        var srcRG1 = toSymEntry(g1.getComp("SRC_R"), int).a;
-        var dstRG1 = toSymEntry(g1.getComp("DST_R"), int).a;
-        var segRG1 = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
+        var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+        var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
+        var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+        var srcRG1 = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
+        var dstRG1 = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
+        var segRG1 = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
+        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2 = toSymEntry(g2.getComp("SRC"), int).a;
-        var dstNodesG2 = toSymEntry(g2.getComp("DST"), int).a;
-        var segGraphG2 = toSymEntry(g2.getComp("SEGMENTS"), int).a;
-        var srcRG2 = toSymEntry(g2.getComp("SRC_R"), int).a;
-        var dstRG2 = toSymEntry(g2.getComp("DST_R"), int).a;
-        var segRG2 = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
+        var srcNodesG2 = toSymEntry(g2.getComp("SRC_SDI"), int).a;
+        var dstNodesG2 = toSymEntry(g2.getComp("DST_SDI"), int).a;
+        var segGraphG2 = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+        var srcRG2 = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+        var dstRG2 = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+        var segRG2 = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+        var nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Get the number of vertices and edges for each graph.
         var nG1 = nodeMapGraphG1.size;
@@ -378,13 +378,13 @@ module SubgraphIsomorphism {
         } // end of isFeasible
 
         /** Return the unmapped vertices for g1 and g2. */
-        proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, [0..<state.n2]int) throws {
+        proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, int) throws {
             var UnMapG1: [0..<state.n1] int = -1;
-            var UnMapG2: [0..<state.n2] int = -1;
+            var UnMapG2: int = -1;
 
-            for i in state.D_core {
-                if state.core[i] != -1 then UnMapG2[i] = 0; // Node i in G2 is mapped
-                else UnMapG1[state.core[i]] = 0; // Corresponding node in G1 is mapped
+            for i in state.D_core by -1{
+                if state.core[i] == -1 then UnMapG2 = i; 
+                else UnMapG1[state.core[i]] = 0; 
             }
             
             return (UnMapG1, UnMapG2);
@@ -409,25 +409,15 @@ module SubgraphIsomorphism {
                         break;
                     }
                     for n1 in state.Tin1 do candidates.add((n1, minTin2));
-                    
                 } else { 
+                    writeln("$$$$$ Last state = ", state);
                     var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                    var flagunmappedG2 = false;
-                    var minUnmapped2 : int;
-
-                    for elem in unmappedG2{
-                        if elem != -1 {
-                            minUnmapped2 = elem;
-                            flagunmappedG2 = true;
-                        }
-                    }
-
-                    if !flagunmappedG2 {
+                    if unmappedG2 != -1 {
                         for i in 0..<state.n1 {
-                            if unmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
+                            if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
                         } 
                     }
-                } 
+                }
             }   
             return candidates;
         } // end of getCandidatePairsOpti
