@@ -16,6 +16,7 @@ module SubgraphIsomorphism {
     // Arkouda modules.
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
+    use MultiTypeRegEntry;
     use ServerConfig;
     use AryUtil;
     use SegStringSort;
@@ -150,17 +151,19 @@ module SubgraphIsomorphism {
         // globalized relabeling and creating arrays of sets to speed up comparing the labels and
         // relationships of two or more different graphs.
         var edgeRelationshipsGraphG1 = (g1.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
-                                            string, (string, borrowed SegStringSymEntry)
+                                            string, (string, string)
                                         ))).stored_map;
+        
         var nodeLabelsGraphG1 = (g1.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
-                                            string, (string, borrowed SegStringSymEntry)
+                                            string, (string, string)
                                         ))).stored_map;
 
         var edgeRelationshipsGraphG2 = (g2.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
-                                            string, (string, borrowed SegStringSymEntry)
+                                            string, (string, string)
                                         ))).stored_map;
+
         var nodeLabelsGraphG2 = (g2.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
-                                            string, (string, borrowed SegStringSymEntry)
+                                            string, (string, string)
                                         ))).stored_map;
 
         var relationshipStringToInt, labelStringToInt = new map(string, int);
@@ -168,9 +171,10 @@ module SubgraphIsomorphism {
         // Create global relationship mapper for G1 and G2.
         var id = 0;
         for k in edgeRelationshipsGraphG1.keys() {
-            var segString = getSegString(edgeRelationshipsGraphG1[k][1].name, st);
-            for i in 0..segString.size-1 {
-                var val = segString[i];
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            for i in 0..categories.size-1 {
+                var val = categories[i];
                 if !relationshipStringToInt.contains(val) {
                     relationshipStringToInt.add(val, id);
                     id += 1;
@@ -178,9 +182,10 @@ module SubgraphIsomorphism {
             }
         }
         for k in edgeRelationshipsGraphG2.keys() {
-            var segString = getSegString(edgeRelationshipsGraphG2[k][1].name, st);
-            for i in 0..edgeRelationshipsGraphG2[k][1].size-1 {
-                var val = segString[i];
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            for i in 0..categories.size-1 {
+                var val = categories[i];
                 if !relationshipStringToInt.contains(val) {
                     relationshipStringToInt.add(val, id);
                     id += 1;
@@ -191,9 +196,10 @@ module SubgraphIsomorphism {
         // Create global label mapper for G1 and G2.
         id = 0;
         for k in nodeLabelsGraphG1.keys() {
-            var segString = getSegString(nodeLabelsGraphG1[k][1].name, st);
-            for i in 0..nodeLabelsGraphG1[k][1].size-1 {
-                var val = segString[i];
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            for i in 0..categories.size-1 {
+                var val = categories[i];
                 if !labelStringToInt.contains(val) {
                     labelStringToInt.add(val, id);
                     id += 1;
@@ -201,9 +207,10 @@ module SubgraphIsomorphism {
             }
         }
         for k in nodeLabelsGraphG2.keys() {
-            var segString = getSegString(nodeLabelsGraphG2[k][1].name, st);
-            for i in 0..nodeLabelsGraphG2[k][1].size-1 {
-                var val = segString[i];
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            for i in 0..categories.size-1 {
+                var val = categories[i];
                 if !labelStringToInt.contains(val) {
                     labelStringToInt.add(val, id);
                     id += 1;
@@ -219,31 +226,35 @@ module SubgraphIsomorphism {
         var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int));
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
             forall (x,i) in zip(arr, arr.domain) do 
-                convertedRelationshipsG1Dist[i].add(relationshipStringToInt[mapper[x]]);
+                convertedRelationshipsG1Dist[i].add(relationshipStringToInt[categories[x]]);
         }
 
         for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
             forall (x,i) in zip(arr, arr.domain) do
-                convertedRelationshipsG2Dist[i].add(relationshipStringToInt[mapper[x]]);
+                convertedRelationshipsG2Dist[i].add(relationshipStringToInt[categories[x]]);
         }
 
         for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
             forall (x,i) in zip(arr, arr.domain) do 
-                convertedLabelsG1Dist[i].add(labelStringToInt[mapper[x]]);
+                convertedLabelsG1Dist[i].add(labelStringToInt[categories[x]]);
         }
 
         for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
+            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
+            var categories = getSegString(categorical.categories, st);
+            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
             forall (x,i) in zip(arr, arr.domain) do 
-                convertedLabelsG2Dist[i].add(labelStringToInt[mapper[x]]);
+                convertedLabelsG2Dist[i].add(labelStringToInt[categories[x]]);
         }
         //******************************************************************************************
         //******************************************************************************************
