@@ -391,35 +391,48 @@ module SubgraphIsomorphism {
         } // end of getBothUnmappedNodes
        
         /** Create candidates based on current state and retuns a set of pairs.*/
-        proc getCandidatePairsOpti(state: State): set((int, int)) throws {
-            var candidates = new set((int, int), parSafe = true);
+        proc getCandidatePairsOpti(state: State): (list(int) , int) throws {
+            //var candidates = new set((int, int), parSafe = true);
 
             if state.Tout1.size > 0 && state.Tout2.size > 0 {
                 var minTout2: int;
+                var unmappedG1: list(int);
+
                 for elem in state.Tout2{
                     minTout2 = elem;
                     break;
                 }    
-                for n1 in state.Tout1 do candidates.add((n1, minTout2));          
+                //for n1 in state.Tout1 do candidates.add((n1, minTout2));
+                for n1 in state.Tout1 do unmappedG1.pushBack(n1);
+                return (unmappedG1, minTout2);
+
             } else {
                 if state.Tin1.size > 0 && state.Tin2.size > 0 {
                     var minTin2: int;
+                    var unmappedG1: list(int);
+
                     for elem in state.Tin2{
                         minTin2 = elem;
                         break;
                     }
-                    for n1 in state.Tin1 do candidates.add((n1, minTin2));
+                    //for n1 in state.Tin1 do candidates.add((n1, minTin2));
+                    for n1 in state.Tin1 do unmappedG1.pushBack(n1);
+                    
+                    return (unmappedG1, minTin2);
                 } else { 
                     writeln("$$$$$ Last state = ", state);
-                    var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                    if unmappedG2 != -1 {
-                        for i in 0..<state.n1 {
-                            if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
-                        } 
+                    //var unmappedG1: [0..<state.n1] int = -1;
+                    var unmappedG1: list(int) = 0..#state.n1;
+                    var unmappedG2: int = -1;
+//remove
+                    for i in state.D_core by -1{
+                        if state.core[i] == -1 then unmappedG2 = i; 
+                        else unmappedG1.remove[state.core[i]]; 
                     }
+                    return (unmappedG1, unmappedG2);
                 }
             }   
-            return candidates;
+            //return (unmappedG1, unmappedG2);
         } // end of getCandidatePairsOpti
             
         /** Creates an initial, empty state.*/
@@ -449,10 +462,14 @@ module SubgraphIsomorphism {
             }
 
             // Generate candidate pairs (n1, n2) for mapping
-            var candidatePairs = getCandidatePairsOpti(state);
+            //var candidatePairs = getCandidatePairsOpti(state);
+            var candidatePairs: list(int, parSafe=true);
+            var n2: int;
+            (candidatePairs, n2) = getCandidatePairsOpti(state);
 
             // Iterate in parallel over candidate pairs
-            forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+            //forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+            forall n1 in candidatePairs with (ref state, ref allmappings) {
                 if isFeasible(n1, n2, state) {
                     var newState = state.clone();
 
