@@ -10,7 +10,10 @@ module BuildPropertyGraph {
     use CommAggregation;
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
+    use MultiTypeRegEntry;
     use NumPyDType;
+    use RegistrationMsg;
+    use SegmentedString;
 
     /* Given the indices of a dense array, stores the values from the original dense array into the
     corresponding indices of the new sparse array.
@@ -91,7 +94,7 @@ module BuildPropertyGraph {
     :type attributes: [?D] string
     :arg attributeSymTabIds: symbol table ids that correspond to the array for each attribute.
     :type attributeSymTabIds: [?D] string
-    :arg attributeMap: will store attribute name with symbol table identifier.
+    :arg attributeMap: will store symbol table id with tuple containing column name and object type.
     :type attributeMap: ref map(?)
     :arg consecutive: is the data consecutive?
     :type consecutive: bool
@@ -107,130 +110,132 @@ module BuildPropertyGraph {
     :returns: string
 
     */
-    proc insertAttributes(  attributes, attributeSymTabIds, ref attributeMap: map(?), 
-                            consecutive:bool, sparseDataDomain, ref internalIndices, 
-                            st:borrowed SymTab, 
-                            mapper: [?D] string = blockDist.createArray({0..0}, string)):string throws {
+    proc insertAttributes(  attributes, attributeSymTabIds, attributeTypes,
+                            ref attributeMap: map(?), 
+                            consecutive:bool, 
+                            sparseDataDomain, 
+                            ref internalIndices, 
+                            st:borrowed SymTab):string throws {
         var repMsg = "";
         for i in attributes.domain {
             var attributeName = attributes[i];
             var dataArraySymTabId = attributeSymTabIds[i];
-            if dataArraySymTabId == "" then break;
-            var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArraySymTabId, st);
-            var etype = dataArrayEntry.dtype;
-            select etype {
-                when (DType.Int64) {
-                    if consecutive {
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(dataArraySymTabId, (attributeName, ""));
-                        else 
-                            attributeMap.add(dataArraySymTabId, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    } else {
-                        var originalData = toSymEntry(dataArrayEntry, int).a;
-                        var newData: [sparseDataDomain] int;
-                        insertDataToSparseArray(originalData, newData, internalIndices, int);
-                        var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
-                        repMsg += reply;
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(attrName, (attributeName, ""));
-                        else
-                            attributeMap.add(attrName, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    }
-                }
-                when (DType.UInt64) {
-                    if consecutive {
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(dataArraySymTabId, (attributeName, ""));
-                        else 
-                            attributeMap.add(dataArraySymTabId, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    } else {
-                        var originalData = toSymEntry(dataArrayEntry, uint).a;
-                        var newData: [sparseDataDomain] uint;
-                        insertDataToSparseArray(originalData, newData, internalIndices, uint);
-                        var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
-                        repMsg += reply;
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(attrName, (attributeName, ""));
-                        else
-                            attributeMap.add(attrName, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    }
-                }
-                when (DType.Float64) {
-                    if consecutive {
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(dataArraySymTabId, (attributeName, ""));
-                        else 
-                            attributeMap.add(dataArraySymTabId, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    } else {
-                        var originalData = toSymEntry(dataArrayEntry, real).a;
-                        var newData: [sparseDataDomain] real;
-                        insertDataToSparseArray(originalData, newData, internalIndices, real);
-                        var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
-                        repMsg += reply;
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(attrName, (attributeName, ""));
-                        else
-                            attributeMap.add(attrName, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    }
-                }
-                when (DType.Bool) {
-                    if consecutive {
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(dataArraySymTabId, (attributeName, ""));
-                        else 
-                            attributeMap.add(dataArraySymTabId, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    } else {
-                        var originalData = toSymEntry(dataArrayEntry, bool).a;
-                        var newData: [sparseDataDomain] bool;
-                        insertDataToSparseArray(originalData, newData, internalIndices, bool);
-                        var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
-                        repMsg += reply;
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(attrName, (attributeName, ""));
-                        else
-                            attributeMap.add(attrName, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    }
-                }
-                when (DType.Strings) {
-                    if consecutive {
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(dataArraySymTabId, (attributeName, ""));
-                        else 
-                            attributeMap.add(dataArraySymTabId, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                    } else {
-                        // We extract the entries that represent strings in a SegStringSymEntry.
-                        var dataArraySegStringSymEntry = toSegStringSymEntry(dataArrayEntry);
-                        var offsetsEntry = dataArraySegStringSymEntry.offsetsEntry;
-                        var bytesEntry = dataArraySegStringSymEntry.bytesEntry;
+            var dataArrayType = attributeTypes[i];
 
-                        // We make deep copies of the offsets and bytes to ensure changes to the
-                        // dataframe in Python are not reflected here.
-                        var newOffsetsEntry = createSymEntry(offsetsEntry.a);
-                        var newBytesEntry = createSymEntry(bytesEntry.a);
-                        
-                        // In this case, newData is different than for the other datatypes, its domain
-                        // and values will actually be the same and store the indices explicilty. 
-                        var newData: [sparseDataDomain] int;
-                        forall (e,d) in zip(newData, newData.domain) do e = d;
-                        var indicesEntry = new shared SparseSymEntry(newData);
+            select dataArrayType {
+                when "Strings", "pdarray" {
+                    var dataArrayEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(dataArraySymTabId, st);
+                    var etype = dataArrayEntry.dtype;
+                    select etype {
+                        when (DType.Int64) {
+                            if consecutive {
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                            } else {
+                                var originalData = toSymEntry(dataArrayEntry, int).a;
+                                var newData: [sparseDataDomain] int;
+                                insertDataToSparseArray(originalData, newData, internalIndices, int);
+                                var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
+                                repMsg += reply;
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                            }
+                        }
+                        when (DType.UInt64) {
+                            if consecutive {
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                            } else {
+                                var originalData = toSymEntry(dataArrayEntry, uint).a;
+                                var newData: [sparseDataDomain] uint;
+                                insertDataToSparseArray(originalData, newData, internalIndices, uint);
+                                var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
+                                repMsg += reply;
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                            }
+                        }
+                        when (DType.Float64) {
+                            if consecutive {
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                            } else {
+                                var originalData = toSymEntry(dataArrayEntry, real).a;
+                                var newData: [sparseDataDomain] real;
+                                insertDataToSparseArray(originalData, newData, internalIndices, real);
+                                var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
+                                repMsg += reply;
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                            }
+                        }
+                        when (DType.Bool) {
+                            if consecutive {
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                            } else {
+                                var originalData = toSymEntry(dataArrayEntry, bool).a;
+                                var newData: [sparseDataDomain] bool;
+                                insertDataToSparseArray(originalData, newData, internalIndices, bool);
+                                var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
+                                repMsg += reply;
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                            }
+                        }
+                        when (DType.Strings) {
+                            if consecutive {
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                            } else {
+                                // We extract the entries that represent strings in a SegStringSymEntry.
+                                var dataArraySegStringSymEntry = toSegStringSymEntry(dataArrayEntry);
+                                var offsetsEntry = dataArraySegStringSymEntry.offsetsEntry;
+                                var bytesEntry = dataArraySegStringSymEntry.bytesEntry;
 
-                        // Create new object that is a wrapper to the Arkouda SegStringSymEntry class.
-                        var sparsePropertySegStringSymEntry = new shared SparsePropertySegStringSymEntry(   
-                            newOffsetsEntry, 
-                            newBytesEntry, 
-                            indicesEntry,
-                            string 
-                        );
-                        
-                        // Add the new object to the symbol table so we can extract this data at another
-                        // time. 
-                        var attrName = st.nextName();
-                        st.addEntry(attrName, sparsePropertySegStringSymEntry);
+                                // We make deep copies of the offsets and bytes to ensure changes to the
+                                // dataframe in Python are not reflected here.
+                                var newOffsetsEntry = createSymEntry(offsetsEntry.a);
+                                var newBytesEntry = createSymEntry(bytesEntry.a);
+                                
+                                // In this case, newData is different than for the other datatypes, its domain
+                                // and values will actually be the same and store the indices explicilty. 
+                                var newData: [sparseDataDomain] int;
+                                forall (e,d) in zip(newData, newData.domain) do e = d;
+                                var indicesEntry = new shared SparseSymEntry(newData);
+
+                                // Create new object that is a wrapper to the Arkouda SegStringSymEntry class.
+                                var sparsePropertySegStringSymEntry = new shared SparsePropertySegStringSymEntry(   
+                                    newOffsetsEntry, 
+                                    newBytesEntry, 
+                                    indicesEntry,
+                                    string 
+                                );
+                                
+                                // Add the new object to the symbol table so we can extract this data at another
+                                // time. 
+                                var attrName = st.nextName();
+                                st.addEntry(attrName, sparsePropertySegStringSymEntry);
+                                if attributeMap.valType == (string,string) then
+                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                                repMsg += "created " + st.attrib(attrName) + "+ ";
+                            }
+                        }
+                    }
+                }
+                when "Categorical" {
+                    if consecutive {
                         if attributeMap.valType == (string,string) then
-                            attributeMap.add(attrName, (attributeName, ""));
-                        else
-                            attributeMap.add(attrName, (attributeName, toSegStringSymEntry(st.lookup(mapper[i]))));
-                        repMsg += "created " + st.attrib(attrName) + "+ ";
+                            attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                    } else {
+                        // TODO: Future work, handle nonconsecutive arrays.
+                        var temp = blockDist.createArray({0..1}, int);
+                        var dataArrayRegEntry = (st.registry.tab(dataArraySymTabId)):shared CategoricalRegEntry;
+                        var categories = getSegString(dataArrayRegEntry.categories, st);
+                        var codes = toSymEntry(getGenericTypedArrayEntry(dataArrayRegEntry.codes, st), int).a;
+                        var permutation = if dataArrayRegEntry.permutation != "" then toSymEntry(getGenericTypedArrayEntry(dataArrayRegEntry.permutation, st), int).a else temp;
+                        var segments = if dataArrayRegEntry.permutation != "" then toSymEntry(getGenericTypedArrayEntry(dataArrayRegEntry.segments, st), int).a else temp;
+                        var na = dataArrayRegEntry.naCode;
                     }
                 }
             }
