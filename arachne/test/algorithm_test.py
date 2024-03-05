@@ -200,25 +200,25 @@ class AlgorithmTest(ArkoudaTest):
         subgraph_edge_information = subgraph.get_edge_attributes()
 
         # The 4 for loops below convert internal integer labels to original strings.
-        for (column,array) in graph_node_information.items():
+        for (column,_) in graph_node_information.items():
             if column != "nodes":
-                mapper = prop_graph.label_mapper[column]
-                graph_node_information[column] = mapper[array]
+                cat = graph_node_information[column]
+                graph_node_information[column] = cat.categories[cat.codes]
 
-        for (column,array) in graph_edge_information.items():
+        for (column,_) in graph_edge_information.items():
             if column not in ("src", "dst"):
-                mapper = prop_graph.relationship_mapper[column]
-                graph_edge_information[column] = mapper[array]
+                cat = graph_edge_information[column]
+                graph_edge_information[column] = cat.categories[cat.codes]
 
-        for (column,array) in subgraph_node_information.items():
+        for (column,_) in subgraph_node_information.items():
             if column != "nodes":
-                mapper = subgraph.label_mapper[column]
-                subgraph_node_information[column] = mapper[array]
+                cat = subgraph_node_information[column]
+                subgraph_node_information[column] = cat.categories[cat.codes]
 
-        for (column,array) in subgraph_edge_information.items():
+        for (column,_) in subgraph_edge_information.items():
             if column not in ("src", "dst"):
-                mapper = subgraph.relationship_mapper[column]
-                subgraph_edge_information[column] = mapper[array]
+                cat = subgraph_edge_information[column]
+                subgraph_edge_information[column] = cat.categories[cat.codes]
 
         # Convert Arkouda dataframes to Pandas dataframes to NetworkX graph attributes.
         G = nx.from_pandas_edgelist(graph_edge_information.to_pandas(), source='src',
@@ -243,9 +243,10 @@ class AlgorithmTest(ArkoudaTest):
             graph_node_attributes_final[graph_nodes_from_df[key]] = graph_node_attributes[key]
 
         for key in subgraph_node_attributes:
-            subgraph_node_attributes_final[subgraph_nodes_from_df[key]] = subgraph_node_attributes[key]
+            subgraph_node_attributes_final[subgraph_nodes_from_df[key]] = \
+                                                                    subgraph_node_attributes[key]
 
-        # Set the node attributes for G and H from dicts. 
+        # Set the node attributes for G and H from dicts.
         nx.set_node_attributes(G, graph_node_attributes_final)
         nx.set_node_attributes(H, subgraph_node_attributes_final)
 
