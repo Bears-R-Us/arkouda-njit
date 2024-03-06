@@ -45,13 +45,13 @@ module BuildPropertyGraphMsg {
         // Parse the message from Python.
         var graphName = msgArgs.getValueOf("GraphName");
         var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
-        var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
+        var labelColumnNames = msgArgs.getValueOf("LabelColumnNames").split("+");
         var labelArrayNames = msgArgs.getValueOf("LabelArrayNames").split("+");
-        var labelMapperNames = msgArgs.getValueOf("LabelMapperNames").split("+");
+        var labelArrayTypes = msgArgs.getValueOf("LabelArrayTypes").split("+");
 
-        // Map to keep track of symbol table id for a label array to the dataframe column name and 
-        // its mapper, if applicable.
-        var vertexLabels = new map(string, (string, borrowed SegStringSymEntry));
+        // Map to keep track of symbol table id for a label array to the dataframe column name and
+        // its object type.
+        var vertexLabels = new map(string, (string, string));
         // NOTE: Map types cannot be generic, therefore, we need a placeholder SegStringSymEntry for 
         //       non-string labels.
         
@@ -95,9 +95,9 @@ module BuildPropertyGraphMsg {
         // or of the datatype of each attribute.
         var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertAttributes(   columnNames, labelArrayNames, vertexLabels, 
-                                                consecutive, sparseVertexDomain, inputIndices, st, 
-                                                labelMapperNames
+        var repMsg:string = insertAttributes(   labelColumnNames, labelArrayNames, labelArrayTypes,
+                                                vertexLabels, consecutive, sparseVertexDomain, 
+                                                inputIndices, st
         );
         timer.stop();
 
@@ -134,6 +134,7 @@ module BuildPropertyGraphMsg {
         var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
         var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
         var propertyArrayNames = msgArgs.getValueOf("PropertyArrayNames").split("+");
+        var propertyArrayTypes = msgArgs.getValueOf("PropertyArrayTypes").split("+");
 
         // Map to keep track of the symbol table id for a property array to the dataframe column
         // name and the label it belongs to, if applicable.
@@ -179,7 +180,7 @@ module BuildPropertyGraphMsg {
         // or of the datatype of each attribute.
         var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertAttributes(   columnNames, propertyArrayNames, vertexProps, 
+        var repMsg:string = insertAttributes(   columnNames, propertyArrayNames, propertyArrayTypes, vertexProps,
                                                 consecutive, sparseVertexDomain, inputIndices, st 
         );
         timer.stop();
@@ -215,13 +216,13 @@ module BuildPropertyGraphMsg {
         // Parse the message from Python.
         var graphName = msgArgs.getValueOf("GraphName");
         var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
-        var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
+        var relationshipColumnNames = msgArgs.getValueOf("RelationshipColumnNames").split("+");
         var relationshipArrayNames = msgArgs.getValueOf("RelationshipArrayNames").split("+");
-        var relationshipMapperNames = msgArgs.getValueOf("RelationshipMapperNames").split("+");
+        var relationshipArrayTypes = msgArgs.getValueOf("RelationshipArrayTypes").split("+");
 
         // Map to keep track of symbol table id for a relationship array to the dataframe column 
         // name and its mapper, if applicable.
-        var edgeRelationships = new map(string, (string, borrowed SegStringSymEntry));
+        var edgeRelationships = new map(string, (string, string));
         // NOTE: Map types cannot be generic, therefore, we need a placeholder SegStringSymEntry for 
         //       non-string labels.
         
@@ -265,9 +266,9 @@ module BuildPropertyGraphMsg {
         // or of the datatype of each attribute.
         var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertAttributes(   columnNames, relationshipArrayNames, 
-                                                edgeRelationships, consecutive, sparseEdgeDomain, 
-                                                inputIndices, st, relationshipMapperNames
+        var repMsg:string = insertAttributes(   relationshipColumnNames, relationshipArrayNames, 
+                                                relationshipArrayTypes, edgeRelationships, 
+                                                consecutive, sparseEdgeDomain, inputIndices, st 
         );
         timer.stop();
 
@@ -305,6 +306,7 @@ module BuildPropertyGraphMsg {
         var inputIndicesName = msgArgs.getValueOf("InputIndicesName");
         var columnNames = msgArgs.getValueOf("ColumnNames").split("+");
         var propertyArrayNames = msgArgs.getValueOf("PropertyArrayNames").split("+");
+        var propertyArrayTypes = msgArgs.getValueOf("PropertyArrayTypes").split("+");
 
         // Map to keep track of the symbol table id for a property array to the dataframe column
         // name and the label it belongs to, if applicable.
@@ -350,8 +352,9 @@ module BuildPropertyGraphMsg {
         // or of the datatype of each attribute.
         var timer:stopwatch;
         timer.start();
-        var repMsg:string = insertAttributes(   columnNames, propertyArrayNames, edgeProps, 
-                                                consecutive, sparseEdgeDomain, inputIndices, st 
+        var repMsg:string = insertAttributes(   columnNames, propertyArrayNames, propertyArrayTypes, 
+                                                edgeProps, consecutive, sparseEdgeDomain, 
+                                                inputIndices, st 
         );
         timer.stop();
 

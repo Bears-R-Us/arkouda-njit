@@ -66,7 +66,7 @@ class DiGraph(ar.Graph):
 
         return in_degree
     
-    def density(self):
+    def density(self)-> float:
         return self.n_edges / (self.n_vertices * (self.n_vertices-1))
 
 

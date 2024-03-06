@@ -2,11 +2,17 @@
 
 from __future__ import annotations
 from typing import List, Dict, Tuple, Union
+import random
+import string
 
 import arachne as ar
 import arkouda as ak
 
 __all__ = ["PropGraph", "no_filter"]
+
+def generate_string(n=5):
+    """Generate random digit strings of the size of parameter `n`."""
+    return ''.join(random.choices(string.digits, k=n))
 
 def no_filter(attributes: ak.DataFrame):
     """Default filtering method for property subgraph view generation."""
@@ -61,13 +67,13 @@ class PropGraph(ar.DiGraph):
         Names of the columns that signify the source and destination vertices of edges.
     edge_attributes : ak.DataFrame
         Dataframe containing the edges of the graph and their attributes.
-    relationship_mapper : Dict
+    relationship_columns : List
         List of the attribute (column) names that correspond to relationships.
     node_name : str
         Name of column within node_attributes that signifies the nodes column.
     node_attributes : ak.DataFrame
         Dataframe containing the nodes of the graph and their attributes.
-    label_mapper : Dict
+    label_columns : List
         List of the attribute (column) names that correspond to labels.
 
     See Also
@@ -83,17 +89,18 @@ class PropGraph(ar.DiGraph):
         """Initializes an empty `PropGraph` instance."""
         super().__init__()
         self.multied = 0
-        self.edge_names = []
+        self.edge_names = ()
         self.edge_attributes = ak.DataFrame()
-        self.relationship_mapper = {}
-        self.node_name = ""
+        self.relationship_columns = []
+        self.node_name = ()
         self.node_attributes = ak.DataFrame()
-        self.label_mapper = {}
+        self.label_columns = []
 
     def add_node_labels(self,
                         labels:ak.DataFrame,
                         node_column:str,
-                        assume_sorted:bool=True) -> None:
+                        assume_sorted:bool=False,
+                        convert_strings_to_categoricals:bool=True) -> None:
         """Populates the graph object with labels from a dataframe. Passed dataframe should follow
         the same format specified in the Parameters section below. The column containing the nodes
         should be called `nodes`. Every column that is not the `nodes` column is inferred to be a
@@ -103,8 +110,12 @@ class PropGraph(ar.DiGraph):
         ----------
         labels : ak.DataFrame
             `ak.DataFrame({"nodes" : nodes, "labels1" : labels1, ..., "labelsN" : labelsN})`
+        node_column : str
+            Name of column that represents the nodes.
         assume_sorted : bool
             If the edges are already sorted, skip a `ak.GroupBy`.
+        convert_strings_to_categoricals : bool
+            If True, all Strings are converted to Categorical.
 
         Returns
         -------
@@ -128,20 +139,29 @@ class PropGraph(ar.DiGraph):
 
         # 2. Convert labels to integers and store the index to label mapping in the label_mapper.
         vertex_labels_symbol_table_ids = []
-        vertex_labels_mapper_symbol_table_ids = []
+        vertex_labels_object_types = []
         for col in labels.columns:
-            if isinstance(labels[col],ak.Strings):
-                gb_labels = ak.GroupBy(labels[col])
-                new_label_ids = ak.arange(gb_labels.unique_keys.size)
-                new_vertex_labels = gb_labels.broadcast(new_label_ids)
-                self.label_mapper[col] = gb_labels.unique_keys
-                self.node_attributes[col] = new_vertex_labels
+            if isinstance(labels[col], ak.Strings) and convert_strings_to_categoricals:
+                self.node_attributes[col] = ak.Categorical(labels[col])
+                self.node_attributes[col].register(generate_string())
+                vertex_labels_symbol_table_ids.append(self.node_attributes[col].registered_name)
+                vertex_labels_object_types.append("Categorical")
+            elif isinstance(labels[col], ak.Strings) and not convert_strings_to_categoricals:
+                self.node_attributes[col] = labels[col]
+                vertex_labels_symbol_table_ids.append(self.node_attributes[col].name)
+                vertex_labels_object_types.append("Strings")
+            elif isinstance(labels[col], ak.Categorical):
+                self.node_attributes[col] = labels[col]
+                self.node_attributes[col].register(generate_string())
+                vertex_labels_symbol_table_ids.append(self.node_attributes[col].name)
+                vertex_labels_object_types.append("Categorical")
+            elif isinstance(labels[col], ak.pdarray):
+                self.node_attributes[col] = labels[col]
+                vertex_labels_symbol_table_ids.append(self.node_attributes[col].name)
+                vertex_labels_object_types.append("pdarray")
             else:
-                placeholder = ak.array([" "])
-                self.label_mapper[col] = placeholder
-
-            vertex_labels_symbol_table_ids.append(self.node_attributes[col].name)
-            vertex_labels_mapper_symbol_table_ids.append(self.label_mapper[col].name)
+                raise NotImplementedError(f"{type(labels[col])} not supported by property graph")
+            self.label_columns.append(col)
 
         # 3. Convert the vertex ids to internal vertex ids.
         vertex_map = self.nodes()
@@ -150,7 +170,7 @@ class PropGraph(ar.DiGraph):
         labels = labels[inds]
         vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
 
-        # 4. GroupBy to sort the vertex ids and remove duplicates. Perform only if the vertices have 
+        # 4. GroupBy to sort the vertex ids and remove duplicates. Perform only if the vertices have
         #    not been sorted previously.
         if not assume_sorted:
             gb_vertex_ids = ak.GroupBy(vertex_ids)
@@ -161,17 +181,17 @@ class PropGraph(ar.DiGraph):
         # 5. Prepare arguments to transmit to the Chapel back-end server.
         args = { "GraphName" : self.name,
                  "InputIndicesName" : vertex_ids.name,
-                 "ColumnNames" : "+".join(labels.columns),
+                 "LabelColumnNames" : "+".join(labels.columns),
                  "LabelArrayNames" : "+".join(vertex_labels_symbol_table_ids),
-                 "LabelMapperNames" : "+".join(vertex_labels_mapper_symbol_table_ids)
+                 "LabelArrayTypes" : "+".join(vertex_labels_object_types)
         }
-
         ak.generic_msg(cmd=cmd, args=args)
 
     def load_node_attributes(self,
                              node_attributes:ak.DataFrame,
                              node_column:str,
-                             label_columns:Union[List[str],None] = None) -> None:
+                             label_columns:Union[List[str],None] = None,
+                             convert_string_labels_to_categoricals:bool=True) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Node
         properties are different from node labels where labels just extra identifiers for nodes.
         On the other hand, properties are key-value pairs more akin to storing the columns of a 
@@ -188,8 +208,10 @@ class PropGraph(ar.DiGraph):
                            "attributeN" : attributeN})`
         node_column : str
             The column denoting the values to be treated as the nodes of the graph.
-        label_column : List(str) | str | None
-            Name of the column(s) to be used to denote the labels of the nodes. 
+        label_columns : Union[List(str),None]
+            Name of the column(s) to be used to denote the labels of the nodes.
+        convert_string_labels_to_categoricals : bool
+            If True, Strings are converted to categoricals when node labels are added, if any.
 
         See Also
         --------
@@ -221,7 +243,9 @@ class PropGraph(ar.DiGraph):
         if label_columns is not None and isinstance(label_columns, list):
             labels_to_add = {col: node_attributes[col] for col in label_columns}
             labels_to_add[node_column] = nodes
-            self.add_node_labels(ak.DataFrame(labels_to_add), node_column, assume_sorted=True)
+            self.add_node_labels(ak.DataFrame(labels_to_add), node_column, assume_sorted=True,
+                                 convert_strings_to_categoricals=\
+                                 convert_string_labels_to_categoricals)
 
         ### Prepare the columns that are to be sent to the back-end to be stored per node.
         # 1. From columns remove nodes and any other columns that were handled by adding node
@@ -229,8 +253,23 @@ class PropGraph(ar.DiGraph):
         columns = [col for col in columns if col not in label_columns]
         columns.remove(node_column)
 
-        # 2. Extract symbol table names of arrays to use in the back-end.
-        column_ids = [self.node_attributes[col].name for col in columns]
+        # 2. Extract symbol table names of arrays to use in the back-end and their types.
+        column_ids = []
+        vertex_property_object_types = []
+        for col in columns:
+            if isinstance(self.node_attributes[col], ak.Strings):
+                vertex_property_object_types.append("Strings")
+                column_ids.append(self.node_attributes[col].name)
+            elif isinstance(self.node_attributes[col], ak.Categorical):
+                vertex_property_object_types.append("Categorical")
+                self.node_attributes[col].register(generate_string())
+                column_ids.append(self.node_attributes[col].registered_name)
+            elif isinstance(self.node_attributes[col], ak.pdarray):
+                vertex_property_object_types.append("Strings")
+                column_ids.append(self.node_attributes[col].name)
+            else:
+                raise NotImplementedError(f"{type(self.node_attributes[col])} "
+                                          f"not supported by property graph")
 
         # 3. Generate internal indices for the nodes.
         vertex_map = self.nodes()
@@ -242,7 +281,8 @@ class PropGraph(ar.DiGraph):
         args = { "GraphName" : self.name,
                  "InputIndicesName" : vertex_ids.name,
                  "ColumnNames" : "+".join(columns),
-                 "PropertyArrayNames" : "+".join(column_ids)
+                 "PropertyArrayNames" : "+".join(column_ids),
+                 "PropertyArrayTypes" : "+".join(vertex_property_object_types)
                }
         ak.generic_msg(cmd=cmd, args=args)
 
@@ -250,7 +290,8 @@ class PropGraph(ar.DiGraph):
                                relationships:ak.DataFrame,
                                source_column:str,
                                desination_column:str,
-                               assume_sorted:bool=False) -> None:
+                               assume_sorted:bool=False,
+                               convert_strings_to_categoricals:bool=True) -> None:
         """Populates the graph object with edge relationships from a dataframe. Passed dataframe 
         should follow the same format specified in the Parameters section below. The columns
         containing the edges should be called `source` for the source vertex of an edge and 
@@ -262,8 +303,14 @@ class PropGraph(ar.DiGraph):
         relationships : ak.DataFrame
             `ak.DataFrame({"src" : source, "dst" : destination, "relationship1" : relationship1,
                            ..., "relationshipN" : relationshipN})`
+        source_column : str
+            Column name that represents the source vertices of each edge. 
+        destination_column : str
+            Column name that represents the destination vertices of each edge. 
         assume_sorted : bool
             If the edges are already sorted, skip a `ak.GroupBy`.
+        convert_strings_to_categoricals : bool
+            If True, converts Strings to Categorical. 
 
         Returns
         -------
@@ -288,20 +335,30 @@ class PropGraph(ar.DiGraph):
         # 2. Convert relationships to integers and store the index to relationship mapping in
         #    the relationship_mapper.
         edge_relationships_symbol_table_ids = []
-        edge_relationships_mapper_symbol_table_ids = []
+        edge_relationships_object_types = []
         for col in relationships.columns:
-            if isinstance(relationships[col],ak.Strings):
-                gb_relationships = ak.GroupBy(relationships[col])
-                new_relationship_ids = ak.arange(gb_relationships.unique_keys.size)
-                new_edge_relationships = gb_relationships.broadcast(new_relationship_ids)
-                self.relationship_mapper[col] = gb_relationships.unique_keys
-                self.edge_attributes[col] = new_edge_relationships
+            if isinstance(relationships[col], ak.Strings) and convert_strings_to_categoricals:
+                self.edge_attributes[col] = ak.Categorical(relationships[col])
+                self.edge_attributes[col].register(generate_string())
+                edge_relationships_symbol_table_ids.append(self.edge_attributes[col].registered_name)
+                edge_relationships_object_types.append("Categorical")
+            elif isinstance(relationships[col], ak.Strings) and not convert_strings_to_categoricals:
+                self.edge_attributes[col] = relationships[col]
+                edge_relationships_symbol_table_ids.append(self.edge_attributes[col].name)
+                edge_relationships_object_types.append("Strings")
+            elif isinstance(relationships[col], ak.Categorical):
+                self.edge_attributes[col] = relationships[col]
+                self.edge_attributes[col].register(generate_string())
+                edge_relationships_symbol_table_ids.append(self.edge_attributes[col].name)
+                edge_relationships_object_types.append("Categorical")
+            elif isinstance(relationships[col], ak.pdarray):
+                self.edge_attributes[col] = relationships[col]
+                edge_relationships_symbol_table_ids.append(self.edge_attributes[col].name)
+                edge_relationships_object_types.append("pdarray")
             else:
-                placeholder = ak.array([" "])
-                self.relationship_mapper[col] = placeholder
-
-            edge_relationships_symbol_table_ids.append(self.edge_attributes[col].name)
-            edge_relationships_mapper_symbol_table_ids.append(self.relationship_mapper[col].name)
+                raise NotImplementedError(f"{type(relationships[col])} not "
+                                          f"supported by property graph")
+            self.relationship_columns.append(col)
 
         # 3. GroupBy of the src and dst vertex ids and relationships to remove any duplicates.
         #    Perform only if the edges have not been sorted previously.
@@ -318,18 +375,18 @@ class PropGraph(ar.DiGraph):
 
         args = {  "GraphName" : self.name,
                   "InputIndicesName" : internal_edge_indices.name, 
-                  "ColumnNames" : "+".join(relationships.columns),
+                  "RelationshipColumnNames" : "+".join(relationships.columns),
                   "RelationshipArrayNames" : "+".join(edge_relationships_symbol_table_ids),
-                  "RelationshipMapperNames" : "+".join(edge_relationships_mapper_symbol_table_ids)
+                  "RelationshipArrayTypes" : "+".join(edge_relationships_object_types)
         }
-
         ak.generic_msg(cmd=cmd, args=args)
 
     def load_edge_attributes(self,
                              edge_attributes:ak.DataFrame,
                              source_column:str,
                              destination_column:str,
-                             relationship_columns:Union[List[str]|None] = None) -> None:
+                             relationship_columns:Union[List[str]|None] = None,
+                             convert_string_relationships_to_categoricals:bool=True) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Edge
         properties are different from edge relationships where relationships are used to tell apart
         multiple edges. On the other hand, properties are key-value pairs more akin to storing the 
@@ -347,9 +404,11 @@ class PropGraph(ar.DiGraph):
         destination_column : str
             The column denoting the values to be treated as the destination vertices of an edge in
             a graph.
-        relationship_column : str | None
+        relationship_columns : str | None
             Name of the column to be used to denote the relationships of each edge. If unset, no
             column is used as relationships and multiple edges will be deleted.
+        convert_strings_to_categoricals : bool
+            If True, converts Strings to Categorical in adding edge relationships, if any. 
 
         See Also
         --------
@@ -376,7 +435,7 @@ class PropGraph(ar.DiGraph):
         dst = edge_attributes[destination_column]
 
         # 4. Add edge source and destination column names to property graph.
-        self.edge_names = [source_column, destination_column]
+        self.edge_names = (source_column, destination_column)
 
         ### Build the graph and load in relationships.
         # 1. Populate the graph object with edges.
@@ -389,7 +448,10 @@ class PropGraph(ar.DiGraph):
             relationships_to_add[destination_column] = dst
             self.add_edge_relationships(ak.DataFrame(relationships_to_add),
                                                      source_column,
-                                                     destination_column)
+                                                     destination_column,
+                                                     assume_sorted=True,
+                                                     convert_strings_to_categoricals=\
+                                                     convert_string_relationships_to_categoricals)
 
         ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
         # 1. Remove edges since those are sent separately and any columns marked as relationships.
@@ -398,18 +460,33 @@ class PropGraph(ar.DiGraph):
         columns.remove(destination_column)
 
         # 2. Extract symbol table names of arrays to use in the back-end.
-        column_ids = [self.edge_attributes[col].name for col in columns]
+        column_ids = []
+        edge_property_object_types = []
+        for col in columns:
+            if isinstance(self.edge_attributes[col], ak.Strings):
+                edge_property_object_types.append("Strings")
+                column_ids.append(self.edge_attributes[col].name)
+            elif isinstance(self.edge_attributes[col], ak.Categorical):
+                edge_property_object_types.append("Categorical")
+                self.edge_attributes[col].register(generate_string())
+                column_ids.append(self.edge_attributes[col].registered_name)
+            elif isinstance(self.edge_attributes[col], ak.pdarray):
+                edge_property_object_types.append("Strings")
+                column_ids.append(self.edge_attributes[col].name)
+            else:
+                raise NotImplementedError(f"{type(self.edge_attributes[col])} "
+                                          f"not supported by property graph")
 
         # 3. Generate internal indices for the edges.
         edges = self.edges()
         internal_indices = ak.find([src,dst], [edges[0],edges[1]])
 
         args = { "GraphName" : self.name,
+                "InputIndicesName" : internal_indices.name,
                  "ColumnNames" : "+".join(columns),
                  "PropertyArrayNames" : "+".join(column_ids),
-                 "InputIndicesName" : internal_indices.name
+                 "PropertyArrayTypes" : "+".join(edge_property_object_types)
                }
-        ak.generic_msg(cmd=cmd, args=args)
         ak.generic_msg(cmd=cmd, args=args)
 
     def get_node_labels(self) -> ak.DataFrame:
@@ -426,9 +503,8 @@ class PropGraph(ar.DiGraph):
         """
         labels = None
         try:
-            indexer = list(self.label_mapper.keys())
             ns = [self.node_name]
-            ns.extend(indexer)
+            ns.extend(self.label_columns)
             labels = self.node_attributes[ns]
         except KeyError as exc:
             raise KeyError("no label(s) found") from exc
@@ -455,9 +531,8 @@ class PropGraph(ar.DiGraph):
         """
         relationships = None
         try:
-            indexer = list(self.relationship_mapper.keys())
-            es = self.edge_names.copy()
-            es.extend(indexer)
+            es = list(self.edge_names)
+            es.extend(self.relationship_columns)
             relationships = self.edge_attributes[es]
         except KeyError as exc:
             raise KeyError("no relationship(s) found") from exc

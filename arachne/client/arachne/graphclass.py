@@ -100,7 +100,7 @@ class Graph:
         dst = nodes[dst]
 
         return (src,dst)
-    def density(self):
+    def density(self) -> float:
         return 2*(self.n_edges) / (self.n_vertices * (self.n_vertices-1))
 
     def _internal_edges(self) -> Tuple[pdarray, pdarray]:
