@@ -69,6 +69,16 @@ class ClassTest(ArkoudaTest):
 
 
         return ar_graph_weighted,ar_digraph_weighted
+    
+    def test_density(self):
+        ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted = self.build_undirected_graph()
+        ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted\
+            = self.build_directed_graph()
+        self.assertEqual(ar_graph.density(),nx.density(nx_graph))
+        self.assertEqual(ar_graph_weighted.density(),nx.density(nx_graph_weighted))
+        self.assertEqual(ar_di_graph.density(),nx.density(nx_di_graph))
+        self.assertEqual(ar_di_graph_weighted.density(),nx.density(nx_di_graph_weighted))
+        
         
 
 
