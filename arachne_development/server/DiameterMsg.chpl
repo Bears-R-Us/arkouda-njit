@@ -28,6 +28,8 @@ module DiameterMsg {
 
   use Set;
 
+  use MemDiagnostics;
+
   // private config const logLevel = ServerConfig.logLevel;
   private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
@@ -86,7 +88,7 @@ module DiameterMsg {
 
 
 
-      private proc bfs (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc bfs (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int):int throws{
           var cur_level=0;
@@ -177,7 +179,7 @@ module DiameterMsg {
 
 
 
-      private proc bfs_maxv (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc bfs_maxv (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int):(int,int) throws{
           var cur_level=0;
@@ -265,7 +267,7 @@ module DiameterMsg {
       }//end of bfs
 
 
-      private proc c_diameter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc c_diameter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,gdiameter:int):int throws{
           var cur_level=0;
@@ -460,11 +462,14 @@ module DiameterMsg {
 
           */
 
-          forall i in D1 with (ref maxdist, ref maxvertex,ref maxvx,ref maxvy,ref diameter) {
+          var LeafSet=new set(int,parSafe = true);
+          forall i in D1 with (ref maxdist, ref maxvertex,ref maxvx,ref maxvy,ref diameter,ref LeafSet) {
               if leaf[i]==true  {
                    if depth[i] <diameter/2 {
                        leaf[i]=false;
-                   } 
+                   } else {
+                      LeafSet.add(i);
+                   }
                    /*
                    else {
                        var f=father[i];
@@ -488,7 +493,48 @@ module DiameterMsg {
                   */
           }
 
+          for i in LeafSet {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
 
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update ){
+                                         if (leaf[j]==true) && depth[j]==depth[i] {
+                                               leaf[j]=false;
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update)  {
+                                         if (depth[j]==depth[i] && leaf[j]==true) {
+                                               leaf[j]=false;
+                                         }
+                                  }
+                              }
+          }
           for i in D1 {
                    if ( leaf[i]==true) && depth[i] >diameter/2  {
                             var xx=bfs( nei, start_i,src, dst,
@@ -510,7 +556,7 @@ module DiameterMsg {
 
 
 
-      private proc c_farthest (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+      proc c_farthest (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,gdiameter:int,numfarv:int):int throws{
           var cur_level=0;
@@ -644,8 +690,109 @@ module DiameterMsg {
       }//end of component diameter
 
 
+      proc c_supernode (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,gdiameter:int,numfarv:int):int throws{
+          var cur_level=0;
+          var diameter=gdiameter;
+          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          //startVerboseMem();
+          //{
+          var depth:[D1] int;
+          //}
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var update=false:bool;
+          depth=-1;
+          depth[root]=0;
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF, ref root,  ref depth,ref update) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
 
-      private proc c_iter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                if numCurF>0 {
+                    SetCurF<=>SetNextF;
+                    SetNextF.clear();
+                } else {
+                    if cur_level>diameter {
+                         numCurF=SetCurF.getSize();
+                         forall i in depth {
+                              if i==cur_level {
+                                  i=0;
+                              } else {
+                                  i=-1;
+                              }
+                         }
+                         cur_level=0;
+                    } else {
+                       break;
+                    }
+                }
+
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+          diameter=max(diameter,cur_level);
+          return diameter;
+          //return max(cur_level,xx);
+      }//end of component diameter
+
+      proc c_iter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,gdiameter:int, iternum:int):int throws{
           var cur_level=0;
@@ -1736,8 +1883,10 @@ module DiameterMsg {
           if numV>2500 {
               writeln("Enter BFS method");
               writeln("*************************************");
-              diameter=c_diameter(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, i,largestD);
+              //diameter=c_diameter(nei, start_i,src, dst,
+              //          neiR, start_iR,srcR, dstR, i,largestD);
+              diameter=c_supernode(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, i,largestD,10);
               writeln("Pass 1  The diameter of component ",i,"=",diameter );
               largestD=max(largestD,diameter);
           } else {
