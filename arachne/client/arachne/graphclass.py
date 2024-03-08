@@ -100,6 +100,9 @@ class Graph:
         dst = nodes[dst]
 
         return (src,dst)
+    def density(self) -> float:
+        """Returns Density of Undirected graph"""
+        return 2*(self.n_edges) / (self.n_vertices * (self.n_vertices-1))
 
     def _internal_edges(self) -> Tuple[pdarray, pdarray]:
         """Returns a tuple of pdarrays src and dst with internal vertex names.

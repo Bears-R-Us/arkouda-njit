@@ -65,6 +65,11 @@ class DiGraph(ar.Graph):
         in_degree[in_degree_keys] = in_degree_count
 
         return in_degree
+    
+    def density(self)-> float:
+        """Returns Density of Directed graph"""
+        return self.n_edges / (self.n_vertices * (self.n_vertices-1))
+
 
     def add_edges_from(self,
                        input_src:pdarray,
