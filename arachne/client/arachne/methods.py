@@ -96,11 +96,13 @@ def bfs_layers(graph: Union[ar.Graph,ar.DiGraph], source: int) -> pdarray:
         into depths.
     """
     cmd = "segmentedGraphBFS"
+    source = ak.find(source, graph.nodes())
+
     args = { "GraphName":graph.name,
              "Source":source }
 
-    repMsg = generic_msg(cmd=cmd, args=args)
-    return create_pdarray(repMsg)
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(rep_msg)
 
 @typechecked
 def triangles(graph: ar.Graph, vertices: pdarray = None) -> Union[int,pdarray]:

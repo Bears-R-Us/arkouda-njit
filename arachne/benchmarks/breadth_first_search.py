@@ -63,19 +63,12 @@ def run_rand_benchmark(rand_type, is_directed, trials,
           f"edges took {round(end-start,2)} seconds")
 
     print("### Arachne Breadth-First Search")
-    bfs_trials = []
     trial_vertices = random.sample(range(len(graph)), trials)
-    nodes = graph.nodes()
-    for u in trial_vertices:
-        start = time.time()
-        bfs = ar.bfs_layers(graph, int(nodes[u]))
-        end = time.time()
-        bfs_gb = ak.GroupBy(bfs)
-        keys,counts = bfs_gb.count()
-        print(keys)
-        print(counts)
-        print()
-        bfs_trials.append(end-start)
+    start = time.time()
+    timings = ar.bfs_layers_benchmark(graph, ak.array(trial_vertices))
+    end = time.time()
+
+    bfs_trials = timings.to_list()
     avg_runtime = round(st.mean(bfs_trials), 2)
     print(f"Running breadth-first search on graph took on average {avg_runtime} seconds")
 
