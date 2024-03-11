@@ -187,7 +187,9 @@ class AlgorithmTest(ArkoudaTest):
                                 "lbls2":labels2_subgraph})
         subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                         relationship_columns=["rels1","rels2"])
-        subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
+        subgraph.load_node_attributes(node_df_h, 
+                                      node_column="nodes", 
+                                      label_columns=["lbls1","lbls2"])
 
         # 5. Run the subgraph isomorphism.
         isos = ar.subgraph_isomorphism(prop_graph, subgraph)

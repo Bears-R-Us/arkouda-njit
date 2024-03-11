@@ -10,19 +10,17 @@ module Utils {
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
 
-    /**
-    * Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
-    * graph data structure should probably be a class method of SegGraph.
-    *
-    * :arg u: source vertex to index for.
-    * :type u: int
-    * :arg v: destination vertex v to binary search for
-    * :type v: int
-    * :arg graph: Graph to search within.
-    * :type graph: borrowed SegGraph
-    *
-    * :returns: int
-    */
+    /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
+    graph data structure should probably be a class method of SegGraph.
+    
+    :arg u: source vertex to index for.
+    :type u: int
+    :arg v: destination vertex v to binary search for
+    :type v: int
+    :arg graph: Graph to search within.
+    :type graph: borrowed SegGraph
+    
+    :returns: int */
     proc getEdgeId(u:int, v:int, ref dst:[?D1] int, ref seg:[?D2] int): int throws {
         var start = seg[u];
         var end = seg[u+1]-1;
@@ -31,13 +29,15 @@ module Utils {
         return eid;
     }
 
-    /** 
-    * Helper procedure to parse ranges and return the locale(s) we must write to.
-    * 
-    * val: value for which we want to find the locale that owns it. 
-    * 
-    * returns: array of the locale names. */
-    proc find_locs(val:int, ranges) throws {
+    /* Helper procedure to parse ranges and return the locale(s) we must write to.
+    
+    :arg val: value whose locale range we are looking for.
+    :type val: int
+    :arg ranges: replicated ranges array to use for the search.
+    :type ranges: const ref [ReplicatedDist] (int,locale,int) 
+
+    :returns: list(locale) */
+    proc find_locs(val:int, const ref ranges) throws {
         var locs = new list(locale);
 
         for low2lc2high in ranges {
@@ -49,16 +49,18 @@ module Utils {
         return locs;
     }
 
-    /**
-    * Binary search for a given key, original version by Dr. Du.
-    *
-    * ary: int array
-    * l: low index bound
-    * h: high index bound
-    * key: value we are searching for
-    *
-    * returns: index if key is found, -1 if not found
-    */
+    /* Binary search for a given key, original version by Zhihui Du.
+
+    :arg ary: integer array to search into
+    :type ary: ref [?D] int
+    :arg l: low index value
+    :type l: int
+    :arg h: high index value
+    :type h: int
+    :arg key: value to search for in array
+    :type key: int
+
+    :returns: int */
     proc bin_search_v(ref ary: [?D] int, l: int, h: int, key: int): int throws {
         if ( (l < D.lowBound) || (h > D.highBound) || (l < 0)) {
             return -1;
@@ -90,14 +92,21 @@ module Utils {
         }
     }// end bin_search_v
 
-    /**
-    * Non-recursive, distributed-memory binary search for a given key.
-    *
-    * arr: int array
-    * key: value we are searching for
-    *
-    * returns: index if key is found, -1 if not found
-    */
+    /* Non-recursive, distributed-memory binary search for a given key. NOTE: experimental! Not 
+    fully tested.
+    
+    :arg arr: integer array to search into
+    :type arr: ref [?D] int
+    :arg lo: low index value
+    :type lo: int
+    :arg hi: high index value
+    :type hi: int
+    :arg key: value to search for in array
+    :type key: int
+    :arg comparator: comparer of array values, defaults to integer comparator
+    :type comparator: defaultComparator
+    
+    :returns: int */
     proc bin_search(arr: [?D] int, key: int, lo: int, hi: int, comparator:?rec=defaultComparator): int throws {
         var found:int = -1; // index of found key, -1 if not found.
         coforall loc in Locales with (ref found) do on loc {

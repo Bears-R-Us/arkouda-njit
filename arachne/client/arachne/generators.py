@@ -1,15 +1,9 @@
 """Algorithms to create (random) graphs."""
 from __future__ import annotations
-from typing import cast, Tuple, Union
-from typeguard import typechecked
+from typing import Tuple, Union
 import arachne as ar
-from arachne.graphclass import Graph
-from arachne.digraphclass import DiGraph
-from arachne.propgraphclass import PropGraph
-import arkouda as ak
-from arkouda.client import generic_msg
-from arkouda.pdarrayclass import pdarray, create_pdarray
 import numpy as np
+import arkouda as ak
 
 __all__ = [
     "complete_graph",
@@ -20,12 +14,6 @@ __all__ = [
     "path_graph",
     "watts_strogatz_graph"
 ]
-
-
-
-
-#from akgraph.util import get_perm, sort_edges, standardize_edges
-
 
 def complete_graph(n: int, create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
@@ -56,8 +44,8 @@ def complete_graph(n: int, create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
     graph.add_edges_from(filtered_V,filtered_U)
     return graph
 
-
 def empty_graph(create_using):
+    """Creates empty graph of given type in `create_using`"""
     if create_using is ar.Graph:
         return ar.Graph()
     elif create_using is ar.DiGraph:
@@ -66,10 +54,10 @@ def empty_graph(create_using):
         return ar.PropGraph()
     else:
         raise Exception("Invalid Constructor")
-        
 
-
-def gnp(n: int, p: float,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+def gnp(n: int, p: float,
+        create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+    ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Generate a random binomial graph.
 
@@ -103,7 +91,6 @@ def gnp(n: int, p: float,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) 
         return graph
     graph.add_edges_from(V,U)
     return graph
-
 
 def karate_club_graph(create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
@@ -160,7 +147,6 @@ def karate_club_graph(create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> 
     graph = empty_graph(create_using)
     graph.add_edges_from(V,U)
     return graph  #TODO: when community detection is implemented (C,U,V)
-    
 
 def random_tree(n: int,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
@@ -188,7 +174,6 @@ def random_tree(n: int,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->
     graph = empty_graph(create_using)
     graph.add_edges_from(V,U)
     return graph
-
 
 def rmat(
     scale: int,
@@ -285,7 +270,6 @@ def get_perm(n: int) -> ak.pdarray:
     """Create random permutation of [0..n-1]. taken from akgraph.util"""
     randnums = ak.randint(0, 1, n, dtype=ak.float64)
     return ak.argsort(randnums)
-    
 
 def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) -> Tuple[ak.pdarray]:
     """Generate the sequential path with n nodes on nodes [0..n-1].
@@ -311,9 +295,6 @@ def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) ->
     graph = empty_graph(create_using)
     graph.add_edges_from(V,U)
     return graph
-
-    
-
 
 def watts_strogatz_graph(n: int, k: int, p: float,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->  Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
@@ -368,10 +349,3 @@ def watts_strogatz_graph(n: int, k: int, p: float,create_using: Union[ar.Graph,a
     graph.add_edges_from(V,U)
 
     return graph
-
-
-
-    
-
-
-
