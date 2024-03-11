@@ -147,24 +147,13 @@ module GraphArray {
     }
 
     class ReplicatedSymEntry : GenSymEntry {
-        type etype;
-        var rD = {0..0} dmapped replicatedDist();
-        var a: [rD] etype;
+        var a;
+        proc etype type do return a.eltType;
 
-        proc init(in replicated_array: [?replicated_domain] ?etype) {
-            super.init(etype);
-            this.etype = etype;
-            this.rD = replicated_domain;
-            this.a = replicated_array;
-            var home = here.id;
-            // TODO: Somehow once the array is stored in the symbol table, all replicands
-            //       disappear.
-            coforall loc in Locales do on loc {
-                this.a = this.a.replicand(Locales[home]);
-            }
-            for loc in Locales do on loc {
-                writeln("this.a = ", this.a.replicand(Locales[loc.id]));
-            }
+        proc init(in a: []) {
+            compilerAssert(isReplicatedArr(a));
+            super.init(a.eltType);
+            this.a = a;
         }
     }
 
