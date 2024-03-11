@@ -1,8 +1,8 @@
 module BreadthFirstSearch {
     // Chapel modules.
     use Reflection;
-    use Set;
     use List;
+    use ReplicatedDist;
 
     // Package modules.
     use CopyAggregation;
@@ -18,8 +18,20 @@ module BreadthFirstSearch {
     use ServerConfig;
     use AryUtil;
 
+    proc completeCopy(const ref arg) {
+        var result = arg;
+        coforall loc in Locales do on loc do result = arg;
+        return result;
+    }
+
+    proc getRangesType() type {
+        var tempD = {0..numLocales-1} dmapped replicatedDist();
+        var temp : [tempD] (int,locale,int);
+        return borrowed ReplicatedSymEntry(temp.type);
+    }
+
     /** 
-    * Breadth-first search for shared-memory (one locale) systems. Uses a Chapel set for 
+    * Breadth-first search for shared-memory (one locale) systems.
     *
     * graph: graph to run bfs on. 
     *
@@ -73,28 +85,23 @@ module BreadthFirstSearch {
     * graph: graph to run bfs on. 
     *
     * returns: success string message. */
-    proc bfs_kernel_und_dmem(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
+    proc bfs_kernel_und_dmem_opt(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
         // Initialize the frontiers on each of the locales.
         coforall loc in Locales with (ref frontier_sets) do on loc {
-            frontier_sets[0] = new set(int, parSafe=true);
-            frontier_sets[1] = new set(int, parSafe=true);
+            frontier_sets[0] = new list(int, parSafe=true);
+            frontier_sets[1] = new list(int, parSafe=true);
         } 
         frontier_sets_idx = 0;
-        var src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
-        var dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
-        var seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
-        var ranges = ((graph.getComp("RANGES_SDI")):borrowed ReplicatedSymEntry((int,locale,int))).a;
-
-        // NOTE: Workaround for ranges disappearing for all locales except home.
-        // TODO: Find a fix for this.
-        var home = here.id;
-        coforall loc in Locales do on loc {
-            ranges = ranges.replicand(Locales[home]);
-        }
+        const ref src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
+        const ref dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
+        const ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
+        
+        // Uses getRangesType() defined in this file for a specific replicated array.
+        var ranges = completeCopy(((graph.getComp("RANGES_SDI")):getRangesType()).a);
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, ranges) {
-            on lc do frontier_sets[frontier_sets_idx].add(root);
+            on lc do frontier_sets[frontier_sets_idx].pushBack(root);
         }
         var cur_level = 0;
         depth[root] = cur_level;
@@ -105,21 +112,22 @@ module BreadthFirstSearch {
                 on loc {
                     var src_low = src.localSubdomain().low;
                     var src_high = src.localSubdomain().high;
-                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new SetDstAggregator(int)) {
-                        var adj_list_start = seg[u];
-                        var num_neighbors = seg[u+1] - adj_list_start;
+                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new ListDstAggregator(int)/*, var depth_agg = new DstAggregator(int)*/) {
+                        var adj_list_start = seg[u]; // Possible remote read.
+                        var num_neighbors = seg[u+1] - adj_list_start; // Possible remote read.
                         if (num_neighbors != 0) {
                             var adj_list_end = adj_list_start + num_neighbors - 1;
                             
                             // Only pull the part of the adjacency list that is local.
                             var actual_start = max(adj_list_start, src_low);
                             var actual_end = min(src_high, adj_list_end);
-                            
-                            ref neighborhood = dst.localSlice(actual_start..actual_end);
-                            for v in neighborhood { 
+                            const ref neighborhood = dst.localSlice(actual_start..actual_end);
+
+                            for (i,v) in zip(neighborhood.domain, neighborhood) { 
                                 if (depth[v] == -1) {
                                     pending_work = true;
-                                    depth[v] = cur_level + 1;
+                                    depth[v] = cur_level + 1; // Really no way to make this write "local"? Maybe compiler is automating aggregations here?
+                                    // depth_agg.copy(depth[v], cur_level + 1); // Really bad performance! Why?
                                     var locs = find_locs(v, ranges);
                                     for lc in locs do frontier_agg.copy(lc.id, v);
                                 }
@@ -134,7 +142,7 @@ module BreadthFirstSearch {
             }
             cur_level += 1;
             frontier_sets_idx = (frontier_sets_idx + 1) % 2;
-        }// end while 
+        }// end while
         return "success";
-    }// end of bfs_kernel_und_dmem
+    }// end of bfs_kernel_und_dmem_opt
 }// end of BreadthFirstSearch module

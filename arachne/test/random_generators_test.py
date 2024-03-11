@@ -95,8 +95,6 @@ class RandomGeneratorsTest(ArkoudaTest):
             ar_edge_set = [(src_item, dst_item) for src_item, dst_item in zip(src, dst)]
 
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), True)
-        
-        pass
 
     def test_watts_strogatz_graph(self):
         #ar.Graph vs networkx Graph

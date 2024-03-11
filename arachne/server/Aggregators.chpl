@@ -1,7 +1,7 @@
 module Aggregators {
     // Chapel modules.
     use ReplicatedDist;
-    use Set;
+    use List;
 
     // Package modules.
     use CopyAggregation;
@@ -12,10 +12,10 @@ module Aggregators {
 
     /** 
     * Declare our frontier queues here to be sets, done globally since refs cannot be a part of 
-    * records yet. TODO: move these straight into SetDstAggregator when refs are allowed inside of 
+    * records yet. TODO: move these straight into ListDstAggregator when refs are allowed inside of 
     * records. */
     var D_frontier_sets = {0..1} dmapped replicatedDist();
-    var frontier_sets : [D_frontier_sets] set(int, parSafe=true);
+    var frontier_sets : [D_frontier_sets] list(int, parSafe=true);
     var frontier_sets_idx : int;
 
     // Sizes of buffer and yield frequencies taken from the Arkouda server config information.
@@ -26,7 +26,7 @@ module Aggregators {
     * Record for remote set aggregator to perform set additions from one locale to the next. Built
     * using the aggregator from CopyAggregation but modfied a bit to make the aggregated memory
     * address a set instead of an array memory location. */
-    record SetDstAggregator {
+    record ListDstAggregator {
         type elemType;
         type aggType = elemType;
         const bufferSize = dstBuffSize;
@@ -112,7 +112,7 @@ module Aggregators {
                 * forall gives error: A standalone or leader iterator is not found for the iterable 
                 * expression in this forall loop */
                 for srcVal in rBuffer.localIter(remBufferPtr, myBufferIdx) { 
-                    f.add(srcVal);
+                    f.pushBack(srcVal);
                 }
                 // Only free remaining data at deinit.
                 if freeData {
