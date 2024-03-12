@@ -269,10 +269,97 @@ module SubgraphIsomorphism {
         // var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         // var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        
+        //findWedges();
+        //findTriangles();
+
         var IsoArrtemp = vf2(g1, g2);
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
-               
+        
+        proc findWedges() {
+            // Iterate through all nodes
+            for v in 0..g1.n_vertices-1 {
+                // Retrieve in-neighbors and out-neighbors for node v
+                var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];
+                var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+                // We check each in-neighbor against each out-neighbor to find potential wedges
+                // There's no need to check if in-neighbors and out-neighbors are directly connected 
+                // since wedges are formed based on the central node 'v'
+                for inN in inNeighborsg1 {
+                    for outN in outNeighborsg1 {
+                        // For each pair (inN, outN), we have a potential wedge (inN, v, outN)
+                        // Since 'v' is the central node connecting 'inN' and 'outN', this is a valid wedge by definition.
+                        // Note: We're assuming that direct connection between 'inN' and 'outN' isn't a concern here based on your description.
+                        writeln("Wedge found: ", inN, "-", v, "-", outN);
+                    }
+                }
+            }
+        }
+
+
+        proc findTriangles() {
+            // Iterate through all nodes as potential starting point A
+            for A in 0..g1.n_vertices-1 {
+                // Retrieve out-neighbors for node A (potential B nodes)
+                ref outNeighborsA = dstNodesG1[segGraphG1[A]..<segGraphG1[A+1]];
+
+                // For each out-neighbor B of A
+                for B in outNeighborsA {
+                    // Retrieve out-neighbors for node B (potential C nodes)
+                    ref outNeighborsB = dstNodesG1[segGraphG1[B]..<segGraphG1[B+1]];
+
+                    // For each out-neighbor C of B
+                    for C in outNeighborsB {
+                        // Check if C is also directly connected back to A, completing the triangle
+                        // This requires checking if A is an in-neighbor of C
+                        //var inNeighborsC = dstRG1[segRG1[C]..<segRG1[C+1]];
+                        ref outNeighborsC = dstNodesG1[segGraphG1[C]..<segGraphG1[C+1]];
+
+                        // If A is found in C's in-neighbors, we have identified a triangle A->B->C->A
+                        if outNeighborsC.find(A) != outNeighborsC.domain.lowBound-1 {
+                            writeln("Triangle found: ", A, "->", B, "->", C, "->", A);
+                        }
+                    }
+                }
+            }
+        }
+
+        proc findFeedForward()   throws {
+            var feedForwardLoops: list([0..2] int);
+
+            // Use parallel iteration over all nodes with `forall` for potential performance improvement
+            forall A in 0..g1.n_vertices-1 with(ref feedForwardLoops) {
+                // Retrieve out-neighbors for node A
+                var outNeighborsA = dstNodesG1[segGraphG1[A]..<segGraphG1[A+1]];
+
+                // Check each out-neighbor B of A
+                for B in outNeighborsA {
+                    // Skip if A->A or B->B direct loops
+                    if A == B { continue; }
+
+                    // Retrieve out-neighbors for node B
+                    var outNeighborsB = dstNodesG1[segGraphG1[B]..<segGraphG1[B+1]];
+
+                    // Check each out-neighbor C of B
+                    for C in outNeighborsB {
+                        // Skip if B->A (backward) or C->C direct loops, ensuring feed-forward
+                        if B == C || C == A { continue; }
+
+                        // Check for direct A->C connection for feed-forward loop
+                        if outNeighborsA.find(C) != outNeighborsA.domain.lowBound-1 {
+                        // Create an array for this loop and add it to the list
+                        var loopArray: [0..2] int = [A, B, C];
+                        feedForwardLoops.pushBack(loopArray);
+                        //writeln("Feed-forward, A=", A, ", B=", B, ", C=", C);
+                        }
+                    }
+                }
+            }
+            //var feedForwardLoopsArr: [0..feedForwardLoops.size()-1] int;
+           
+            return (feedForwardLoops);
+        }
+
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
         proc addToTinTout (u: int, v: int, state: State) {
             state.core[v] = u; // v from g2 to a u from g1
@@ -296,7 +383,21 @@ module SubgraphIsomorphism {
             for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
             for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
         } // end of addToTinTout
-
+        // 
+        // Generate in-neighbors and out-neighbors for a given subgraph state
+        // for each element in array n1, with its index as n2.
+        //
+        proc addToTinToutArray(n1: [] int) throws{
+            //writeln("-----------------begingng of addToTinToutArray----------");
+            var initialstate = createInitialState(g1.n_vertices, g2.n_vertices);
+            for i in 0..n1.size-1{
+                //writeln("i = ", i, ", n1[i] = ", n1[i]);
+                addToTinTout (n1[i], i, initialstate);
+                writeln("initialstate = ", initialstate);
+            }
+            //writeln("-*-*-*-*-*-*-*-*-end of addToTinToutArray-*-*-*-*-*-*-*-*\n");
+            return initialstate;
+        }
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
             var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
@@ -461,28 +562,52 @@ module SubgraphIsomorphism {
                 return allmappings;
             }
 
-            // Generate candidate pairs (n1, n2) for mapping
-            //var candidatePairs = getCandidatePairsOpti(state);
-            var candidatePairs: list(int, parSafe=true);
-            var n2: int;
-            (candidatePairs, n2) = getCandidatePairsOpti(state);
 
-            // Iterate in parallel over candidate pairs
-            //forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-            forall n1 in candidatePairs with (ref state, ref allmappings) {
-                if isFeasible(n1, n2, state) {
-                    var newState = state.clone();
+            
+            if depth == 0 {
+                var ffcandidates = findFeedForward();
+                //forall n1Arr in ffcandidates with (ref state, ref allmappings) {
+                for n1Arr in ffcandidates {
+                        //var newState = state.clone();
+                        writeln("addToTinToutArray called");
+                        // Update state with the new mapping
+                        var newState = addToTinToutArray(n1Arr);
+                        writeln("addToTinToutArray returned : ",newState );
 
-                    // Update state with the new mapping
-                    addToTinTout(n1, n2, newState);
-
-                    // Recursive call with updated state and increased depth
-                    var newMappings = vf2Helper(newState, depth + 1);
+                        // Recursive call with updated state and increased depth
+                        
+                        var newMappings = vf2Helper(newState, 3);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
                     
-                    // Use a loop to add elements from newMappings to allmappings
-                    for mapping in newMappings do allmappings.pushBack(mapping);
+                }
+            } 
+            if depth == 3 {
+                // Generate candidate pairs (n1, n2) for mapping
+                //var candidatePairs = getCandidatePairsOpti(state);
+                var candidatePairs: list(int, parSafe=true);
+                var n2: int;
+                (candidatePairs, n2) = getCandidatePairsOpti(state);
+                // Iterate in parallel over candidate pairs
+                //forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+                forall n1 in candidatePairs with (ref state, ref allmappings) {
+                    if isFeasible(n1, n2, state) {
+                        var newState = state.clone();
+
+                        // Update state with the new mapping
+                        addToTinTout(n1, n2, newState);
+
+                        // Recursive call with updated state and increased depth
+                        var newMappings = vf2Helper(newState, depth + 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
+                    }
                 }
             }
+            
+
             return allmappings;
         }
         
