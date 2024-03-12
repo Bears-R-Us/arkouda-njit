@@ -360,6 +360,29 @@ module SubgraphIsomorphism {
             return (feedForwardLoops);
         }
 
+        proc findOutWedges()throws {
+            var outWedges: list([0..2] int);
+
+            // Iterate over each node and its out-neighbors
+            for u in 0..g1.n_vertices-1 {
+                var outNeighbors = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
+                if outNeighbors.size >= 2 {
+                    // If there are at least two out-neighbors, there could be out-wedges
+                    for i in outNeighbors {
+                        for j in outNeighbors {
+                            if i != j {
+                                // For each pair of out-neighbors (B, C), we have an out-wedge (A->B, A->C)
+                                var loopArray: [0..2] int = [u, i, j];
+                                outWedges.pushBack(loopArray); // Adjust u-1 if using 0-based
+                                writeln("u = ",u," i = ", i," j = ", j);
+                            }
+                        }
+                    }
+                }
+            }
+
+            return(outWedges);
+        }
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
         proc addToTinTout (u: int, v: int, state: State) {
             state.core[v] = u; // v from g2 to a u from g1
@@ -393,9 +416,9 @@ module SubgraphIsomorphism {
             for i in 0..n1.size-1{
                 //writeln("i = ", i, ", n1[i] = ", n1[i]);
                 addToTinTout (n1[i], i, initialstate);
-                writeln("initialstate = ", initialstate);
             }
             //writeln("-*-*-*-*-*-*-*-*-end of addToTinToutArray-*-*-*-*-*-*-*-*\n");
+            //writeln("initialstate = ", initialstate);
             return initialstate;
         }
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
@@ -565,14 +588,14 @@ module SubgraphIsomorphism {
 
             
             if depth == 0 {
-                var ffcandidates = findFeedForward();
+                var ffcandidates = findOutWedges();
                 //forall n1Arr in ffcandidates with (ref state, ref allmappings) {
                 for n1Arr in ffcandidates {
                         //var newState = state.clone();
-                        writeln("addToTinToutArray called");
+                        //writeln("addToTinToutArray called");
                         // Update state with the new mapping
                         var newState = addToTinToutArray(n1Arr);
-                        writeln("addToTinToutArray returned : ",newState );
+                        //writeln("addToTinToutArray returned : ",newState );
 
                         // Recursive call with updated state and increased depth
                         
@@ -589,10 +612,17 @@ module SubgraphIsomorphism {
                 var candidatePairs: list(int, parSafe=true);
                 var n2: int;
                 (candidatePairs, n2) = getCandidatePairsOpti(state);
+                //writeln("state = ", state);
+                //writeln("candidatePairs,", n2 );
+                //writeln(candidatePairs);
+                //writeln("///////////////////////////////////");
                 // Iterate in parallel over candidate pairs
                 //forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 forall n1 in candidatePairs with (ref state, ref allmappings) {
                     if isFeasible(n1, n2, state) {
+                        writeln("n1 = ", n1, " n2 = ", n2);
+                        writeln("are feasiblr for state:");
+                        writeln(state);
                         var newState = state.clone();
 
                         // Update state with the new mapping
