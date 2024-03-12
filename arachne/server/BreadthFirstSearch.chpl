@@ -18,18 +18,6 @@ module BreadthFirstSearch {
     use ServerConfig;
     use AryUtil;
 
-    proc completeCopy(const ref arg) {
-        var result = arg;
-        coforall loc in Locales do on loc do result = arg;
-        return result;
-    }
-
-    proc getRangesType() type {
-        var tempD = {0..numLocales-1} dmapped replicatedDist();
-        var temp : [tempD] (int,locale,int);
-        return borrowed ReplicatedSymEntry(temp.type);
-    }
-
     /** 
     * Breadth-first search for shared-memory (one locale) systems.
     *
@@ -95,9 +83,7 @@ module BreadthFirstSearch {
         const ref src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
         const ref dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
         const ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
-        
-        // Uses getRangesType() defined in this file for a specific replicated array.
-        var ranges = completeCopy(((graph.getComp("RANGES_SDI")):getRangesType()).a);
+        const ref ranges = toSymEntry(graph.getComp("RANGES_SDI"),(int,locale,int)).a;
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, ranges) {
