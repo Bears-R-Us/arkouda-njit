@@ -68,6 +68,7 @@ module BuildGraphMsg {
             }
         }
         graph.withComp(new shared ReplicatedSymEntry(ranges):GenSymEntry, key2insert);
+        graph.withComp(new shared SymEntry(ranges):GenSymEntry, key2insert+"_SYM");
     }
 
     /**

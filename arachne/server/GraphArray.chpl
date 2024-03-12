@@ -27,6 +27,7 @@ module GraphArray {
         EDGE_WEIGHT_SDI,    // int, real, int, or bool array with edge weights
         VERTEX_MAP_SDI,     // int array where VERTEX_MAP_SDI[u] gives the original value of u
         RANGES_SDI,         // int array with tuple of low values per locale of SRC_SDI
+        RANGES_SDI_SYM,     // int array with tuple of low values per locale of SRC_SDI
         RANGES_R_SDI,       // int array with tuple of low values per locale of SRC_R_SDI
         VERTEX_LABELS,      // map of type (string, (string,SegStringSymEntry))
         EDGE_RELATIONSHIPS, // map of type (string, (string,SegStringSymEntry))

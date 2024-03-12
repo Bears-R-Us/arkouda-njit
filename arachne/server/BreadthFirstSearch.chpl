@@ -77,6 +77,19 @@ module BreadthFirstSearch {
         }// end while 
         return "success";
     }// end of bfs_kernel_und_smem
+
+    proc find_locs_const_ref(const ref ranges) {
+        write(ranges);
+    }
+
+    proc find_locs_var(ranges) {
+        write(ranges);
+    }
+
+    proc find_locs_original(graph) throws {
+        var ranges = toSymEntry(graph.getComp("RANGES_SDI_SYM"), (int,locale,int)).a;
+        write(ranges);
+    }
         
     /** 
     * Using a remote aggregator above for sets, we are going to perform aggregated writes to the
@@ -98,6 +111,31 @@ module BreadthFirstSearch {
         
         // Uses getRangesType() defined in this file for a specific replicated array.
         var ranges = completeCopy(((graph.getComp("RANGES_SDI")):getRangesType()).a);
+        var rangesNoCopy = ((graph.getComp("RANGES_SDI")):getRangesType()).a;
+        var rangesSym = toSymEntry(graph.getComp("RANGES_SDI_SYM"), (int,locale,int)).a;
+        const ref rangesR = completeCopy(((graph.getComp("RANGES_SDI")):getRangesType()).a);
+        const ref rangesNoCopyR = ((graph.getComp("RANGES_SDI")):getRangesType()).a;
+        const ref rangesSymR = toSymEntry(graph.getComp("RANGES_SDI_SYM"), (int,locale,int)).a;
+
+        writeln("\n\n\n\n\n");
+        for loc in Locales do on loc {
+            writeln("ON LOCALE ", loc.id, ": ");
+            writeln("var ranges                     = ", ranges);
+            writeln("var rangesNoCopy               = ", rangesNoCopy);
+            writeln("var rangesSym                  = ", rangesSym);
+            writeln("const ref ranges               = ", rangesR);
+            writeln("const ref rangesNoCopy         = ", rangesNoCopyR);
+            writeln("const ref rangesSym            = ", rangesSymR);
+            write("find_locs_original             = ");
+            find_locs_original(graph); write("\n");
+            write("find_locs_const_ref with var   = ");
+            find_locs_const_ref(ranges); write("\n");
+            write("find_locs_const_ref with ref   = ");
+            find_locs_const_ref(rangesR); write("\n");
+            write("find_loc_var with var          = ");
+            find_locs_var(ranges); write("\n"); write("\n\n");
+        }
+        writeln("\n\n\n\n\n");
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, ranges) {
