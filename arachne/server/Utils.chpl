@@ -2,6 +2,7 @@ module Utils {
     // Chapel modules.
     use List;
     use Sort;
+    use ReplicatedDist;
 
     // Arachne modules.
     use GraphArray;
@@ -29,6 +30,39 @@ module Utils {
         return eid;
     }
 
+    /* Convenience procedure to return the type of the ranges array. */
+    proc getRangesType() type {
+        var tempD = {0..numLocales-1} dmapped replicatedDist();
+        var temp : [tempD] (int,locale,int);
+        return borrowed ReplicatedSymEntry(temp.type);
+    }
+
+    /* Convenience procedure to return the actual ranges array stored. */
+    proc GenSymEntry.getRanges() ref throws do return (this:getRangesType()).a;
+
+    /** Create array that keeps track of low vertex in each edges array on each locale.*/
+    proc generateRanges(graph, key, key2insert, ref array) throws {
+        var targetLocs = array.targetLocales();
+        var targetLocIds = for loc in targetLocs do loc.id;
+        
+        // TODO: We assume target locales will always be in a range with no holes, we have to ensure
+        //       this works in general for arrays with holes.
+        var D_sbdmn = {min reduce targetLocIds .. max reduce targetLocIds} dmapped replicatedDist();
+        var ranges : [D_sbdmn] (int,locale,int);
+
+        // Write the local subdomain low value to the ranges array.
+        coforall loc in targetLocs with (ref ranges) {
+            on loc {
+                var low_vertex = array[array.localSubdomain().low];
+                var high_vertex = array[array.localSubdomain().high];
+                coforall rloc in targetLocs with (ref ranges) do on rloc {
+                    ranges[loc.id] = (low_vertex,loc,high_vertex);
+                }
+            }
+        }
+        graph.withComp(new shared ReplicatedSymEntry(ranges):GenSymEntry, key2insert);
+    }
+
     /* Helper procedure to parse ranges and return the locale(s) we must write to.
     
     :arg val: value whose locale range we are looking for.
@@ -39,6 +73,7 @@ module Utils {
     :returns: list(locale) */
     proc find_locs(val:int, const ref ranges) throws {
         var locs = new list(locale);
+        writeln("On loc ", here.id, " ranges = ", ranges);
 
         for low2lc2high in ranges {
             if (val >= low2lc2high[0]) && (val <= low2lc2high[2]) {

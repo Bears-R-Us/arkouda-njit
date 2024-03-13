@@ -83,7 +83,7 @@ module BreadthFirstSearch {
         const ref src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
         const ref dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
         const ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
-        const ref ranges = toSymEntry(graph.getComp("RANGES_SDI"),(int,locale,int)).a;
+        const ref ranges = graph.getComp("RANGES_SDI").getRanges();
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, ranges) {

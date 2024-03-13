@@ -146,7 +146,6 @@ module GraphArray {
         }
     }
 
-    @deprecated("Use Arkouda SymEntry instead, this can be adapted for SparseSymEntry above")
     class ReplicatedSymEntry : GenSymEntry {
         var a;
         proc etype type do return a.eltType;
