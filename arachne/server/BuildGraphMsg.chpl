@@ -5,7 +5,6 @@ module BuildGraphMsg {
     use Time; 
     use Sort; 
     use List;
-    use ReplicatedDist;
 
     // Package modules.
     use CopyAggregation;
@@ -45,29 +44,6 @@ module BuildGraphMsg {
                 graph.withComp(new shared SymEntry(array):GenSymEntry, key);
             }
         }
-    }
-
-    /** Create array that keeps track of low vertex in each edges array on each locale.*/
-    proc generateRanges(graph, key, key2insert, ref array) throws {
-        var D_sbdmn = {0..numLocales-1} dmapped replicatedDist();
-        var ranges : [D_sbdmn] (int,locale,int);
-
-        // Write the local subdomain low value to the ranges array.
-        coforall loc in Locales with (ref ranges) {
-            on loc {
-                var low_vertex:int;
-                var high_vertex:int;
-                try {low_vertex = array[array.localSubdomain().low]:int;}
-                catch {low_vertex = -1;}
-                try {high_vertex = array[array.localSubdomain().high]:int;}
-                catch {high_vertex = -1;}
-
-                coforall rloc in Locales with (ref ranges) do on rloc { 
-                    ranges[loc.id] = (low_vertex,loc,high_vertex);
-                }
-            }
-        }
-        graph.withComp(new shared SymEntry(ranges):GenSymEntry, key2insert);
     }
 
     /**
