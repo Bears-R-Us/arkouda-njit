@@ -20,8 +20,8 @@ graph.load_node_attributes(node_df_g, node_column="nodes", label_columns=["lbls"
 ####################################
 
 subgraph = ar.PropGraph()
-src_subgraph = ak.array([0, 0, 3, 3])
-dst_subgraph = ak.array([1, 2, 0, 2])
+src_subgraph = ak.array([0, 1, 1, 2])
+dst_subgraph = ak.array([1, 3, 2, 0])
 lbls_subgraph = ak.array(["1", "1", "1", "1"])
 rels_subgraph = ak.array(["1", "1", "1", "1"])
 edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels":rels_subgraph})
@@ -49,7 +49,7 @@ G.add_edges_from([(3, 0), (1, 3), (4, 1), (2, 4), (5, 2), (3, 4), (4, 5),
                       (3, 7), (7, 6), (4, 8), (5, 9), (1, 0), (2, 1), (8, 7), (7,4), (8, 5), (9,8), (5, 10),(5, 11)])
 
 H.add_nodes_from(range(0, 4))
-H.add_edges_from([(0, 1), (0, 2 ), (3, 2), (3, 0)])
+H.add_edges_from([(0, 1), (1, 3 ), (1, 2), (2, 0)])
 
 NODE_LABEL = 'NodeLabel'
 EDGE_LABEL = 'EdgeLabel'

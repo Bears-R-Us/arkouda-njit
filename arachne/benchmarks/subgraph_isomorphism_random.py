@@ -98,7 +98,7 @@ if __name__ == "__main__":
     # but it's important to note that it produces graphs with a Poisson degree distribution,
     # which might not always accurately model real-world networks!
     num_nodes = args.n  # Number of nodes
-    p = 0.0005  # Probability of edge creation
+    p = 0.05  # Probability of edge creation
     print("Begining of Random Directed graph with P= ",p)
     # src, dst = create_random_graph(n, p)
     src, dst = create_random_directed_graph(num_nodes, p)
@@ -146,8 +146,8 @@ if __name__ == "__main__":
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([0, 0, 3, 3])
-    dst_subgraph = ak.array([1, 2, 0, 2])
+    src_subgraph = ak.array([0, 1, 1, 2])
+    dst_subgraph = ak.array([1, 2, 3, 0])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     #labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
@@ -243,6 +243,7 @@ if __name__ == "__main__":
     # Set the node attributes for G and H from dicts.
     nx.set_node_attributes(G, graph_node_attributes_final)
     nx.set_node_attributes(H, subgraph_node_attributes_final)
+    print("Running Networkx ")
 
     # Find subgraph isomorphisms of H in G.
     start_time = time.time()

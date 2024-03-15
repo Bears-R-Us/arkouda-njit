@@ -271,10 +271,51 @@ module SubgraphIsomorphism {
         //******************************************************************************************
         //findWedges();
         //findTriangles();
+        /*var timerprep:stopwatch;
+        timerprep.start();
 
+        //var ffcandidates = findOutEdges();
+        var ffcandidates = findOutWedgesLight();
+        //var ffstates = CandidToState(ffcandidates);
+        //writeln("////////////////////////////////////we are after state generation");
+
+        timerprep.stop();
+        writeln("/////////////////////////////////preprocessing time is :",timerprep.elapsed());
+*/
         var IsoArrtemp = vf2(g1, g2);
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
-        
+        proc findOutWedgesLight()throws {
+            var outWedges: list(int, parSafe=true);
+
+            // Iterate over each node and its out-neighbors
+            forall u in 0..g1.n_vertices-1 with (ref outWedges) {
+            //for u in 0..g1.n_vertices-1 {
+                var outNeighborsg1 = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
+                var inNeighborsg1 = dstRG1[segRG1[u]..<segRG1[u+1]];
+
+                if outNeighborsg1.size >= 2 & inNeighborsg1.size >= 1{
+                    outWedges.pushBack(u); 
+                }
+            }
+
+            return(outWedges);
+        }
+        proc CandidToState(ffcandidates) throws{
+            //var StateList: list(owned State) = new list(owned State);
+            var StateList: list(owned State);
+            forall n1Arr in ffcandidates with (ref StateList) {
+                
+                var newState = addToTinToutArray(n1Arr);
+                //writeln("state added: ", newState );
+
+                StateList.pushBack(newState);
+            }
+            return (StateList);
+        }
+
+
+
+
         proc findWedges() {
             // Iterate through all nodes
             for v in 0..g1.n_vertices-1 {
@@ -361,10 +402,11 @@ module SubgraphIsomorphism {
         }
 
         proc findOutWedges()throws {
-            var outWedges: list([0..2] int);
+            var outWedges: list(list(int), parSafe=true);
 
             // Iterate over each node and its out-neighbors
-            for u in 0..g1.n_vertices-1 {
+            forall u in 0..g1.n_vertices-1 with (ref outWedges) {
+            //for u in 0..g1.n_vertices-1 {
                 var outNeighbors = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
                 if outNeighbors.size >= 2 {
                     // If there are at least two out-neighbors, there could be out-wedges
@@ -372,9 +414,13 @@ module SubgraphIsomorphism {
                         for j in outNeighbors {
                             if i != j {
                                 // For each pair of out-neighbors (B, C), we have an out-wedge (A->B, A->C)
-                                var loopArray: [0..2] int = [u, i, j];
-                                outWedges.pushBack(loopArray); // Adjust u-1 if using 0-based
-                                writeln("u = ",u," i = ", i," j = ", j);
+                                var loopList: list(int);
+                                loopList.pushBack(u);
+                                loopList.pushBack(i);
+                                loopList.pushBack(j);
+                                
+                                outWedges.pushBack(loopList); // Adjust u-1 if using 0-based
+                                //writeln("u = ",u," i = ", i," j = ", j);
                             }
                         }
                     }
@@ -382,6 +428,26 @@ module SubgraphIsomorphism {
             }
 
             return(outWedges);
+        }
+        
+        proc findOutEdges()throws {
+            var outEdges: list(list(int), parSafe=true);
+
+            // Iterate over each node and its out-neighbors
+            forall u in 0..g1.n_vertices-1 with (ref outEdges) {
+            //for u in 0..g1.n_vertices-1 {
+                var outNeighbors = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
+                for elm in outNeighbors{
+                    var loopList: list(int);
+                    loopList.pushBack(u);
+                    loopList.pushBack(elm);
+                    
+                    outEdges.pushBack(loopList);
+                }
+            }
+            
+
+            return(outEdges);
         }
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
         proc addToTinTout (u: int, v: int, state: State) {
@@ -410,12 +476,15 @@ module SubgraphIsomorphism {
         // Generate in-neighbors and out-neighbors for a given subgraph state
         // for each element in array n1, with its index as n2.
         //
-        proc addToTinToutArray(n1: [] int) throws{
+        proc addToTinToutArray(n1: list(int)) throws{
             //writeln("-----------------begingng of addToTinToutArray----------");
             var initialstate = createInitialState(g1.n_vertices, g2.n_vertices);
-            for i in 0..n1.size-1{
+            //for i in 0..n1.size-1{
+            var indexn1: int = 0;
+            for elem in n1{
                 //writeln("i = ", i, ", n1[i] = ", n1[i]);
-                addToTinTout (n1[i], i, initialstate);
+                addToTinTout (elem, indexn1, initialstate);
+                indexn1 += 1;
             }
             //writeln("-*-*-*-*-*-*-*-*-end of addToTinToutArray-*-*-*-*-*-*-*-*\n");
             //writeln("initialstate = ", initialstate);
@@ -544,7 +613,7 @@ module SubgraphIsomorphism {
                     
                     return (unmappedG1, minTin2);
                 } else { 
-                    writeln("$$$$$ Last state = ", state);
+                    //writeln("$$$$$ Last state = ", state);
                     //var unmappedG1: [0..<state.n1] int = -1;
                     var unmappedG1: list(int) = 0..#state.n1;
                     var unmappedG2: int = -1;
@@ -586,29 +655,30 @@ module SubgraphIsomorphism {
             }
 
 
-            
+            /*
             if depth == 0 {
-                var ffcandidates = findOutWedges();
-                //forall n1Arr in ffcandidates with (ref state, ref allmappings) {
-                for n1Arr in ffcandidates {
-                        //var newState = state.clone();
+                var n2: int = 0;
+                forall n1 in ffcandidates with (ref state, ref allmappings) {
+                //for n1Arr in ffcandidates {
+                        var newState = state.clone();
                         //writeln("addToTinToutArray called");
                         // Update state with the new mapping
-                        var newState = addToTinToutArray(n1Arr);
-                        //writeln("addToTinToutArray returned : ",newState );
-
+                        //var newState = addToTinToutArray(n1Arr);
+                        addToTinTout(n1, n2, newState);
                         // Recursive call with updated state and increased depth
-                        
-                        var newMappings = vf2Helper(newState, 3);
+                //forall newState in ffstates with (ref allmappings) {
+
+                        var newMappings = vf2Helper(newState, 1);
                         
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings do allmappings.pushBack(mapping);
                     
                 }
             } 
-            if depth == 3 {
+            else {*/
                 // Generate candidate pairs (n1, n2) for mapping
                 //var candidatePairs = getCandidatePairsOpti(state);
+                
                 var candidatePairs: list(int, parSafe=true);
                 var n2: int;
                 (candidatePairs, n2) = getCandidatePairsOpti(state);
@@ -620,9 +690,9 @@ module SubgraphIsomorphism {
                 //forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 forall n1 in candidatePairs with (ref state, ref allmappings) {
                     if isFeasible(n1, n2, state) {
-                        writeln("n1 = ", n1, " n2 = ", n2);
-                        writeln("are feasiblr for state:");
-                        writeln(state);
+                        //writeln("n1 = ", n1, " n2 = ", n2);
+                        //writeln("are feasiblr for state:");
+                        //writeln(state);
                         var newState = state.clone();
 
                         // Update state with the new mapping
@@ -635,7 +705,7 @@ module SubgraphIsomorphism {
                         for mapping in newMappings do allmappings.pushBack(mapping);
                     }
                 }
-            }
+            //}
             
 
             return allmappings;
