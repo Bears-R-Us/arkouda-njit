@@ -11,6 +11,14 @@ module Utils {
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
 
+    /* A fast variant of localSubdomain() assumes 'blockArray' is a block-distributed array
+       if it breaks, replace it with:
+            inline proc fastLocalSubdomain(arr) do return arr.localSubdomain();*/
+    proc fastLocalSubdomain(const ref blockArray) const ref {
+        assert(blockArray.targetLocales()[here.id] == here);
+        return blockArray._value.dom.locDoms[here.id].myBlock;
+    }
+
     /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
     graph data structure should probably be a class method of SegGraph.
     
@@ -38,23 +46,30 @@ module Utils {
     }
 
     /* Convenience procedure to return the actual ranges array stored. */
-    proc GenSymEntry.getRanges() ref throws do return (this:getRangesType()).a;
+    proc GenSymEntry.getRanges() const ref do return try! (this:getRangesType()).a;
 
     /** Create array that keeps track of low vertex in each edges array on each locale.*/
-    proc generateRanges(graph, key, key2insert, ref array) throws {
-        var targetLocs = array.targetLocales();
-        var targetLocIds = for loc in targetLocs do loc.id;
-        
-        // TODO: We assume target locales will always be in a range with no holes, we have to ensure
-        //       this works in general for arrays with holes.
-        var D_sbdmn = {min reduce targetLocIds .. max reduce targetLocIds} dmapped replicatedDist();
-        var ranges : [D_sbdmn] (int,locale,int);
+    proc generateRanges(graph, key, key2insert, const ref array) throws {
+        const ref targetLocs = array.targetLocales();
+        const targetLocIds = targetLocs.id;
+
+        // Create a domain in the range of locales that the array was distributed to. In general,
+        // this will be the whole locale space, and we deal with gaps in the array through the 
+        // isEmpty() method for subdomains.
+        var D = {min reduce targetLocIds .. max reduce targetLocIds} dmapped replicatedDist();
+        var ranges : [D] (int,locale,int);
 
         // Write the local subdomain low value to the ranges array.
         coforall loc in targetLocs with (ref ranges) {
             on loc {
-                var low_vertex = array[array.localSubdomain().low];
-                var high_vertex = array[array.localSubdomain().high];
+                const ref localSubdomain = fastLocalSubdomain(array);
+                var low_vertex, high_vertex: int;
+
+                if !localSubdomain.isEmpty() {
+                    low_vertex = array[localSubdomain.low];
+                    high_vertex = array[localSubdomain.high];
+                } else { low_vertex = -1; high_vertex = -1; }
+                
                 coforall rloc in targetLocs with (ref ranges) do on rloc {
                     ranges[loc.id] = (low_vertex,loc,high_vertex);
                 }
@@ -71,14 +86,11 @@ module Utils {
     :type ranges: const ref [ReplicatedDist] (int,locale,int) 
 
     :returns: list(locale) */
-    proc find_locs(val:int, const ref ranges) throws {
+    proc find_locs(val:int, const ref ranges) {
         var locs = new list(locale);
-        writeln("On loc ", here.id, " ranges = ", ranges);
 
         for low2lc2high in ranges {
-            if (val >= low2lc2high[0]) && (val <= low2lc2high[2]) {
-                locs.pushBack(low2lc2high[1]);
-            }
+            if (val >= low2lc2high[0])&&(val <= low2lc2high[2]) then locs.pushBack(low2lc2high[1]);
         }
 
         return locs;

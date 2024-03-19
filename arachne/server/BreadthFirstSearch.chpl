@@ -94,10 +94,11 @@ module BreadthFirstSearch {
 
         while true { 
             var pending_work:bool;
-            coforall loc in Locales with(|| reduce pending_work, ref depth, ref frontier_sets) {
+            coforall loc in Locales with(|| reduce pending_work, ref depth, ref frontier_sets) { // Should we actually loop over targetLocales instead?
                 on loc {
-                    var src_low = src.localSubdomain().low;
-                    var src_high = src.localSubdomain().high;
+                    const ref localSubdomain = fastLocalSubdomain(src);
+                    var src_low = localSubdomain.low;
+                    var src_high = localSubdomain.high;
                     forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new ListDstAggregator(int)/*, var depth_agg = new DstAggregator(int)*/) {
                         var adj_list_start = seg[u]; // Possible remote read.
                         var num_neighbors = seg[u+1] - adj_list_start; // Possible remote read.

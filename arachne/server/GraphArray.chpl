@@ -126,23 +126,14 @@ module GraphArray {
         }
     }
 
-    /**
-    * Allows storage of sparse arrays in the Symbol Table (SymTab).
-    * NOTE: Currently returns an error since assignment of an inputted sparse subdomain to an 
-    *       already-created sparse subdomain is not allowed. Workaround is incoming.
-    */
+    /* Allows storage of sparse arrays in the symbol table. */
     class SparseSymEntry : GenSymEntry {
-        type etype;
-        var bD: makeDistDom(1).type;
-        var sD: sparse subdomain(bD);
-        var a: [sD] etype;
-        
-        // TODO: fix error with sparse_subdomain assignment not being allowed.
-        proc init(in sparse_array: [?sparse_subdomain] ?etype) {
-            super.init(etype);
-            this.etype = etype;
-            this.sD = sparse_subdomain;
-            this.a = sparse_array;
+        var a;
+        proc etype type do return a.eltType;
+
+        proc init(in a: []) where a.isSparse() {
+            super.init(a.eltType);
+            this.a = a;
         }
     }
 
@@ -221,9 +212,9 @@ module GraphArray {
     }
 
     class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
-        var indicesEntry: shared SparseSymEntry(int);
+        var indicesEntry: shared SparseSymEntry(?);
 
-        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(int), type etype) {
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(?), type etype) {
             super.init(offsetsSymEntry, bytesSymEntry, etype);
             this.indicesEntry = indicesSymEntry;
         }
