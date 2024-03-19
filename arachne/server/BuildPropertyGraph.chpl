@@ -59,7 +59,7 @@ module BuildPropertyGraph {
 
     :returns: bool
     */
-    proc isConsecutive(array: [?D]) {
+    proc isConsecutive(const ref array: [?D]) {
         var consecutive:bool = true;
         forall (v,d) in zip(array[D.low+1..D.high], D[D.low+1..D.high]) 
             with (ref consecutive) 
@@ -75,7 +75,7 @@ module BuildPropertyGraph {
 
     :returns: bool
     */
-    proc isAligned(array: [?D]) {
+    proc isAligned(const ref array: [?D]) {
         var aligned:bool = true;
         if array[D.low] != D.low then aligned = false;
         if array[D.high] != D.high then aligned = false;
