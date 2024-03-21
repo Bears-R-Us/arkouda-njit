@@ -1,52 +1,48 @@
-# Creating a small-world network by using the Watts-Strogatz model. 
-# This model starts with a regular ring lattice and then rewires some edges at random, 
-# introducing a small-world character (high clustering and short average path length) into the network.
+"""Generate small-world directed graph and benchmark for subgraph isomorphism."""
 
 import argparse
 import time
 import arachne as ar
 import arkouda as ak
 import numpy as np
+import networkx as nx
+import random
 
 def create_parser():
-    """Creates the command line parser for this script"""
+    """Creates the command line parser for this script."""
     script_parser = argparse.ArgumentParser(
         description="Benchmark for subgraph isomorphism."
     )
     script_parser.add_argument("hostname", help="Hostname of arkouda server")
     script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
     script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
-    script_parser.add_argument("m", type=int, default=2000, help="Number of edges for graph")
     script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
     script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
-    script_parser.add_argument("s", type=int, default=2, help="Random seed for reproducibility")
-
+    script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
     return script_parser
 
-def create_small_world_network(n, k, p):
-    """Generate a small-world network using the Watts-Strogatz model."""
-    if k % 2 != 0:
-        raise ValueError("k must be even in the Watts-Strogatz model.")
+def create_small_world_directed_graph(num_nodes, k=4, p=0.1, seed=None):
+    """
+    Generates a small-world directed graph using the Watts-Strogatz model and returns the src and dst arrays.
 
-    src = []
-    dst = []
-    # Create a regular ring lattice
-    for i in range(n):
-        for j in range(1, k // 2 + 1):
-            src.append(i)
-            dst.append((i + j) % n)
-            src.append(i)
-            dst.append((i - j) % n)
+    Parameters:
+    num_nodes (int): Number of nodes in the graph.
+    k (int): Each node is connected to k nearest neighbors in the ring topology.
+    p (float): The probability of rewiring each edge.
+    seed (int): Seed for the random number generator.
 
-    # Rewire edges with probability p
-    for i in range(n):
-        for j in range(1, k // 2 + 1):
-            if np.random.random() < p:
-                while True:
-                    new_connection = np.random.randint(n)
-                    if new_connection != i and new_connection not in dst[src.index(i)]:
-                        dst[src.index(i)] = new_connection
-                        break
+    Returns:
+    tuple: A tuple containing two lists (src, dst) representing the source and destination of each edge.
+    """
+    # Create a Watts-Strogatz small-world graph
+    small_world_graph = nx.watts_strogatz_graph(num_nodes, k, p, seed)
+
+    # Convert to a directed graph to simulate directed behavior
+    small_world_directed = nx.DiGraph(small_world_graph)
+
+    # Extract src and dst arrays
+    src = [edge[0] for edge in small_world_directed.edges()]
+    dst = [edge[1] for edge in small_world_directed.edges()]
 
     return src, dst
 
@@ -65,18 +61,16 @@ if __name__ == "__main__":
     num_pus = config["numPUs"]
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
-    ### Generate a small-world network
-    n = args.n  # Number of nodes
-    k = 4  # Each node is connected to k nearest neighbors in ring topology
-    p = 0.5  # Probability of rewiring each edge
-
-    src, dst = create_small_world_network(n, k, p)
+    ### Generate a small-world directed graph
+    num_nodes = args.n
+    print("Beginning of Small-World Directed graph generation")
+    src, dst = create_small_world_directed_graph(num_nodes, k=20, p=0.01)  # Example values for k and p
+    print("Small-World Directed graph created")
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
 
-
-    # 2. Build temporary property graph to get sorted edges and nodes lists.
+    # Build temporary property graph to get sorted edges and nodes lists.
     temp_prop_graph = ar.PropGraph()
     start = time.time()
     temp_prop_graph.add_edges_from(src_ak, dst_ak)
@@ -87,49 +81,72 @@ if __name__ == "__main__":
           f"edges took {round(build_time,2)} seconds.")
 
     ### Generate node labels and edge relationships for the graph.
-    # 1. Extract node and edge information.
     num_edges = temp_prop_graph.size()
     num_nodes = len(temp_prop_graph)
     edges = temp_prop_graph.edges()
     nodes = temp_prop_graph.nodes()
 
-    # 2. Generate sets of node labels and edge relationships.
-    labels_set = ak.array(["lbl" + str(x) for x in range(args.x)])
-    relationships_set = ak.array(["rel" + str(y) for y in range(args.y)])
+    labels_set = ak.array(["lbl" + str(x) for x in range(1, args.x+1)])
+    relationships_set = ak.array(["rel" + str(y) for y in range(1, args.y+1)])
 
-    # 3. Give edges and nodes some labels and relationships.
     node_labels = labels_set[ak.randint(0, len(labels_set), num_nodes)]
     edge_relationships = relationships_set[ak.randint(0, len(relationships_set), num_edges)]
 
-    # 4. Create dataframe to load into a new property graph.
-    edge_df = ak.DataFrame({"src":edges[0], "dst":edges[1], "relationships":edge_relationships})
-    node_df = ak.DataFrame({"nodes":nodes, "labels":node_labels})
+    edge_df = ak.DataFrame({"src":edges[0], "dst":edges[1], "rels1":edge_relationships})
+    node_df = ak.DataFrame({"nodes":nodes, "lbls1":node_labels})
 
-    # 5. Create new property graph with node labels and edge relationships.
+    # Create new property graph with node labels and edge relationships.
     prop_graph = ar.PropGraph()
-    prop_graph.load_edge_attributes(edge_df, source_column="src", destination_column="dst",
-                                    relationship_columns=["relationships"])
-    prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["labels"])
+    prop_graph.load_edge_attributes(edge_df, source_column="src", destination_column="dst", relationship_columns=["rels1"])
+   
+    prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
 
     ### Create the subgraph we are searching for.
-    # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([0, 1, 2])
-    dst_subgraph = ak.array([1, 2, 0])
+    src_subgraph = ak.array([1, 2, 0])
+    dst_subgraph = ak.array([2, 0, 1])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1"])
-    labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
-    rels2_subgraph = ak.array(["rel2", "rel2", "rel2"])
 
-    #2. Populate the subgraph.
+    # Populate the subgraph.
     subgraph = ar.PropGraph()
-    edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
-                            "rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": src_subgraph, "lbls1":labels1_subgraph,
-                              "lbls2":labels2_subgraph})
-    subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
-                                    relationship_columns=["rels1","rels2"])
-    subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
+    edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels1":rels1_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2]), "lbls1":labels1_subgraph})
+    subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst", relationship_columns=["rels1"])
+    subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
 
+    print("Running Arachne...")
     ### Run subgraph isomorphism.
-    isos = ar.subgraph_isomorphism(prop_graph,subgraph)
-    print("isos = isos")
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/3} isos")
+
+    #### Run NetworkX subgraph isomorphism for comparison.
+    # Convert Arachne dataframes to NetworkX graph for subgraph isomorphism.
+    G = nx.DiGraph()
+    G.add_edges_from([(int(src), int(dst)) for src, dst in zip(src_ak.to_ndarray(), dst_ak.to_ndarray())])
+    H = nx.DiGraph()
+    H.add_edges_from([(int(src), int(dst)) for src, dst in zip(src_subgraph.to_ndarray(), dst_subgraph.to_ndarray())])
+
+    print("Running NetworkX... ")
+    # Find subgraph isomorphisms of H in G.
+    start_time = time.time()
+    GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
+    subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
+    elapsed_time = time.time() - start_time
+    print(f"NetworkX execution time: {elapsed_time} seconds")
+    print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
+
+    ### Optionally print isomorphisms.
+    if args.print_isos:
+        print("Arachne isomorphisms:")
+        for iso in isos.to_list():
+            print(iso)
+
+        print("\nNetworkX isomorphisms:")
+        for iso in subgraph_isomorphisms:
+            print(iso)
+
+    ### Shutdown Arkouda connection.
+    ak.shutdown()
