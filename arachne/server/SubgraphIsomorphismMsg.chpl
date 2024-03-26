@@ -63,7 +63,7 @@ module SubgraphIsomorphismMsg {
             var isoDistArray = makeDistArray(isoArray.size, int);
             isoDistArray = isoArray;
             var IsoDistArrayName = st.nextName();
-            var IsoDistArrayEntry = new shared SymEntry(isoDistArray);
+            var IsoDistArrayEntry = createSymEntry(isoDistArray);
             st.addEntry(IsoDistArrayName, IsoDistArrayEntry);
             repMsg = 'created ' + st.attrib(IsoDistArrayName);
 

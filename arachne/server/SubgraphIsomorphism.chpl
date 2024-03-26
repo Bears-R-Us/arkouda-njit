@@ -30,11 +30,11 @@ module SubgraphIsomorphism {
         var D_core: domain(1) = {0..<n2};
         var core: [0..<n2] int;
         
-        var Tin1: domain(int); // in-neighbors of current state for main graph
-        var Tout1: domain(int); // out-neighbors of current state for main graph
+        var Tin1: domain(int, parSafe=true); // in-neighbors of current state for main graph
+        var Tout1: domain(int, parSafe=true); // out-neighbors of current state for main graph
 
-        var Tin2: domain(int); // in-neighbors of current state for subgraph
-        var Tout2: domain(int); // out-neighbors of current state for subgraph
+        var Tin2: domain(int, parSafe=true); // in-neighbors of current state for subgraph
+        var Tout2: domain(int, parSafe=true); // out-neighbors of current state for subgraph
         
         var depth:int; // recursion depth, when depth == n2 then all vertices are mapped.
 
@@ -220,10 +220,10 @@ module SubgraphIsomorphism {
 
         // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
         // internal hash table intersections via sets.
-        var convertedRelationshipsG1Dist = makeDistArray(g1.n_edges, domain(int));
-        var convertedRelationshipsG2Dist = makeDistArray(g2.n_edges, domain(int));
-        var convertedLabelsG1Dist = makeDistArray(g1.n_vertices, domain(int));
-        var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int));
+        var convertedRelationshipsG1Dist = makeDistArray(g1.n_edges, domain(int, parSafe=true));
+        var convertedRelationshipsG2Dist = makeDistArray(g2.n_edges, domain(int, parSafe=true));
+        var convertedLabelsG1Dist = makeDistArray(g1.n_vertices, domain(int, parSafe=true));
+        var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int, parSafe=true));
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
             var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
@@ -267,8 +267,8 @@ module SubgraphIsomorphism {
         var dstRG1: [0..<mG1] int = dstRG1Dist;
         var segRG1: [0..<nG1+1] int = segRG1Dist;
         var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Dist;
-        var convertedRelationshipsG1: [0..<mG1] domain(int) = convertedRelationshipsG1Dist;
-        var convertedLabelsG1: [0..<nG1] domain(int) = convertedLabelsG1Dist;
+        var convertedRelationshipsG1: [0..<mG1] domain(int, parSafe=true) = convertedRelationshipsG1Dist;
+        var convertedLabelsG1: [0..<nG1] domain(int, parSafe=true) = convertedLabelsG1Dist;
 
         var srcNodesG2: [0..<mG2] int = srcNodesG2Dist;
         var dstNodesG2: [0..<mG2] int = dstNodesG2Dist;
@@ -277,8 +277,8 @@ module SubgraphIsomorphism {
         var dstRG2: [0..<mG2] int = dstRG2Dist;
         var segRG2: [0..<nG2+1] int = segRG2Dist;
         var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Dist;
-        var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
-        var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
+        var convertedRelationshipsG2: [0..<mG2] domain(int, parSafe=true) = convertedRelationshipsG2Dist;
+        var convertedLabelsG2: [0..<nG2] domain(int, parSafe=true) = convertedLabelsG2Dist;
         //******************************************************************************************
         
         var IsoArrtemp = vf2(g1, g2);

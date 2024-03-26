@@ -16,7 +16,7 @@ def generate_string(n=5):
 
 def no_filter(attributes: ak.DataFrame):
     """Default filtering method for property subgraph view generation."""
-    return ak.full(attributes.size, True, ak.akbool)
+    return ak.full(attributes.shape[0], True, ak.akbool)
 
 class PropGraph(ar.DiGraph):
     """`PropGraph` is the base class to represent a property graph. It inherits from `DiGraph` since
@@ -250,7 +250,8 @@ class PropGraph(ar.DiGraph):
         ### Prepare the columns that are to be sent to the back-end to be stored per node.
         # 1. From columns remove nodes and any other columns that were handled by adding node
         #    labels.
-        columns = [col for col in columns if col not in label_columns]
+        columns = [col for col in columns if col not in label_columns]\
+                  if label_columns is not None else list(columns)
         columns.remove(node_column)
 
         # 2. Extract symbol table names of arrays to use in the back-end and their types.
@@ -455,7 +456,8 @@ class PropGraph(ar.DiGraph):
 
         ### Prepare the columns that are to be sent to the back-end to be stored per-edge.
         # 1. Remove edges since those are sent separately and any columns marked as relationships.
-        columns = [col for col in columns if col not in relationship_columns]
+        columns = [col for col in columns if col not in relationship_columns]\
+                  if relationship_columns is not None else list(columns)
         columns.remove(source_column)
         columns.remove(destination_column)
 
@@ -621,6 +623,12 @@ class PropGraph(ar.DiGraph):
         edges = self.edges()
 
         nodes = nodes[filtered_nodes]
+
+        print(edges[0])
+        print(edges[1])
+        print(filtered_nodes)
+        print(filtered_edges)
+
         src = edges[0][filtered_edges]
         dst = edges[1][filtered_edges]
 
