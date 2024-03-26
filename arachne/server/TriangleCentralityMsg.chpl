@@ -52,7 +52,7 @@ module TriangleCentralityMsg {
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
         var triangleCentralitiesName = st.nextName();
-        var triangleCentralitiesEntry = new shared SymEntry(triangleCentralities);
+        var triangleCentralitiesEntry = createSymEntry(triangleCentralities);
         st.addEntry(triangleCentralitiesName, triangleCentralitiesEntry);
         repMsg = 'created ' + st.attrib(triangleCentralitiesName);
 
