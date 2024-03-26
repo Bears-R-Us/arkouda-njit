@@ -172,11 +172,11 @@ module TrussMsg {
 
       proc kTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -678,7 +678,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -688,11 +688,11 @@ module TrussMsg {
 
       proc BatchMaxTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):int throws{ 
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1020,7 +1020,7 @@ module TrussMsg {
 
       proc MaxTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
                 ref aPTriCount=TriCount;
                 var aPlTriCount =makeDistArray(Ne,atomic int);
@@ -1161,7 +1161,7 @@ module TrussMsg {
                     var countName = st.nextName();
                     var maxKAry = makeDistArray(2, int);
                     maxKAry[0]=kUp;
-                    var countEntry = new shared SymEntry(maxKAry);
+                    var countEntry = createSymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -1199,11 +1199,11 @@ module TrussMsg {
 
       proc TrussDecoMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        TriCount:[?D5] atomic int, EdgeDeleted:[?D6] int ):string throws{
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1722,7 +1722,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);

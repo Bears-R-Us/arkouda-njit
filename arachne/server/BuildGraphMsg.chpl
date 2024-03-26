@@ -37,11 +37,11 @@ module BuildGraphMsg {
         select etype {
             when DType.Int64 {
                 var array = toSymEntry(entry, int).a;
-                graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                graph.withComp(createSymEntry(array):GenSymEntry, key);
             }
             when DType.UInt64 {
                 var array = toSymEntry(entry, uint).a : int;
-                graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                graph.withComp(createSymEntry(array):GenSymEntry, key);
             }
         }
     }
@@ -84,7 +84,7 @@ module BuildGraphMsg {
             var etype = entry.dtype;
             if key == "START_IDX_RDI" || key == "START_IDX_R_RDI" {
                 var array = toSymEntry(entry, int).a;
-                graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                graph.withComp(createSymEntry(array):GenSymEntry, key);
                 continue;
             }
             if !(etype == DType.Int64 || etype == DType.UInt64) {
@@ -108,33 +108,33 @@ module BuildGraphMsg {
                 when "VERTEX_MAP_SDI" { insertComponent(graph, etype, entry, key); }
                 when "SRC_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                     generateRanges(graph, key, "RANGES_RDI", toSymEntry(graph.getComp("SRC_RDI"),int).a);
                 }
                 when "DST_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 when "SRC_R_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                     generateRanges(graph, key, "RANGES_R_RDI", toSymEntry(graph.getComp("SRC_R_RDI"),int).a);
                 }
                 when "DST_R_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 when "NEIGHBOR_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 when "NEIGHBOR_R_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 when "VERTEX_MAP_RDI" { 
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
             }
         }
@@ -148,15 +148,15 @@ module BuildGraphMsg {
             select etype {
                 when DType.Int64 {
                     var array = toSymEntry(entry, int).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 when DType.UInt64 {
                     var array = toSymEntry(entry, uint).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 when DType.Float64 {
                     var array = toSymEntry(entry, real).a;
-                    graph.withComp(new shared SymEntry(array):GenSymEntry, key);
+                    graph.withComp(createSymEntry(array):GenSymEntry, key);
                 }
                 otherwise {
                     var errorMsg = notImplementedError(pn,key+" cannot be type "+dtype2str(etype));
@@ -212,7 +212,7 @@ module BuildGraphMsg {
     
         // Start parsing through the file.
         var f = open(path, ioMode.r);
-        var r = f.reader();
+        var r = f.reader(locking=false);
         var line:string;
         var a,b,c:string;
 
@@ -260,28 +260,34 @@ module BuildGraphMsg {
         while (r.readLine(line)) {
             var temp = line.split();
             if !weighted {
-                edge_agg.copy(src[ind], temp[0]:int);
-                edge_agg.copy(dst[ind], temp[1]:int);
-
+                // TODO: Aggregators don't work here anymore?
+                // edge_agg.copy(src[ind], temp[0]:int);
+                // edge_agg.copy(dst[ind], temp[1]:int);
+                src[ind] = temp[0]:int;
+                dst[ind] = temp[1]:int;
             } else {
-                edge_agg.copy(src[ind], temp[0]:int);
-                edge_agg.copy(dst[ind], temp[1]:int);
-                wgt_agg.copy(wgt[ind], temp[2]:real);
+                // TODO: Aggregators don't work here anymore?
+                // edge_agg.copy(src[ind], temp[0]:int);
+                // edge_agg.copy(dst[ind], temp[1]:int);
+                // wgt_agg.copy(wgt[ind], temp[2]:real);
+                src[ind] = temp[0]:int;
+                dst[ind] = temp[1]:int;
+                wgt[ind] = temp[2]:real;
             }
             ind += 1;
         }
         
         // Add the read arrays into the symbol table.
         var src_name = st.nextName();
-        var src_entry = new shared SymEntry(src);
+        var src_entry = createSymEntry(src);
         st.addEntry(src_name, src_entry);
 
         var dst_name = st.nextName();
-        var dst_entry = new shared SymEntry(dst);
+        var dst_entry = createSymEntry(dst);
         st.addEntry(dst_name, dst_entry);
 
         var wgt_name = st.nextName();
-        var wgt_entry = new shared SymEntry(wgt);
+        var wgt_entry = createSymEntry(wgt);
         st.addEntry(wgt_name, wgt_entry);
 
         // Write the reply message back to Python. 

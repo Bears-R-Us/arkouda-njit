@@ -18,7 +18,7 @@ module ConnectedComponents {
     use ServerConfig;
     use AryUtil;
 
-    inline proc find_split_h(u:int,  parents:[?D1] int, h:int):int {
+    inline proc find_split_h(u:int,  ref parents:[?D1] int, h:int):int {
        var  t=0;
        var i=u;
        var v,w:int;
