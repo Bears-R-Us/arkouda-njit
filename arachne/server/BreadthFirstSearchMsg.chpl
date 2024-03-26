@@ -31,7 +31,7 @@ module BreadthFirstSearchMsg {
     */
     private proc return_depth(depth: [?D] int, st: borrowed SymTab): string throws{
         var depthName = st.nextName();
-        var depthEntry = new shared SymEntry(depth);
+        var depthEntry = createSymEntry(depth);
         st.addEntry(depthName, depthEntry);
 
         var depMsg = 'created ' + st.attrib(depthName);

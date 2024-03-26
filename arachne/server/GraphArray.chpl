@@ -131,21 +131,14 @@ module GraphArray {
         var a;
         proc etype type do return a.eltType;
 
-        proc init(in a: []) where a.isSparse() {
-            super.init(a.eltType);
-            this.a = a;
-        }
+        proc init(in a: []) where a.isSparse() { this.a = a; }
     }
 
     class ReplicatedSymEntry : GenSymEntry {
         var a;
         proc etype type do return a.eltType;
 
-        proc init(in a: []) {
-            compilerAssert(isReplicatedArr(a));
-            super.init(a.eltType);
-            this.a = a;
-        }
+        proc init(in a: []) where isReplicatedArr(a) { this.a = a; }
     }
 
     class MapSymEntry : GenSymEntry {
@@ -154,7 +147,6 @@ module GraphArray {
         var stored_map: map(left, right);
         
         proc init(ref map_to_store: map(?left, ?right)) {
-            super.init(string);
             this.left = left;
             this.right = right;
             this.stored_map = map_to_store;

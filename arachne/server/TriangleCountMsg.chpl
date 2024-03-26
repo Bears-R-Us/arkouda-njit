@@ -63,7 +63,7 @@ module TriCntMsg {
                     c = minimum_search_triangle_count_per_vertex(graph, v);
                 }
                 var countName = st.nextName();
-                var countEntry = new shared SymEntry(returnArray);
+                var countEntry = createSymEntry(returnArray);
                 st.addEntry(countName, countEntry);
                 repMsg = "created " + st.attrib(countName);
             }

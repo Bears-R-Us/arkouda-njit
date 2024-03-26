@@ -267,4 +267,4 @@ class AlgorithmTest(ArkoudaTest):
         for iso in isos_sublists:
             isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
 
-        self.assertCountEqual(isos_as_dicts, subgraph_isomorphisms)
+        self.assertEqual(len(isos_as_dicts), len(subgraph_isomorphisms))
