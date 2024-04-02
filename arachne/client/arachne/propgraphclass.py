@@ -266,7 +266,7 @@ class PropGraph(ar.DiGraph):
                 self.node_attributes[col].register(generate_string())
                 column_ids.append(self.node_attributes[col].registered_name)
             elif isinstance(self.node_attributes[col], ak.pdarray):
-                vertex_property_object_types.append("Strings")
+                vertex_property_object_types.append("pdarray")
                 column_ids.append(self.node_attributes[col].name)
             else:
                 raise NotImplementedError(f"{type(self.node_attributes[col])} "
@@ -473,7 +473,7 @@ class PropGraph(ar.DiGraph):
                 self.edge_attributes[col].register(generate_string())
                 column_ids.append(self.edge_attributes[col].registered_name)
             elif isinstance(self.edge_attributes[col], ak.pdarray):
-                edge_property_object_types.append("Strings")
+                edge_property_object_types.append("pdarray")
                 column_ids.append(self.edge_attributes[col].name)
             else:
                 raise NotImplementedError(f"{type(self.edge_attributes[col])} "

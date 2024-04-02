@@ -28,8 +28,8 @@ module GraphArray {
         VERTEX_MAP_SDI,     // int array where VERTEX_MAP_SDI[u] gives the original value of u
         RANGES_SDI,         // int array with tuple of low values per locale of SRC_SDI
         RANGES_R_SDI,       // int array with tuple of low values per locale of SRC_R_SDI
-        VERTEX_LABELS,      // map of type (string, (string,SegStringSymEntry))
-        EDGE_RELATIONSHIPS, // map of type (string, (string,SegStringSymEntry))
+        VERTEX_LABELS,      // map of type (string, (string,string))
+        EDGE_RELATIONSHIPS, // map of type (string, (string,string))
         VERTEX_PROPERTIES,  // map of type (string, (string,string))
         EDGE_PROPERTIES,    // map of type (string, (string,string))
 
@@ -92,6 +92,46 @@ module GraphArray {
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
         proc getComp(atrname:string):GenSymEntry throws { return components[atrname:Component]; }
+
+        proc getNodeAttributes() throws {
+            var attributes = new map(string, (string, string));
+            var emptyMap = new map(string, (string, string));
+
+            ref labels = if this.hasComp("VERTEX_LABELS") then 
+                            (this.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
+                                string, (string, string)
+                            ))).stored_map else emptyMap;
+
+            ref properties = if this.hasComp("VERTEX_PROPERTIES") then 
+                                (this.getComp("VERTEX_PROPERTIES"):(borrowed MapSymEntry(
+                                    string, (string, string)
+                                ))).stored_map else emptyMap;
+
+            attributes.extend(labels);
+            attributes.extend(properties);
+
+            return attributes;
+        }
+
+        proc getEdgeAttributes() throws {
+            var attributes = new map(string, (string, string));
+            var emptyMap = new map(string, (string, string));
+
+            ref relationships = if this.hasComp("EDGE_RELATIONSHIPS") then 
+                                    (this.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
+                                        string, (string, string)
+                                    ))).stored_map else emptyMap;
+
+            ref properties = if this.hasComp("EDGE_PROPERTIES") then 
+                                (this.getComp("EDGE_PROPERTIES"):(borrowed MapSymEntry(
+                                    string, (string, string)
+                                ))).stored_map else emptyMap;
+
+            attributes.extend(relationships);
+            attributes.extend(properties);
+
+            return attributes;
+        }
     }
 
     /**

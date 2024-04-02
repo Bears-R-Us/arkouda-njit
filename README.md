@@ -4,12 +4,12 @@ This is an external repository to build functionality for [Arkouda](https://gith
 ## Installing Prerequisites
 We recommend following the installation instructions provided by the Arkouda development team. Most specifically, follow the [Prerequisites](https://github.com/Bears-R-Us/arkouda?tab=readme-ov-file#prerequisites-toc) section in its entirety, and only the [Dependency Configuration](https://github.com/Bears-R-Us/arkouda/blob/master/pydoc/setup/BUILD.md#building-the-server) section of the build instructions. The installation steps usually involve the following:
 
-1. Download [Arkouda](https://github.com/Bears-R-Us/arkouda). **Arkouda version v2024.03.18 is recommended.** A specified version can be selected for download by clicking on `Releases` in the main repository for Arkouda.
+1. Download [Arkouda](https://github.com/Bears-R-Us/arkouda). **Use Arkouda version v2024.03.18.** A specified version can be selected for download by clicking on `Releases` in the main repository for Arkouda.
 2. Install dependencies with `Anaconda`. An environment containing all dependencies can be installed from `arkouda-env.yml` or `arkouda-env-dev.yml` within your Arkouda home directory.
-3. Download and build [Chapel](https://chapel-lang.org/download.html). **Chapel versions 1.33.0 or later are supported.**
+3. Download and build [Chapel](https://chapel-lang.org/download.html). **Use Chapel versions 1.33.0.**
 4. [Configure your dependencies](https://github.com/Bears-R-Us/arkouda/blob/master/pydoc/setup/BUILD.md#dependency-configuration). This involves creating (or modifying) the `Makefile.paths` within your Arkouda home directory.
 
-## Installing Arachne and Building the Arkouda Server with Arachne Capabilities
+## Building the Arkouda Server with Arachne
 Installation is performed through running the `module_configuration.py` file. The complete path to the location of `arkouda` must be specified through `ak_loc` and the complete path to the location of `arachne` should be specified through `pkg_path`.
 
 ```bash
