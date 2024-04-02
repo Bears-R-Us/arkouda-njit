@@ -129,64 +129,55 @@ module BuildPropertyGraph {
                     select etype {
                         when (DType.Int64) {
                             if consecutive {
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
                                 var originalData = toSymEntry(dataArrayEntry, int).a;
                                 var newData: [sparseDataDomain] int;
                                 insertDataToSparseArray(originalData, newData, internalIndices, int);
                                 var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
                                 repMsg += reply;
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             }
                         }
                         when (DType.UInt64) {
                             if consecutive {
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
                                 var originalData = toSymEntry(dataArrayEntry, uint).a;
                                 var newData: [sparseDataDomain] uint;
                                 insertDataToSparseArray(originalData, newData, internalIndices, uint);
                                 var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
                                 repMsg += reply;
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             }
                         }
                         when (DType.Float64) {
                             if consecutive {
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
                                 var originalData = toSymEntry(dataArrayEntry, real).a;
                                 var newData: [sparseDataDomain] real;
                                 insertDataToSparseArray(originalData, newData, internalIndices, real);
                                 var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
                                 repMsg += reply;
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             }
                         }
                         when (DType.Bool) {
                             if consecutive {
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
                                 var originalData = toSymEntry(dataArrayEntry, bool).a;
                                 var newData: [sparseDataDomain] bool;
                                 insertDataToSparseArray(originalData, newData, internalIndices, bool);
                                 var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
                                 repMsg += reply;
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             }
                         }
                         when (DType.Strings) {
                             if consecutive {
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
                                 // We extract the entries that represent strings in a SegStringSymEntry.
                                 var dataArraySegStringSymEntry = toSegStringSymEntry(dataArrayEntry);
@@ -216,8 +207,7 @@ module BuildPropertyGraph {
                                 // time. 
                                 var attrName = st.nextName();
                                 st.addEntry(attrName, sparsePropertySegStringSymEntry);
-                                if attributeMap.valType == (string,string) then
-                                    attributeMap.add(attrName, (attributeName, dataArrayType));
+                                attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                                 repMsg += "created " + st.attrib(attrName) + "+ ";
                             }
                         }
@@ -225,8 +215,7 @@ module BuildPropertyGraph {
                 }
                 when "Categorical" {
                     if consecutive {
-                        if attributeMap.valType == (string,string) then
-                            attributeMap.add(dataArraySymTabId, (attributeName, dataArrayType));
+                        attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                     } else {
                         // TODO: Future work, handle nonconsecutive arrays.
                         var temp = blockDist.createArray({0..1}, int);

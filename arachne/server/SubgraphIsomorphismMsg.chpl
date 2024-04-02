@@ -43,6 +43,7 @@ module SubgraphIsomorphismMsg {
         // Extract messages sent from Python.
         var graphEntryName = msgArgs.getValueOf("MainGraphName");
         var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
+        var semanticCheck = msgArgs.getValueOf("SemanticCheck"):bool;
        
         // Pull out our graph from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
@@ -56,7 +57,7 @@ module SubgraphIsomorphismMsg {
         var timer:stopwatch;
         if g.isDirected() {
             timer.start();
-            var isoArray = runVF2(g,h,st);
+            var isoArray = runVF2(g,h,semanticCheck,st);
             timer.stop();
             outMsg = "Sequential subgraph isomorphism took " + timer.elapsed():string + " sec";
             

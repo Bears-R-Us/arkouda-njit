@@ -265,10 +265,11 @@ def connected_components(graph: Graph) -> pdarray:
     return create_pdarray(repMsg)
 
 @typechecked
-def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph) -> pdarray:
+def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
+                         semantic_check:bool=False) -> pdarray:
     """
     Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
-    are isomorphic to the subgraph. Uses implementation of the VF2 algorithm 
+    are isomorphic to the subgraph. Uses parallel implementation of the VF2 algorithm 
     (https://ieeexplore.ieee.org/document/1323804).
 
     Parameters
@@ -299,7 +300,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph) -> pdarray:
     """
     cmd = "subgraphIsomorphism"
     args = { "MainGraphName":graph.name,
-             "SubGraphName":subgraph.name }
+             "SubGraphName":subgraph.name,
+             "SemanticCheck": str(semantic_check).lower() }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(rep_msg)

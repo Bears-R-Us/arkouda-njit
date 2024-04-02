@@ -102,184 +102,115 @@ module SubgraphIsomorphism {
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
+    proc runVF2 (g1: SegGraph, g2: SegGraph, semanticCheck: bool, st: borrowed SymTab):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1Dist = toSymEntry(g1.getComp("SRC_SDI"), int).a;
-        var dstNodesG1Dist = toSymEntry(g1.getComp("DST_SDI"), int).a;
-        var segGraphG1Dist = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
-        var srcRG1Dist = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
-        var dstRG1Dist = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
-        var segRG1Dist = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
-        var nodeMapGraphG1Dist = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
+        const ref segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG1 = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG1 = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
+        const ref segRG1 = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
+        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2Dist = toSymEntry(g2.getComp("SRC_SDI"), int).a;
-        var dstNodesG2Dist = toSymEntry(g2.getComp("DST_SDI"), int).a;
-        var segGraphG2Dist = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-        var srcRG2Dist = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-        var dstRG2Dist = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-        var segRG2Dist = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-        var nodeMapGraphG2Dist = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG2 = toSymEntry(g2.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG2 = toSymEntry(g2.getComp("DST_SDI"), int).a;
+        const ref segGraphG2 = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG2 = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG2 = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+        const ref segRG2 = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Get the number of vertices and edges for each graph.
-        var nG1 = nodeMapGraphG1Dist.size;
-        var mG1 = srcNodesG1Dist.size;
-        var nG2 = nodeMapGraphG2Dist.size;
-        var mG2 = srcNodesG2Dist.size;
+        var nG1 = nodeMapGraphG1.size;
+        var mG1 = srcNodesG1.size;
+        var nG2 = nodeMapGraphG2.size;
+        var mG2 = srcNodesG2.size;
 
-        //******************************************************************************************
-        //******************************************************************************************
-        // OLIVER NOTE: 
-        // Relabeled node labels and edge relationships id values so those of H match those of G to 
-        // speed up semantic checks. 
-        // 
-        // In the SegGraph data structure for property graphs, there could be many different types 
-        // of labels and relationships. Therefore, we will do some preprocessing here to relabel
-        // all labels and relationships and place them into sets for quick intersections.
-        //
-        // This assumes that all labels and relationships are strings BUT some labels and 
-        // relationships can be unsigned or regular integers. If this is the case then borrowed 
-        // SegStringSymEntry below would be empty. We currently do not do a check for this since all
-        // of our test data has string labels and relationships BUT we should fix this in the 
-        // future. 
-        //
-        // All of the code contained between the //**** comments (roughly ~100 lines) should
-        // probably eventually be a function that lives where SegGraph is defined to perform a 
-        // globalized relabeling and creating arrays of sets to speed up comparing the labels and
-        // relationships of two or more different graphs.
-        var edgeRelationshipsGraphG1 = (g1.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
-                                            string, (string, string)
-                                        ))).stored_map;
+        // Returns the map of attribute name to tuple of symbol table identifier and array data type
+        // to be used to extract a given attribute array.
+        var graphNodeAttributes = g1.getNodeAttributes();
+        var subgraphNodeAttributes = g2.getNodeAttributes();
+        var graphEdgeAttributes = g1.getEdgeAttributes();
+        var subgraphEdgeAttributes = g2.getEdgeAttributes();
+
+        /* Given a vertex or edge index returns true if a vertex or edge from the main host graph
+        matches a given vertex or edge from a subgraph. 
         
-        var nodeLabelsGraphG1 = (g1.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
-                                            string, (string, string)
-                                        ))).stored_map;
+        NOTE: checking categoricals is very time consuming as internal indices need to be mapped to 
+        strings and then compared. Users should be encouraged to maintain their own integer 
+        categorical consistencies and use integer attribute matching instead.*/
+        proc doAttributesMatch(graphIdx, subgraphIdx, const ref graphAttributes, const ref subgraphAttributes) throws {
+            for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
+                if !graphAttributes.contains(k) then return false; // check if attributes are same
+                if v[1] != graphAttributes[k][1] then return false; // check if types are same
 
-        var edgeRelationshipsGraphG2 = (g2.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
-                                            string, (string, string)
-                                        ))).stored_map;
+                // Check the actual data.
+                select v[1] {
+                    when "Categorical" {
+                        var subgraphArrEntry = (st.registry.tab(v[0])):shared CategoricalRegEntry;
+                        const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
+                        const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
 
-        var nodeLabelsGraphG2 = (g2.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
-                                            string, (string, string)
-                                        ))).stored_map;
+                        var graphArrEntry = (st.registry.tab(graphAttributes[k][0])):shared CategoricalRegEntry;
+                        const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
+                        const ref graphCats = getSegString(graphArrEntry.categories, st);
 
-        var relationshipStringToInt, labelStringToInt = new map(string, int);
+                        if subgraphCats[subgraphArr[subgraphIdx]] != graphCats[graphArr[graphIdx]] then return false;
+                    }
+                    when "Strings" {
+                        var subgraphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(v[0], st));
+                        var graphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(graphAttributes[k][0], st));
+                        
+                        const ref subgraphStringOffsets = subgraphStringEntry.offsetsEntry.a;
+                        const ref subgraphStringBytes = subgraphStringEntry.bytesEntry.a;
 
-        // Create global relationship mapper for G1 and G2.
-        var id = 0;
-        for k in edgeRelationshipsGraphG1.keys() {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            for i in 0..categories.size-1 {
-                var val = categories[i];
-                if !relationshipStringToInt.contains(val) {
-                    relationshipStringToInt.add(val, id);
-                    id += 1;
+                        const ref graphStringOffsets = graphStringEntry.offsetsEntry.a;
+                        const ref graphStringBytes = graphStringEntry.bytesEntry.a;
+
+                        const ref string1 = subgraphStringBytes[subgraphStringOffsets[subgraphIdx]..<subgraphStringOffsets[subgraphIdx+1]];
+                        const ref string2 = graphStringBytes[graphStringOffsets[graphIdx]..<graphStringOffsets[graphIdx+1]];
+                        
+                        for (x,y) in zip(string1,string2) do
+                            if x != y then return false;
+                    }
+                    when "pdarray" {
+                        var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
+                        var graphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(graphAttributes[k][0], st);
+                        if subgraphArrEntry.dtype != graphArrEntry.dtype then return false;
+
+                        var etype = subgraphArrEntry.dtype;
+                        select etype {
+                            when (DType.Int64) {
+                                const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
+                                const ref graphArr = toSymEntry(graphArrEntry, int).a;
+                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                            }
+                            when (DType.UInt64) {
+                                const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
+                                const ref graphArr = toSymEntry(graphArrEntry, uint).a;
+                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                            }
+                            when (DType.Float64) {
+                                const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
+                                const ref graphArr = toSymEntry(graphArrEntry, real).a;
+                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                            }
+                            when (DType.Bool) {
+                                const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
+                                const ref graphArr = toSymEntry(graphArrEntry, bool).a;
+                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                            }
+                        }
+                    }
                 }
+
             }
+            return true;
         }
-        for k in edgeRelationshipsGraphG2.keys() {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            for i in 0..categories.size-1 {
-                var val = categories[i];
-                if !relationshipStringToInt.contains(val) {
-                    relationshipStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
-        
-        // Create global label mapper for G1 and G2.
-        id = 0;
-        for k in nodeLabelsGraphG1.keys() {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            for i in 0..categories.size-1 {
-                var val = categories[i];
-                if !labelStringToInt.contains(val) {
-                    labelStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
-        for k in nodeLabelsGraphG2.keys() {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            for i in 0..categories.size-1 {
-                var val = categories[i];
-                if !labelStringToInt.contains(val) {
-                    labelStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
-
-        // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
-        // internal hash table intersections via sets.
-        var convertedRelationshipsG1Dist = makeDistArray(g1.n_edges, domain(int, parSafe=true));
-        var convertedRelationshipsG2Dist = makeDistArray(g2.n_edges, domain(int, parSafe=true));
-        var convertedLabelsG1Dist = makeDistArray(g1.n_vertices, domain(int, parSafe=true));
-        var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int, parSafe=true));
-
-        for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
-            forall (x,i) in zip(arr, arr.domain) do 
-                convertedRelationshipsG1Dist[i].add(relationshipStringToInt[categories[x]]);
-        }
-
-        for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
-            forall (x,i) in zip(arr, arr.domain) do
-                convertedRelationshipsG2Dist[i].add(relationshipStringToInt[categories[x]]);
-        }
-
-        for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
-            forall (x,i) in zip(arr, arr.domain) do 
-                convertedLabelsG1Dist[i].add(labelStringToInt[categories[x]]);
-        }
-
-        for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
-            var categorical = (st.registry.tab(k)):shared CategoricalRegEntry;
-            var categories = getSegString(categorical.categories, st);
-            var arr = toSymEntry(getGenericTypedArrayEntry(categorical.codes, st), int).a;
-            forall (x,i) in zip(arr, arr.domain) do 
-                convertedLabelsG2Dist[i].add(labelStringToInt[categories[x]]);
-        }
-        //******************************************************************************************
-        //******************************************************************************************
-
-        //************************************LOCALIZATION******************************************
-        var srcNodesG1: [0..<mG1] int = srcNodesG1Dist;
-        var dstNodesG1: [0..<mG1] int = dstNodesG1Dist;
-        var segGraphG1: [0..<nG1+1] int = segGraphG1Dist;
-        var srcRG1: [0..<mG1] int = srcRG1Dist;
-        var dstRG1: [0..<mG1] int = dstRG1Dist;
-        var segRG1: [0..<nG1+1] int = segRG1Dist;
-        var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Dist;
-        var convertedRelationshipsG1: [0..<mG1] domain(int, parSafe=true) = convertedRelationshipsG1Dist;
-        var convertedLabelsG1: [0..<nG1] domain(int, parSafe=true) = convertedLabelsG1Dist;
-
-        var srcNodesG2: [0..<mG2] int = srcNodesG2Dist;
-        var dstNodesG2: [0..<mG2] int = dstNodesG2Dist;
-        var segGraphG2: [0..<nG2+1] int = segGraphG2Dist;
-        var srcRG2: [0..<mG2] int = srcRG2Dist;
-        var dstRG2: [0..<mG2] int = dstRG2Dist;
-        var segRG2: [0..<nG2+1] int = segRG2Dist;
-        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Dist;
-        var convertedRelationshipsG2: [0..<mG2] domain(int, parSafe=true) = convertedRelationshipsG2Dist;
-        var convertedLabelsG2: [0..<nG2] domain(int, parSafe=true) = convertedLabelsG2Dist;
-        //******************************************************************************************
         
         var IsoArrtemp = vf2(g1, g2);
         var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
@@ -289,8 +220,8 @@ module SubgraphIsomorphism {
             state.core[v] = u; // v from g2 to a u from g1
             state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
 
-            var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
-            var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+            const ref inNeighbors = dstRG1.localSlice(segRG1[u]..<segRG1[u+1]);
+            const ref outNeighbors = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
 
             state.Tin1.remove(u);
             state.Tout1.remove(u);
@@ -298,8 +229,8 @@ module SubgraphIsomorphism {
             for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
             for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
   
-            var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
-            var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
+            const ref inNeighborsg2 = dstRG2.localSlice(segRG2[v]..<segRG2[v+1]);
+            const ref outNeighborsg2 = dstNodesG2.localSlice(segGraphG2[v]..<segGraphG2[v+1]);
 
             state.Tin2.remove(v);
             state.Tout2.remove(v);
@@ -313,7 +244,7 @@ module SubgraphIsomorphism {
             var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
             
             // Process the out-neighbors of g2.
-            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
+            const ref getOutN2 = dstNodesG2.localSlice(segGraphG2[n2]..<segGraphG2[n2+1]);
             for Out2 in getOutN2 {
                 if state.core(Out2) != -1 {
                     var Out1 = state.core(Out2);
@@ -322,11 +253,9 @@ module SubgraphIsomorphism {
 
                     if eid1 == -1 || eid2 == -1 then return false;
 
-                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-
-                    // TODO: Add better relationship matching function.
-                    if relationshipsG1eid1 != relationshipsG2eid2 then return false;
+                    if semanticCheck then
+                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes) 
+                            then return false;
                 } 
                 else {
                     if state.Tin2.contains(Out2) then termin2 += 1;
@@ -336,7 +265,7 @@ module SubgraphIsomorphism {
             }
                 
             // Process the in-neighbors of g2. 
-            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
+            const ref getInN2 = dstRG2.localSlice(segRG2[n2]..<segRG2[n2+1]);
             for In2 in getInN2 {
                 if state.core[In2] != -1 {
                     var In1 = state.core(In2);
@@ -344,11 +273,10 @@ module SubgraphIsomorphism {
                     var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
 
                     if eid1 == -1 || eid2 == -1 then return false;
-
-                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-
-                    if relationshipsG1eid1 != relationshipsG2eid2 then return false;
+                    
+                    if semanticCheck then 
+                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes) 
+                            then return false;
                 }
                 else {
                     if state.Tin2.contains(In2) then termin2 += 1;
@@ -358,7 +286,7 @@ module SubgraphIsomorphism {
             }
                 
             // Process the out-neighbors of g1. 
-            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+            const ref getOutN1 = dstNodesG1.localSlice(segGraphG1[n1]..<segGraphG1[n1+1]);
             for Out1 in getOutN1 {
                 if !state.isMappedn1(Out1) {
                     if state.Tin1.contains(Out1) then termin1 += 1;
@@ -368,7 +296,7 @@ module SubgraphIsomorphism {
             }
                 
             // Process the in-neighbors of g2.
-            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+            const ref getInN1 = dstRG1.localSlice(segRG1[n1]..<segRG1[n1+1]);
             for In1 in getInN1 {
                 if !state.isMappedn1(In1) {
                     if state.Tin1.contains(In1) then termin1 += 1;
@@ -381,7 +309,10 @@ module SubgraphIsomorphism {
                     (termin2 + termout2 + new2) <= (termin1 + termout1 + new1)
                 ) then return false;
 
-            if !nodesLabelCompatible(n1, n2) then return false;
+            //if !nodesLabelCompatible(n1, n2) then return false;
+            if semanticCheck then 
+                if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes) 
+                    then return false;
 
             return true;
         } // end of isFeasible
@@ -440,21 +371,6 @@ module SubgraphIsomorphism {
             }   
             return candidates;
         } // end of getCandidatePairsOpti
-            
-        /** Creates an initial, empty state.*/
-        proc createInitialState(n1: int, n2: int): State throws {
-            return new owned State(n1, n2);
-        } // end of createInitialState
-
-        /** Check that node labels are the same.*/
-        proc nodesLabelCompatible(n1: int, n2: int): bool throws {
-            var labelsG1n1 = convertedLabelsG1[n1];
-            var labelsG2n2 = convertedLabelsG2[n2];
-
-            if labelsG1n1 != labelsG2n2 then return false;
-
-            return true;
-        } // end of nodesLabelCompatible
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: owned State, depth: int): list(int) throws {
@@ -491,7 +407,7 @@ module SubgraphIsomorphism {
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
-            var initial = createInitialState(g1.n_vertices, g2.n_vertices);
+            var initial = new State(g1.n_vertices, g2.n_vertices);
             var solutions = vf2Helper(initial, 0);
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
