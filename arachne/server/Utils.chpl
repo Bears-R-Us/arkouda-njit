@@ -30,7 +30,7 @@ module Utils {
     :type graph: borrowed SegGraph
     
     :returns: int */
-    proc getEdgeId(u:int, v:int, ref dst:[?D1] int, ref seg:[?D2] int): int throws {
+    proc getEdgeId(u:int, v:int, const ref dst:[?D1] int, const ref seg:[?D2] int): int throws {
         var start = seg[u];
         var end = seg[u+1]-1;
         var eid = bin_search_v(dst, start, end, v);
@@ -108,7 +108,7 @@ module Utils {
     :type key: int
 
     :returns: int */
-    proc bin_search_v(ref ary: [?D] int, l: int, h: int, key: int): int throws {
+    proc bin_search_v(const ref ary: [?D] int, l: int, h: int, key: int): int throws {
         if ( (l < D.lowBound) || (h > D.highBound) || (l < 0)) {
             return -1;
         }
