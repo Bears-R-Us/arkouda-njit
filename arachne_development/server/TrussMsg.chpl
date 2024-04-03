@@ -187,8 +187,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -493,8 +493,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -797,8 +797,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1105,8 +1105,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1478,8 +1478,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1811,8 +1811,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -2477,8 +2477,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -2972,8 +2972,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -3489,8 +3489,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4007,8 +4007,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4494,8 +4494,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int,ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -5000,8 +5000,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -5627,8 +5627,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -6137,8 +6137,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -6656,8 +6656,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -7175,8 +7175,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -7702,8 +7702,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8025,8 +8025,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8346,8 +8346,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8671,8 +8671,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -9061,8 +9061,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -9411,8 +9411,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -10094,8 +10094,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -10606,8 +10606,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -11140,8 +11140,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -11675,8 +11675,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;

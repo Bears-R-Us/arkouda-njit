@@ -169,8 +169,8 @@ module BFSMsgAgg {
             }
       
             var cur_level = 0;
-            var SetCurF = new DistBag(int, Locales); // use bag to keep the current frontier
-            var SetNextF = new DistBag(int, Locales); // use bag to keep the next frontier
+            var SetCurF = new distBag(int, Locales); // use bag to keep the current frontier
+            var SetNextF = new distBag(int, Locales); // use bag to keep the next frontier
             SetCurF.add(root);
             var numCurF = 1 : int;
             var topdown = 0 : int;
@@ -288,8 +288,8 @@ module BFSMsgAgg {
             }
       
             var cur_level = 0;
-            var SetCurF = new DistBag(int, Locales); // use bag to keep the current frontier
-            var SetNextF = new DistBag(int, Locales); // use bag to keep the next frontier
+            var SetCurF = new distBag(int, Locales); // use bag to keep the current frontier
+            var SetNextF = new distBag(int, Locales); // use bag to keep the next frontier
             SetCurF.add(root);
             var numCurF = 1 : int;
             var topdown = 0 : int;
@@ -571,8 +571,8 @@ module BFSMsgAgg {
             }
       
             var cur_level = 0;
-            var SetCurF = new DistBag(int, Locales); // use bag to keep the current frontier
-            var SetNextF = new DistBag(int, Locales); // use bag to keep the next frontier
+            var SetCurF = new distBag(int, Locales); // use bag to keep the current frontier
+            var SetNextF = new distBag(int, Locales); // use bag to keep the next frontier
             SetCurF.add(root);
             var numCurF = 1 : int;
             var topdown = 0 : int;

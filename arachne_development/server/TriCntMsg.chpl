@@ -663,7 +663,7 @@ module TriCntMsg {
                            //writeln("4 Locale=",here.id, " u=",u, " Enter coforall path");
                            var uadj= new set(int,parSafe = true);
                            //var uadj= new set(int);
-                           //var uadj=  new DistBag(int,Locales); //use bag to keep the adjacency of u
+                           //var uadj=  new distBag(int,Locales); //use bag to keep the adjacency of u
                            var startu_adj:int;
                            var endu_adj:int;
                            var numu_adj:int;
@@ -739,7 +739,7 @@ module TriCntMsg {
                                //writeln("10 Locale=",here.id, " u=",u," and v=",v, " enter forall");
                                var vadj= new set(int,parSafe = true);
                                //var vadj= new set(int);
-                               //var vadj=  new DistBag(int,Locales); //use bag to keep the adjacency of v
+                               //var vadj=  new distBag(int,Locales); //use bag to keep the adjacency of v
                                var startv_adj:int;
                                var endv_adj:int;
                                var numv_adj:int;
@@ -2097,7 +2097,7 @@ module TriCntMsg {
                            //writeln("4 Locale=",here.id, " u=",u, " Enter coforall path");
                            var uadj= new set(int,parSafe = true);
                            //var uadj= new set(int);
-                           //var uadj=  new DistBag(int,Locales); //use bag to keep the adjacency of u
+                           //var uadj=  new distBag(int,Locales); //use bag to keep the adjacency of u
                            var startu_adj:int;
                            var endu_adj:int;
                            var numu_adj:int;
@@ -2173,7 +2173,7 @@ module TriCntMsg {
                                //writeln("10 Locale=",here.id, " u=",u," and v=",v, " enter forall");
                                var vadj= new set(int,parSafe = true);
                                //var vadj= new set(int);
-                               //var vadj=  new DistBag(int,Locales); //use bag to keep the adjacency of v
+                               //var vadj=  new distBag(int,Locales); //use bag to keep the adjacency of v
                                var startv_adj:int;
                                var endv_adj:int;
                                var numv_adj:int;
@@ -2917,7 +2917,7 @@ module TriCntMsg {
                            //writeln("4 Locale=",here.id, " u=",u, " Enter coforall path");
                            var uadj= new set(int,parSafe = true);
                            //var uadj= new set(int);
-                           //var uadj=  new DistBag(int,Locales); //use bag to keep the adjacency of u
+                           //var uadj=  new distBag(int,Locales); //use bag to keep the adjacency of u
                            var startu_adj:int;
                            var endu_adj:int;
                            var numu_adj:int;
@@ -2993,7 +2993,7 @@ module TriCntMsg {
                                //writeln("10 Locale=",here.id, " u=",u," and v=",v, " enter forall");
                                var vadj= new set(int,parSafe = true);
                                //var vadj= new set(int);
-                               //var vadj=  new DistBag(int,Locales); //use bag to keep the adjacency of v
+                               //var vadj=  new distBag(int,Locales); //use bag to keep the adjacency of v
                                var startv_adj:int;
                                var endv_adj:int;
                                var numv_adj:int;
