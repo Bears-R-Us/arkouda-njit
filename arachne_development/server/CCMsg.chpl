@@ -4443,7 +4443,7 @@ module CCMsg {
     num_comps[0] = comps.size;
     proc return_CC(ary:[?d] int): string throws {
       CCName = st.nextName();
-      var CCEntry = new shared SymEntry(ary);
+      var CCEntry =createSymEntry (ary);
       st.addEntry(CCName, CCEntry);
 
       var CCMsg =  'created ' + st.attrib(CCName);

@@ -2018,7 +2018,7 @@ module BFSMsg {
 
       proc return_depth(depth:[?d] int): string throws{
           var depthName = st.nextName();
-          var depthEntry = new shared SymEntry(depth);
+          var depthEntry = createSymEntry(depth);
           st.addEntry(depthName, depthEntry);
           //try! st.addEntry(vertexName, vertexEntry);
 

@@ -21,21 +21,52 @@ module GraphArray {
 
     // Component key names to be stored stored in the components map for future retrieval
     enum Component {
+
+       // Symmetrical Double-Index (SDI) Components (and Property Graph Components)
+        SRC_SDI,            // int array with source vertices for each edge
+        DST_SDI,            // int array with destination vertices for each edge
+        SEGMENTS_SDI,       // int array segmenting neighborhoods in DST_SDI
+        SRC_R_SDI,          // int array with source vertices for each edge, swapped with DST_SDI
+        DST_R_SDI,          // int array with destination vertices for each edge, swapped with SRC_SDI
+        SEGMENTS_R_SDI,     // int array segmenting neighborhoods in DST_R_SDI
+        EDGE_WEIGHT_SDI,    // int, real, int, or bool array with edge weights
+        VERTEX_MAP_SDI,     // int array where VERTEX_MAP_SDI[u] gives the original value of u
+        RANGES_SDI,         // int array with tuple of low values per locale of SRC_SDI
+        RANGES_R_SDI,       // int array with tuple of low values per locale of SRC_R_SDI
+        VERTEX_LABELS,      // map of type (string, (string,string))
+        EDGE_RELATIONSHIPS, // map of type (string, (string,string))
+        VERTEX_PROPERTIES,  // map of type (string, (string,string))
+        EDGE_PROPERTIES,    // map of type (string, (string,string))
+
+        // Reverse Double-Index (RDI) Components
+        SRC_RDI,           // int array with source vertices for each edge
+        DST_RDI,           // int array with destination vertices for each edge
+        SRC_R_RDI,         // int array with source vertices for each edge, swapped with DST_RDI
+        DST_R_RDI,         // int array with destination vertices for each edge, swapped with SRC_RDI
+        START_IDX_RDI,     // int array with starting indices for each vertex point in SRC_RDI
+        START_IDX_R_RDI,   // int array with starting indices for each vertex point in SRC_R_RDI
+        NEIGHBOR_RDI,      // int array with the number of neighbors for each vertex based off DST_RDI
+        NEIGHBOR_R_RDI,    // int array with the number of neighbors for each vertex based off DST_R_RDI
+        EDGE_WEIGHT_RDI,   // uint, real, int, or bool array with edge weights; must search index in SRC_RDI and DST_RDI
+        VERTEX_MAP_RDI,    // int array where VERTEX_MAP_RDI[u] gives the original value of u
+        RANGES_RDI,        // uint array with tuple of low values per locale of SRC_RDI
+        RANGES_R_RDI,      // uint array with tuple of low values per locale of SRC_R_RDI
+
+
+
+
+
         SRC,                    // The source array of every edge in the graph
         DST,                    // The destination array of every edge in the graph
         SEGMENTS,               // The segments of adjacency lists for each vertex in DST
         RANGES,                 // Keeps the range of the vertices the edge list stores per locale
         EDGE_WEIGHT,            // Stores the edge weights of the graph, if applicable
         NODE_MAP,               // Doing an index of NODE_MAP[u] gives you the original value of u
-        VERTEX_LABELS,          // Any labels that belong to a specific node
         VERTEX_LABELS_MAP,      // Sorted array of vertex labels to integer id (array index)
-        EDGE_RELATIONSHIPS,     // The relationships that belong to specific edges
         EDGE_RELATIONSHIPS_MAP, // Sorted array of edge relationships to integer id (array index)
-        VERTEX_PROPS,           // Any properties that belong to a specific node
         VERTEX_PROPS_COL_MAP,   // Sorted array of vertex property to integer id (array index)
         VERTEX_PROPS_DTYPE_MAP, // Sorted array of column datatype to integer id (array index)
         VERTEX_PROPS_COL2DTYPE, // Map of column names to the datatype of the column
-        EDGE_PROPS,             // Any properties that belong to a specific edge
         EDGE_PROPS_COL_MAP,     // Sorted array of edge property to integer id (array index)
         EDGE_PROPS_DTYPE_MAP,   // Sorted array of column datatype to integer id (array index)
         EDGE_PROPS_COL2DTYPE,   // Map of column names to the datatype of the column
@@ -106,44 +137,87 @@ module GraphArray {
         // The graph is weighted (true) or unweighted (false)
         var weighted: bool;
 
-        // The graph is a property graph (true) or not (false)
-        var propertied: bool;
 
-        // Undirected graphs are in the old format (true) or not (false)
-        var reversed: bool = false;
 
         /**
         * Init the basic graph object, we'll compose the pieces using the withComp method.
-        */
-        proc init(num_v:int, num_e:int, directed:bool, weighted:bool, propertied:bool) {
-            this.n_vertices = num_v;
-            this.n_edges = num_e;
-            this.directed = directed;
-            this.weighted = weighted;
-            this.propertied = propertied;
-        }
-
-
-
-        /**
-        * Init the basic graph object, we'll compose the pieces in
-        * using the withCOMPONENT methods.
         */
         proc init(num_v:int, num_e:int, directed:bool) {
             this.n_vertices = num_v;
             this.n_edges = num_e;
             this.directed = directed;
+            this.weighted = false;
         }
+        proc init(num_v:int, num_e:int, directed:bool, weighted:bool ) {
+            this.n_vertices = num_v;
+            this.n_edges = num_e;
+            this.directed = directed;
+            this.weighted = weighted;
+        }
+
 
 
 
         proc isDirected():bool { return this.directed; }
         proc isWeighted():bool { return this.weighted; }
-        proc isPropertied():bool { return this.propertied; }
+        proc isPropertied():bool { return this.hasComp("VERTEX_LABELS") ||
+                                          this.hasComp("EDGE_RELATIONSHIPS") ||
+                                          this.hasComp("VERTEX_PROPERTIES") ||
+                                          this.hasComp("EDGE_PROPERTIES"); }
+        proc isReversed():bool { return this.hasComp("SRC_RDI"); }
+
+
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
         proc getComp(atrname:string):GenSymEntry throws { return components[atrname:Component]; }
+
+
+
+        proc getNodeAttributes() throws {
+            var attributes = new map(string, (string, string));
+            var emptyMap = new map(string, (string, string));
+
+            ref labels = if this.hasComp("VERTEX_LABELS") then
+                            (this.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
+                                string, (string, string)
+                            ))).stored_map else emptyMap;
+
+            ref properties = if this.hasComp("VERTEX_PROPERTIES") then
+                                (this.getComp("VERTEX_PROPERTIES"):(borrowed MapSymEntry(
+                                    string, (string, string)
+                                ))).stored_map else emptyMap;
+
+            attributes.extend(labels);
+            attributes.extend(properties);
+
+            return attributes;
+        }
+
+
+
+        proc getEdgeAttributes() throws {
+            var attributes = new map(string, (string, string));
+            var emptyMap = new map(string, (string, string));
+
+            ref relationships = if this.hasComp("EDGE_RELATIONSHIPS") then
+                                    (this.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
+                                        string, (string, string)
+                                    ))).stored_map else emptyMap;
+
+            ref properties = if this.hasComp("EDGE_PROPERTIES") then
+                                (this.getComp("EDGE_PROPERTIES"):(borrowed MapSymEntry(
+                                    string, (string, string)
+                                ))).stored_map else emptyMap;
+
+            attributes.extend(relationships);
+            attributes.extend(properties);
+
+            return attributes;
+        }
+
+
+
 
 
 
@@ -238,10 +312,7 @@ module GraphArray {
     * so it may be stored in the Symbol Table (SymTab)
     */
     class DomArraySymEntry:CompositeSymEntry {
-        //var dtype = NumPyDType.DType.UNDEF;
-        //type etype = int;
         var domary =makeDistArray(numLocales,DomArray);
-
         proc init(disArray :[?aD] DomArray) {
             super.init(0);
             //super.init(DomArray,0);
@@ -257,32 +328,6 @@ module GraphArray {
     }
 
 
-
-    /**
-    * GraphSymEntry is the wrapper class around SegGraph
-    * so it may be stored in the Symbol Table (SymTab)
-    */
-    /*
-    class GraphSymEntry:CompositeSymEntry {
-        //var dtype = NumPyDType.DType.UNDEF;
-        //type etype = int;
-        var graph: shared SegGraph;
-
-        proc init(segGraph: shared SegGraph) {
-            super.init(0);
-            //super.init(SegGraph,0);
-            this.entryType = SymbolEntryType.CompositeSymEntry;
-            assignableTypes.add(this.entryType);
-            this.graph = segGraph;
-        }
-
-        override proc getSizeEstimate(): int {
-            return 1;
-        }
-
-
-    }
-    */
 
 
     /**
@@ -303,8 +348,10 @@ module GraphArray {
         }
     }
 
-
-    class SymEntryAD : GenSymEntry {
+    /**
+    * Allows storage of associative arrays in the Symbol Table (SymTab).
+    */
+    class AssociativeSymEntry : GenSymEntry {
         var aD: domain(int);
         var a: [aD] int;
 
@@ -315,23 +362,50 @@ module GraphArray {
         }
     }
 
-    class MapSymEntry : GenSymEntry {
-        var stored_map: map(string, string);
+    /* Allows storage of sparse arrays in the symbol table. */
+    class SparseSymEntry : GenSymEntry {
+        var a;
+        proc etype type do return a.eltType;
 
-        proc init(ref map_to_store: map(string, string)) {
-            super.init(string);
+        proc init(in a: []) where a.isSparse() { this.a = a; }
+    }
+
+
+
+    class ReplicatedSymEntry : GenSymEntry {
+        var a;
+        proc etype type do return a.eltType;
+
+        proc init(in a: []) where isReplicatedArr(a) { this.a = a; }
+    }
+
+    class MapSymEntry : GenSymEntry {
+        type left;
+        type right;
+        var stored_map: map(left, right);
+
+        proc init(ref map_to_store: map(?left, ?right)) {
+            this.left = left;
+            this.right = right;
             this.stored_map = map_to_store;
         }
     }
 
-
     proc toMapSymEntry(e) {
-        return try! e : borrowed MapSymEntry;
+        return try! e : borrowed MapSymEntry(?);
+    }
+    proc toAssociativeSymEntry(e) {
+        return try! e : borrowed AssociativeSymEntry();
     }
 
-    proc toSymEntryAD(e) {
-        return try! e : borrowed SymEntryAD();
+    proc toSparseSymEntry(e) {
+        return try! e : borrowed SparseSymEntry();
     }
+
+    proc toReplicatedSymEntry(e) {
+        return try! e : borrowed ReplicatedSymEntry();
+    }
+
 
 
 
@@ -355,6 +429,34 @@ module GraphArray {
     proc toGraphSymEntry(entry: borrowed AbstractSymEntry): borrowed GraphSymEntry throws {
         return (entry: borrowed GraphSymEntry);
     }
+
+
+    class PropertySegStringSymEntry : SegStringSymEntry(?) {
+        var indicesEntry: shared SymEntry(int);
+
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SymEntry(int), type etype) {
+            super.init(offsetsSymEntry, bytesSymEntry, etype);
+            this.indicesEntry = indicesSymEntry;
+        }
+    }
+
+    proc toPropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed PropertySegStringSymEntry);
+    }
+
+    class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
+        var indicesEntry: shared SparseSymEntry(?);
+
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(?), type etype) {
+            super.init(offsetsSymEntry, bytesSymEntry, etype);
+            this.indicesEntry = indicesSymEntry;
+        }
+    }
+
+    proc toSparsePropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed SparsePropertySegStringSymEntry);
+    }
+
 
 
 

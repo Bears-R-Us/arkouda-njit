@@ -1895,7 +1895,7 @@ module GraphMsg {
                   var f = open(FileName, ioMode.r);
                   //var r = f.reader(serializer = new defaultSerializer());
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader( );
+                  var r = f.reader(locking=false );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -2157,7 +2157,7 @@ module GraphMsg {
                   var wf = open(FileName+".deg", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2183,7 +2183,7 @@ module GraphMsg {
                   wf = open(FileName+".sta", ioMode.cw);
                   //mw = wf.writer(serializer = new defaultSerializer());
                   //mw = wf.writer(kind=iokind.dynamic );
-                  mw = wf.writer( );
+                  mw = wf.writer(locking=false );
                   mw.writeln("%i %i %i".format(low,up, (ave/(max(NewNv-point,1))):int));
                   mw.close();
                   wf.close();
@@ -2206,7 +2206,7 @@ module GraphMsg {
                   var wf = open(FileName+".deg", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2232,7 +2232,7 @@ module GraphMsg {
                   wf = open(FileName+".sta", ioMode.cw);
                   //mw = wf.writer(serializer = new defaultSerializer());
                   //mw = wf.writer(kind=iokind.dynamic );
-                  mw = wf.writer( );
+                  mw = wf.writer(locking=false );
                   mw.writeln("%i %i %i".format(low,up, (ave/(NewNv-point)):int));
                   mw.close();
                   wf.close();
@@ -2242,7 +2242,7 @@ module GraphMsg {
                   var wf = open(FileName+".pr", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
 
                   for i in 0..NewNe-1 {
                       mw.writeln("%i %i".format(mysrc[i],mydst[i]));
@@ -2259,7 +2259,7 @@ module GraphMsg {
                   var wf = open(FileName+".pr", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   for i in 0..NewNe-1 {
                       mw.writeln("%i %i".format(src[i],dst[i]));
                   }
@@ -2270,7 +2270,7 @@ module GraphMsg {
                   var wf = open(FileName+".deg", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer();
+                  var mw = wf.writer(locking=false);
                   var tmp,low, up, ave,point:int;
                   low=1000000;
                   up=0;
@@ -2300,7 +2300,7 @@ module GraphMsg {
                   wf = open(FileName+".sta", ioMode.cw);
                   //mw = wf.writer(serializer = new defaultSerializer());
                   //mw = wf.writer(kind=iokind.dynamic );
-                  mw = wf.writer( );
+                  mw = wf.writer(locking=false );
                   mw.writeln("%i %i %i".format(low,up, (ave/(Nv-point)):int));
                   mw.close();
                   wf.close();
@@ -2472,7 +2472,7 @@ module GraphMsg {
                   var f = open(FileName, ioMode.r);
                   //var r = f.reader(serializer = new defaultSerializer());
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader( );
+                  var r = f.reader(locking=false );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -2725,7 +2725,7 @@ module GraphMsg {
                   var wf = open(FileName+".nde", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer( locking=false);
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,myneighbour[i]+myneighbourR[i]));
@@ -2755,7 +2755,7 @@ module GraphMsg {
                   var wf = open(FileName+".nde", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,myneighbour[i]));
@@ -2775,7 +2775,7 @@ module GraphMsg {
                   var wf = open(FileName+".nde", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   mw.writeln("%-15i".format(NewNv));
                   for i in 0..NewNv-1 {
                       mw.writeln("%-15i    %-15i".format(i,neighbour[i]+neighbourR[i]));
@@ -2915,7 +2915,7 @@ module GraphMsg {
                   var f = open(FileName, ioMode.r);
                   //var r = f.reader(useIOSerializers=true,serializer = new defaultSerializer() );
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader( );
+                  var r = f.reader(locking=false );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -3001,13 +3001,13 @@ module GraphMsg {
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
-      graph.withSRC(new shared SymEntry(src):GenSymEntry)
-           .withDST(new shared SymEntry(dst):GenSymEntry)
-           .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry)
-           .withVTrack(new shared SymEntry(OriVertexAry):GenSymEntry);
+      graph.withSRC(createSymEntry(src):GenSymEntry)
+           .withDST(createSymEntry(dst):GenSymEntry)
+           .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
+           .withNEIGHBOR(createSymEntry(neighbour):GenSymEntry)
+           .withVTrack(createSymEntry(OriVertexAry):GenSymEntry);
       if (WeightedFlag) {
-          graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry);
+          graph.withEDGE_WEIGHT(createSymEntry(e_weight):GenSymEntry);
       }
 
       if (!DirectedFlag) { //undirected graph
@@ -3042,10 +3042,10 @@ module GraphMsg {
           }   
 
 
-          graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
-               .withDST_R(new shared SymEntry(dstR):GenSymEntry)
-               .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
-               .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+          graph.withSRC_R(createSymEntry(srcR):GenSymEntry)
+               .withDST_R(createSymEntry(dstR):GenSymEntry)
+               .withSTART_IDX_R(createSymEntry(start_iR):GenSymEntry)
+               .withNEIGHBOR_R(createSymEntry(neighbourR):GenSymEntry);
 
 
           if (AlignedArray==1) {
@@ -3266,7 +3266,7 @@ module GraphMsg {
       if (WriteFlag) {
                   var wf = open(FileName+".my.gr", ioMode.cw);
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   for i in 0..Ne-1 {
                       mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
@@ -3326,8 +3326,8 @@ module GraphMsg {
       EweightType=int;
       VweightType=int;
 
-      var srcEntry = st.lookup(srcS): borrowed SymEntry(int);
-      var dstEntry = st.lookup(dstS): borrowed SymEntry(int);
+      var srcEntry = st.lookup(srcS): borrowed SymEntry(int,1);
+      var dstEntry = st.lookup(dstS): borrowed SymEntry(int,1);
       var orisrc=toSymEntry(srcEntry,int).a;
       var oridst=toSymEntry(dstEntry,int).a;
       var FileName=srcS+dstS;
@@ -3570,16 +3570,16 @@ module GraphMsg {
               }
 
 
-              graph.withSRC(new shared SymEntry(mysrc):GenSymEntry)
-                   .withDST(new shared SymEntry(mydst):GenSymEntry)
-                   .withSTART_IDX(new shared SymEntry(mystart_i):GenSymEntry)
-                   .withNEIGHBOR(new shared SymEntry(myneighbour):GenSymEntry)
-                   .withVTrack(new shared SymEntry(myOriVertexAry):GenSymEntry);
+              graph.withSRC(createSymEntry(mysrc):GenSymEntry)
+                   .withDST(createSymEntry(mydst):GenSymEntry)
+                   .withSTART_IDX(createSymEntry(mystart_i):GenSymEntry)
+                   .withNEIGHBOR(createSymEntry(myneighbour):GenSymEntry)
+                   .withVTrack(createSymEntry(myOriVertexAry):GenSymEntry);
 
-              graph.withSRC_R(new shared SymEntry(mysrcR):GenSymEntry)
-                   .withDST_R(new shared SymEntry(mydstR):GenSymEntry)
-                   .withSTART_IDX_R(new shared SymEntry(mystart_iR):GenSymEntry)
-                   .withNEIGHBOR_R(new shared SymEntry(myneighbourR):GenSymEntry);
+              graph.withSRC_R(createSymEntry(mysrcR):GenSymEntry)
+                   .withDST_R(createSymEntry(mydstR):GenSymEntry)
+                   .withSTART_IDX_R(createSymEntry(mystart_iR):GenSymEntry)
+                   .withNEIGHBOR_R(createSymEntry(myneighbourR):GenSymEntry);
 
 
               if (AlignedArray==1) {
@@ -3682,7 +3682,7 @@ module GraphMsg {
                   var wf = open(FileName+".pr", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   for i in 0..NewNe-1 {
                       mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
@@ -3724,16 +3724,16 @@ module GraphMsg {
 
 
 
-              graph.withSRC(new shared SymEntry(src):GenSymEntry)
-                   .withDST(new shared SymEntry(dst):GenSymEntry)
-                   .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-                   .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry)
-                   .withVTrack(new shared SymEntry(OriVertexAry):GenSymEntry);
+              graph.withSRC(createSymEntry(src):GenSymEntry)
+                   .withDST(createSymEntry(dst):GenSymEntry)
+                   .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
+                   .withNEIGHBOR(createSymEntry(neighbour):GenSymEntry)
+                   .withVTrack(createSymEntry(OriVertexAry):GenSymEntry);
 
-              graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
-                   .withDST_R(new shared SymEntry(dstR):GenSymEntry)
-                   .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
-                   .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+              graph.withSRC_R(createSymEntry(srcR):GenSymEntry)
+                   .withDST_R(createSymEntry(dstR):GenSymEntry)
+                   .withSTART_IDX_R(createSymEntry(start_iR):GenSymEntry)
+                   .withNEIGHBOR_R(createSymEntry(neighbourR):GenSymEntry);
 
 
 
@@ -3837,7 +3837,7 @@ module GraphMsg {
                   var wf = open(FileName+".pr", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   for i in 0..Ne-1 {
                       mw.writeln("%-15i    %-15i".format(src[i],dst[i]));
                   }
@@ -4000,7 +4000,7 @@ module GraphMsg {
                   var f = open(FileName, ioMode.r);
                   //var r = f.reader(serializer = new defaultSerializer());
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader( );
+                  var r = f.reader(locking=false );
                   var line:string;
                   var a,b,c:string;
                   var curline=0:int;
@@ -4099,13 +4099,13 @@ module GraphMsg {
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
-      graph.withSRC(new shared SymEntry(src):GenSymEntry)
-           .withDST(new shared SymEntry(dst):GenSymEntry)
-           .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry)
-           .withVTrack(new shared SymEntry(OriVertexAry):GenSymEntry);
+      graph.withSRC(createSymEntry(src):GenSymEntry)
+           .withDST(createSymEntry(dst):GenSymEntry)
+           .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
+           .withNEIGHBOR(createSymEntry(neighbour):GenSymEntry)
+           .withVTrack(createSymEntry(OriVertexAry):GenSymEntry);
       if (WeightedFlag) {
-          graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry);
+          graph.withEDGE_WEIGHT(createSymEntry(e_weight):GenSymEntry);
       }
 
       if (!DirectedFlag) { //undirected graph
@@ -4140,10 +4140,10 @@ module GraphMsg {
           }   
 
 
-          graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
-               .withDST_R(new shared SymEntry(dstR):GenSymEntry)
-               .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
-               .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+          graph.withSRC_R(createSymEntry(srcR):GenSymEntry)
+               .withDST_R(createSymEntry(dstR):GenSymEntry)
+               .withSTART_IDX_R(createSymEntry(start_iR):GenSymEntry)
+               .withNEIGHBOR_R(createSymEntry(neighbourR):GenSymEntry);
 
 
           if (AlignedArray==1) {
@@ -4365,7 +4365,7 @@ module GraphMsg {
                   var wf = open(FileName+".my.gr", ioMode.cw);
                   //var mw = wf.writer(serializer = new defaultSerializer());
                   //var mw = wf.writer(kind=iokind.dynamic );
-                  var mw = wf.writer( );
+                  var mw = wf.writer(locking=false );
                   for i in 0..Ne-1 {
                       mw.writeln("%-15n    %-15n".format(src[i],dst[i]));
                   }
@@ -4589,10 +4589,10 @@ module GraphMsg {
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(Ne, Nv,DirectedFlag);
-      graph.withSRC(new shared SymEntry(src):GenSymEntry)
-               .withDST(new shared SymEntry(dst):GenSymEntry)
-               .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-               .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+      graph.withSRC(createSymEntry(src):GenSymEntry)
+               .withDST(createSymEntry(dst):GenSymEntry)
+               .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
+               .withNEIGHBOR(createSymEntry(neighbour):GenSymEntry);
 
       if (!DirectedFlag) { //undirected graph
               coforall loc in Locales with (ref srcR, ref dst, ref dstR, ref src)  {
@@ -4617,10 +4617,10 @@ module GraphMsg {
                  RCM_u( src, dst, start_i, neighbour, srcR, dstR, start_iR, neighbourR, depth,OriVertexAry);
               }   
 
-              graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
-                   .withDST_R(new shared SymEntry(dstR):GenSymEntry)
-                   .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
-                   .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+              graph.withSRC_R(createSymEntry(srcR):GenSymEntry)
+                   .withDST_R(createSymEntry(dstR):GenSymEntry)
+                   .withSTART_IDX_R(createSymEntry(start_iR):GenSymEntry)
+                   .withNEIGHBOR_R(createSymEntry(neighbourR):GenSymEntry);
       }//end of undirected
       else {
 
@@ -4646,8 +4646,8 @@ module GraphMsg {
       if (WeightedFlag) {
                fillInt(e_weight,1,1000);
                fillInt(v_weight,1,1000);
-               graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
-                    .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
+               graph.withEDGE_WEIGHT(createSymEntry(e_weight):GenSymEntry)
+                    .withVERTEX_WEIGHT(createSymEntry(v_weight):GenSymEntry);
       }
       var gName = st.nextName();
       st.addEntry(gName, new shared GraphSymEntry(graph));
@@ -4704,117 +4704,117 @@ module GraphMsg {
       select queID {
            when "src" {
               var retE=toSymEntry(ag.getSRC(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "dst" {
               var retE=toSymEntry(ag.getDST(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "start_i" {
               var retV=toSymEntry(ag.getSTART_IDX(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "neighbour" {
               var retV=toSymEntry(ag.getNEIGHBOR(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "srcR" {
               var retE=toSymEntry(ag.getSRC_R(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "dstR" {
               var retE=toSymEntry(ag.getDST_R(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "start_iR" {
               var retV=toSymEntry(ag.getSTART_IDX_R(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "neighbourR" {
               var retV=toSymEntry(ag.getNEIGHBOR_R(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            /*
            when "astart_i" {
               var retV=toSymEntry(ag.getA_START_IDX(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "aneighbour" {
               var retV=toSymEntry(ag.getA_NEIGHBOR(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "astart_iR" {
               var retV=toSymEntry(ag.getA_START_IDX_R(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "aneighbourR" {
               var retV=toSymEntry(ag.getA_NEIGHBOR_R(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            */
            when "v_weight" {
               var retV=toSymEntry(ag.getVERTEX_WEIGHT(), int).a;
-              var attrEntry = new shared SymEntry(retV);
+              var attrEntry = createSymEntry(retV);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "e_weight" {
               var retE=toSymEntry(ag.getEDGE_WEIGHT(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "VTrack" {
               var retE=toSymEntry(ag.getVTrack(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "VP1" {
               var retE=toSymEntry(ag.getVP1(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "VP2" {
               var retE=toSymEntry(ag.getVP2(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "EP1" {
               var retE=toSymEntry(ag.getEP1(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
            when "EP2" {
               var retE=toSymEntry(ag.getEP2(), int).a;
-              var attrEntry = new shared SymEntry(retE);
+              var attrEntry = createSymEntry(retE);
               st.addEntry(attrName, attrEntry);
               attrMsg =  'created ' + st.attrib(attrName);
            }
@@ -4845,20 +4845,20 @@ module GraphMsg {
       var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
       var ag = gEntry.graph;
 
-      var ProEntry = st.lookup(ArrayName): borrowed SymEntry(int);
+      var ProEntry = st.lookup(ArrayName): borrowed SymEntry(int,1);
       var ProAry=toSymEntry(ProEntry,int).a;
       select PropertyName {
            when "VP1" {
-              ag.withVP1(new shared SymEntry(ProAry):GenSymEntry);
+              ag.withVP1(createSymEntry(ProAry):GenSymEntry);
            }
            when "VP2" {
-              ag.withVP2(new shared SymEntry(ProAry):GenSymEntry);
+              ag.withVP2(createSymEntry(ProAry):GenSymEntry);
            }
            when "EP1" {
-              ag.withEP1(new shared SymEntry(ProAry):GenSymEntry);
+              ag.withEP1(createSymEntry(ProAry):GenSymEntry);
            }
            when "EP2" {
-              ag.withEP2(new shared SymEntry(ProAry):GenSymEntry);
+              ag.withEP2(createSymEntry(ProAry):GenSymEntry);
            }
       }
       timer.stop();
