@@ -7,6 +7,7 @@ import arkouda as ak
 import numpy as np
 import networkx as nx
 import random
+from dotmotif import Motif, GrandIsoExecutor 
 
 def create_parser():
     """Creates the command line parser for this script"""
@@ -76,6 +77,7 @@ def create_random_directed_graph(num_nodes, p):
 
     return src, dst
 
+
 if __name__ == "__main__":
     #### Command line parser and extraction.
     parser = create_parser()
@@ -98,7 +100,7 @@ if __name__ == "__main__":
     # but it's important to note that it produces graphs with a Poisson degree distribution,
     # which might not always accurately model real-world networks!
     num_nodes = args.n  # Number of nodes
-    p = 0.05  # Probability of edge creation
+    p = 0.0005  # Probability of edge creation
     print("Begining of Random Directed graph with P= ",p)
     # src, dst = create_random_graph(n, p)
     src, dst = create_random_directed_graph(num_nodes, p)
@@ -146,11 +148,11 @@ if __name__ == "__main__":
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([1, 2, 0])
-    dst_subgraph = ak.array([2, 0, 1])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1"])
+    src_subgraph = ak.array([0, 1, 2, 1])
+    dst_subgraph = ak.array([1, 2, 0, 3])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     #labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
-    rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
+    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
     #rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
     # 2. Populate the subgraph.
@@ -158,7 +160,7 @@ if __name__ == "__main__":
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph})
                             #"rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2]), "lbls1":labels1_subgraph,
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph,
                               })
                               #"lbls2":labels2_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
@@ -175,7 +177,7 @@ if __name__ == "__main__":
     isos = ar.subgraph_isomorphism(prop_graph,subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/3} isos")
+    print(f"Arachne found: {len(isos)/4} isos")
 
 
     #### Run NetworkX subgraph isomorphism.
@@ -243,6 +245,8 @@ if __name__ == "__main__":
     # Set the node attributes for G and H from dicts.
     nx.set_node_attributes(G, graph_node_attributes_final)
     nx.set_node_attributes(H, subgraph_node_attributes_final)
+    print("**********************************************")
+
     print("Running NetworkX... ")
 
     # Find subgraph isomorphisms of H in G.
@@ -253,13 +257,35 @@ if __name__ == "__main__":
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
 
+
+    motif = Motif("""
+    A -> B 
+    B -> D
+    B -> C
+    C -> A
+    """)
+    print("************************************************************")
+    print(" DotMotif....")
+    E = GrandIsoExecutor(graph=G)
+
+    # Create the search engine.
+
+    start = time.time()
+
+    results = E.find(motif)
+    elapsed_time = time.time() - start_time
+    print(f"DotMotif execution time: {elapsed_time} seconds")
+    print(f"Dotmotif found: {len(subgraph_isomorphisms)} isos")
+    print(len(results))
+    """
+
     #### Compare Arachne subgraph isomorphism to NetworkX.
     #print("isos = ", isos)
     isos_list = isos.to_list()
     isos_sublists = [isos_list[i:i+3] for i in range(0, len(isos_list), 3)]
     for elm in isos_sublists:
         #print(elm.len())
-        if len(elm) != 3:
+        if len(elm) != 4:
             print ("Error in len = ",len(elm))
         
     isos_as_dicts = []
@@ -289,5 +315,5 @@ if __name__ == "__main__":
             print(iso)
 
     print ("Number of missing is ", counter)
-
+"""
     ak.shutdown()

@@ -7,6 +7,7 @@ import arkouda as ak
 import numpy as np
 import networkx as nx
 import random
+from dotmotif import Motif, GrandIsoExecutor 
 
 def create_parser():
     """Creates the command line parser for this script."""
@@ -21,7 +22,7 @@ def create_parser():
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
     return script_parser
 
-def create_small_world_directed_graph(num_nodes, k=4, p=0.1, seed=None):
+def create_small_world_directed_graph(num_nodes, k=20, p=0.5, seed=42):
     """
     Generates a small-world directed graph using the Watts-Strogatz model and returns the src and dst arrays.
 
@@ -35,8 +36,9 @@ def create_small_world_directed_graph(num_nodes, k=4, p=0.1, seed=None):
     tuple: A tuple containing two lists (src, dst) representing the source and destination of each edge.
     """
     # Create a Watts-Strogatz small-world graph
-    small_world_graph = nx.watts_strogatz_graph(num_nodes, k, p, seed)
-
+    small_world_graph = nx.watts_strogatz_graph(num_nodes, 20, 0.5, seed)
+    print("Create a Watts-Strogatz small-world graph with")
+    print("with k = 20, p = 0.5")
     # Convert to a directed graph to simulate directed behavior
     small_world_directed = nx.DiGraph(small_world_graph)
 
@@ -64,7 +66,7 @@ if __name__ == "__main__":
     ### Generate a small-world directed graph
     num_nodes = args.n
     print("Beginning of Small-World Directed graph generation")
-    src, dst = create_small_world_directed_graph(num_nodes, k=20, p=0.01)  # Example values for k and p
+    src, dst = create_small_world_directed_graph(num_nodes, k=10, p=0.01)  # Example values for k and p
     print("Small-World Directed graph created")
 
     src_ak = ak.array(src)
@@ -137,7 +139,28 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
+    
+    motif = Motif("""
+    A -> B 
+    B -> D
+    B -> C
+    C -> A
+    """)
+    print("************************************************************")
+    print(" DotMotif....")
+    E = GrandIsoExecutor(graph=G)
 
+    # Create the search engine.
+
+    start = time.time()
+
+    results = E.find(motif)
+    elapsed_time = time.time() - start_time
+    print(f"DotMotif execution time: {elapsed_time} seconds")
+    print(f"Dotmotif found: {len(subgraph_isomorphisms)} isos")
+    print(len(results))
+    
+    
     ### Optionally print isomorphisms.
     if args.print_isos:
         print("Arachne isomorphisms:")

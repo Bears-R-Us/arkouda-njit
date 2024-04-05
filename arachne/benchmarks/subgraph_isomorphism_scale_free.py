@@ -7,6 +7,7 @@ import arkouda as ak
 import numpy as np
 import networkx as nx
 import random
+from dotmotif import Motif, GrandIsoExecutor 
 
 def create_parser():
     """Creates the command line parser for this script."""
@@ -63,7 +64,6 @@ if __name__ == "__main__":
     ### Generate a scale-free directed graph
     num_nodes = args.n
     print("Beginning of Scale-Free Directed graph generation")
-    print("alpha=0.6, beta=0.2, gamma=0.2, delta_in=0.1, delta_out=0.5")
     src, dst = create_scale_free_directed_graph(num_nodes)
     print("Scale-Free Directed graph created")
 
@@ -137,6 +137,28 @@ if __name__ == "__main__":
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
 
+
+    motif = Motif("""
+    A -> B 
+    B -> D
+    B -> C
+    C -> A
+    """)
+    print("************************************************************")
+    print(" DotMotif....")
+    E = GrandIsoExecutor(graph=G)
+
+    # Create the search engine.
+
+    start = time.time()
+
+    results = E.find(motif)
+    elapsed_time = time.time() - start_time
+    print(f"DotMotif execution time: {elapsed_time} seconds")
+    print(f"Dotmotif found: {len(subgraph_isomorphisms)} isos")
+    print(len(results))
+    
+    
     ### Optionally print isomorphisms.
     if args.print_isos:
         print("Arachne isomorphisms:")
