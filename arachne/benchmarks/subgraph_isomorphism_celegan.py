@@ -86,15 +86,15 @@ new_vertex_range = ak.arange(gb_celegans_nodes.unique_keys.size)
 all_vertices = gb_celegans_nodes.broadcast(new_vertex_range)
 ak_celegans_sorted["pre"] = all_vertices[0:ak_celegans_sorted.shape[0]]
 ak_celegans_sorted["post"] = all_vertices[ak_celegans_sorted.shape[0]:]
-ak_celegans_sorted
+#ak_celegans_sorted
 
 ak_microns_gb = ak_microns.groupby(["pre_root_id", "post_root_id"])
 ak_microns_sorted = ak_microns[ak_microns_gb.permutation[ak_microns_gb.segments]]
-ak_microns_sorted
+#ak_microns_sorted
 
 ak_hemibrain_traced_roi_connections_gb = ak_hemibrain_traced_roi_connections.groupby(["bodyId_pre", "bodyId_post"])
 ak_hemibrain_traced_roi_connections_sorted = ak_hemibrain_traced_roi_connections[ak_hemibrain_traced_roi_connections_gb.permutation[ak_hemibrain_traced_roi_connections_gb.segments]]
-ak_hemibrain_traced_roi_connections_sorted
+#ak_hemibrain_traced_roi_connections_sorted
 
 #ak_celegans_sorted.columns
 
@@ -128,8 +128,8 @@ del ak_hemibrain_traced_roi_connections_sorted['bodyId_post']  # Remove the orig
 
 ak_hemibrain_traced_roi_connections_sorted.columns
 
-ak_celegans_sorted
-
+#ak_celegans_sorted
+"""
 ar_celegans = ar.PropGraph()
 
 ar_celegans.load_edge_attributes(ak_celegans_sorted, source_column="src", destination_column="dst", relationship_columns=["type"])
@@ -141,13 +141,32 @@ lbls = ak.array(["1"]*unique_nodes.size)
 celegan_node_df = ak.DataFrame({"nodes": unique_nodes, "lbls":lbls})
 
 ar_celegans.load_node_attributes(celegan_node_df,node_column="nodes", label_columns=["lbls"])
+"""
+
+
+ar_microns = ar.PropGraph()
+ar_microns.load_edge_attributes(ak_microns_sorted, source_column="src", destination_column="dst", relationship_columns=["id"])
+all_nodes = ak.concatenate([ak_microns_sorted['src'], ak_microns_sorted['dst']])
+unique_nodes = ak.unique(all_nodes)
+#unique_nodes.size
+lbls = ak.array(["1"]*unique_nodes.size)
+microns_node_df = ak.DataFrame({"nodes": unique_nodes, "lbls":lbls})
+
+ar_microns.load_node_attributes(microns_node_df,node_column="nodes", label_columns=["lbls"])
+                                 
 
 print("Data loaded now we are loading the subraph....")
 subgraph = ar.PropGraph()
-src_subgraph = ak.array([0, 2])
-dst_subgraph = ak.array([1, 1])
+motif = Motif("""
+A -> B 
+B -> A
+C -> B
+B -> C
+""")
+src_subgraph = ak.array([0, 1, 2, 0])
+dst_subgraph = ak.array([1, 0, 0, 2])
 lbls_subgraph = ak.array(["1"]*3)
-rels_subgraph = ak.array([  "chemical", "chemical"])
+rels_subgraph = ak.array([  "chemical"]*len(src_subgraph))
 edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels":rels_subgraph})
 node_df_h = ak.DataFrame({"nodes": ak.arange(0,3), "lbls":lbls_subgraph})
 subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
@@ -155,7 +174,8 @@ subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column
 subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls"])
 
 
-prop_graph= ar_celegans
+#prop_graph= ar_celegans
+prop_graph= ar_microns
 # Grab vertex and edge data from the Arachne dataframes.
 graph_node_information = prop_graph.get_node_attributes()
 graph_edge_information = prop_graph.get_edge_attributes()
@@ -192,10 +212,7 @@ for key in subgraph_node_attributes:
         subgraph_node_attributes_final[subgraph_nodes_from_df[key]] = subgraph_node_attributes[key]
 
 
-print("graph_node_attributes_final:")
-print(graph_node_attributes_final)
-print("subgraph_node_attributes_final:")
-print(subgraph_node_attributes_final)
+
     # Set the node attributes for G and H from dicts.
 nx.set_node_attributes(G, graph_node_attributes_final)
 nx.set_node_attributes(H, subgraph_node_attributes_final)
@@ -204,7 +221,8 @@ nx.set_node_attributes(H, subgraph_node_attributes_final)
 
 print(" Arachne....")
 start = time.time()
-isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
+#isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
+isos = ar.subgraph_isomorphism(ar_microns, subgraph)
 end = time.time()
 print(f"Finding {len(isos)/3} monomorphisms took {end-start} secs")
 print("************************************************************")
@@ -222,10 +240,7 @@ print(" DotMotif....")
 E = GrandIsoExecutor(graph=G)
 
 # Create the search engine.
-motif = Motif("""
-A -> B 
-C -> B
-""")
+
 start = time.time()
 
 results = E.find(motif)
