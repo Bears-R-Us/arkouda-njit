@@ -1,4 +1,4 @@
-module TriCtrMsg {
+module TriCtrMsgD {
 
 
   use Reflection;
@@ -309,7 +309,7 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TriCtr);
+          var countEntry = createSymEntry(TriCtr);
           st.addEntry(countName, countEntry);
 	  timer.stop();
 	  writeln("Elapsed time for naive Triangle Centrality="+(timer.elapsed()):string); 
@@ -537,7 +537,7 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TriCtr);
+          var countEntry = createSymEntry(TriCtr);
           st.addEntry(countName, countEntry);
 	  timer.stop();
 	  writeln("Elapsed time for naive Triangle Centrality="+(timer.elapsed()):string); 
@@ -795,7 +795,7 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TriCtr);
+          var countEntry = createSymEntry(TriCtr);
           st.addEntry(countName, countEntry);
           var cntMsg =  'created ' + st.attrib(countName);
           timer.stop();
@@ -1156,7 +1156,7 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TriCtr);
+          var countEntry = createSymEntry(TriCtr);
           st.addEntry(countName, countEntry);
 	  timer.stop();
 	  writeln("Elapsed time for Path Merge Triangle Centrality="+(timer.elapsed()):string); 
@@ -1410,7 +1410,7 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TriCtr);
+          var countEntry = createSymEntry(TriCtr);
           st.addEntry(countName, countEntry);
 	  timer.stop();
 	  writeln("Elapsed time for Set Small Search Triangle Centrality="+(timer.elapsed()):string); 
@@ -1662,7 +1662,7 @@ module TriCtrMsg {
                 }// end of  on loc 
           } // end of coforall loc in Locales 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TriCtr);
+          var countEntry = createSymEntry(TriCtr);
           st.addEntry(countName, countEntry);
 	  timer.stop();
 	  writeln("Elapsed time for List Intersection Triangle Centrality="+(timer.elapsed()):string); 

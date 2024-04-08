@@ -92,8 +92,8 @@ InitialCountAtomic='''
 #We defind the global variables for all truss functions. 10 spaces
 FunStartVariables='''
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -3389,8 +3389,8 @@ module TrussMsg {
       // This procedure is just used for worst case test
       proc kTrussNaiveListIntersection(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -3640,8 +3640,8 @@ module TrussMsg {
       // check the correctness of the results
       proc kTrussNaiveListIntersectionSmall(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -3911,8 +3911,8 @@ module TrussMsg {
       // check the correctness of the results
       proc kTrussNaiveListIntersectionSmallSeq(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4177,8 +4177,8 @@ module TrussMsg {
       // This procedure is just used for worst case test
       proc kTrussNaiveListIntersectionSeq(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4429,8 +4429,8 @@ module TrussMsg {
       // This procedure is just used for worst case test
       proc kTrussNaiveMergePath(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4746,8 +4746,8 @@ module TrussMsg {
       //This procedure is used to show how list intersection can affect the performance compared with our edges search method.
       proc kTrussNaiveMinSearch(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -5186,8 +5186,8 @@ module TrussMsg {
       //The performance should be good.
       proc kTruss(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -5643,8 +5643,8 @@ module TrussMsg {
       //This should be the best one.
       proc kTrussMix(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                            neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -6112,8 +6112,8 @@ module TrussMsg {
 
       //For directed graph, using the naive method. The performance should be bad.
       proc kTrussNaiveDirected(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -6377,8 +6377,8 @@ module TrussMsg {
 
       //For directed graph, the straight forward method.
       proc kTrussDirected(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -6811,8 +6811,8 @@ module TrussMsg {
 
       proc SkMaxTrussNaive(kInput:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):bool{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var k=kInput:int;
           var ConFlag=true:bool;
@@ -7026,8 +7026,8 @@ module TrussMsg {
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int, lEdgeDeleted:[?D6] int ):bool{
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var k=kInput:int;
           var ConFlag=true:bool;
@@ -7339,8 +7339,8 @@ module TrussMsg {
       proc SkMaxTrussMix(kInput:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         TriCount:[?D5] atomic int,lEdgeDeleted:[?D6] int):bool{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var k=kInput:int;
           var ConFlag=true:bool;
@@ -7676,8 +7676,8 @@ module TrussMsg {
 
       //For Directed graph
       proc SkMaxTrussNaiveDirected(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):bool throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -7901,8 +7901,8 @@ module TrussMsg {
 
       //For directed graph
       proc SkMaxTrussDirected(k:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):bool throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -8294,8 +8294,8 @@ module TrussMsg {
       //For undirected graph, using the naive method
       proc TrussDecompositionNaiveMergePath(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] int):string throws {
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8637,8 +8637,8 @@ module TrussMsg {
 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8911,8 +8911,8 @@ module TrussMsg {
 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -9388,8 +9388,8 @@ module TrussMsg {
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,TriCount:[?D5] atomic int):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -9864,8 +9864,8 @@ module TrussMsg {
 
 
       proc TrussNaiveDecompositionDirected(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var ConFlag=true:bool;
           EdgeDeleted=-1;
@@ -10145,8 +10145,8 @@ module TrussMsg {
 
       //For directed graph, using directed method.
       proc TrussDecompositionDirected(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int):string throws{
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF= new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF= new distBag((int,int),Locales); //use bag to keep the next frontier
           var N2=0:int;
           var k=kvalue;
           var ConFlag=true:bool;

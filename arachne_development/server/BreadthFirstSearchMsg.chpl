@@ -1,135 +1,111 @@
-module RBreadthFirstSearch {
+module BreadthFirstSearchMsg {
     // Chapel modules.
     use Reflection;
-    use Set;
-    use List;
-
-    // Package modules.
-    use CopyAggregation;
-
+    use Time;
+    
     // Arachne modules.
     use GraphArray;
     use Utils;
     use Aggregators;
+    use BreadthFirstSearch;
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
     use MultiTypeSymEntry;
     use ServerConfig;
+    use ServerErrors;
+    use ServerErrorStrings;
     use AryUtil;
+    use Logging;
+    use Message;
+    
+    // Server message logger. 
+    private config const logLevel = ServerConfig.logLevel;
+    private config const logChannel = ServerConfig.logChannel;
+    const bfsLogger = new Logger(logLevel, logChannel);
 
-    /** 
-    * Breadth-first search for shared-memory (one locale) systems. Uses a Chapel set for 
+    /**
+    * Adds the depth array to the symbol table.
     *
-    * graph: graph to run bfs on. 
+    * returns: message to create pdarray at the front-end.
+    */
+    private proc return_depth(depth: [?D] int, st: borrowed SymTab): string throws{
+        var depthName = st.nextName();
+        var depthEntry = createSymEntry(depth);
+        st.addEntry(depthName, depthEntry);
+
+        var depMsg = 'created ' + st.attrib(depthName);
+        return depMsg;
+    }
+
+    /**
+    * Run BFS on a(n) (un)directed and (un)weighted graph. 
     *
-    * returns: success string message. */
-    proc bfs_kernel_und_smem(graph:SegGraph, root:int, depth: [?D] int):string throws {
-        // Extract graph data.
-        var src = toSymEntry(graph.getComp("SRC"),int).a;
-        var dst = toSymEntry(graph.getComp("DST"),int).a;
-        var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
-        
-        // Generate the frontier sets.
-        var frontier_sets : [{0..1}] list(int, parSafe=true);
-        frontier_sets[0] = new list(int, parSafe=true);
-        frontier_sets[1] = new list(int, parSafe=true);
-        
-        var frontier_sets_idx = 0;
-        var cur_level = 0;
-        depth[root] = cur_level;
-        frontier_sets[frontier_sets_idx].pushBack(root);
-        while true { 
-            var pending_work:bool;
-            forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work) {
-                var adj_list_start = seg[u];
-                var num_neighbors = seg[u+1] - adj_list_start;
-                if (num_neighbors != 0) {
-                    var adj_list_end = adj_list_start + num_neighbors - 1;
-                    ref neighborhood = dst.localSlice(adj_list_start..adj_list_end);
-                    for v in neighborhood {
-                        if (depth[v] == -1) {
-                            pending_work = true;
-                            depth[v] = cur_level + 1;
-                            frontier_sets[(frontier_sets_idx + 1) % 2].pushBack(v);
-                        }
-                    }
-                }
-            }
-            frontier_sets[frontier_sets_idx].clear();
-            if !pending_work {
-                break;
-            }
-            cur_level += 1;
-            frontier_sets_idx = (frontier_sets_idx + 1) % 2;
-        }// end while 
-        return "success";
-    }// end of bfs_kernel_und_smem
-        
-    /** 
-    * Using a remote aggregator above for sets, we are going to perform aggregated writes to the
-    * locales that include the neighborhood of the vertex being processed.
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
     *
-    * graph: graph to run bfs on. 
-    *
-    * returns: success string message. */
-    proc bfs_kernel_und_dmem(graph:SegGraph, root:int, depth: [?D] int):string throws {
-        // Initialize the frontiers on each of the locales.
-        coforall loc in Locales do on loc {
-            frontier_sets[0] = new set(int, parSafe=true);
-            frontier_sets[1] = new set(int, parSafe=true);
-        } 
-        frontier_sets_idx = 0;
-        var src = toSymEntry(graph.getComp("SRC"),int).a;
-        var dst = toSymEntry(graph.getComp("DST"),int).a;
-        var seg = toSymEntry(graph.getComp("SEGMENTS"),int).a;
+    * returns: message back to Python.
+    */
+    proc segBFSMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        param pn = Reflection.getRoutineName();
         
-        // Add the root to the locale that owns it and update size & depth.
-        for lc in find_locs(root, graph) {
-            on lc do frontier_sets[frontier_sets_idx].add(root);
+        // Info messages to print stuff to the Chapel Server.
+        var repMsg:string;
+        var outMsg:string;
+
+        // Extract messages send from Python.
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var rootN = msgArgs.getValueOf("Source");
+        var doBenchmark = if msgArgs.contains("DoBenchmark") then true else false;
+
+        // Convert messages to datatypes.
+        var root = rootN:int;
+       
+        // Pull out our graph from the symbol table.
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var g = gEntry.graph;
+
+        // Convert root value to inner mapping.
+        var node_map = toSymEntry(g.getComp("VERTEX_MAP_SDI"),int).a;
+        root = bin_search_v(node_map, node_map.domain.lowBound, node_map.domain.highBound, root);
+        if (root == -1) {
+            var errorMsg = "Source vertex not found in graph.";
+            bfsLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+            return new MsgTuple(errorMsg, MsgType.ERROR);
         }
-        var cur_level = 0;
-        depth[root] = cur_level;
 
-        while true { 
-            var pending_work:bool;
-            coforall loc in Locales with(|| reduce pending_work) {
-                on loc {
-                    var src_low = src.localSubdomain().low;
-                    var src_high = src.localSubdomain().high;
-                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new SetDstAggregator(int), var depth_agg = new DstAggregator(int)) {
-                        var adj_list_start = seg[u];
-                        var num_neighbors = seg[u+1] - adj_list_start;
-                        if (num_neighbors != 0) {
-                            var adj_list_end = adj_list_start + num_neighbors - 1;
-                            
-                            // Only pull the part of the adjacency list that is local.
-                            var actual_start = max(adj_list_start, src_low);
-                            var actual_end = min(src_high, adj_list_end);
-                            
-                            ref neighborhood = dst.localSlice(actual_start..actual_end);
-                            for v in neighborhood { 
-                                if (depth[v] == -1) {
-                                    pending_work = true;
-                                    // depth[v] = cur_level + 1;
-                                    depth_agg.copy(depth[v], cur_level + 1);
-                                    var locs = find_locs(v, graph);
-                                    for lc in locs {
-                                        frontier_agg.copy(lc.id, v);
-                                    }
-                                }
-                            }
-                        }
-                    } //end forall
-                    frontier_sets[frontier_sets_idx].clear();
-                } // end on loc
-            }// end coforall loc
-            if !pending_work {
-                break;
+        // Create empty depth array to return at the end of execution. Initialized here to ensure 
+        // the function makes changes to an array reference and does not return a new array at
+        // the end of execution.
+        var depthName:string;
+        var depth = makeDistArray(g.n_vertices, int);
+        depth = -1;
+
+        // Run the breadth-first search steps dependent on the hardware. 
+        var timer:stopwatch;
+        if(!doBenchmark) {
+            if(numLocales == 1) {
+                var timer:stopwatch;
+                timer.start();
+                bfs_kernel_und_smem(g, root, depth);
+                timer.stop();
+                outMsg = "Shared memory breadth-first search took " + timer.elapsed():string + " sec";
             }
-            cur_level += 1;
-            frontier_sets_idx = (frontier_sets_idx + 1) % 2;
-        }// end while 
-        return "success";
-    }// end of bfs_kernel_und_dmem
-}// end of BreadthFirstSearch module
+            else {
+                var timer:stopwatch;
+                timer.start();
+                bfs_kernel_und_dmem_opt(g, root, depth);
+                timer.stop();
+                outMsg = "Distributed memory breadth-first search took " + timer.elapsed():string + " sec";
+            }
+        }
+        repMsg = return_depth(depth, st);
+        bfsLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        bfsLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
+
+    use CommandMap;
+    registerFunction("segmentedGraphBFS", segBFSMsg, getModuleName());
+}

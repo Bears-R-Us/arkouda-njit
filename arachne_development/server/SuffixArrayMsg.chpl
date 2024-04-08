@@ -235,8 +235,8 @@ module SuffixArrayMsg {
             // Compute the slice
             var (newSegs, newVals) = sarrays[slice];
             // Store the resulting offsets and bytes arrays
-            var newSegsEntry = new shared SymEntry(newSegs);
-            var newValsEntry = new shared SymEntry(newVals);
+            var newSegsEntry = createSymEntry(newSegs);
+            var newValsEntry = createSymEntry(newVals);
             st.addEntry(newSegName, newSegsEntry);
             st.addEntry(newValName, newValsEntry);
         
@@ -288,16 +288,16 @@ module SuffixArrayMsg {
                     when DType.Int64 {
                         var iv = toSymEntry(gIV, int);
                         var (newSegs, newVals) = sarrays[iv.a];
-                        var newSegsEntry = new shared SymEntry(newSegs);
-                        var newValsEntry = new shared SymEntry(newVals);
+                        var newSegsEntry = createSymEntry(newSegs);
+                        var newValsEntry = createSymEntry(newVals);
                         st.addEntry(newSegName, newSegsEntry);
                         st.addEntry(newValName, newValsEntry);
                     }
                     when DType.Bool {
                         var iv = toSymEntry(gIV, bool);
                         var (newSegs, newVals) = sarrays[iv.a];
-                        var newSegsEntry = new shared SymEntry(newSegs);
-                        var newValsEntry = new shared SymEntry(newVals);
+                        var newSegsEntry = createSymEntry(newSegs);
+                        var newValsEntry = createSymEntry(newVals);
                         st.addEntry(newSegName, newSegsEntry);
                         st.addEntry(newValName, newValsEntry);
                     }
@@ -560,8 +560,8 @@ module SuffixArrayMsg {
               var segName2 = st.nextName();
               var valName2 = st.nextName();
 
-              var segEntry = new shared SymEntry(sasoff);
-              var valEntry = new shared SymEntry(sasval);
+              var segEntry = createSymEntry(sasoff);
+              var valEntry = createSymEntry(sasval);
               st.addEntry(segName2, segEntry);
               st.addEntry(valName2, valEntry);
               repMsg = 'created ' + st.attrib(segName2) + '+created ' + st.attrib(valName2);
@@ -644,8 +644,8 @@ module SuffixArrayMsg {
               var lcpsegName = st.nextName();
               var lcpvalName = st.nextName();
 
-              var lcpsegEntry = new shared SymEntry(sasoff);
-              var lcpvalEntry = new shared SymEntry(lcpval);
+              var lcpsegEntry = createSymEntry(sasoff);
+              var lcpvalEntry = createSymEntry(lcpval);
               st.addEntry(lcpsegName, lcpsegEntry);
               st.addEntry(lcpvalName, lcpvalEntry);
               repMsg = 'created ' + st.attrib(lcpsegName) + '+created ' + st.attrib(lcpvalName);
@@ -692,8 +692,8 @@ module SuffixArrayMsg {
       var segName = st.nextName();
       var valName = st.nextName();
 
-      var segEntry = new shared SymEntry(offsegs);
-      var valEntry = new shared SymEntry(strArray);
+      var segEntry = createSymEntry(offsegs);
+      var valEntry = createSymEntry(strArray);
       st.addEntry(segName, segEntry);
       st.addEntry(valName, valEntry);
 
@@ -728,8 +728,8 @@ module SuffixArrayMsg {
               var segName2 = st.nextName();
               var valName2 = st.nextName();
 
-              var segEntry = new shared SymEntry(sasoff);
-              var valEntry = new shared SymEntry(sasval);
+              var segEntry = createSymEntry(sasoff);
+              var valEntry = createSymEntry(sasval);
               st.addEntry(segName2, segEntry);
               st.addEntry(valName2, valEntry);
               repMsg = 'created ' + st.attrib(segName2) + '+created ' + st.attrib(valName2)

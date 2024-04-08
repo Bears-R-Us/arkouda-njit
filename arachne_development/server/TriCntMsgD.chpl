@@ -1,4 +1,4 @@
-module TriCntMsg {
+module TriCntMsgD {
 
 
   use Reflection;
@@ -136,12 +136,13 @@ module TriCntMsg {
       proc readLinebyLine() throws {
            coforall loc in Locales with (ref src, ref dst, ref e_weight, ref start_i, ref start_iR,ref neighbourR, ref srcR, ref dstR ,ref neighbour )  {
               on loc {
-                  var randv = new RandomStream(real, here.id, false);
+                  //var randv = new randomStream(real, here.id, false);
+                  var randv = new randomStream(real, here.id);
                   var f = open(FileName, ioMode.r);
 
                   //var r = f.reader(serializer = new defaultSerializer());
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader();
+                  var r = f.reader(locking=false);
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -281,10 +282,10 @@ module TriCntMsg {
 
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
       var graph = new shared SegGraph(StreamNe, StreamNv, directed);
-      graph.withSRC(new shared SymEntry(src):GenSymEntry)
-           .withDST(new shared SymEntry(dst):GenSymEntry)
-           .withSTART_IDX(new shared SymEntry(start_i):GenSymEntry)
-           .withNEIGHBOR(new shared SymEntry(neighbour):GenSymEntry);
+      graph.withSRC(createSymEntry(src):GenSymEntry)
+           .withDST(createSymEntry(dst):GenSymEntry)
+           .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
+           .withNEIGHBOR(createSymEntry(neighbour):GenSymEntry);
 
 
 
@@ -374,10 +375,10 @@ module TriCntMsg {
           combine_sortR();
           set_neighbourR();
 
-          graph.withSRC_R(new shared SymEntry(srcR):GenSymEntry)
-               .withDST_R(new shared SymEntry(dstR):GenSymEntry)
-               .withSTART_IDX_R(new shared SymEntry(start_iR):GenSymEntry)
-               .withNEIGHBOR_R(new shared SymEntry(neighbourR):GenSymEntry);
+          graph.withSRC_R(createSymEntry(srcR):GenSymEntry)
+               .withDST_R(createSymEntry(dstR):GenSymEntry)
+               .withSTART_IDX_R(createSymEntry(start_iR):GenSymEntry)
+               .withNEIGHBOR_R(createSymEntry(neighbourR):GenSymEntry);
 
 
       }//end of undirected
@@ -390,13 +391,13 @@ module TriCntMsg {
         /*
         ewName = st.nextName();
         vwName = st.nextName();
-        var vwEntry = new shared SymEntry(v_weight);
-        var ewEntry = new shared SymEntry(e_weight);
+        var vwEntry = createSymEntry(v_weight);
+        var ewEntry = createSymEntry(e_weight);
         st.addEntry(vwName, vwEntry);
         st.addEntry(ewName, ewEntry);
         */
-        graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
-                .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
+        graph.withEDGE_WEIGHT(createSymEntry(e_weight):GenSymEntry)
+                .withVERTEX_WEIGHT(createSymEntry(v_weight):GenSymEntry);
 
       }
 
@@ -663,7 +664,7 @@ module TriCntMsg {
                            //writeln("4 Locale=",here.id, " u=",u, " Enter coforall path");
                            var uadj= new set(int,parSafe = true);
                            //var uadj= new set(int);
-                           //var uadj=  new DistBag(int,Locales); //use bag to keep the adjacency of u
+                           //var uadj=  new distBag(int,Locales); //use bag to keep the adjacency of u
                            var startu_adj:int;
                            var endu_adj:int;
                            var numu_adj:int;
@@ -739,7 +740,7 @@ module TriCntMsg {
                                //writeln("10 Locale=",here.id, " u=",u," and v=",v, " enter forall");
                                var vadj= new set(int,parSafe = true);
                                //var vadj= new set(int);
-                               //var vadj=  new DistBag(int,Locales); //use bag to keep the adjacency of v
+                               //var vadj=  new distBag(int,Locales); //use bag to keep the adjacency of v
                                var startv_adj:int;
                                var endv_adj:int;
                                var numv_adj:int;
@@ -1532,7 +1533,7 @@ module TriCntMsg {
           //writeln("LocalRatio=", (totalLocal:real)/((totalRemote+totalLocal):real),", TotalTimes=",totalRemote+totalLocal);
           //writeln("LocalAccessTimes=", totalLocal,", RemoteAccessTimes=",totalRemote);
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(TotalCnt);
+          var countEntry = createSymEntry(TotalCnt);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -1542,7 +1543,7 @@ module TriCntMsg {
 
       proc return_tri_count_array(): string throws{
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(returnary);
+          var countEntry = createSymEntry(returnary);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -1570,8 +1571,8 @@ module TriCntMsg {
 
       /*
       if (Weighted) {
-           graph.withEDGE_WEIGHT(new shared SymEntry(e_weight):GenSymEntry)
-                .withVERTEX_WEIGHT(new shared SymEntry(v_weight):GenSymEntry);
+           graph.withEDGE_WEIGHT(createSymEntry(e_weight):GenSymEntry)
+                .withVERTEX_WEIGHT(createSymEntry(v_weight):GenSymEntry);
       }
       */
 
@@ -1708,11 +1709,12 @@ module TriCntMsg {
       proc readLinebyLine() throws {
            coforall loc in Locales with (ref src, ref dst, ref e_weight, ref start_i, ref start_iR,ref neighbour, ref neighbourR, ref srcR, ref dstR,ref e_cnt ,ref v_weight, ref v_cnt )  {
               on loc {
-                  var randv = new RandomStream(real, here.id, false);
+                  //var randv = new randomStream(real, here.id, false);
+                  var randv = new randomStream(real, here.id);
                   var f = open(FileName, ioMode.r);
                   //var r = f.reader(serializer = new defaultSerializer());
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader();
+                  var r = f.reader(locking=false);
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -2097,7 +2099,7 @@ module TriCntMsg {
                            //writeln("4 Locale=",here.id, " u=",u, " Enter coforall path");
                            var uadj= new set(int,parSafe = true);
                            //var uadj= new set(int);
-                           //var uadj=  new DistBag(int,Locales); //use bag to keep the adjacency of u
+                           //var uadj=  new distBag(int,Locales); //use bag to keep the adjacency of u
                            var startu_adj:int;
                            var endu_adj:int;
                            var numu_adj:int;
@@ -2173,7 +2175,7 @@ module TriCntMsg {
                                //writeln("10 Locale=",here.id, " u=",u," and v=",v, " enter forall");
                                var vadj= new set(int,parSafe = true);
                                //var vadj= new set(int);
-                               //var vadj=  new DistBag(int,Locales); //use bag to keep the adjacency of v
+                               //var vadj=  new distBag(int,Locales); //use bag to keep the adjacency of v
                                var startv_adj:int;
                                var endv_adj:int;
                                var numv_adj:int;
@@ -2309,7 +2311,7 @@ module TriCntMsg {
           var countName = st.nextName();
           var retval=makeDistArray(numLocales,int);
           retval[0]=TotalCnt[0];
-          var countEntry = new shared SymEntry(retval);
+          var countEntry = createSymEntry(retval);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -2480,7 +2482,7 @@ module TriCntMsg {
                   var f = open(FileName, ioMode.r);
                   //var r = f.reader(serializer = new defaultSerializer());
                   //var r = f.reader(kind=iokind.dynamic );
-                  var r = f.reader();
+                  var r = f.reader(locking=false);
                   defer {
                         closeFinally(r);
                         closeFinally(f);
@@ -2917,7 +2919,7 @@ module TriCntMsg {
                            //writeln("4 Locale=",here.id, " u=",u, " Enter coforall path");
                            var uadj= new set(int,parSafe = true);
                            //var uadj= new set(int);
-                           //var uadj=  new DistBag(int,Locales); //use bag to keep the adjacency of u
+                           //var uadj=  new distBag(int,Locales); //use bag to keep the adjacency of u
                            var startu_adj:int;
                            var endu_adj:int;
                            var numu_adj:int;
@@ -2993,7 +2995,7 @@ module TriCntMsg {
                                //writeln("10 Locale=",here.id, " u=",u," and v=",v, " enter forall");
                                var vadj= new set(int,parSafe = true);
                                //var vadj= new set(int);
-                               //var vadj=  new DistBag(int,Locales); //use bag to keep the adjacency of v
+                               //var vadj=  new distBag(int,Locales); //use bag to keep the adjacency of v
                                var startv_adj:int;
                                var endv_adj:int;
                                var numv_adj:int;
@@ -3194,7 +3196,7 @@ module TriCntMsg {
       var countName = st.nextName();
       var retval=makeDistArray(numLocales,int);
       retval[0]=TotalCnt[0];
-      var countEntry = new shared SymEntry(retval);
+      var countEntry = createSymEntry(retval);
       st.addEntry(countName, countEntry);
       repMsg =  'created ' + st.attrib(countName);
 
