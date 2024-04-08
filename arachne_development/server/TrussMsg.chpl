@@ -187,8 +187,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -478,7 +478,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -493,8 +493,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -782,7 +782,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -797,8 +797,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1090,7 +1090,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -1105,8 +1105,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1463,7 +1463,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -1478,8 +1478,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1796,7 +1796,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -1811,8 +1811,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -2462,7 +2462,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -2477,8 +2477,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -2957,7 +2957,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -2972,8 +2972,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -3474,7 +3474,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -3489,8 +3489,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -3992,7 +3992,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -4007,8 +4007,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4473,7 +4473,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -4494,8 +4494,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int,ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -4957,7 +4957,7 @@ module TrussMsg {
                     }// end of while
 
                     var countName = st.nextName();
-                    var countEntry = new shared SymEntry(lEdgeDeleted);
+                    var countEntry = createSymEntry(lEdgeDeleted);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -5000,8 +5000,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -5584,7 +5584,7 @@ module TrussMsg {
                     var countName = st.nextName();
                     //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
-                    var countEntry = new shared SymEntry(maxKAry);
+                    var countEntry = createSymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -5627,8 +5627,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -6094,7 +6094,7 @@ module TrussMsg {
                     var countName = st.nextName();
                     //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
-                    var countEntry = new shared SymEntry(maxKAry);
+                    var countEntry = createSymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -6137,8 +6137,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -6613,7 +6613,7 @@ module TrussMsg {
                     var countName = st.nextName();
                     //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
-                    var countEntry = new shared SymEntry(maxKAry);
+                    var countEntry = createSymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -6656,8 +6656,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -7132,7 +7132,7 @@ module TrussMsg {
                     var countName = st.nextName();
                     //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
-                    var countEntry = new shared SymEntry(maxKAry);
+                    var countEntry = createSymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -7175,8 +7175,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -7653,7 +7653,7 @@ module TrussMsg {
                     var countName = st.nextName();
                     //var maxKAry:[0..1] int;
                     maxKAry[0]=kUp;
-                    var countEntry = new shared SymEntry(maxKAry);
+                    var countEntry = createSymEntry(maxKAry);
                     st.addEntry(countName, countEntry);
                     repMsg =  'created ' + st.attrib(countName);
                     maxtimer.stop();
@@ -7702,8 +7702,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8010,7 +8010,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -8025,8 +8025,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8331,7 +8331,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -8346,8 +8346,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -8656,7 +8656,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -8671,8 +8671,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -9046,7 +9046,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -9061,8 +9061,8 @@ module TrussMsg {
                         ref TriCount:[?D5] int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -9396,7 +9396,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -9411,8 +9411,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -10079,7 +10079,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -10094,8 +10094,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -10591,7 +10591,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -10606,8 +10606,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -11125,7 +11125,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -11140,8 +11140,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -11660,7 +11660,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);
@@ -11675,8 +11675,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag((int,int),Locales); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -12158,7 +12158,7 @@ module TrussMsg {
           smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
-          var countEntry = new shared SymEntry(EdgeDeleted);
+          var countEntry = createSymEntry(EdgeDeleted);
           st.addEntry(countName, countEntry);
 
           var cntMsg =  'created ' + st.attrib(countName);

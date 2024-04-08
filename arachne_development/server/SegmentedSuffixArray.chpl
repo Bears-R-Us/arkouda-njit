@@ -94,10 +94,10 @@ module SegmentedSuffixArray {
      */
     proc init(segments: [] int, values: [] int, st: borrowed SymTab) {
       var oName = st.nextName();
-      var segEntry = new shared SymEntry(segments);
+      var segEntry = createSymEntry(segments);
       try! st.addEntry(oName, segEntry);
       var vName = st.nextName();
-      var valEntry = new shared SymEntry(values);
+      var valEntry = createSymEntry(values);
       try! st.addEntry(vName, valEntry);
       this.init(oName, vName, st);
     }

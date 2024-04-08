@@ -1,4 +1,4 @@
-module RSquareCountMsg {
+module SquareCountMsg {
     // Chapel modules.
     use Reflection;
     use Time;
@@ -67,5 +67,5 @@ module RSquareCountMsg {
     }
     
     use CommandMap;
-    registerFunction("RsegmentedGraphSquares", segSquareCountMsg, getModuleName());
+    registerFunction("segmentedGraphSquares", segSquareCountMsg, getModuleName());
 }

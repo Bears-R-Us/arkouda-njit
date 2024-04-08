@@ -49,12 +49,12 @@ module GraphInfoMsg {
         // Add new copies of each to the symbol table.
         var repMsg = "";
         var attrNameSrc = st.nextName();
-        var attrEntrySrc = new shared SymEntry(src); 
+        var attrEntrySrc = createSymEntry(src); 
         st.addEntry(attrNameSrc, attrEntrySrc);
         repMsg += "created " + st.attrib(attrNameSrc) + "+ ";
 
         var attrNameDst = st.nextName();
-        var attrEntryDst = new shared SymEntry(dst); 
+        var attrEntryDst = createSymEntry(dst); 
         st.addEntry(attrNameDst, attrEntryDst);
         repMsg += "created " + st.attrib(attrNameDst);
 
@@ -91,7 +91,7 @@ module GraphInfoMsg {
         // Add new copies of each to the symbol table.
         var repMsg = "";
         var attrName = st.nextName();
-        var attrEntry = new shared SymEntry(nodes);
+        var attrEntry = createSymEntry(nodes);
         st.addEntry(attrName, attrEntry);
         repMsg += "created " + st.attrib(attrName) + "+ ";
 

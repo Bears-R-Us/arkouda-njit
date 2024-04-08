@@ -1,64 +1,114 @@
 module Utils {
     // Chapel modules.
-    use IO;
-    use Map;
-    use Sort;
     use List;
-    use Set;
+    use Sort;
+    use ReplicatedDist;
 
     // Arachne modules.
     use GraphArray;
 
-    // Arkouda modules. 
-    use Logging;
+    // Arkouda modules.
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
-    use ServerConfig;
-    use ArgSortMsg;
-    use AryUtil;
 
-    // Allow graphs to be printed server-side? Defaulted to false. MUST BE MANUALLY CHANGED.
-    // TODO: make this a param instead of a set variable?
-    var debug_print = false; 
+    /* A fast variant of localSubdomain() assumes 'blockArray' is a block-distributed array
+       if it breaks, replace it with:
+            inline proc fastLocalSubdomain(arr) do return arr.localSubdomain();*/
+    proc fastLocalSubdomain(const ref blockArray) const ref {
+        assert(blockArray.targetLocales()[here.id] == here);
+        return blockArray._value.dom.locDoms[here.id].myBlock;
+    }
 
-    // Server message logger. 
-    private config const logLevel = LogLevel.DEBUG;
-    const smLogger = new Logger(logLevel);
-    private var outMsg:string;
+    /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
+    graph data structure should probably be a class method of SegGraph.
+    
+    :arg u: source vertex to index for.
+    :type u: int
+    :arg v: destination vertex v to binary search for
+    :type v: int
+    :arg graph: Graph to search within.
+    :type graph: borrowed SegGraph
+    
+    :returns: int */
+    proc getEdgeId(u:int, v:int, const ref dst:[?D1] int, const ref seg:[?D2] int): int throws {
+        var start = seg[u];
+        var end = seg[u+1]-1;
+        var eid = bin_search_v(dst, start, end, v);
 
-    /** 
-    * Helper procedure to parse ranges and return the locale(s) we must write to.
-    * 
-    * val: value for which we want to find the locale that owns it. 
-    * 
-    * returns: array of the locale names. */
-    proc find_locs(val:int, graph:SegGraph) throws {
-        var ranges = toSymEntry(graph.getComp("RANGES"), (int,locale)).a;
-        var locs = new list(locale);
-        for i in 1..numLocales - 1 {
-            if (val >= ranges[i-1][0] && val <= ranges[i][0]) {
-                locs.pushBack(ranges[i-1][1]);
-            }
-            if (i == numLocales - 1) {
-                if val >= ranges[i][0] {
-                    locs.pushBack(ranges[i][1]);
+        return eid;
+    }
+
+    /* Convenience procedure to return the type of the ranges array. */
+    proc getRangesType() type {
+        var tempD = {0..numLocales-1} dmapped replicatedDist();
+        var temp : [tempD] (int,locale,int);
+        return borrowed ReplicatedSymEntry(temp.type);
+    }
+
+    /* Convenience procedure to return the actual ranges array stored. */
+    proc GenSymEntry.getRanges() const ref do return try! (this:getRangesType()).a;
+
+    /** Create array that keeps track of low vertex in each edges array on each locale.*/
+    proc generateRanges(graph, key, key2insert, const ref array) throws {
+        const ref targetLocs = array.targetLocales();
+        const targetLocIds = targetLocs.id;
+
+        // Create a domain in the range of locales that the array was distributed to. In general,
+        // this will be the whole locale space, and we deal with gaps in the array through the 
+        // isEmpty() method for subdomains.
+        var D = {min reduce targetLocIds .. max reduce targetLocIds} dmapped replicatedDist();
+        var ranges : [D] (int,locale,int);
+
+        // Write the local subdomain low value to the ranges array.
+        coforall loc in targetLocs with (ref ranges) {
+            on loc {
+                const ref localSubdomain = fastLocalSubdomain(array);
+                var low_vertex, high_vertex: int;
+
+                if !localSubdomain.isEmpty() {
+                    low_vertex = array[localSubdomain.low];
+                    high_vertex = array[localSubdomain.high];
+                } else { low_vertex = -1; high_vertex = -1; }
+                
+                coforall rloc in targetLocs with (ref ranges) do on rloc {
+                    ranges[loc.id] = (low_vertex,loc,high_vertex);
                 }
             }
         }
-        return locs.toArray();
+        graph.withComp(new shared ReplicatedSymEntry(ranges):GenSymEntry, key2insert);
     }
 
-    /**
-    * Binary search for a given key, original version by Dr. Du.
-    *
-    * ary: int array
-    * l: low index bound
-    * h: high index bound
-    * key: value we are searching for
-    *
-    * returns: index if key is found, -1 if not found
-    */
-    proc bin_search_v(ary: [?D] int, l: int, h: int, key: int): int throws {
+    /* Helper procedure to parse ranges and return the locale(s) we must write to.
+    
+    :arg val: value whose locale range we are looking for.
+    :type val: int
+    :arg ranges: replicated ranges array to use for the search.
+    :type ranges: const ref [ReplicatedDist] (int,locale,int) 
+
+    :returns: list(locale) */
+    proc find_locs(val:int, const ref ranges) {
+        var locs = new list(locale);
+
+        for low2lc2high in ranges {
+            if (val >= low2lc2high[0])&&(val <= low2lc2high[2]) then locs.pushBack(low2lc2high[1]);
+        }
+
+        return locs;
+    }
+
+    /* Binary search for a given key, original version by Zhihui Du.
+
+    :arg ary: integer array to search into
+    :type ary: ref [?D] int
+    :arg l: low index value
+    :type l: int
+    :arg h: high index value
+    :type h: int
+    :arg key: value to search for in array
+    :type key: int
+
+    :returns: int */
+    proc bin_search_v(const ref ary: [?D] int, l: int, h: int, key: int): int throws {
         if ( (l < D.lowBound) || (h > D.highBound) || (l < 0)) {
             return -1;
         }
@@ -89,14 +139,21 @@ module Utils {
         }
     }// end bin_search_v
 
-    /**
-    * Non-recursive, distributed-memory binary search for a given key.
-    *
-    * arr: int array
-    * key: value we are searching for
-    *
-    * returns: index if key is found, -1 if not found
-    */
+    /* Non-recursive, distributed-memory binary search for a given key. NOTE: experimental! Not 
+    fully tested.
+    
+    :arg arr: integer array to search into
+    :type arr: ref [?D] int
+    :arg lo: low index value
+    :type lo: int
+    :arg hi: high index value
+    :type hi: int
+    :arg key: value to search for in array
+    :type key: int
+    :arg comparator: comparer of array values, defaults to integer comparator
+    :type comparator: defaultComparator
+    
+    :returns: int */
     proc bin_search(arr: [?D] int, key: int, lo: int, hi: int, comparator:?rec=defaultComparator): int throws {
         var found:int = -1; // index of found key, -1 if not found.
         coforall loc in Locales with (ref found) do on loc {
@@ -141,41 +198,4 @@ module Utils {
         } // end of coforall
         return found;
     }// end bin_search
-
-    /**
-    * Print graph data structure server-side to visualize the raw array data.
-    *
-    * G: graph we want to print out. 
-    *
-    * returns: message back to Python.
-    */
-    proc print_graph_serverside(G: borrowed SegGraph) throws {
-        for comp in Component {
-            var curr_comp = comp:string;
-            if G.hasComp(curr_comp) {
-                select curr_comp {
-                    when "RELATIONSHIPS", "NODE_LABELS" {
-                        var X = toSymEntry(G.getComp(comp:string), list(string, parSafe=true)).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    when "NODE_PROPS", "EDGE_PROPS" {
-                        var X = toSymEntry(G.getComp(comp:string), list((string,string), parSafe=true)).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    when "EDGE_WEIGHT", "EDGE_WEIGHT_R" {
-                        var X = toSymEntry(G.getComp(comp:string), real).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    when "NODE_MAP_R" {
-                        var X = toSymEntryAD(G.getComp(comp:string)).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                    otherwise {
-                        var X = toSymEntry(G.getComp(comp:string), int).a;
-                        writeln(comp:string, " = ", X);
-                    }
-                }
-            }
-        }
-    } // end of print_graph_serverside
 }

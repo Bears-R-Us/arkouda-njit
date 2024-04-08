@@ -482,8 +482,8 @@ module BFSMsg {
                         ref neiR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int, 
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
           SetCurF.add(root);
           var numCurF=1:int;
           var topdown=0:int;
@@ -616,8 +616,8 @@ module BFSMsg {
                         a_neiR:[?D11] DomArray, a_start_iR:[?D12] DomArray,a_srcR:[?D13] DomArray, a_dstR:[?D14] DomArray, 
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
           SetCurF.add(root);
           var numCurF=1:int;
           var topdown=0:int;
@@ -711,8 +711,8 @@ module BFSMsg {
       proc fo_bag_bfs_kernel(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
           SetCurF.add(root);
           var numCurF=1:int;
           var topdown=0:int;
@@ -1360,8 +1360,8 @@ module BFSMsg {
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                         LF:int,GivenRatio:real):string throws{
           var cur_level=0;
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
           SetCurF.add(root);
           var numCurF=1:int;
           var bottomup=0:int;
@@ -2018,7 +2018,7 @@ module BFSMsg {
 
       proc return_depth(depth:[?d] int): string throws{
           var depthName = st.nextName();
-          var depthEntry = new shared SymEntry(depth);
+          var depthEntry = createSymEntry(depth);
           st.addEntry(depthName, depthEntry);
           //try! st.addEntry(vertexName, vertexEntry);
 

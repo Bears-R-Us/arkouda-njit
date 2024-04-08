@@ -212,7 +212,8 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-Original"+graphEntryName+".dat", ioMode.cw);
-          var mw = wf.writer(serializer = new defaultSerializer());
+          //var mw = wf.writer(serializer = new defaultSerializer());
+          var mw = wf.writer(locking=false);
           for i in 0..(Nv-2) {
               for j in (i+1)..(Nv-1) {
                  if JaccCoeff[i*Nv+j]>0.0 {
@@ -263,7 +264,7 @@ module JaccardMsg {
           wf.close();
 
           var JaccName = st.nextName();
-          var JaccEntry = new shared SymEntry(JaccCoeff);
+          var JaccEntry = createSymEntry(JaccCoeff);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -956,7 +957,7 @@ module JaccardMsg {
       var timer:stopwatch;
 
 
-      var uvNames: domain(int);
+      var uvNames: domain(int, parSafe=false);
       var indexName : [uvNames] int;
 
       var HashSize:int;
@@ -1127,7 +1128,7 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-DistHash"+graphEntryName+".dat", ioMode.cw);
-          var mw = wf.writer(serializer = new defaultSerializer());
+          var mw = wf.writer(locking=false);
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {
@@ -1183,7 +1184,7 @@ module JaccardMsg {
          
           var JaccName = st.nextName();
           //var JaccEntry = new shared SymEntry([JaccCoeff[0].A]);
-          var JaccEntry = new shared SymEntry(retresult);
+          var JaccEntry = createSymEntry(retresult);
           st.addEntry(JaccName, JaccEntry);
 
           var jacMsg =  'created ' + st.attrib(JaccName);
@@ -1444,7 +1445,7 @@ module JaccardMsg {
              }
           }
           var wf = open("Jaccard-DistHash"+graphEntryName+".dat", ioMode.cw);
-          var mw = wf.writer(serializer = new defaultSerializer());
+          var mw = wf.writer(locking=false);
           var namestr:int;
           for i in 0..(Nv-2) {
              for j in (i+1)..(Nv-1) {

@@ -69,7 +69,7 @@ module RCCMsg {
 
     proc return_CC(): string throws {
       var CCName = st.nextName();
-      var CCEntry = new shared SymEntry(f3);
+      var CCEntry = createSymEntry(f3);
       st.addEntry(CCName, CCEntry);
 
       var CCMsg =  'created ' + st.attrib(CCName);

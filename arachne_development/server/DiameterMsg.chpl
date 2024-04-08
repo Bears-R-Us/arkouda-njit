@@ -28,6 +28,8 @@ module DiameterMsg {
 
   use Set;
 
+  use MemDiagnostics;
+
   // private config const logLevel = ServerConfig.logLevel;
   private config const logLevel = LogLevel.DEBUG;
   const smLogger = new Logger(logLevel);
@@ -86,18 +88,20 @@ module DiameterMsg {
 
 
 
-
-      proc fo_bag_bfs_kernel_u(ref nei:[?D1] int, ref start_i:[?D2] int,ref src:[?D3] int, ref dst:[?D4] int,
-                        ref neiR:[?D11] int, ref start_iR:[?D12] int,ref srcR:[?D13] int, ref dstR:[?D14] int, 
-                        ref depth:[?D15],root:int):int throws{
+      proc bfs (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int):int throws{
           var cur_level=0;
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag(int,Locales); //use bag to keep the next frontier
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
           SetCurF.add(root);
           var numCurF=1:int;
           var topdown=0:int;
           var bottomup=0:int;
           var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          depth[root]=0;
           while (numCurF>0) {
                 update=false;
                 coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
@@ -122,6 +126,610 @@ module DiameterMsg {
                        {//top down
                            topdown+=1;
                            forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update ){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+
+
+          return cur_level;
+      }//end of bfs
+
+
+
+
+
+
+
+
+      proc bfs_maxv (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int):(int,int) throws{
+          var cur_level=0;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          depth[root]=0;
+          var maxv:int=-1;
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update,ref maxv) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF, ref update,ref maxv) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref maxv ){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j);
+                                               maxv=j;
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref maxv)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j);
+                                               maxv=j;
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+
+
+          return (cur_level,maxv);
+      }//end of bfs
+
+
+      proc c_diameter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,gdiameter:int):int throws{
+          var cur_level=0;
+          var diameter=gdiameter;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          var father=depth;
+          father[root]=-1;
+          depth[root]=0;
+          var leaf:[D1] bool;
+          leaf=true;
+          var branch:[D1] bool;
+          branch=false;
+          var maxdist: atomic int;
+          maxdist.write(0);
+          var maxvertex: int=-1;
+          var maxvx=-1:int;
+          var maxvy=-1:int;
+          record Mergedist {
+                var vx: atomic int;
+                var vxvertex:int;
+                var vy:atomic int;
+                var vyvertex:int;
+          }
+          var length:[D1] Mergedist;
+          forall i in D1 {
+                length[i].vx.write(0);
+                length[i].vy.write(0);
+                length[i].vxvertex=-1;
+                length[i].vyvertex=-1;
+          }
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update, ref branchnum){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               father[j]=i;
+                                               leaf[i]=false;
+                                               update=true;
+                                               branchnum+=1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref branchnum)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               leaf[i]=false;
+                                               father[j]=i;
+                                               update=true;
+                                               branchnum+=1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                              if branchnum>1 {
+                                  branch[i]=true;
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+          //writeln("After BFS");
+          diameter=max(diameter,cur_level);
+          //unmark some branch vertex
+          /*
+          forall e in D3 {
+               var s=src[e];
+               var d=dst[e];
+               if (depth[s]>depth[d] && d!=father[s] ) {
+                     s=father[s];
+                     while s!=-1 && depth[s]>depth[d] {
+                         s=father[s];
+                     }
+               } else if (depth[s]<depth[d] && s!=father[d] ) {
+                     d=father[d];
+                     while d!=-1 && depth[s]<depth[d] {
+                         d=father[d];
+                     }
+               } 
+               if depth[s]==depth[d] && depth[s]!=-1 {
+                     if s==d {
+                         branch[s]=false;
+                     } else {
+                         var fs=father[s];
+                         var fd=father[d];
+                         while fs!=-1 && fd!=-1 && fs!=fd {
+                             fs=father[fs];
+                             fd=father[fd];
+                         } 
+                         if fs==fd {
+                             branch[fs]=false;
+                         }
+                     }
+               }
+          }
+
+
+          forall i in D1 with (ref maxdist, ref maxvertex,ref maxvx,ref maxvy,ref diameter) {
+          //for i in D1 {
+              if leaf[i]==true  {
+              //if leaf[i]==true && depth[i] >=diameter/2 {
+                   leaf[i]=false;
+                   var f=father[i];
+                   var height=1;
+                   var old:int;
+                   var newval:int;
+                   //while (f!=-1) && (leaf[f] ==false) {
+                   while (f!=-1)  && depth[i] >=diameter/2  {
+                        //writeln("Leaf ",i," search to vertex ",f, " with height ", height);
+                        if length[f].vx.read()<height && branch[f]==true {
+                             old=length[f].vx.read();
+                             while (old<height) {
+                                length[f].vx.compareAndSwap(old,height);
+                                old=length[f].vx.read();
+                             }
+                             if (old==height && length[f].vxvertex!=i) {
+                                length[f].vxvertex=i;
+                             } 
+                        } else {
+                            if length[f].vy.read()<height && branch[f]==true {
+                                 old=length[f].vy.read();
+                                 while (old<height) {
+                                    length[f].vy.compareAndSwap(old,height);
+                                    old=length[f].vy.read();
+                                 }
+                                 if (old==height && length[f].vyvertex!=i) {
+                                    length[f].vyvertex=i;
+                                 } 
+                         
+                            } else { 
+                                          break;
+                            }
+                        }
+                            
+                        f=father[f];
+                        height+=1;
+                   }//end while
+              }//end if
+          }
+
+
+          */
+
+          var LeafSet=new set(int,parSafe = true);
+          forall i in D1 with (ref maxdist, ref maxvertex,ref maxvx,ref maxvy,ref diameter,ref LeafSet) {
+              if leaf[i]==true  {
+                   if depth[i] <diameter/2 {
+                       leaf[i]=false;
+                   } else {
+                      LeafSet.add(i);
+                   }
+                   /*
+                   else {
+                       var f=father[i];
+                       var height=1;
+                       var old:int;
+                       var newval:int;
+                       while (f!=-1) && (branch[f] ==false) {
+                           f=father[f];
+                       }
+                       if f!=-1 && branch[f]==true {
+                           if height<length[f].vx.read(){
+                                leaf[i]=false;
+                           } else {
+                              if length[f].vxvertex!=i {
+                                leaf[i]=false;
+                              }
+                           }
+
+                       }
+                  }//end if
+                  */
+          }
+
+          for i in LeafSet {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update ){
+                                         if (leaf[j]==true) && depth[j]==depth[i] {
+                                               leaf[j]=false;
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update)  {
+                                         if (depth[j]==depth[i] && leaf[j]==true) {
+                                               leaf[j]=false;
+                                         }
+                                  }
+                              }
+          }
+          for i in D1 {
+                   if ( leaf[i]==true) && depth[i] >diameter/2  {
+                            var xx=bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, i);
+                            writeln("Search from ",i," and the height is ",xx," current diamter is ",diameter);
+                            diameter=max(diameter, xx);
+                   }
+              }//end if
+          }
+
+
+          return diameter;
+          //return max(cur_level,xx);
+      }//end of component diameter
+
+
+
+
+
+
+
+      proc c_farthest (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,gdiameter:int,numfarv:int):int throws{
+          var cur_level=0;
+          var diameter=gdiameter;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          var father=depth;
+          father[root]=-1;
+          depth[root]=0;
+          var leaf:[D1] bool;
+          leaf=true;
+          var branch:[D1] bool;
+          branch=false;
+          var maxdist: atomic int;
+          maxdist.write(0);
+          var maxvertex: int=-1;
+          var maxvx=-1:int;
+          var maxvy=-1:int;
+          record Mergedist {
+                var vx: atomic int;
+                var vxvertex:int;
+                var vy:atomic int;
+                var vyvertex:int;
+          }
+          var length:[D1] Mergedist;
+          forall i in D1 {
+                length[i].vx.write(0);
+                length[i].vy.write(0);
+                length[i].vxvertex=-1;
+                length[i].vyvertex=-1;
+          }
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update, ref branchnum){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               father[j]=i;
+                                               leaf[i]=false;
+                                               update=true;
+                                               branchnum+=1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref branchnum)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               leaf[i]=false;
+                                               father[j]=i;
+                                               update=true;
+                                               branchnum+=1;
+                                               SetNextF.add(j);
+                                         }
+                                  }
+                              }
+                              if branchnum>1 {
+                                  branch[i]=true;
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+          //writeln("After BFS");
+          diameter=max(diameter,cur_level);
+          writeln("The height from root ", root, " is ", cur_level);
+          var numiter:int=1;
+          for i in D1  {
+              if depth[i] ==cur_level {
+                            var xx=bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, i);
+                  writeln("search from vertex ",i,", its leaf flag is ", leaf[i], ", the tree height is ",xx, ", the current diameter is ", diameter,", it is the ",numiter," farthest vertex");
+                            diameter=max(diameter, xx);
+                  numiter+=1;
+                  if numiter>numfarv {
+                       break;
+                  }
+              }//end if
+          }
+          return diameter;
+          //return max(cur_level,xx);
+      }//end of component diameter
+
+
+      proc c_supernode (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,gdiameter:int,numfarv:int):int throws{
+          var cur_level=0;
+          var diameter=gdiameter;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          //startVerboseMem();
+          //{
+          var depth:[D1] int;
+          //}
+          SetCurF.add(root);
+          var numCurF=1:int;
+          var update=false:bool;
+          depth=-1;
+          depth[root]=0;
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF, ref root,  ref depth,ref update) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
                               if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
                                   var    numNF=nf[i];
                                   var    edgeId=sf[i];
@@ -158,11 +766,54 @@ module DiameterMsg {
                     cur_level+=1;
                 }
                 numCurF=SetNextF.getSize();
-                SetCurF<=>SetNextF;
-                SetNextF.clear();
+                if numCurF>0 {
+                    SetCurF<=>SetNextF;
+                    SetNextF.clear();
+                } else {
+                    if cur_level>diameter {
+                         numCurF=SetCurF.getSize();
+                         forall i in depth {
+                              if i==cur_level {
+                                  i=0;
+                              } else {
+                                  i=-1;
+                              }
+                         }
+                         cur_level=0;
+                    } else {
+                       break;
+                    }
+                }
+
+                //writeln("BFS tree level=",cur_level);
           }//end while  
-          return cur_level;
-      }//end of fo_bag_bfs_kernel_u
+          diameter=max(diameter,cur_level);
+          return diameter;
+          //return max(cur_level,xx);
+      }//end of component diameter
+
+      proc c_iter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,gdiameter:int, iternum:int):int throws{
+          var cur_level=0;
+          var diameter=gdiameter;
+          var i:int=0;
+          var maxv:int;
+          var tmpr=root;
+          while i<iternum {
+            (cur_level,maxv)= bfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, tmpr);
+            writeln("The height of the ",i,"th iteration is ",cur_level," and the current diameter is ",diameter);
+            if cur_level<=diameter {
+                 break;
+            }
+            diameter=max(diameter,cur_level);
+            tmpr=maxv;
+            i+=1;
+          }
+          return diameter;
+      }//end of component diameter
+
 
     inline proc find_split(u:int,  ref parents:[?D1] int):int {
        var i=u;
@@ -443,7 +1094,7 @@ module DiameterMsg {
       var converged:bool = false;
       var itera = 1;
       var count:int=0;
-      //we first check with order=1 mapping method
+      //we vx check with order=1 mapping method
       while( (!converged) && (itera<FirstOrderIters) && 
                ( (Ne/here.numPUs() < LargeScale) )) {
         localtimer.clear();
@@ -1224,48 +1875,34 @@ module DiameterMsg {
       for i in CompSet  {
           writeln("Handle component ",i);
           var numV=f.count(i);
-          if numV<=2 {
-              writeln("no more than  two vertices, contiune");
+          if numV<=max(2,largestD) {
+              writeln("no more than  two or ", largestD, " vertices, contiune");
               continue;
           }
+          //if true {
           if numV>2500 {
-              var depth=f;
-              depth=-1;
-              depth[i]=0; 
-              var level=fo_bag_bfs_kernel_u(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, 
-                        depth,i);
-              diameter =max(diameter,level);
-              var longestvertexSet=new set(int,parSafe = true);
-              forall s in 0..depth.size-1 with (ref longestvertexSet) {
-                   if depth[s]==level {
-                        longestvertexSet.add(s);
-                   }
-              }
-              for s in longestvertexSet {
-                  depth=-1;
-                  depth[s]=0;
-                  level=fo_bag_bfs_kernel_u(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, 
-                        depth,s);
-                  diameter =max(diameter,level);
-
-              }
-              writeln("The diameter of component ",i,"=",diameter );
+              writeln("Enter BFS method");
+              writeln("*************************************");
+              //diameter=c_diameter(nei, start_i,src, dst,
+              //          neiR, start_iR,srcR, dstR, i,largestD);
+              diameter=c_supernode(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, i,largestD,10);
+              writeln("Pass 1  The diameter of component ",i,"=",diameter );
               largestD=max(largestD,diameter);
           } else {
 
 
+              writeln("----------------------------------------");
               writeln("Allocate ",numV,"X",numV," matrix");
               var AdjMatrix=Matrix(numV,numV,eltType=int);
               AdjMatrix=0;
-              writeln("Assign diagnal");
+              //writeln("Assign diagnal");
               forall j in 0..numV-1 with (ref AdjMatrix) {
                    AdjMatrix[j,j]=1;
               }
               var mapary=f;
               var tmpmap=0:int;
-              writeln("mapping vertices to matrix");
+              //writeln("mapping vertices to matrix");
               for k in 0..f.size-1 {
                   if f[k]==i {
                       mapary[k]=tmpmap;
@@ -1273,7 +1910,7 @@ module DiameterMsg {
                   
                   }
               }
-              writeln("assign edge to matrix");
+              //writeln("assign edge to matrix");
               forall j in 0..f.size-1 with (ref AdjMatrix, ref diameter) {
                  if f[j]==i  && nei[j] >=1 {
                      for k in start_i[j]..start_i[j]+nei[j]-1 {
@@ -1314,7 +1951,7 @@ module DiameterMsg {
                    }
               }
               writeln("size of the matrix=",Mk.size);
-              writeln("calculate matrix power");
+              //writeln("calculate matrix power");
               while havezero && Mk.size>1 {
                   var MM= matPow(Mk, 2);
                   k=k+1;
@@ -1358,9 +1995,58 @@ module DiameterMsg {
               largestD=max(largestD,diameter);
               writeln("The diameter of component ",i,"=",diameter );
           }
+
+      }
+
+
+      writeln("Size of the Components=",CompSet.size);
+      writeln("The largest diameter =",largestD);
+      /*
+      largestD=0;
+      diameter=0;
+      var diameter1=0:int;
+      var diameter2=0:int;
+      var largestD1=0:int;
+      var largestD2:int=0;
+      for i in CompSet  {
+          writeln("Handle component ",i);
+          var numV=f.count(i);
+          if numV<=max(2,largestD) {
+              writeln("no more than  two or ", largestD, " vertices, contiune");
+              continue;
+          }
+          {
+              //writeln("Enter BFS method");
+              //writeln("*************************************");
+              var localtimer:stopwatch;
+              var executime:real;
+              localtimer.start();
+              diameter1=c_iter(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, i,largestD,10);
+              
+              executime=localtimer.elapsed();
+              writeln("Pass 1  The diameter of component ",i,"=",diameter1," execution time is ",executime );
+              localtimer.stop();
+
+              localtimer.clear();
+              localtimer.start();
+              diameter2=c_farthest(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, i,largestD,10);
+              writeln("Difference=",executime-localtimer.elapsed(),", Pass 1 needs ", executime, " Pass 2 needs ", localtimer.elapsed());
+              if diameter1!=diameter2 {
+                  writeln("not equal, diameter 1=",diameter1,", diameter 2=",diameter2);
+              } else  {
+                  writeln("equal, diameter =",diameter1);
+              }
+              largestD1=max(largestD1,diameter1);
+              largestD2=max(largestD2,diameter2);
+              largestD=max(largestD1,largestD2);
+          } 
       }
       writeln("Size of the Components=",CompSet.size);
       writeln("The largest diameter =",largestD);
+
+      */
       return largestD;
     }
 
@@ -1571,6 +2257,50 @@ module DiameterMsg {
 
 
 
+
+
+
+      /*
+      diameter=largestD;
+      for i in CompSet  {
+          writeln("Handle component ",i);
+          var numV=f.count(i);
+          if numV<diameter {
+              writeln("no more than ",diameter,"  vertices, contiune");
+              continue;
+          }
+          {
+              var depth=f;
+              depth=-1;
+              depth[i]=0; 
+              var leaf=depth;
+              leaf[i]=-1;//means it is a leaf vertex
+              var level=bfs(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, 
+                        depth,i,leaf,diameter);
+              diameter =max(diameter,level);
+              var longestvertexSet=new set(int,parSafe = true);
+              forall s in 0..depth.size-1 with (ref longestvertexSet) {
+                   if (depth[s] >= diameter/2 ) && (leaf[s]==-1) {
+                        longestvertexSet.add(s);
+                   }
+              }
+              for s in longestvertexSet {
+                  depth=-1;
+                  depth[s]=0;
+                  leaf=depth;
+                  leaf[i]=-1;//means it is a leaf vertex
+                  level=bfs(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, 
+                        depth,s,leaf,diameter);
+                  diameter =max(diameter,level);
+
+              }
+              writeln("The diameter of component ",i,"=",diameter );
+              largestD=max(largestD,diameter);
+          } 
+      }
+      */
 
 
 
