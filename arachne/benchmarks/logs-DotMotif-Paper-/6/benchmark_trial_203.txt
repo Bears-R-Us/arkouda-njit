@@ -1,0 +1,27 @@
+connected to arkouda server tcp://*:5555
+    _         _                   _       
+   / \   _ __| | _____  _   _  __| | __ _ 
+  / _ \ | '__| |/ / _ \| | | |/ _` |/ _` |
+ / ___ \| |  |   < (_) | |_| | (_| | (_| |
+/_/   \_\_|  |_|\_\___/ \__,_|\__,_|\__,_|
+                                          
+
+Client Version: v2023.11.15
+Arkouda server running with 1L and 128PUs.
+Generated Graph Details:
+num_nodes =  108
+num_edges =  2125
+density =  0.18388715818622361
+Random Directed graph created
+Building property graph with 108 vertices and 2125 edges took 1.6 seconds.
+Running Arachne...
+Arachne execution time: 0.33006858825683594 seconds
+Arachne found: 140511.0 isos
+**********************************************
+Running NetworkX... 
+NetworkX execution time: 9.967139959335327 seconds
+NetworkX found: 140511 isos
+************************************************************
+ DotMotif....
+DotMotif execution time: 11.096166849136353 seconds
+Dotmotif found: 140511 isos

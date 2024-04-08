@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 
 # Load the data
-df = pd.read_csv('2.csv')
+df = pd.read_csv('benchmark_summary.csv')
 
 # Convert execution times to numeric, as they might be read as strings
 df['Arachne Execution Time'] = pd.to_numeric(df['Arachne Execution Time'], errors='coerce')
