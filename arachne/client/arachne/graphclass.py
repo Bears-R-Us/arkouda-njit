@@ -100,9 +100,18 @@ class Graph:
         dst = nodes[dst]
 
         return (src,dst)
+
     def density(self) -> float:
         """Returns Density of Undirected graph"""
         return 2*(self.n_edges) / (self.n_vertices * (self.n_vertices-1))
+
+    def has_reversed_arrays(self) -> bool:
+        """Returns true if the graph has been constructed with reverse arrays."""
+        cmd = "checkReverse"
+        args = {"GraphName" : self.name}
+        rep_msg = generic_msg(cmd=cmd, args=args)
+
+        return bool(int(rep_msg))
 
     def _internal_edges(self) -> Tuple[pdarray, pdarray]:
         """Returns a tuple of pdarrays src and dst with internal vertex names.
@@ -247,7 +256,7 @@ class Graph:
         if generate_reversed_arrays:
             self._generate_reversed_di(input_src,input_dst,input_weight)
 
-    def _generate_reversed_di(self,input_src:pdarray,input_dst:pdarray,input_wgt:pdarray) -> None:
+    def _generate_reversed_di(self,input_src:pdarray,input_dst:pdarray,input_wgt:pdarray=None) -> None:
         """
         Populates the graph object with edges as defined by the input arrays. Uses an Arkouda-based
         reading version. Is here to provide compatibility with the original algorithmic 
