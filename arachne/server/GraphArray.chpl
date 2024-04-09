@@ -81,13 +81,13 @@ module GraphArray {
             this.weighted = weighted;
         }
 
-        proc isDirected():bool { return this.directed; }
-        proc isWeighted():bool { return this.weighted; }
-        proc isPropertied():bool { return this.hasComp("VERTEX_LABELS") ||
+        proc isDirected():bool throws { return this.directed; }
+        proc isWeighted():bool throws { return this.weighted; }
+        proc isPropertied():bool throws { return this.hasComp("VERTEX_LABELS") ||
                                           this.hasComp("EDGE_RELATIONSHIPS") ||
                                           this.hasComp("VERTEX_PROPERTIES") ||
                                           this.hasComp("EDGE_PROPERTIES"); }
-        proc isReversed():bool { return this.hasComp("SRC_RDI"); }
+        proc isReversed():bool throws { return this.hasComp("SRC_RDI"); }
 
         proc withComp(a:shared GenSymEntry, atrname:string):SegGraph throws { components.add(atrname:Component, a); return this; }
         proc hasComp(atrname:string):bool throws { return components.contains(atrname:Component); }
