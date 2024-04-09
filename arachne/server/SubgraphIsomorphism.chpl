@@ -103,32 +103,49 @@ module SubgraphIsomorphism {
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
     proc runVF2 (g1: SegGraph, g2: SegGraph, semanticCheck: bool, st: borrowed SymTab):[] int throws {
-        var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
-        const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
-        const ref segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
-        const ref srcRG1 = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
-        const ref dstRG1 = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
-        const ref segRG1 = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
-        var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG1Distributed = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG1Distributed = toSymEntry(g1.getComp("DST_SDI"), int).a;
+        const ref segGraphG1Distributed = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG1Distributed = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG1Distributed = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
+        const ref segRG1Distributed = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG1Distributed = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        const ref srcNodesG2 = toSymEntry(g2.getComp("SRC_SDI"), int).a;
-        const ref dstNodesG2 = toSymEntry(g2.getComp("DST_SDI"), int).a;
-        const ref segGraphG2 = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-        const ref srcRG2 = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-        const ref dstRG2 = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-        const ref segRG2 = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-        const ref nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG2Distributed = toSymEntry(g2.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG2Distributed = toSymEntry(g2.getComp("DST_SDI"), int).a;
+        const ref segGraphG2Distributed = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG2Distributed = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG2Distributed = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+        const ref segRG2Distributed = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG2Distributed = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Get the number of vertices and edges for each graph.
-        var nG1 = nodeMapGraphG1.size;
-        var mG1 = srcNodesG1.size;
-        var nG2 = nodeMapGraphG2.size;
-        var mG2 = srcNodesG2.size;
+        var nG1 = nodeMapGraphG1Distributed.size;
+        var mG1 = srcNodesG1Distributed.size;
+        var nG2 = nodeMapGraphG2Distributed.size;
+        var mG2 = srcNodesG2Distributed.size;
+
+        // Extract the g1/G/g information from the SegGraph data structure.
+        var srcNodesG1: [0..<mG1] int = srcNodesG1Distributed;
+        var dstNodesG1: [0..<mG1] int = dstNodesG1Distributed;
+        var segGraphG1: [0..nG1] int = segGraphG1Distributed;
+        var srcRG1: [0..<mG1] int = srcRG1Distributed;
+        var dstRG1: [0..<mG1] int = dstRG1Distributed;
+        var segRG1: [0..nG1] int = segRG1Distributed;
+        var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Distributed;
+
+        // Extract the g2/H/h information from the SegGraph data structure.
+        var srcNodesG2: [0..<mG2] int = srcNodesG2Distributed;
+        var dstNodesG2: [0..<mG2] int = dstNodesG2Distributed;
+        var segGraphG2: [0..nG2] int = segGraphG2Distributed;
+        var srcRG2: [0..<mG2] int = srcRG2Distributed;
+        var dstRG2: [0..<mG2] int = dstRG2Distributed;
+        var segRG2: [0..nG2] int = segRG2Distributed;
+        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Distributed;
 
         // Returns the map of attribute name to tuple of symbol table identifier and array data type
         // to be used to extract a given attribute array.
@@ -220,8 +237,8 @@ module SubgraphIsomorphism {
             state.core[v] = u; // v from g2 to a u from g1
             state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
 
-            const ref inNeighbors = dstRG1.localSlice(segRG1[u]..<segRG1[u+1]);
-            const ref outNeighbors = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
+            const ref inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
+            const ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
 
             state.Tin1.remove(u);
             state.Tout1.remove(u);
@@ -229,8 +246,8 @@ module SubgraphIsomorphism {
             for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
             for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
   
-            const ref inNeighborsg2 = dstRG2.localSlice(segRG2[v]..<segRG2[v+1]);
-            const ref outNeighborsg2 = dstNodesG2.localSlice(segGraphG2[v]..<segGraphG2[v+1]);
+            const ref inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];
+            const ref outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
 
             state.Tin2.remove(v);
             state.Tout2.remove(v);
@@ -244,7 +261,7 @@ module SubgraphIsomorphism {
             var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
             
             // Process the out-neighbors of g2.
-            const ref getOutN2 = dstNodesG2.localSlice(segGraphG2[n2]..<segGraphG2[n2+1]);
+            const ref getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
             for Out2 in getOutN2 {
                 if state.core(Out2) != -1 {
                     var Out1 = state.core(Out2);
@@ -265,7 +282,7 @@ module SubgraphIsomorphism {
             }
                 
             // Process the in-neighbors of g2. 
-            const ref getInN2 = dstRG2.localSlice(segRG2[n2]..<segRG2[n2+1]);
+            const ref getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
             for In2 in getInN2 {
                 if state.core[In2] != -1 {
                     var In1 = state.core(In2);
@@ -286,7 +303,7 @@ module SubgraphIsomorphism {
             }
                 
             // Process the out-neighbors of g1. 
-            const ref getOutN1 = dstNodesG1.localSlice(segGraphG1[n1]..<segGraphG1[n1+1]);
+            const ref getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
             for Out1 in getOutN1 {
                 if !state.isMappedn1(Out1) {
                     if state.Tin1.contains(Out1) then termin1 += 1;
@@ -296,7 +313,7 @@ module SubgraphIsomorphism {
             }
                 
             // Process the in-neighbors of g2.
-            const ref getInN1 = dstRG1.localSlice(segRG1[n1]..<segRG1[n1+1]);
+            const ref getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
             for In1 in getInN1 {
                 if !state.isMappedn1(In1) {
                     if state.Tin1.contains(In1) then termin1 += 1;
@@ -318,12 +335,12 @@ module SubgraphIsomorphism {
         } // end of isFeasible
 
         /** Return the unmapped vertices for g1 and g2. */
-        proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, [0..<state.n2]int) throws {
+        proc getBothUnmappedNodes(state: State): ([0..<state.n1] int, int) throws {
             var UnMapG1: [0..<state.n1] int = -1;
-            var UnMapG2: [0..<state.n2] int = -1;
+            var UnMapG2: int = -1;
 
-            for i in state.D_core {
-                if state.core[i] != -1 then UnMapG2[i] = 0; // Node i in G2 is mapped
+            for i in state.D_core by -1 {
+                if state.core[i] == -1 then UnMapG2 = i; // Node i in G2 is mapped
                 else UnMapG1[state.core[i]] = 0; // Corresponding node in G1 is mapped
             }
             
@@ -352,19 +369,9 @@ module SubgraphIsomorphism {
                     
                 } else { 
                     var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                    var flagunmappedG2 = false;
-                    var minUnmapped2 : int;
-
-                    for elem in unmappedG2{
-                        if elem != -1 {
-                            minUnmapped2 = elem;
-                            flagunmappedG2 = true;
-                        }
-                    }
-
-                    if !flagunmappedG2 {
+                    if unmappedG2 != -1 {
                         for i in 0..<state.n1 {
-                            if unmappedG1[i] == -1 then candidates.add((i,minUnmapped2));
+                            if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
                         } 
                     }
                 } 
@@ -395,7 +402,8 @@ module SubgraphIsomorphism {
                     addToTinTout(n1, n2, newState);
 
                     // Recursive call with updated state and increased depth
-                    var newMappings = vf2Helper(newState, depth + 1);
+                    var newMappings: list(int, parSafe=true);
+                    newMappings = vf2Helper(newState, depth + 1);
                     
                     // Use a loop to add elements from newMappings to allmappings
                     for mapping in newMappings do allmappings.pushBack(mapping);
