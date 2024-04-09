@@ -25,6 +25,16 @@ module GraphInfoMsg {
     const smLogger = new Logger(logLevel);
     var outMsg:string;
 
+    proc checkReversedMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        var graphEntryName = msgArgs.getValueOf("GraphName");
+        var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+        var ag = gEntry.graph;
+
+        var repMsg = if ag.isReversed() then 1 else 0;
+
+        return new MsgTuple(repMsg:string, MsgType.NORMAL);
+    }
+    
     /**
     * Return the edge arrays for a particular graph for further analysis.
     *
@@ -108,4 +118,5 @@ module GraphInfoMsg {
     use CommandMap;
     registerFunction("edges", edgesMsg, getModuleName());
     registerFunction("nodes", nodesMsg, getModuleName());
+    registerFunction("checkReverse", checkReversedMsg, getModuleName());
 }

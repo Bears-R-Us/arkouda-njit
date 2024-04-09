@@ -260,7 +260,11 @@ def connected_components(graph: Graph) -> pdarray:
     """
     cmd = "segmentedGraphCC"
     args = { "GraphName":graph.name }
-    
+
+    if not graph.has_reversed_arrays():
+        edges = graph.edges()
+        graph._generate_reversed_di(edges[0], edges[1])
+ 
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
