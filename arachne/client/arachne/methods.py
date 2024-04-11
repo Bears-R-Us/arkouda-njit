@@ -19,6 +19,7 @@ __all__ = [ "read_matrix_market_file",
             "k_truss",
             "triangle_centrality",
             "connected_components",
+            "diameter"
            ]
 
 @typechecked
@@ -267,6 +268,35 @@ def connected_components(graph: Graph) -> pdarray:
  
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
+
+@typechecked
+def diameter(graph: Graph) -> int:
+    """ This function generates the diameterof a given graph.
+    
+    Returns
+    -------
+    int
+        The diameter of the graph.
+    
+    See Also
+    --------
+    
+    Notes
+    -----
+    
+    Raises
+    ------  
+    RuntimeError
+    """
+    cmd = "diameter"
+    args = { "GraphName":graph.name }
+
+    if not graph.has_reversed_arrays():
+        edges = graph.edges()
+        graph._generate_reversed_di(edges[0], edges[1])
+
+    repMsg = generic_msg(cmd=cmd, args=args)
+    return int(repMsg)
 
 @typechecked
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,

@@ -19,7 +19,7 @@ module ConnectedComponents {
   use AryUtil;
 
   // Fast label propagation algorithm for finding connected components.
-  proc cc_mm(graph: SegGraph) throws {
+  proc connectedComponents(graph: SegGraph) throws {
     var src = toSymEntry(graph.getComp("SRC_RDI"),int).a;
     var dst = toSymEntry(graph.getComp("DST_RDI"),int).a;
     var srcR = toSymEntry(graph.getComp("SRC_R_RDI"),int).a;
