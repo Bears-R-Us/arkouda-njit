@@ -24,11 +24,12 @@ module BreadthFirstSearch {
     * graph: graph to run bfs on. 
     *
     * returns: success string message. */
-    proc bfs_kernel_und_smem(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
+    proc bfs_kernel_und_smem(graph:SegGraph, root:int, ref depth: [?D] int, returnMax:bool=false):int throws {
         // Extract graph data.
         var src = toSymEntry(graph.getComp("SRC_SDI"),int).a;
         var dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
         var seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
+        var maxV:int = -1;
         
         // Generate the frontier sets.
         var frontier_sets : [{0..1}] list(int, parSafe=true);
@@ -41,7 +42,7 @@ module BreadthFirstSearch {
         frontier_sets[frontier_sets_idx].pushBack(root);
         while true { 
             var pending_work:bool;
-            forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work) {
+            forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, ref maxV) {
                 var adj_list_start = seg[u];
                 var num_neighbors = seg[u+1] - adj_list_start;
                 if (num_neighbors != 0) {
@@ -52,6 +53,7 @@ module BreadthFirstSearch {
                             pending_work = true;
                             depth[v] = cur_level + 1;
                             frontier_sets[(frontier_sets_idx + 1) % 2].pushBack(v);
+                            if returnMax then maxV=v;
                         }
                     }
                 }
@@ -63,7 +65,7 @@ module BreadthFirstSearch {
             cur_level += 1;
             frontier_sets_idx = (frontier_sets_idx + 1) % 2;
         }// end while 
-        return "success";
+        return maxV;
     }// end of bfs_kernel_und_smem
         
     /** 
@@ -73,7 +75,7 @@ module BreadthFirstSearch {
     * graph: graph to run bfs on. 
     *
     * returns: success string message. */
-    proc bfs_kernel_und_dmem_opt(graph:SegGraph, root:int, ref depth: [?D] int):string throws {
+    proc bfs_kernel_und_dmem_opt(graph:SegGraph, root:int, ref depth: [?D] int, returnMax:bool = false):int throws {
         // Initialize the frontiers on each of the locales.
         coforall loc in Locales with (ref frontier_sets) do on loc {
             frontier_sets[0] = new list(int, parSafe=true);
@@ -84,6 +86,7 @@ module BreadthFirstSearch {
         const ref dst = toSymEntry(graph.getComp("DST_SDI"),int).a;
         const ref seg = toSymEntry(graph.getComp("SEGMENTS_SDI"),int).a;
         const ref ranges = graph.getComp("RANGES_SDI").getRanges();
+        var maxV:int = -1;
         
         // Add the root to the locale that owns it and update size & depth.
         for lc in find_locs(root, ranges) {
@@ -94,12 +97,12 @@ module BreadthFirstSearch {
 
         while true { 
             var pending_work:bool;
-            coforall loc in Locales with(|| reduce pending_work, ref depth, ref frontier_sets) { // Should we actually loop over targetLocales instead?
+            coforall loc in Locales with(|| reduce pending_work, ref depth, ref frontier_sets, ref maxV) { // Should we actually loop over targetLocales instead?
                 on loc {
                     const ref localSubdomain = fastLocalSubdomain(src);
                     var src_low = localSubdomain.low;
                     var src_high = localSubdomain.high;
-                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new ListDstAggregator(int)/*, var depth_agg = new DstAggregator(int)*/) {
+                    forall u in frontier_sets[frontier_sets_idx] with (|| reduce pending_work, var frontier_agg = new ListDstAggregator(int), ref maxV/*, var depth_agg = new DstAggregator(int)*/) {
                         var adj_list_start = seg[u]; // Possible remote read.
                         var num_neighbors = seg[u+1] - adj_list_start; // Possible remote read.
                         if (num_neighbors != 0) {
@@ -110,13 +113,14 @@ module BreadthFirstSearch {
                             var actual_end = min(src_high, adj_list_end);
                             const ref neighborhood = dst.localSlice(actual_start..actual_end);
 
-                            for (i,v) in zip(neighborhood.domain, neighborhood) { 
+                            for v in neighborhood { 
                                 if (depth[v] == -1) {
                                     pending_work = true;
                                     depth[v] = cur_level + 1; // Really no way to make this write "local"? Maybe compiler is automating aggregations here?
                                     // depth_agg.copy(depth[v], cur_level + 1); // Really bad performance! Why?
                                     var locs = find_locs(v, ranges);
                                     for lc in locs do frontier_agg.copy(lc.id, v);
+                                    if returnMax then maxV=v;
                                 }
                             }
                         }
@@ -130,6 +134,6 @@ module BreadthFirstSearch {
             cur_level += 1;
             frontier_sets_idx = (frontier_sets_idx + 1) % 2;
         }// end while
-        return "success";
+        return maxV;
     }// end of bfs_kernel_und_dmem_opt
 }// end of BreadthFirstSearch module
