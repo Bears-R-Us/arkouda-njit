@@ -268,3 +268,40 @@ class AlgorithmTest(ArkoudaTest):
             isos_as_dicts.append(dict(zip(iso, subgraph_vertices)))
 
         self.assertEqual(len(isos_as_dicts), len(subgraph_isomorphisms))
+
+    def test_connected_components(self):
+        """Tests connected components."""
+        src = [1, 2, 3, 4, 5, 6, 10, 12, 14, 15]
+        dst = [2, 3, 4, 5, 6, 7, 11, 11, 16, 16]
+        graph = ar.Graph()
+        graph.add_edges_from(ak.array(src), ak.array(dst))
+        comps = ar.connected_components(graph)
+        bfs_gb = ak.GroupBy(comps)
+        keys,counts = bfs_gb.count()
+        keys_list = keys.to_list()
+        counts_list = counts.to_list()
+
+        self.assertListEqual(keys_list, [0, 7, 10])
+        self.assertListEqual(counts_list, [7, 3, 3])
+
+    def test_diameter(self):
+        """Tests diameter,"""
+        src = [1, 2, 3, 4, 5, 6, 10, 12, 14, 15]
+        dst = [2, 3, 4, 5, 6, 7, 11, 11, 16, 16]
+        graph = ar.Graph()
+        graph.add_edges_from(ak.array(src), ak.array(dst))
+        d = ar.diameter(graph)
+
+        self.assertEqual(d, 5)
+
+    def test_k_truss(self):
+        """Tests k_truss"""
+        src = [0, 1, 2, 3, 4, 5, 6, 7, 8, 0, 2, 7, 7, 5, 6, 2, 2, 6, 1, 5, 2, 1, 1]
+        dst = [1, 2, 0, 0, 0, 6, 7, 5, 9, 0, 5, 9, 6, 8, 8, 7, 8, 9, 8, 9, 6, 5, 8]
+        graph = ar.Graph()
+        graph.add_edges_from(ak.array(src), ak.array(dst))
+        self.assertListEqual(ar.k_truss(graph, 5).to_list(),
+                             [4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4])
+        self.assertListEqual(ar.truss_decomposition(graph).to_list(),
+                             [3, 3, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,])
+        self.assertEqual(ar.max_truss(graph), 4)
