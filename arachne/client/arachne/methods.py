@@ -17,6 +17,8 @@ __all__ = [ "read_matrix_market_file",
             "triangles",
             "squares",
             "k_truss",
+            "max_truss",
+            "truss_decomposition",
             "triangle_centrality",
             "connected_components",
             "diameter"
@@ -211,8 +213,8 @@ def triangle_centrality(graph: ar.Graph) -> pdarray:
 @typechecked
 def k_truss(graph: Graph, k_truss_value:int) -> pdarray:
     """
-    This function returns the number of triangles in a static graph for each edge that satisfies the
-    k requirement.
+    This function returns an array of edges that make up the k requirement. NOTE: If the value
+    contains -1 this means that that edge IS a k-truss edge.
     
     Returns
     -------
@@ -221,15 +223,14 @@ def k_truss(graph: Graph, k_truss_value:int) -> pdarray:
     
     See Also
     --------
-    
-    Notes
-    -----
-    
-    Raises
-    ------  
-    RuntimeError
+    max_truss, truss_decomposition
     """
     cmd = "segmentedTruss"
+
+    if not graph.has_reversed_arrays():
+        edges = graph.edges()
+        graph._generate_reversed_di(edges[0], edges[1])
+
     args = { "KValue":k_truss_value,
              "NumOfVertices":graph.n_vertices,
              "NumOfEdges":graph.n_edges,
@@ -237,8 +238,68 @@ def k_truss(graph: Graph, k_truss_value:int) -> pdarray:
              "Weighted": graph.weighted,
              "GraphName":graph.name }
 
-    repMsg = generic_msg(cmd=cmd,args=args)
-    return create_pdarray(repMsg)
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(rep_msg)
+
+@typechecked
+def max_truss(graph: Graph) -> int:
+    """
+    This function returns the maximum k for k-truss.
+    
+    Returns
+    -------
+    pdarray
+        The total number of triangles incident to each edge.
+    
+    See Also
+    --------
+    k_truss, truss_decomposition
+    """
+    cmd = "segmentedTruss"
+
+    if not graph.has_reversed_arrays():
+        edges = graph.edges()
+        graph._generate_reversed_di(edges[0], edges[1])
+
+    args = { "KValue":-1,
+             "NumOfVertices":graph.n_vertices,
+             "NumOfEdges":graph.n_edges,
+             "Directed":graph.directed,
+             "Weighted": graph.weighted,
+             "GraphName":graph.name }
+
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return int(rep_msg)
+
+@typechecked
+def truss_decomposition(graph: Graph) -> pdarray:
+    """
+    This function returns the maximum k that each edge belongs to.
+    
+    Returns
+    -------
+    pdarray
+        The total number of triangles incident to each edge.
+    
+    See Also
+    --------
+    k_truss, max_truss
+    """
+    cmd = "segmentedTruss"
+
+    if not graph.has_reversed_arrays():
+        edges = graph.edges()
+        graph._generate_reversed_di(edges[0], edges[1])
+
+    args = { "KValue":-2,
+             "NumOfVertices":graph.n_vertices,
+             "NumOfEdges":graph.n_edges,
+             "Directed":graph.directed,
+             "Weighted": graph.weighted,
+             "GraphName":graph.name }
+
+    rep_msg = generic_msg(cmd=cmd,args=args)
+    return create_pdarray(rep_msg)
 
 @typechecked
 def connected_components(graph: Graph) -> pdarray:
@@ -265,7 +326,7 @@ def connected_components(graph: Graph) -> pdarray:
     if not graph.has_reversed_arrays():
         edges = graph.edges()
         graph._generate_reversed_di(edges[0], edges[1])
- 
+
     repMsg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(repMsg)
 
