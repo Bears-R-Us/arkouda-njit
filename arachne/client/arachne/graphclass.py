@@ -41,7 +41,7 @@ class Graph:
         self.n_vertices = 0
         self.n_edges = 0
         self.directed = 0
-        self.weighted = None
+        self.weighted = 0
         self.name = None
 
     def __len__(self) -> int:

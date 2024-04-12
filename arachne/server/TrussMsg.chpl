@@ -1,330 +1,262 @@
+// NOTE: This was one of the first codes integrated from Arachne development authored by Zhihui Du.
+//       It is too complex with many arbitrary dependencies to fully separate into two separate 
+//       files as all other algorithms. For example, as Truss.chpl and TrussMsg.chpl.
+//
+//       Maybe someone can refactor and beautify eventually?
 module TrussMsg {
+  // Chapel modules.
   use Reflection;
-  use ServerErrors;
-  use Logging;
-  use Message;
-  use ServerErrorStrings;
-  use ServerConfig;
+  use Time;
+
+	// Package modules.
+	use DistributedBag;
+  
+  // Arachne modules.
+  use GraphArray;
+  use Utils;
+  
+  // Arkouda modules.
   use MultiTypeSymbolTable;
   use MultiTypeSymEntry;
-  use IO;
-
-  use SymArrayDmapCompat;
-  use RadixSortLSD;
-  use Set;
-  use DistributedBag;
-  use Time;
-  use CommAggregation;
-  use Sort;
-  use Map;
-  use DistributedDeque;
-  use Utils;
-
-  use Atomics;
-  use IO.FormattedIO; 
-  use GraphArray;
-
-
-  private config const logLevel = LogLevel.DEBUG;
-  const smLogger = new Logger(logLevel);
-  var outMsg:string;
+  use ServerConfig;
+  use ServerErrors;
+  use ServerErrorStrings;
+  use AryUtil;
+  use Logging;
+  use Message;
   
+  // Server message logger. 
+  private config const logLevel = ServerConfig.logLevel;
+  private config const logChannel = ServerConfig.logChannel;
+  const tmLogger = new Logger(logLevel, logChannel);
 
+  proc segTrussMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    var repMsg, outMsg: string;
 
- proc segTrussMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-  //In this procedure, we implement different Truss analysis methods, including k-truss, max truss and truss decomposition
-  
-      var repMsg: string;
-      //var (kTrussN,n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart )
-      //    = payload.splitMsgToTuple(7);
+    var kTrussN=msgArgs.getValueOf("KValue");
+    var n_verticesN=msgArgs.getValueOf("NumOfVertices");
+    var n_edgesN=msgArgs.getValueOf("NumOfEdges");
+    var directedN=msgArgs.getValueOf("Directed");
+    var weightedN=msgArgs.getValueOf("Weighted");
+    var graphEntryName=msgArgs.getValueOf("GraphName");
 
+		var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
+    var ag = gEntry.graph;
 
+    var kValue=kTrussN:int;
 
-      //var msgArgs = parseMessageArgs(payload, argSize);
-      var kTrussN=msgArgs.getValueOf("KValue");
-      var n_verticesN=msgArgs.getValueOf("NumOfVertices");
-      var n_edgesN=msgArgs.getValueOf("NumOfEdges");
-      var directedN=msgArgs.getValueOf("Directed");
-      var weightedN=msgArgs.getValueOf("Weighted");
-      var graphEntryName=msgArgs.getValueOf("GraphName");
+    var Nv = toSymEntry(ag.getComp("VERTEX_MAP_RDI"), int).a.size;
+    var Ne = toSymEntry(ag.getComp("SRC_RDI"), int).a.size;
 
+    var Directed=false:bool;
+    var Weighted=false:bool;
+    if directedN:int==1 then Directed=true;
+    if weightedN:int==1 then Weighted=true;
+    var countName:string;
+    
+    var StartEdgeAry: [0..numLocales-1] int;
+    var EndEdgeAry: [0..numLocales-1] int;
+    var RemoteAccessTimes: [0..numLocales-1] int;
+    var LocalAccessTimes: [0..numLocales-1] int;
+    var EdgeCnt: [0..Ne] int;
+    var EdgeFlags:[0..Ne] int;
+    var EdgeCount:[0..Ne] int;
+    StartEdgeAry=-1;
+    EndEdgeAry=-1;
+    RemoteAccessTimes=0;
+    LocalAccessTimes=0;
+    EdgeCnt=0;
+    EdgeFlags = 0;
+    EdgeCount = 0;
 
+    var srcN, dstN, startN, neighbourN,vweightN,eweightN, rootN :string;
+    var srcRN, dstRN, startRN, neighbourRN:string;
+    var repCount=0:int;
 
+    var gEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
+    var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
+    var AllRemoved:bool;
+    var BigKRange:int=100;
+    var BigKDividedBy:int=10;
+    var SmallKRange:int=32;
+    var SmallKDividedBy:int=5;
+    var ToK:int=100000;
 
-      var kValue=kTrussN:int;
-      var Nv=n_verticesN:int;
-      var Ne=n_edgesN:int;
-      var Directed=false:bool;
-      var Weighted=false:bool;
-      if ((directedN:int)==1){
-          Directed=true;
+    gEdgeDeleted=-1;
+    lEdgeDeleted=-1;
+    var kLow=3:int;
+    var kUp:int;
+    var kMid:int;
+    var maxtimer:stopwatch;
+
+    // this can be a general procedure to check if x is in given range so we put it outside
+    proc xlocal(x :int, low:int, high:int):bool{
+      if (low<=x && x<=high) then return true;
+      else return false;
+    }
+
+    proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
+      if ( (l>h) || ((l==h) && ( ary[l]!=key))) then return -1;
+      if (ary[l]==key) then return l;
+      if (ary[h]==key) then return h;
+      var m= (l+h)/2:int;
+      if ((m==l) ) then return -1;
+      if (ary[m]==key ) then return m;
+      else {
+        if (ary[m]<key) then return binSearchE(ary,m+1,h,key);
+        else return binSearchE(ary,l,m-1,key);
       }
-      if ((weightedN:int)==1) {
-          Weighted=true;
+    }
+
+    proc getupK(nei:[?D1] int, neiR:[?D11] int):int {
+      var dNumber: [0..Nv-1] int = 0;
+      var maxk=0:int;
+      for  i in 0..Nv-1 {
+        if nei[i]+neiR[i]>=Nv-1 then dNumber[Nv-1]+=1;
+        else dNumber[nei[i]+neiR[i]]+=1;
       }
-      var countName:string;
+      var tmpi=Nv-1:int;
+			while tmpi>0 {
+				dNumber[tmpi-1]+=dNumber[tmpi];
+				if dNumber[tmpi-1]>=tmpi {
+					maxk=tmpi;
+					break;
+				}
+				tmpi=tmpi-1;
+			}
+			return maxk;
+    }
 
-
-      
-      var StartEdgeAry: [0..numLocales-1] int;
-      var EndEdgeAry: [0..numLocales-1] int;
-      var RemoteAccessTimes: [0..numLocales-1] int;
-      var LocalAccessTimes: [0..numLocales-1] int;
-      var EdgeCnt: [0..Ne] int;
-      var EdgeFlags:[0..Ne] int;
-      var EdgeCount:[0..Ne] int;
-      StartEdgeAry=-1;
-      EndEdgeAry=-1;
-      RemoteAccessTimes=0;
-      LocalAccessTimes=0;
-      EdgeCnt=0;
-      EdgeFlags = 0;
-      EdgeCount = 0;
-
-      var srcN, dstN, startN, neighbourN,vweightN,eweightN, rootN :string;
-      var srcRN, dstRN, startRN, neighbourRN:string;
-      var repCount=0:int;
-
-      
-      var gEntry:borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st);
-      var ag = gEntry.graph;
-
-      var gEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
-      var lEdgeDeleted=makeDistArray(Ne,int); //we need a global instead of local array
-      var AllRemoved:bool;
-      var BigKRange:int=100;
-      var BigKDividedBy:int=10;
-      var SmallKRange:int=32;
-      var SmallKDividedBy:int=5;
-      var ToK:int=100000;
-
-      gEdgeDeleted=-1;
-      lEdgeDeleted=-1;
-      var kLow=3:int;
-      var kUp:int;
-      var kMid:int;
-      var maxtimer:stopwatch;
-
-
-      // this can be a general procedure to check if x is in given range so we put it outside
-      proc xlocal(x :int, low:int, high:int):bool{
-                if (low<=x && x<=high) {
-                      return true;
-                } else {
-                      return false;
-                }
-      }
-
-      // binary search if key is in ary from index l to h
-      proc binSearchE(ary:[?D] int,l:int,h:int,key:int):int {
-                       //if ( (l<D.low) || (h>D.high) || (l<0)) {
-                       //    return -1;
-                       //}
-                       if ( (l>h) || ((l==h) && ( ary[l]!=key)))  {
-                            return -1;
-                       }
-                       if (ary[l]==key){
-                            return l;
-                       }
-                       if (ary[h]==key){
-                            return h;
-                       }
-                       var m= (l+h)/2:int;
-                       if ((m==l) ) {
-                            return -1;
-                       }
-                       if (ary[m]==key ){
-                            return m;
-                       } else {
-                            if (ary[m]<key) {
-                              return binSearchE(ary,m+1,h,key);
-                            }
-                            else {
-                                    return binSearchE(ary,l,m-1,key);
-                            }
-                       }
-      }// end of proc
-
-      //estimate the max k for given graph
-      proc getupK(nei:[?D1] int, neiR:[?D11] int):int {
-          var dNumber: [0..Nv-1] int;
-          dNumber=0;
-          var maxk=0:int;
-          for  i in 0..Nv-1 {
-               if nei[i]+neiR[i]>=Nv-1 {
-                  dNumber[Nv-1]+=1;
-               } else {
-                  dNumber[nei[i]+neiR[i]]+=1;
-               }
-          }
-          var tmpi=Nv-1:int;
-          while tmpi>0 {
-               dNumber[tmpi-1]+=dNumber[tmpi];
-               if dNumber[tmpi-1]>=tmpi {
-                   maxk=tmpi;
-                   break;
-               }
-               tmpi=tmpi-1;
-          }
-          
-          return maxk;
-      }
-
-      proc kTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+    proc kTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws {
+			var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
+			var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+			var N1=0:int;
+			var N2=0:int;
+			var ConFlag=true:bool;
+			var RemovedEdge: atomic int;
+			var k=kvalue:int;
+			var timer:stopwatch;
+			var largest:int;
+			largest=Ne;
+			RemovedEdge.write(0);
+			var MinNumTri=makeDistArray(numLocales,atomic int);
+			forall i in MinNumTri {
+							i.write(100000000);
+			}
 
+      proc RemoveDuplicatedEdges( cur: int):int {
+				if ( (cur==0) ) then return -1;
+				var u=src[cur]:int;
+				var v=dst[cur]:int;
+				var lu=start_i[u]:int;
+				var nu=nei[u]:int;
+				var lv=start_i[v]:int;
+				var nv=nei[v]:int;
+				var DupE:int;
+				if ((nu<=1) || (cur<=lu)) then DupE=-1;
+				else DupE = binSearchE(dst,lu,cur-1,v);
+				if (DupE!=-1) {
+					EdgeDeleted[cur]=k-1;
+					RemovedEdge.add(1);
+				} else {
+					if (u>v) {
+						if (nv<=0) then DupE=-1;
+						else DupE=binSearchE(dst,lv,lv+nv-1,u);
+						if (DupE!=-1) {
+									EdgeDeleted[cur]=k-1;
+									RemovedEdge.add(1);
+						}
+					}
+				}
+				return DupE;
+    	}
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
-          var N1=0:int;
-          var N2=0:int;
-          var ConFlag=true:bool;
-          var RemovedEdge: atomic int;
-          var k=kvalue:int;
-          var timer:stopwatch;
-          var largest:int;
-          largest=Ne;
-          RemovedEdge.write(0);
-          var MinNumTri=makeDistArray(numLocales,atomic int);
-          forall i in MinNumTri {
-                  i.write(100000000);
-          }
-
-
-          proc RemoveDuplicatedEdges( cur: int):int {
-               if ( (cur==0) ) {
-                    return -1;
-               }
-               var u=src[cur]:int;
-               var v=dst[cur]:int;
-               var lu=start_i[u]:int;
-               var nu=nei[u]:int;
-               var lv=start_i[v]:int;
-               var nv=nei[v]:int;
-               var DupE:int;
-               if ((nu<=1) || (cur<=lu)) {
-                   DupE=-1;
-               } else {
-                   
-                   DupE =binSearchE(dst,lu,cur-1,v);
-               }
-               if (DupE!=-1) {
-                    EdgeDeleted[cur]=k-1;
-                    RemovedEdge.add(1);
-               } else {
-                   if (u>v) {
-                      if (nv<=0) {
-                         DupE=-1;
-                      } else {
-                         DupE=binSearchE(dst,lv,lv+nv-1,u);
-                      }
-                      if (DupE!=-1) {
-                           EdgeDeleted[cur]=k-1;
-                           RemovedEdge.add(1);
-                      }
-                   }
-               }
-               return DupE;
-          }
-
-          // given vertces u and v, return the edge ID e=<u,v> 
-          proc exactEdge(u:int,v:int):int {
-              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
-                    return -1;
-                    // we do not accept self-loop
-              }
-              var beginE=start_i[u];
-              var eid=-1:int;
-              if (nei[u]>0) {
-                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                       // search <u,v> in undirect edges 
-                  } 
-              } 
-              return eid;
-          }
-          // given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
-          proc findEdge(u:int,v:int):int {
-              //given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
-              if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) {
-                    return -1;
-                    // we do not accept self-loop
-              }
-              var beginE=start_i[u];
-              var eid=-1:int;
-              if (nei[u]>0) {
-                  if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
-                       eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
-                       // search <u,v> in undirect edges 
-                  } 
-              } 
-              if (eid==-1) {// if b
-                 beginE=start_i[v];
-                 if (nei[v]>0) {
-                    if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
-                          eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
-                          // search <v,u> in undirect edges 
-                    } 
-                 }
-              }// end of if b
-              return eid;
-          }// end of  proc findEdge(u:int,v:int)
-
-          //coforall loc in Locales {
-          //    on loc {
-          {
-              {
-                    //var ld = src.localSubdomain();
-                    //var startEdge = ld.low;
-                    //var endEdge = ld.high;
-                    var startEdge = 0;
-                    var endEdge = Ne-1;
-                    forall i in startEdge..endEdge {
-                        var v1=src[i];
-                        var v2=dst[i];
-                        if (  (nei[v1]+neiR[v1])<k-1  || 
-                             ((nei[v2]+neiR[v2])<k-1) || (v1==v2)) {
-                              //we will delete all the edges connected with a vertex only has very small degree 
-                              //(less than k-1)
-                              if (EdgeDeleted[i]==-1) {
-                                  EdgeDeleted[i]=k-1;
-                                  RemovedEdge.add(1);
-                              }
-                              // we can safely delete the edge <u,v> if the degree of u or v is less than k-1
-                              // we also remove the self-loop like <v,v>
-                              if (v1==v2) {
-                                   //writeln("My locale=",here.id," Find self-loop ",i,"=<",src[i],",",dst[i],">");
-                              }
-                        }
-                        if (EdgeDeleted[i]==-1) {
-                             var DupE= RemoveDuplicatedEdges(i);
-                             if (DupE!=-1) {
-                                  //we find duplicated edge
-                             }
-                        }
-                    }
-              }        
-          }// end of coforall loc        
-          writeln("Preprocessing removed ",RemovedEdge.read(), " edges");
-
-          //writeln("After Preprocessing");
-
-
-          timer.start();
-
-          RemovedEdge.write(0);
-          forall i in EdgeDeleted {
-               if (i!=-1) {
-                    RemovedEdge.add(1);
-               }
-          }
-
-
+      // given vertces u and v, return the edge ID e=<u,v> 
+      proc exactEdge(u:int,v:int):int {
+      	//given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+        if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) then return -1;
+				var beginE=start_i[u];
+				var eid=-1:int;
+				if (nei[u]>0) {
+					if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+						eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+						// search <u,v> in undirect edges 
+					} 
+				} 
+				return eid;
+      }
           
-          //while (ConFlag) {
-          {
+			// given vertces u and v, return the edge ID e=<u,v> or e=<v,u>
+      proc findEdge(u:int,v:int):int {
+				//given the destinontion arry ary, the edge range [l,h], return the edge ID e where ary[e]=key
+				if ((u==v) || (u<D1.low) || (v<D1.low) || (u>D1.high) || (v>D1.high) ) then return -1; // we do not accept self-loop
+				var beginE=start_i[u];
+				var eid=-1:int;
+				if (nei[u]>0) {
+					if ( (beginE>=0) && (v>=dst[beginE]) && (v<=dst[beginE+nei[u]-1]) )  {
+						eid=binSearchE(dst,beginE,beginE+nei[u]-1,v);
+						// search <u,v> in undirect edges 
+					} 
+				} 
+				if (eid==-1) {// if b
+					beginE=start_i[v];
+					if (nei[v]>0) {
+						if ( (beginE>=0) && (u>=dst[beginE]) && (u<=dst[beginE+nei[v]-1]) )  {
+							eid=binSearchE(dst,beginE,beginE+nei[v]-1,u);
+							// search <v,u> in undirect edges 
+						} 
+					}
+				}// end of if b
+				return eid;
+			}// end of  proc findEdge(u:int,v:int)
+
+			//coforall loc in Locales {
+			//    on loc {
+      {
+        {
+					//var ld = src.localSubdomain();
+					//var startEdge = ld.low;
+					//var endEdge = ld.high;
+					var startEdge = 0;
+					var endEdge = Ne-1;
+          forall i in startEdge..endEdge {
+            var v1=src[i];
+            var v2=dst[i];
+            if (  (nei[v1]+neiR[v1])<k-1  || ((nei[v2]+neiR[v2])<k-1) || (v1==v2)) {
+							//we will delete all the edges connected with a vertex only has very small degree 
+							//(less than k-1)
+							if (EdgeDeleted[i]==-1) {
+									EdgeDeleted[i]=k-1;
+									RemovedEdge.add(1);
+							}
+							// we can safely delete the edge <u,v> if the degree of u or v is less than k-1
+							// we also remove the self-loop like <v,v>
+							if (v1==v2) {
+										//writeln("My locale=",here.id," Find self-loop ",i,"=<",src[i],",",dst[i],">");
+							}
+            }
+            if (EdgeDeleted[i]==-1) {
+							var DupE= RemoveDuplicatedEdges(i);
+							if (DupE!=-1) {
+									//we find duplicated edge
+							}
+            }
+          }
+        }        
+      }// end of coforall loc
+      writeln("Preprocessing removed ",RemovedEdge.read(), " edges");
+      timer.start();
+      RemovedEdge.write(0);
+      forall i in EdgeDeleted {
+        if (i!=-1) {
+          RemovedEdge.add(1);
+        }
+      }
+
+      //while (ConFlag) {
+      {
 
               // first we calculate the number of triangles using mininum search  method.
               coforall loc in Locales with (ref SetCurF ) {
@@ -446,7 +378,7 @@ module TrussMsg {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref MinNumTri ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
@@ -620,7 +552,7 @@ module TrussMsg {
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
@@ -669,13 +601,13 @@ module TrussMsg {
 
 
           outMsg="After kTrussMinSearch, Given K ="+k:string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After kTrussMinSearch, Total execution time="+(timer.elapsed()):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After kTrussMinSearch, Total number of iterations ="+N2:string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After kTrussMinSearch, The k truss has edges ="+(Ne-RemovedEdge.read()):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = createSymEntry(EdgeDeleted);
@@ -969,13 +901,13 @@ module TrussMsg {
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF , ref MinNumTri) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF, ref MinNumTri){
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -1020,7 +952,7 @@ module TrussMsg {
 
       proc MaxTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
-                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
+                        ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{
 
                 ref aPTriCount=TriCount;
                 var aPlTriCount =makeDistArray(Ne,atomic int);
@@ -1057,7 +989,7 @@ module TrussMsg {
                 }
                 kUp=getupK(toSymEntry(ag.getComp("NEIGHBOR_RDI"), int).a, toSymEntry(ag.getComp("NEIGHBOR_R_RDI"), int).a)+1;
                 outMsg="Estimated kUp="+(kUp-1):string;
-                smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 if ((!AllRemoved) && (kUp>3)) {// we need to check if max k  >3
                     var ConLoop=true:bool;
                     var FirstEntry:bool=true;
@@ -1168,32 +1100,32 @@ module TrussMsg {
 
                     outMsg="After BatchMaxTrussMinSearch, Total execution time ="+(maxtimer.elapsed()):string;
 
-                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
                     outMsg="After BatchMaxTrussMinSearch, Max K="+kUp:string;
 
-                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                 } else {//kUp<=3 or AllRemoved==true
                     maxtimer.stop();
 
                     outMsg="After BatchMaxTrussMinSearch,Total execution time ="+(maxtimer.elapsed()):string;
 
-                    smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                    tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     if (AllRemoved==false) {
 
                         outMsg="After BatchMaxTrussMinSearch, Max K=3";
 
-                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                        tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     } else {
 
                         outMsg="After BatchMaxTrussMinSearch,Max K=2";
 
-                        smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                        tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
                     }
                 }
 
 
-          return repMsg;
+          return kUp;
 
       }// end of proc MaxTrussMinSearch
 
@@ -1473,13 +1405,13 @@ module TrussMsg {
 
 
               // here we mark the edges whose number of triangles is less than k-2 as 1-k
-              coforall loc in Locales with (ref SetCurF ) {
+              coforall loc in Locales with (ref SetCurF, ref MinNumTri ) {
                   on loc {
                      var ld = src.localSubdomain();
                      var startEdge = ld.low;
                      var endEdge = ld.high;
                      // each locale only handles the edges owned by itself
-                     forall i in startEdge..endEdge with(ref SetCurF){
+                     forall i in startEdge..endEdge with(ref SetCurF, ref MinNumTri){
 
                                if (EdgeDeleted[i]==-1) {
                                   if (TriCount[i].read() < k-2) {
@@ -1647,13 +1579,13 @@ module TrussMsg {
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
-                  coforall loc in Locales with (ref SetCurF ) {
+                  coforall loc in Locales with (ref SetCurF, ref MinNumTri ) {
                       on loc {
                          var ld = src.localSubdomain();
                          var startEdge = ld.low;
                          var endEdge = ld.high;
                          // each locale only handles the edges owned by itself
-                         forall i in startEdge..endEdge with(ref SetCurF){
+                         forall i in startEdge..endEdge with(ref SetCurF, ref MinNumTri){
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
@@ -1713,13 +1645,13 @@ module TrussMsg {
 
 
           outMsg="After TrussDecoMinSearch, Max K="+(k-1):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After TrussDecoMinSearch, Total execution time="+(timer.elapsed()):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After TrussDecoMinSearch, Total number of iterations ="+N2:string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           outMsg="After TrussDecoMinSearch, The largest number of k truss edges ="+(Ne-largest):string;
-          smLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          tmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
           var countName = st.nextName();
           var countEntry = createSymEntry(EdgeDeleted);
@@ -1809,7 +1741,7 @@ module TrussMsg {
                 toSymEntry(ag.getComp("DST_R_RDI"), int).a,
 
 
-                      AtoTriCount,gEdgeDeleted);
+                      AtoTriCount,gEdgeDeleted):string;
           }// end of max k-truss analysis
 
 
