@@ -31,19 +31,18 @@ def read_matrix_market_file(filepath: str,
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
+    Parameters
+    ----------
+    filepath : str
+        The graph whose breadth-first search layers we want.
+    directed : int
+        Starting vertex for breadth-first search.
+    only_edges : bool
+
     Returns
     -------
     Graph | DiGraph
         The graph specified by the matrix market file.
-
-    See Also
-    --------
-
-    Notes
-    -----
-
-    Raises
-    ------
     """
     cmd = "readMatrixMarketFile"
     args = { "Path": filepath,
