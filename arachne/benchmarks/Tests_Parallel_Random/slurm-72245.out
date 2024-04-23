@@ -1,0 +1,11 @@
+Starting experiments...
+Starting trial 1 with Probability 0.4, Nodes 100, and 1 Threads
+End of sleep 10
+SERVER_NODE = n83.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72245/slurm_script: line 29: 1937569 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}_p${probability}_n${num_nodes}_t${num_threads}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 1 with Probability 0.4, Nodes 100, and 1 Threads completed
+Starting trial 2 with Probability 0.4, Nodes 100, and 1 Threads
+End of sleep 10
+SERVER_NODE = n83.cluster.local
+slurmstepd: error: *** JOB 72245 ON n83 CANCELLED AT 2024-04-23T14:49:30 ***

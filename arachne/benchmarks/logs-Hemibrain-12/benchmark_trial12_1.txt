@@ -1,0 +1,24 @@
+connected to arkouda server tcp://*:5555
+    _         _                   _       
+   / \   _ __| | _____  _   _  __| | __ _ 
+  / _ \ | '__| |/ / _ \| | | |/ _` |/ _` |
+ / ___ \| |  |   < (_) | |_| | (_| | (_| |
+/_/   \_\_|  |_|\_\___/ \__,_|\__,_|\__,_|
+                                          
+
+Client Version: v2023.11.15
+Arkouda server running with 1L and 128PUs.
+['roi', 'weight', 'type', 'src', 'dst']
+Data loaded now we are loading the subraph....
+This transfer will use 129 MB .
+ Arachne....
+Finding 62056896.0 monomorphisms took 564.6839473247528 secs
+************************************************************
+ NetworkX... 
+NetworkX execution time: 28745.768493175507 seconds
+NetworkX found: 62056896 isos
+************************************************************
+ DotMotif....
+DotMotif execution time: 29296.490913629532 seconds
+Dotmotif found: 62056896 isos
+62056896

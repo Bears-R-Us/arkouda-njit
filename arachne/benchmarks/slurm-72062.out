@@ -1,0 +1,29 @@
+Starting experiments...
+Starting trial 1
+end of sleep 10
+SERVER_NODE = n85.cluster.local
+/var/spool/slurmd/job72062/slurm_script: line 51: kill: (619543) - No such process
+Waiting for Arkouda server to shut down...
+Trial 1 completed
+Starting trial 2
+end of sleep 10
+SERVER_NODE = n85.cluster.local
+/var/spool/slurmd/job72062/slurm_script: line 51: kill: (641933) - No such process
+Waiting for Arkouda server to shut down...
+Trial 2 completed
+Starting trial 3
+end of sleep 10
+SERVER_NODE = n85.cluster.local
+/var/spool/slurmd/job72062/slurm_script: line 51: kill: (667036) - No such process
+Waiting for Arkouda server to shut down...
+Trial 3 completed
+Starting trial 4
+end of sleep 10
+SERVER_NODE = n85.cluster.local
+/var/spool/slurmd/job72062/slurm_script: line 51: kill: (692265) - No such process
+Waiting for Arkouda server to shut down...
+Trial 4 completed
+Starting trial 5
+end of sleep 10
+SERVER_NODE = n85.cluster.local
+slurmstepd: error: *** JOB 72062 ON n85 CANCELLED AT 2024-04-20T16:51:49 ***
