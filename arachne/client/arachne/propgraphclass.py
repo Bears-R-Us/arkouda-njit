@@ -624,11 +624,6 @@ class PropGraph(ar.DiGraph):
 
         nodes = nodes[filtered_nodes]
 
-        print(edges[0])
-        print(edges[1])
-        print(filtered_nodes)
-        print(filtered_edges)
-
         src = edges[0][filtered_edges]
         dst = edges[1][filtered_edges]
 

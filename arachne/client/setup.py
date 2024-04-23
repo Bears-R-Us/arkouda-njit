@@ -10,7 +10,7 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 
 setup(
     name="arachne",
-    version="2024.01.22",
+    version="2024.04.23",
     description="Graph functionality for Arkouda.",
     long_description=long_description,
     long_description_content_type="text/markdown",
