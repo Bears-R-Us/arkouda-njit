@@ -1,0 +1,17 @@
+Starting experiments...
+Starting trial 1
+end of sleep 10
+SERVER_NODE = n91.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72070/slurm_script: line 25: 1092893 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 1 completed
+Starting trial 2
+end of sleep 10
+SERVER_NODE = n91.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72070/slurm_script: line 25: 1104176 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 2 completed
+Starting trial 3
+end of sleep 10
+SERVER_NODE = n91.cluster.local
+slurmstepd: error: *** JOB 72070 ON n91 CANCELLED AT 2024-04-20T19:50:02 ***

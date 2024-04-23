@@ -784,7 +784,10 @@ module SubgraphIsomorphism {
             timer1.start();
 
             var candidatePairs = getCandidatePairsOpti(state);
-            
+            /*
+            writeln("\n********************************************************** ");                
+            writeln("candidatePairs.size = ",candidatePairs.size);                
+            */
             timer1.stop();
 /*
             if state.depth == 0 {

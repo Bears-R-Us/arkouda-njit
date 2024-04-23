@@ -1,0 +1,62 @@
+Starting experiments...
+Starting trial 1
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1156964 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 1 completed
+Starting trial 2
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1197590 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 2 completed
+Starting trial 3
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1237646 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 3 completed
+Starting trial 4
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1278392 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 4 completed
+Starting trial 5
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1319520 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 5 completed
+Starting trial 6
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1360341 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 6 completed
+Starting trial 7
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1401094 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 7 completed
+Starting trial 8
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1441715 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 8 completed
+Starting trial 9
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1482323 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 9 completed
+Starting trial 10
+end of sleep 10
+SERVER_NODE = n89.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job72073/slurm_script: line 25: 1522501 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 10 completed
+Experiments completed.

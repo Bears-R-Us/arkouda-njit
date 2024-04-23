@@ -1,0 +1,5 @@
+Starting experiments...
+Starting trial 1
+end of sleep 10
+SERVER_NODE = n85.cluster.local
+slurmstepd: error: *** JOB 72067 ON n85 CANCELLED AT 2024-04-20T19:49:51 ***
