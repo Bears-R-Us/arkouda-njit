@@ -1,0 +1,1 @@
+connected to arkouda server tcp://*:5555
