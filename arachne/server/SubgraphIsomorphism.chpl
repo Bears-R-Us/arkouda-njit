@@ -8,6 +8,8 @@ module SubgraphIsomorphism {
     use Time;
     use Set;
     use Map;
+    use CommDiagnostics;
+    use Atomics;
 
     // Arachne modules.
     use GraphArray;
@@ -106,46 +108,46 @@ module SubgraphIsomorphism {
         var numIso: int = 0;
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        const ref srcNodesG1Distributed = toSymEntry(g1.getComp("SRC_SDI"), int).a;
-        const ref dstNodesG1Distributed = toSymEntry(g1.getComp("DST_SDI"), int).a;
-        const ref segGraphG1Distributed = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
-        const ref srcRG1Distributed = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
-        const ref dstRG1Distributed = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
-        const ref segRG1Distributed = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
-        const ref nodeMapGraphG1Distributed = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
+        const ref segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG1 = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG1 = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
+        const ref segRG1 = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        const ref srcNodesG2Distributed = toSymEntry(g2.getComp("SRC_SDI"), int).a;
-        const ref dstNodesG2Distributed = toSymEntry(g2.getComp("DST_SDI"), int).a;
-        const ref segGraphG2Distributed = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-        const ref srcRG2Distributed = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-        const ref dstRG2Distributed = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-        const ref segRG2Distributed = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-        const ref nodeMapGraphG2Distributed = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG2 = toSymEntry(g2.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG2 = toSymEntry(g2.getComp("DST_SDI"), int).a;
+        const ref segGraphG2 = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG2 = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG2 = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+        const ref segRG2 = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Get the number of vertices and edges for each graph.
-        var nG1 = nodeMapGraphG1Distributed.size;
-        var mG1 = srcNodesG1Distributed.size;
-        var nG2 = nodeMapGraphG2Distributed.size;
-        var mG2 = srcNodesG2Distributed.size;
+        var nG1 = nodeMapGraphG1.size;
+        var mG1 = srcNodesG1.size;
+        var nG2 = nodeMapGraphG2.size;
+        var mG2 = srcNodesG2.size;
 
-        // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1: [0..<mG1] int = srcNodesG1Distributed;
-        var dstNodesG1: [0..<mG1] int = dstNodesG1Distributed;
-        var segGraphG1: [0..nG1] int = segGraphG1Distributed;
-        var srcRG1: [0..<mG1] int = srcRG1Distributed;
-        var dstRG1: [0..<mG1] int = dstRG1Distributed;
-        var segRG1: [0..nG1] int = segRG1Distributed;
-        var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Distributed;
+        // // Extract the g1/G/g information from the SegGraph data structure.
+        // var srcNodesG1: [0..<mG1] int = srcNodesG1Distributed;
+        // var dstNodesG1: [0..<mG1] int = dstNodesG1Distributed;
+        // var segGraphG1: [0..nG1] int = segGraphG1Distributed;
+        // var srcRG1: [0..<mG1] int = srcRG1Distributed;
+        // var dstRG1: [0..<mG1] int = dstRG1Distributed;
+        // var segRG1: [0..nG1] int = segRG1Distributed;
+        // var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Distributed;
 
-        // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2: [0..<mG2] int = srcNodesG2Distributed;
-        var dstNodesG2: [0..<mG2] int = dstNodesG2Distributed;
-        var segGraphG2: [0..nG2] int = segGraphG2Distributed;
-        var srcRG2: [0..<mG2] int = srcRG2Distributed;
-        var dstRG2: [0..<mG2] int = dstRG2Distributed;
-        var segRG2: [0..nG2] int = segRG2Distributed;
-        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Distributed;
+        // // Extract the g2/H/h information from the SegGraph data structure.
+        // var srcNodesG2: [0..<mG2] int = srcNodesG2Distributed;
+        // var dstNodesG2: [0..<mG2] int = dstNodesG2Distributed;
+        // var segGraphG2: [0..nG2] int = segGraphG2Distributed;
+        // var srcRG2: [0..<mG2] int = srcRG2Distributed;
+        // var dstRG2: [0..<mG2] int = dstRG2Distributed;
+        // var segRG2: [0..nG2] int = segRG2Distributed;
+        // var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Distributed;
 
         // Returns the map of attribute name to tuple of symbol table identifier and array data type
         // to be used to extract a given attribute array.
@@ -153,6 +155,11 @@ module SubgraphIsomorphism {
         var subgraphNodeAttributes = g2.getNodeAttributes();
         var graphEdgeAttributes = g1.getEdgeAttributes();
         var subgraphEdgeAttributes = g2.getEdgeAttributes();
+
+        var numberOfCandidatePairsGenerated:atomic int;
+        var numberOfStatesCloned:atomic int;
+        numberOfCandidatePairsGenerated.write(0);
+        numberOfStatesCloned.write(0);
 
         /* Given a vertex or edge index returns true if a vertex or edge from the main host graph
         matches a given vertex or edge from a subgraph. 
@@ -392,11 +399,13 @@ module SubgraphIsomorphism {
 
             // Generate candidate pairs (n1, n2) for mapping
             var candidatePairs = getCandidatePairsOpti(state);
+            numberOfCandidatePairsGenerated.add(candidatePairs.size);
 
             // Iterate in parallel over candidate pairs
             forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 if isFeasible(n1, n2, state) {
                     var newState = state.clone();
+                    numberOfStatesCloned.add(1);
 
                     // Update state with the new mapping
                     addToTinTout(n1, n2, newState);
@@ -416,9 +425,47 @@ module SubgraphIsomorphism {
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
             var initial = new State(g1.n_vertices, g2.n_vertices);
+            startCommDiagnostics();
             var solutions = vf2Helper(initial, 0);
+            stopCommDiagnostics();
+            printCommDiagnosticsTable();
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+
+            // writeln("\n\n");
+            // for loc in Locales do on loc {
+            //     var ld = srcNodesG1.localSubdomain();
+            //     writeln("src = ", srcNodesG1[ld.low..ld.high]);
+            //     writeln("dst = ", dstNodesG1[ld.low..ld.high]);
+            //     writeln();
+            // }
+            // writeln("\n\n\n\n\n");
+            // writeln("solutions = ", solutions);
+
+            const ref ranges = g1.getComp("RANGES_SDI").getRanges();
+            var overlapList = new list(int);
+            for i in 0..<solutions.size by 4 {
+                var lcs1 = find_locs(solutions[i], ranges);
+                var lcs2 = find_locs(solutions[i+1], ranges);
+                var lcs3 = find_locs(solutions[i+2], ranges);
+                var lcs4 = find_locs(solutions[i+3], ranges);
+                var overlap:int;
+
+                for lc in lcs1 do if lcs2.contains(lc) then overlap += 1;
+                for lc in lcs1 do if lcs3.contains(lc) then overlap += 1;
+                for lc in lcs1 do if lcs4.contains(lc) then overlap += 1;
+
+                for lc in lcs2 do if lcs3.contains(lc) then overlap += 1;
+                for lc in lcs2 do if lcs4.contains(lc) then overlap += 1;
+
+                for lc in lcs3 do if lcs4.contains(lc) then overlap += 1;
+                overlapList.pushBack(overlap);
+                //writeln("Isomorphism induced by ", solutions[i], " ", solutions[i+1], " ", solutions[i+2], " ", solutions[i+3], " overlaps on ", overlap, " locale(s)");
+            }
+            writeln("overlapList = ", overlapList);
+            writeln("Number of candidate pairs generated = ", numberOfCandidatePairsGenerated);
+            writeln("Number of states cloned = ", numberOfStatesCloned);
+
             return(subIsoArrToReturn);
         } // end of vf2
         
