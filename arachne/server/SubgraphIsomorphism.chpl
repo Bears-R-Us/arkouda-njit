@@ -131,23 +131,18 @@ module SubgraphIsomorphism {
         var nG2 = nodeMapGraphG2.size;
         var mG2 = srcNodesG2.size;
 
-        // // Extract the g1/G/g information from the SegGraph data structure.
-        // var srcNodesG1: [0..<mG1] int = srcNodesG1Distributed;
-        // var dstNodesG1: [0..<mG1] int = dstNodesG1Distributed;
-        // var segGraphG1: [0..nG1] int = segGraphG1Distributed;
-        // var srcRG1: [0..<mG1] int = srcRG1Distributed;
-        // var dstRG1: [0..<mG1] int = dstRG1Distributed;
-        // var segRG1: [0..nG1] int = segRG1Distributed;
-        // var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Distributed;
+        // Timers for different datatypes.
+        var int_timer:atomic real;
+        var bool_timer:atomic real;
+        var real_timer:atomic real;
+        var categorical_timer:atomic real;
+        var string_timer:atomic real;
 
-        // // Extract the g2/H/h information from the SegGraph data structure.
-        // var srcNodesG2: [0..<mG2] int = srcNodesG2Distributed;
-        // var dstNodesG2: [0..<mG2] int = dstNodesG2Distributed;
-        // var segGraphG2: [0..nG2] int = segGraphG2Distributed;
-        // var srcRG2: [0..<mG2] int = srcRG2Distributed;
-        // var dstRG2: [0..<mG2] int = dstRG2Distributed;
-        // var segRG2: [0..nG2] int = segRG2Distributed;
-        // var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Distributed;
+        int_timer.write(0.0);
+        bool_timer.write(0.0);
+        real_timer.write(0.0);
+        categorical_timer.write(0.0);
+        string_timer.write(0.0);
 
         // Returns the map of attribute name to tuple of symbol table identifier and array data type
         // to be used to extract a given attribute array.
@@ -175,6 +170,8 @@ module SubgraphIsomorphism {
                 // Check the actual data.
                 select v[1] {
                     when "Categorical" {
+                        var timer:stopwatch;
+                        timer.start();
                         var subgraphArrEntry = (st.registry.tab(v[0])):shared CategoricalRegEntry;
                         const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
                         const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
@@ -184,8 +181,12 @@ module SubgraphIsomorphism {
                         const ref graphCats = getSegString(graphArrEntry.categories, st);
 
                         if subgraphCats[subgraphArr[subgraphIdx]] != graphCats[graphArr[graphIdx]] then return false;
+                        timer.stop();
+                        categorical_timer.fetchAdd(timer.elapsed());
                     }
                     when "Strings" {
+                        var timer:stopwatch;
+                        timer.start();
                         var subgraphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(v[0], st));
                         var graphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(graphAttributes[k][0], st));
                         
@@ -200,6 +201,8 @@ module SubgraphIsomorphism {
                         
                         for (x,y) in zip(string1,string2) do
                             if x != y then return false;
+                        timer.stop();
+                        string_timer.fetchAdd(timer.elapsed());
                     }
                     when "pdarray" {
                         var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
@@ -209,9 +212,13 @@ module SubgraphIsomorphism {
                         var etype = subgraphArrEntry.dtype;
                         select etype {
                             when (DType.Int64) {
+                                var timer:stopwatch;
+                                timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, int).a;
                                 if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                timer.stop();
+                                int_timer.fetchAdd(timer.elapsed());
                             }
                             when (DType.UInt64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
@@ -219,14 +226,22 @@ module SubgraphIsomorphism {
                                 if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
                             }
                             when (DType.Float64) {
+                                var timer:stopwatch;
+                                timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, real).a;
                                 if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                timer.stop();
+                                real_timer.fetchAdd(timer.elapsed());
                             }
                             when (DType.Bool) {
+                                var timer:stopwatch;
+                                timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, bool).a;
                                 if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                timer.stop();
+                                bool_timer.fetchAdd(timer.elapsed());
                             }
                         }
                     }
@@ -462,9 +477,16 @@ module SubgraphIsomorphism {
                 overlapList.pushBack(overlap);
                 //writeln("Isomorphism induced by ", solutions[i], " ", solutions[i+1], " ", solutions[i+2], " ", solutions[i+3], " overlaps on ", overlap, " locale(s)");
             }
-            writeln("overlapList = ", overlapList);
+            // writeln("overlapList = ", overlapList);
+            writeln("\n\n\n\n\n");
             writeln("Number of candidate pairs generated = ", numberOfCandidatePairsGenerated);
             writeln("Number of states cloned = ", numberOfStatesCloned);
+            writeln("Categorical time = ", categorical_timer.read());
+            writeln("String time = ", string_timer.read());
+            writeln("Integer time = ", int_timer.read());
+            writeln("Bool time = ", bool_timer.read());
+            writeln("Real time = ", real_timer.read());
+            writeln("\n\n\n\n\n");
 
             return(subIsoArrToReturn);
         } // end of vf2
