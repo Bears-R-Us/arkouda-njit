@@ -1,0 +1,16 @@
+connected to arkouda server tcp://*:5555
+    _         _                   _       
+   / \   _ __| | _____  _   _  __| | __ _ 
+  / _ \ | '__| |/ / _ \| | | |/ _` |/ _` |
+ / ___ \| |  |   < (_) | |_| | (_| | (_| |
+/_/   \_\_|  |_|\_\___/ \__,_|\__,_|\__,_|
+                                          
+
+Client Version: v2023.11.15
+Arkouda server running with 1L and 128PUs.
+Begining of Random Directed graph with P=  0.05
+Random Directed graph created
+Building property graph with 1000 vertices and 49754 edges took 1.53 seconds.
+Running Arachne...
+Arachne execution time: 44.69865965843201 seconds
+Arachne found: 6049171.0 isos
