@@ -180,9 +180,11 @@ module SubgraphIsomorphism {
                         const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
                         const ref graphCats = getSegString(graphArrEntry.categories, st);
 
-                        if subgraphCats[subgraphArr[subgraphIdx]] != graphCats[graphArr[graphIdx]] then return false;
+                        var match = subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]];
                         timer.stop();
                         categorical_timer.fetchAdd(timer.elapsed());
+
+                        return match;
                     }
                     when "Strings" {
                         var timer:stopwatch;
@@ -198,11 +200,12 @@ module SubgraphIsomorphism {
 
                         const ref string1 = subgraphStringBytes[subgraphStringOffsets[subgraphIdx]..<subgraphStringOffsets[subgraphIdx+1]];
                         const ref string2 = graphStringBytes[graphStringOffsets[graphIdx]..<graphStringOffsets[graphIdx+1]];
-                        
-                        for (x,y) in zip(string1,string2) do
-                            if x != y then return false;
+
+                        var match = || reduce (string1 == string2);
                         timer.stop();
                         string_timer.fetchAdd(timer.elapsed());
+                        
+                        return match;
                     }
                     when "pdarray" {
                         var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
@@ -216,32 +219,43 @@ module SubgraphIsomorphism {
                                 timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, int).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                                 timer.stop();
                                 int_timer.fetchAdd(timer.elapsed());
+
+                                return match;
                             }
                             when (DType.UInt64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, uint).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
+                                return match;
                             }
                             when (DType.Float64) {
                                 var timer:stopwatch;
                                 timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, real).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                                 timer.stop();
                                 real_timer.fetchAdd(timer.elapsed());
+
+                                return match;
                             }
                             when (DType.Bool) {
                                 var timer:stopwatch;
                                 timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, bool).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                                 timer.stop();
                                 bool_timer.fetchAdd(timer.elapsed());
+
+                                return match;
                             }
                         }
                     }
