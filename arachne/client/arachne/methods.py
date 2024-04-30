@@ -368,10 +368,12 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
     Parameters
     ----------
-    G : PropGraph | DiGraph
-        Main graph that will be searched into. 
-    H : PropGraph | DiGraph
-        Subgraph (pattern) that will be searched for.
+    G : PropGraph
+        Host graph that will be searched into. 
+    H : PropGraph
+        Subgraph (pattern/query) that is being searched for.
+    semantic_check : bool
+        Enable default attribute checking.
 
     Returns
     -------

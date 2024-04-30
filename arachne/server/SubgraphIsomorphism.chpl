@@ -9,7 +9,6 @@ module SubgraphIsomorphism {
     use Set;
     use Map;
     use CommDiagnostics;
-    use Atomics;
 
     // Arachne modules.
     use GraphArray;
@@ -131,30 +130,12 @@ module SubgraphIsomorphism {
         var nG2 = nodeMapGraphG2.size;
         var mG2 = srcNodesG2.size;
 
-        // Timers for different datatypes.
-        var int_timer:atomic real;
-        var bool_timer:atomic real;
-        var real_timer:atomic real;
-        var categorical_timer:atomic real;
-        var string_timer:atomic real;
-
-        int_timer.write(0.0);
-        bool_timer.write(0.0);
-        real_timer.write(0.0);
-        categorical_timer.write(0.0);
-        string_timer.write(0.0);
-
         // Returns the map of attribute name to tuple of symbol table identifier and array data type
         // to be used to extract a given attribute array.
         var graphNodeAttributes = g1.getNodeAttributes();
         var subgraphNodeAttributes = g2.getNodeAttributes();
         var graphEdgeAttributes = g1.getEdgeAttributes();
         var subgraphEdgeAttributes = g2.getEdgeAttributes();
-
-        var numberOfCandidatePairsGenerated:atomic int;
-        var numberOfStatesCloned:atomic int;
-        numberOfCandidatePairsGenerated.write(0);
-        numberOfStatesCloned.write(0);
 
         /* Given a vertex or edge index returns true if a vertex or edge from the main host graph
         matches a given vertex or edge from a subgraph. 
@@ -170,8 +151,6 @@ module SubgraphIsomorphism {
                 // Check the actual data.
                 select v[1] {
                     when "Categorical" {
-                        var timer:stopwatch;
-                        timer.start();
                         var subgraphArrEntry = (st.registry.tab(v[0])):shared CategoricalRegEntry;
                         const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
                         const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
@@ -181,14 +160,9 @@ module SubgraphIsomorphism {
                         const ref graphCats = getSegString(graphArrEntry.categories, st);
 
                         var match = subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]];
-                        timer.stop();
-                        categorical_timer.fetchAdd(timer.elapsed());
-
                         return match;
                     }
                     when "Strings" {
-                        var timer:stopwatch;
-                        timer.start();
                         var subgraphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(v[0], st));
                         var graphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(graphAttributes[k][0], st));
                         
@@ -202,9 +176,6 @@ module SubgraphIsomorphism {
                         const ref string2 = graphStringBytes[graphStringOffsets[graphIdx]..<graphStringOffsets[graphIdx+1]];
 
                         var match = || reduce (string1 == string2);
-                        timer.stop();
-                        string_timer.fetchAdd(timer.elapsed());
-                        
                         return match;
                     }
                     when "pdarray" {
@@ -215,46 +186,27 @@ module SubgraphIsomorphism {
                         var etype = subgraphArrEntry.dtype;
                         select etype {
                             when (DType.Int64) {
-                                var timer:stopwatch;
-                                timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, int).a;
-
                                 var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                timer.stop();
-                                int_timer.fetchAdd(timer.elapsed());
-
                                 return match;
                             }
                             when (DType.UInt64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, uint).a;
-                                
                                 var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                                 return match;
                             }
                             when (DType.Float64) {
-                                var timer:stopwatch;
-                                timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, real).a;
-
                                 var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                timer.stop();
-                                real_timer.fetchAdd(timer.elapsed());
-
                                 return match;
                             }
                             when (DType.Bool) {
-                                var timer:stopwatch;
-                                timer.start();
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, bool).a;
-
                                 var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                timer.stop();
-                                bool_timer.fetchAdd(timer.elapsed());
-
                                 return match;
                             }
                         }
@@ -428,13 +380,11 @@ module SubgraphIsomorphism {
 
             // Generate candidate pairs (n1, n2) for mapping
             var candidatePairs = getCandidatePairsOpti(state);
-            numberOfCandidatePairsGenerated.add(candidatePairs.size);
 
             // Iterate in parallel over candidate pairs
             forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 if isFeasible(n1, n2, state) {
                     var newState = state.clone();
-                    numberOfStatesCloned.add(1);
 
                     // Update state with the new mapping
                     addToTinTout(n1, n2, newState);
@@ -454,55 +404,10 @@ module SubgraphIsomorphism {
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
             var initial = new State(g1.n_vertices, g2.n_vertices);
-            startCommDiagnostics();
             var solutions = vf2Helper(initial, 0);
-            stopCommDiagnostics();
-            printCommDiagnosticsTable();
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
-
-            // writeln("\n\n");
-            // for loc in Locales do on loc {
-            //     var ld = srcNodesG1.localSubdomain();
-            //     writeln("src = ", srcNodesG1[ld.low..ld.high]);
-            //     writeln("dst = ", dstNodesG1[ld.low..ld.high]);
-            //     writeln();
-            // }
-            // writeln("\n\n\n\n\n");
-            // writeln("solutions = ", solutions);
-
-            const ref ranges = g1.getComp("RANGES_SDI").getRanges();
-            var overlapList = new list(int);
-            for i in 0..<solutions.size by 4 {
-                var lcs1 = find_locs(solutions[i], ranges);
-                var lcs2 = find_locs(solutions[i+1], ranges);
-                var lcs3 = find_locs(solutions[i+2], ranges);
-                var lcs4 = find_locs(solutions[i+3], ranges);
-                var overlap:int;
-
-                for lc in lcs1 do if lcs2.contains(lc) then overlap += 1;
-                for lc in lcs1 do if lcs3.contains(lc) then overlap += 1;
-                for lc in lcs1 do if lcs4.contains(lc) then overlap += 1;
-
-                for lc in lcs2 do if lcs3.contains(lc) then overlap += 1;
-                for lc in lcs2 do if lcs4.contains(lc) then overlap += 1;
-
-                for lc in lcs3 do if lcs4.contains(lc) then overlap += 1;
-                overlapList.pushBack(overlap);
-                //writeln("Isomorphism induced by ", solutions[i], " ", solutions[i+1], " ", solutions[i+2], " ", solutions[i+3], " overlaps on ", overlap, " locale(s)");
-            }
-            // writeln("overlapList = ", overlapList);
-            writeln("\n\n\n\n\n");
-            writeln("Number of candidate pairs generated = ", numberOfCandidatePairsGenerated);
-            writeln("Number of states cloned = ", numberOfStatesCloned);
-            writeln("Categorical time = ", categorical_timer.read());
-            writeln("String time = ", string_timer.read());
-            writeln("Integer time = ", int_timer.read());
-            writeln("Bool time = ", bool_timer.read());
-            writeln("Real time = ", real_timer.read());
-            writeln("\n\n\n\n\n");
-
-            return(subIsoArrToReturn);
+            return subIsoArrToReturn;
         } // end of vf2
         
         return IsoArr;
