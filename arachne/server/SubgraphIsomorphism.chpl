@@ -8,6 +8,7 @@ module SubgraphIsomorphism {
     use Time;
     use Set;
     use Map;
+    use CommDiagnostics;
 
     // Arachne modules.
     use GraphArray;
@@ -106,46 +107,28 @@ module SubgraphIsomorphism {
         var numIso: int = 0;
 
         // Extract the g1/G/g information from the SegGraph data structure.
-        const ref srcNodesG1Distributed = toSymEntry(g1.getComp("SRC_SDI"), int).a;
-        const ref dstNodesG1Distributed = toSymEntry(g1.getComp("DST_SDI"), int).a;
-        const ref segGraphG1Distributed = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
-        const ref srcRG1Distributed = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
-        const ref dstRG1Distributed = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
-        const ref segRG1Distributed = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
-        const ref nodeMapGraphG1Distributed = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
+        const ref segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG1 = toSymEntry(g1.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG1 = toSymEntry(g1.getComp("DST_R_SDI"), int).a;
+        const ref segRG1 = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Extract the g2/H/h information from the SegGraph data structure.
-        const ref srcNodesG2Distributed = toSymEntry(g2.getComp("SRC_SDI"), int).a;
-        const ref dstNodesG2Distributed = toSymEntry(g2.getComp("DST_SDI"), int).a;
-        const ref segGraphG2Distributed = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-        const ref srcRG2Distributed = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-        const ref dstRG2Distributed = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-        const ref segRG2Distributed = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-        const ref nodeMapGraphG2Distributed = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
+        const ref srcNodesG2 = toSymEntry(g2.getComp("SRC_SDI"), int).a;
+        const ref dstNodesG2 = toSymEntry(g2.getComp("DST_SDI"), int).a;
+        const ref segGraphG2 = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+        const ref srcRG2 = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+        const ref dstRG2 = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+        const ref segRG2 = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+        const ref nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
         // Get the number of vertices and edges for each graph.
-        var nG1 = nodeMapGraphG1Distributed.size;
-        var mG1 = srcNodesG1Distributed.size;
-        var nG2 = nodeMapGraphG2Distributed.size;
-        var mG2 = srcNodesG2Distributed.size;
-
-        // Extract the g1/G/g information from the SegGraph data structure.
-        var srcNodesG1: [0..<mG1] int = srcNodesG1Distributed;
-        var dstNodesG1: [0..<mG1] int = dstNodesG1Distributed;
-        var segGraphG1: [0..nG1] int = segGraphG1Distributed;
-        var srcRG1: [0..<mG1] int = srcRG1Distributed;
-        var dstRG1: [0..<mG1] int = dstRG1Distributed;
-        var segRG1: [0..nG1] int = segRG1Distributed;
-        var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Distributed;
-
-        // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2: [0..<mG2] int = srcNodesG2Distributed;
-        var dstNodesG2: [0..<mG2] int = dstNodesG2Distributed;
-        var segGraphG2: [0..nG2] int = segGraphG2Distributed;
-        var srcRG2: [0..<mG2] int = srcRG2Distributed;
-        var dstRG2: [0..<mG2] int = dstRG2Distributed;
-        var segRG2: [0..nG2] int = segRG2Distributed;
-        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Distributed;
+        var nG1 = nodeMapGraphG1.size;
+        var mG1 = srcNodesG1.size;
+        var nG2 = nodeMapGraphG2.size;
+        var mG2 = srcNodesG2.size;
 
         // Returns the map of attribute name to tuple of symbol table identifier and array data type
         // to be used to extract a given attribute array.
@@ -176,7 +159,8 @@ module SubgraphIsomorphism {
                         const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
                         const ref graphCats = getSegString(graphArrEntry.categories, st);
 
-                        if subgraphCats[subgraphArr[subgraphIdx]] != graphCats[graphArr[graphIdx]] then return false;
+                        var match = subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]];
+                        return match;
                     }
                     when "Strings" {
                         var subgraphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(v[0], st));
@@ -190,9 +174,9 @@ module SubgraphIsomorphism {
 
                         const ref string1 = subgraphStringBytes[subgraphStringOffsets[subgraphIdx]..<subgraphStringOffsets[subgraphIdx+1]];
                         const ref string2 = graphStringBytes[graphStringOffsets[graphIdx]..<graphStringOffsets[graphIdx+1]];
-                        
-                        for (x,y) in zip(string1,string2) do
-                            if x != y then return false;
+
+                        var match = || reduce (string1 == string2);
+                        return match;
                     }
                     when "pdarray" {
                         var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
@@ -204,22 +188,26 @@ module SubgraphIsomorphism {
                             when (DType.Int64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, int).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
+                                return match;
                             }
                             when (DType.UInt64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, uint).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
+                                return match;
                             }
                             when (DType.Float64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, real).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
+                                return match;
                             }
                             when (DType.Bool) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, bool).a;
-                                if subgraphArr[subgraphIdx] != graphArr[graphIdx] then return false;
+                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
+                                return match;
                             }
                         }
                     }
@@ -419,7 +407,7 @@ module SubgraphIsomorphism {
             var solutions = vf2Helper(initial, 0);
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
-            return(subIsoArrToReturn);
+            return subIsoArrToReturn;
         } // end of vf2
         
         return IsoArr;
