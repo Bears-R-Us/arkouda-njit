@@ -1,0 +1,6 @@
+Starting experiments...
+Checking Arkouda server readiness...
+Arkouda server is ready.
+Trial 1: Running benchmark on n91.cluster.local:5555
+Trial 2: Running benchmark on n91.cluster.local:5555
+slurmstepd: error: *** JOB 72652 ON n91 CANCELLED AT 2024-04-30T12:02:52 ***
