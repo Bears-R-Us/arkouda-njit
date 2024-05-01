@@ -1,0 +1,35 @@
+connected to arkouda server tcp://*:5555
+    _         _                   _       
+   / \   _ __| | _____  _   _  __| | __ _ 
+  / _ \ | '__| |/ / _ \| | | |/ _` |/ _` |
+ / ___ \| |  |   < (_) | |_| | (_| | (_| |
+/_/   \_\_|  |_|\_\___/ \__,_|\__,_|\__,_|
+                                          
+
+Client Version: v2023.11.15
+Arkouda server running with 1L and 128PUs.
+   src  dst type
+0    0    1   T1
+1    1    0   T1
+2    1    2   T1
+3    1    3   T1
+4    1    4   T1
+Graph Density: 0.00027309755503535
+Number of unique nodes: 36692
+Number of edges: 367662
+Graph Density: 0.00027309755503535
+Number of unique nodes: 36692
+Number of edges: 367662
+Data loaded now we are loading the subraph....
+This transfer will use 8 MB .
+ Arachne....
+Finding 4362264.0 monomorphisms took 29.037100553512573 secs
+************************************************************
+ NetworkX... 
+NetworkX execution time: 1259.6948578357697 seconds
+NetworkX found: 4362264 isos
+************************************************************
+ DotMotif....
+DotMotif execution time: 1294.0250549316406 seconds
+Dotmotif found: 4362264 isos
+4362264
