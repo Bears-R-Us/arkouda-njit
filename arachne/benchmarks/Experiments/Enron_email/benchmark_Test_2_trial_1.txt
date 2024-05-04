@@ -21,15 +21,6 @@ Graph Density: 0.00027309755503535
 Number of unique nodes: 36692
 Number of edges: 367662
 Data loaded now we are loading the subraph....
-This transfer will use 8 MB .
  Arachne....
-Finding 51133786.0 monomorphisms took 147.40648818016052 secs
+Finding 51133786.0 monomorphisms took 230.40839004516602 secs
 ************************************************************
- NetworkX... 
-NetworkX execution time: 12016.001253128052 seconds
-NetworkX found: 51133786 isos
-************************************************************
- DotMotif....
-DotMotif execution time: 12327.507747411728 seconds
-Dotmotif found: 51133786 isos
-51133786

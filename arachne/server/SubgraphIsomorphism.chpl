@@ -300,6 +300,10 @@ module SubgraphIsomorphism {
         writeln(" timer2 = ", timer2.elapsed());
         */
         //writeln("Main version which Oliver pushed to the server\n\n");
+         
+        //var ffcandidates = findOutEdges();
+        //var ffcandidates = findOutWedgesLight();
+        //var ffstates = CandidToState(ffcandidates);
         var IsoArrtemp = vf2(g1, g2);
         /*
         //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
@@ -319,6 +323,45 @@ module SubgraphIsomorphism {
         
         //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
         //writeln("\nEquality check = ",IsoArrtemp.equals(IsoArr));
+/////////////////////////////State Injection//////////////////////////////////////////
+        proc CandidToState(ffcandidates) throws{
+            //var StateList: list(owned State) = new list(owned State);
+            var StateList: list(owned State);
+            forall n1Arr in ffcandidates with (ref StateList) {
+                
+                var newState = addToTinToutArray(n1Arr);
+                //writeln("state added: ", newState );
+
+                StateList.pushBack(newState);
+            }
+            return (StateList);
+        }
+        
+        proc findOutWedgesLight()throws {
+            var outWedges: list(int, parSafe=true);
+            
+            var inNeighborsg2 = dstRG2[segRG2[0]..<segRG2[1]];            
+            var outNeighborsg2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+            
+            writeln("Index 0 in G2 has ",inNeighborsg2.size, " inNeighbors" );
+            writeln("Index 0 in G2 has ",outNeighborsg2.size, " outNeighbors" );
+            // Iterate over each node and its out-neighbors
+            forall u in 0..g1.n_vertices-1 with (ref outWedges) {
+            //for u in 0..g1.n_vertices-1 {
+                var outNeighborsg1 = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
+                var inNeighborsg1 = dstRG1[segRG1[u]..<segRG1[u+1]];
+
+                if outNeighborsg1.size >= outNeighborsg2.size & inNeighborsg1.size >= inNeighborsg2.size{
+                    outWedges.pushBack(u); 
+                }
+            }
+            writeln("/////////////////////////////State Injection//////////////////////////////////////////");
+            writeln("g1 num vertices is : ",g1.n_vertices );
+            writeln("outWedges size is: ", outWedges.size);
+            return(outWedges);
+        }
+/////////////////////////////End of State Injection///////////////////////////////////
+        
 //////////////////////////RI///////////////////////////////////////////////////
         proc SortSubGraphbyDegree():[] int throws{
             var NodeDegree:[0..<g2.n_vertices] int = 0;
@@ -778,46 +821,52 @@ module SubgraphIsomorphism {
                 for elem in state.core do allmappings.pushBack(elem);
                 return allmappings;
             }
-
-            // Generate candidate pairs (n1, n2) for mapping
-            var timer1:stopwatch;
-            timer1.start();
-
-            var candidatePairs = getCandidatePairsOpti(state);
-            /*
-            writeln("\n********************************************************** ");                
-            writeln("candidatePairs.size = ",candidatePairs.size);                
-            */
-            timer1.stop();
 /*
-            if state.depth == 0 {
-                //writeln("candidatesStru = ",candidatesStru);
-                writeln("state is = ", state);
-                writeln("\ncandidatesStru.size = ",candidatesStru.size);                
-                writeln("candidatePairs.size = ",candidatePairs.size);
-                writeln("\ntimer1 = ", timer1.elapsed());
+           if depth == 0 {
+                var n2: int = 0;
+                forall n1 in ffcandidates with (ref state, ref allmappings) {
+                //for n1Arr in ffcandidates {
+                        var newState = state.clone();
+                        //writeln("addToTinToutArray called");
+                        // Update state with the new mapping
+                        //var newState = addToTinToutArray(n1Arr);
+                        addToTinTout(n1, n2, newState);
+                        // Recursive call with updated state and increased depth
+                //forall newState in ffstates with (ref allmappings) {
 
-                //writeln("\ncandidatePairs = ",candidatePairs);
-
-            }
-*/
-            // Iterate in parallel over candidate pairs
-            forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-            //for (n1, n2) in candidatePairs {
-                if isFeasible(n1, n2, state) {
-                    var newState = state.clone();
-
-                    // Update state with the new mapping
-                    addToTinTout(n1, n2, newState);
-
-                    // Recursive call with updated state and increased depth
-                    var newMappings: list(int, parSafe=true);
-                    newMappings = vf2Helper(newState, depth + 1);
+                        var newMappings = vf2Helper(newState, 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
                     
-                    // Use a loop to add elements from newMappings to allmappings
-                    for mapping in newMappings do allmappings.pushBack(mapping);
                 }
-            }
+            } 
+            else {
+*/                
+                // Generate candidate pairs (n1, n2) for mapping
+                var candidatePairs = getCandidatePairsOpti(state);
+
+                // Iterate in parallel over candidate pairs
+                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+                //for (n1, n2) in candidatePairs {
+                    if isFeasible(n1, n2, state) {
+                        var newState = state.clone();
+
+                        // Update state with the new mapping
+                        addToTinTout(n1, n2, newState);
+
+                        // Recursive call with updated state and increased depth
+                        var newMappings: list(int, parSafe=true);
+                        newMappings = vf2Helper(newState, depth + 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
+                    }
+                }
+           // } 
+            
+
+
             return allmappings;
         }
         

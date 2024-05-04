@@ -1,0 +1,23 @@
+Starting experiments...
+Starting trial 1
+end of sleep 10
+SERVER_NODE = n115.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job73084/slurm_script: line 25: 2938939 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 1 completed
+Starting trial 2
+end of sleep 10
+SERVER_NODE = n115.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job73084/slurm_script: line 25: 2939451 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 2 completed
+Starting trial 3
+end of sleep 10
+SERVER_NODE = n115.cluster.local
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job73084/slurm_script: line 25: 2939991 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/arkouda_server_trial_${trial}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Trial 3 completed
+Starting trial 4
+end of sleep 10
+SERVER_NODE = n115.cluster.local
+slurmstepd: error: *** JOB 73084 ON n115 CANCELLED AT 2024-05-02T18:57:25 ***
