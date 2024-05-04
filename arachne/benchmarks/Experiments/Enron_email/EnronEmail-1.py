@@ -123,7 +123,7 @@ if __name__ == "__main__":
 
 
 
-
+    """
     # Convert Arkouda dataframes to Pandas dataframes to NetworkX graph attributes.
     G = nx.from_pandas_edgelist(graph_edge_information.to_pandas(), source='src',
                                 target='dst', edge_attr=True, create_using=nx.DiGraph)
@@ -156,7 +156,7 @@ if __name__ == "__main__":
     nx.set_node_attributes(G, graph_node_attributes_final)
     nx.set_node_attributes(H, subgraph_node_attributes_final)
 
-
+    """
 
     print(" Arachne....")
     start = time.time()
@@ -165,6 +165,7 @@ if __name__ == "__main__":
     end = time.time()
     print(f"Finding {len(isos)/3} monomorphisms took {end-start} secs")
     print("************************************************************")
+    """
     print(" NetworkX... ")
 
         # Find subgraph isomorphisms of H in G.
@@ -188,5 +189,5 @@ if __name__ == "__main__":
     print(f"DotMotif execution time: {elapsed_time} seconds")
     print(f"Dotmotif found: {len(subgraph_isomorphisms)} isos")
     print(len(results))
-
+    """
     ak.shutdown()
