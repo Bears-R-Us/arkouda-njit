@@ -12,12 +12,15 @@ module Utils {
     use MultiTypeSymbolTable;
 
     /* A fast variant of localSubdomain() assumes 'blockArray' is a block-distributed array
-       if it breaks, replace it with:
+        if it breaks, replace it with:
             inline proc fastLocalSubdomain(arr) do return arr.localSubdomain();*/
-    proc fastLocalSubdomain(const ref blockArray) const ref {
-        assert(blockArray.targetLocales()[here.id] == here);
-        return blockArray._value.dom.locDoms[here.id].myBlock;
-    }
+    // proc fastLocalSubdomain(const ref blockArray) const ref {
+    //     assert(blockArray.targetLocales()[here.id] == here);
+    //     return blockArray._value.dom.locDoms[here.id].myBlock;
+    // }
+    // NOTE: Temporary fix, waiting to hear back from Chapel developers on how to pick between 
+    //       functions at compile-time.
+    inline proc fastLocalSubdomain(arr) do return arr.localSubdomain();
 
     /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
     graph data structure should probably be a class method of SegGraph.
