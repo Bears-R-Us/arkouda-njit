@@ -91,9 +91,11 @@ class PropGraph(ar.DiGraph):
         self.multied = 0
         self.edge_names = ()
         self.edge_attributes = ak.DataFrame()
+        self.irregular_edge_attributes = {}
         self.relationship_columns = []
         self.node_name = ()
         self.node_attributes = ak.DataFrame()
+        self.irregular_node_attributes = {}
         self.label_columns = []
 
     def add_node_labels(self,
@@ -187,11 +189,108 @@ class PropGraph(ar.DiGraph):
         }
         ak.generic_msg(cmd=cmd, args=args)
 
+    def add_node_properties(self,
+                            attributes:ak.DataFrame,
+                            node_column,
+                            str2cat_columns:List = None,
+                            assume_sorted:bool = False ) -> None:
+        """TODO: write documentation.
+        """
+        cmd = "addNodeProperties"
+        if str2cat_columns is None:
+            str2cat_columns = []
+
+        # 1. Extract the nodes from the dataframe and drop them from the labels dataframe.
+        vertex_ids = None
+        try:
+            vertex_ids = attributes[node_column]
+        except KeyError as exc:
+            raise KeyError("column for nodes does not exist in attributes") from exc
+        attributes.drop(node_column, axis=1, inplace=True)
+
+        # 2. Convert the vertex ids to internal vertex ids.
+        vertex_map = self.nodes()
+        inds = ak.in1d(vertex_ids, vertex_map) # Gets rid of vertex_ids that do not exist.
+        vertex_ids = vertex_ids[inds]
+        attributes = attributes[inds]
+        vertex_ids = ak.find(vertex_ids, vertex_map) # Generated internal vertex representations.
+
+        # 3. GroupBy to sort the vertex ids and remove duplicates. Perform only if the vertices have
+        #    not been sorted previously.
+        if not assume_sorted:
+            gb_vertex_ids = ak.GroupBy(vertex_ids)
+            inds = gb_vertex_ids.permutation[gb_vertex_ids.segments]
+            vertex_ids = vertex_ids[inds]
+            attributes = attributes[inds]
+
+        # 4. Convert specified attributes to categoricals.
+        vertex_attributes_symbol_table_ids = []
+        vertex_attributes_object_types = []
+        for col in attributes.columns:
+            is_irregular = self.node_attributes.shape[0] != len(attributes[col])
+            array_name = ""
+            if isinstance(attributes[col], ak.Strings) and col in str2cat_columns:
+                if is_irregular:
+                    self.irregular_node_attributes[col] = ak.Categorical(attributes[col])
+                    self.irregular_node_attributes[col].register(generate_string())
+                    array_name = self.irregular_node_attributes[col].name
+                else:
+                    self.node_attributes[col] = ak.Categorical(attributes[col])
+                    self.node_attributes[col].register(generate_string())
+                    array_name = self.node_attributes[col].name
+                vertex_attributes_symbol_table_ids.append(array_name)
+                vertex_attributes_object_types.append("Categorical")
+            elif isinstance(attributes[col], ak.Strings):
+                if is_irregular:
+                    self.irregular_node_attributes[col] = attributes[col]
+                    array_name = self.irregular_node_attributes[col].name
+                else:
+                    self.node_attributes[col] = attributes[col]
+                    array_name = self.node_attributes[col].name
+                vertex_attributes_symbol_table_ids.append(array_name)
+                vertex_attributes_object_types.append("Strings")
+            elif isinstance(attributes[col], ak.Categorical):
+                if is_irregular:
+                    self.irregular_node_attributes[col] = attributes[col]
+                    self.irregular_node_attributes[col].register(generate_string())
+                    array_name = self.irregular_node_attributes[col].name
+                else:
+                    self.node_attributes[col] = attributes[col]
+                    self.node_attributes[col].register(generate_string())
+                    array_name = self.node_attributes[col].name
+                vertex_attributes_symbol_table_ids.append(array_name)
+                vertex_attributes_object_types.append("Categorical")
+            elif isinstance(attributes[col], ak.pdarray):
+                if is_irregular:
+                    self.irregular_node_attributes[col] = attributes[col]
+                    array_name = self.irregular_node_attributes[col].name
+                else:
+                    self.node_attributes[col] = attributes[col]
+                    array_name = self.node_attributes[col].name
+                vertex_attributes_symbol_table_ids.append(array_name)
+                vertex_attributes_object_types.append("pdarray")
+            else:
+                raise NotImplementedError(
+                    f"{type(attributes[col])} not supported by property graph")
+
+        print(f"column names = ", attributes.columns)
+        print(f"property array names = ", vertex_attributes_symbol_table_ids)
+        print(f"property array types = ", vertex_attributes_object_types)
+
+        # 5. Prepare arguments to transmit to the Chapel back-end server.
+        args = { "GraphName" : self.name,
+                 "InputIndicesName" : vertex_ids.name,
+                 "ColumnNames" : "+".join(attributes.columns),
+                 "PropertyArrayNames" : "+".join(vertex_attributes_symbol_table_ids),
+                 "PropertyArrayTypes" : "+".join(vertex_attributes_object_types)
+        }
+        ak.generic_msg(cmd=cmd, args=args)
+
     def load_node_attributes(self,
                              node_attributes:ak.DataFrame,
                              node_column:str,
                              label_columns:Union[List[str],None] = None,
-                             convert_string_labels_to_categoricals:bool=True) -> None:
+                             convert_string_labels_to_categoricals:bool = True) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Node
         properties are different from node labels where labels just extra identifiers for nodes.
         On the other hand, properties are key-value pairs more akin to storing the columns of a 

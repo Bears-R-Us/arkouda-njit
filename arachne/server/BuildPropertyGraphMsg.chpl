@@ -159,6 +159,11 @@ module BuildPropertyGraphMsg {
         var aligned:bool = isAligned(inputIndices);
         var consecutive:bool = isConsecutive(inputIndices);
 
+        writeln("\n\n\n\n\n");
+        writeln("GRAPH DEBUGGING INFORMATION: ");
+        writeln("aligned = ", aligned);
+        writeln("consecutive = ", consecutive);
+
         // Create sparse domain from the original vertex domain to hold new data to be inputted.
         var sparseVertexDomain: sparse subdomain(vertexDomain);
         if !consecutive then 
@@ -168,13 +173,13 @@ module BuildPropertyGraphMsg {
                 {inputIndices[inputIndices.domain.low]..inputIndices[inputIndices.domain.high]}
             ); // Block domains can be created as long as the range is consecutive.
 
-        // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
-        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
-        if !consecutive {
-            var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
-            bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-            return new MsgTuple(errorMsg, MsgType.ERROR);
-        }
+        // // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
+        // //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
+        // if !consecutive {
+        //     var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
+        //     bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+        //     return new MsgTuple(errorMsg, MsgType.ERROR);
+        // }
 
         // Call helper method that handles attribute insertions regardless of the type of attribute
         // or of the datatype of each attribute.
@@ -186,9 +191,19 @@ module BuildPropertyGraphMsg {
         timer.stop();
 
         // Add the component for the vertex properties for the graph.
-        graph.withComp(new shared MapSymEntry(vertexProps):GenSymEntry, "VERTEX_PROPERTIES");
+        if !graph.hasComp("VERTEX_PROPERTIES") then
+            graph.withComp(new shared MapSymEntry(vertexProps):GenSymEntry, "VERTEX_PROPERTIES");
+        else {
+            ref existingVertexProps = (graph.getComp("VERTEX_PROPERTIES"):(borrowed MapSymEntry(string, (string,string)))).stored_map;
+            existingVertexProps.extend(vertexProps);
+            writeln("existingVertexProps = ");
+            writeln(existingVertexProps);
+            writeln("vertexProps = ");
+            writeln(vertexProps);
+        }
         timer.stop();
         outMsg = "addNodeProperties took " + timer.elapsed():string + " sec ";
+        writeln("\n\n\n\n\n");
         
         // Print out debug information to arkouda server output. 
         bpgmLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);

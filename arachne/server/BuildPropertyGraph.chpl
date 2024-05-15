@@ -47,8 +47,11 @@ module BuildPropertyGraph {
     proc addSparseArrayToSymbolTable(newSparseArray, st): (string,string) throws {
         var attrName = st.nextName();
         var attrEntry = new shared SparseSymEntry(newSparseArray);
+        writeln("We get here 1");
         st.addEntry(attrName, attrEntry);
+        writeln("We get here 2");
         var repMsg = "created " + st.attrib(attrName) + "+ ";
+        writeln("We get here 3");
         return (repMsg, attrName);
     }
 
@@ -131,10 +134,12 @@ module BuildPropertyGraph {
                             if consecutive {
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
+                                writeln("WE HIT SPARSE INTEGER INSERTION");
                                 var originalData = toSymEntry(dataArrayEntry, int).a;
                                 var newData: [sparseDataDomain] int;
                                 insertDataToSparseArray(originalData, newData, internalIndices, int);
                                 var (reply, attrName) = addSparseArrayToSymbolTable(newData, st);
+                                writeln("We get here 4");
                                 repMsg += reply;
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             }
@@ -143,6 +148,7 @@ module BuildPropertyGraph {
                             if consecutive {
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
+                                writeln("WE HIT SPARSE UNSIGNED INTEGER INSERTION");
                                 var originalData = toSymEntry(dataArrayEntry, uint).a;
                                 var newData: [sparseDataDomain] uint;
                                 insertDataToSparseArray(originalData, newData, internalIndices, uint);
@@ -155,6 +161,7 @@ module BuildPropertyGraph {
                             if consecutive {
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
+                                writeln("WE HIT SPARSE FLOAT INSERTION");
                                 var originalData = toSymEntry(dataArrayEntry, real).a;
                                 var newData: [sparseDataDomain] real;
                                 insertDataToSparseArray(originalData, newData, internalIndices, real);
@@ -167,6 +174,7 @@ module BuildPropertyGraph {
                             if consecutive {
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
+                                writeln("WE HIT SPARSE BOOLEAN INSERTION");
                                 var originalData = toSymEntry(dataArrayEntry, bool).a;
                                 var newData: [sparseDataDomain] bool;
                                 insertDataToSparseArray(originalData, newData, internalIndices, bool);
@@ -179,6 +187,7 @@ module BuildPropertyGraph {
                             if consecutive {
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                             } else {
+                                writeln("WE HIT SPARSE STRING INSERTION");
                                 // We extract the entries that represent strings in a SegStringSymEntry.
                                 var dataArraySegStringSymEntry = toSegStringSymEntry(dataArrayEntry);
                                 var offsetsEntry = dataArraySegStringSymEntry.offsetsEntry;
@@ -217,6 +226,7 @@ module BuildPropertyGraph {
                     if consecutive {
                         attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                     } else {
+                        writeln("WE HIT SPARSE CATEGORICAL INSERTION");
                         // TODO: Future work, handle nonconsecutive arrays.
                         var temp = blockDist.createArray({0..1}, int);
                         var dataArrayRegEntry = (st.registry.tab(dataArraySymTabId)):shared CategoricalRegEntry;
