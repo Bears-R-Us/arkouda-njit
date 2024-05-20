@@ -813,38 +813,57 @@ module SubgraphIsomorphism {
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: owned State, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
-            var stack: list(State, parSafe = true); // stack for backtracking
 
-            stack.pushBack(state); // Initialize stack.
-            while stack.size > 0 {
+            // Base case: check if a complete mapping is found
+            if depth == g2.n_vertices {
+                //writeln("Isos found = ", state.core);
+                // Process the found solution
+                for elem in state.core do allmappings.pushBack(elem);
+                return allmappings;
+            }
+/*
+           if depth == 0 {
+                var n2: int = 0;
+                forall n1 in ffcandidates with (ref state, ref allmappings) {
+                //for n1Arr in ffcandidates {
+                        var newState = state.clone();
+                        //writeln("addToTinToutArray called");
+                        // Update state with the new mapping
+                        //var newState = addToTinToutArray(n1Arr);
+                        addToTinTout(n1, n2, newState);
+                        // Recursive call with updated state and increased depth
+                //forall newState in ffstates with (ref allmappings) {
 
-                var Poped_state = stack.popBack();
-
-                // Base case: check if a complete mapping is found
-                if Poped_state.depth == g2.n_vertices {
-                    //writeln("Isos found = ", state.core);
-                    // Process the found solution
-                    for elem in  Poped_state.core do allmappings.pushBack(elem);
-                    return allmappings;
+                        var newMappings = vf2Helper(newState, 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
+                    
                 }
+            } 
+            else {
+*/                
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
 
                 // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref Poped_state, ref allmappings, ref stack) {
-                    if isFeasible(n1, n2, Poped_state) {
-                        var newState = Poped_state.clone();
+                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+                //for (n1, n2) in candidatePairs {
+                    if isFeasible(n1, n2, state) {
+                        var newState = state.clone();
 
                         // Update state with the new mapping
                         addToTinTout(n1, n2, newState);
 
-                        stack.pushBack(newState);
-
+                        // Recursive call with updated state and increased depth
+                        var newMappings: list(int, parSafe=true);
+                        newMappings = vf2Helper(newState, depth + 1);
+                        
                         // Use a loop to add elements from newMappings to allmappings
-                        //for mapping in newMappings do allmappings.pushBack(mapping);
+                        for mapping in newMappings do allmappings.pushBack(mapping);
                     }
                 }
-            } 
+           // } 
             
 
 
