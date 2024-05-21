@@ -2,6 +2,7 @@ module BuildPropertyGraph {
     // Chapel modules.
     use Map;
     use BlockDist;
+    use ChplConfig;
     
     // Arachne Modules.
     use GraphArray;
@@ -228,7 +229,8 @@ module BuildPropertyGraph {
                     } else {
                         writeln("WE HIT SPARSE CATEGORICAL INSERTION");
                         // TODO: Future work, handle nonconsecutive arrays.
-                        var temp = blockDist.createArray({0..1}, int);
+                        var D = {0..1};
+                        var temp = if CHPL_COMM != "none" then blockDist.createArray(D, int) else D.tryCreateArray(int);
                         var dataArrayRegEntry = (st.registry.tab(dataArraySymTabId)):shared CategoricalRegEntry;
                         var categories = getSegString(dataArrayRegEntry.categories, st);
                         var codes = toSymEntry(getGenericTypedArrayEntry(dataArrayRegEntry.codes, st), int).a;
