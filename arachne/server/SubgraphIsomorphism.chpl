@@ -23,7 +23,7 @@ module SubgraphIsomorphism {
     use SegmentedString;
 
     /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
-    class State {
+    record State {
         var n1: int; // size of main graph
         var n2: int; // size of subgraph
     
@@ -70,8 +70,8 @@ module SubgraphIsomorphism {
         }
         
         /** Method to create a copy of the instance.*/
-        proc clone(): owned State throws {
-            var newState = new owned State(this.n1, this.n2);
+        proc clone(): State throws {
+            var newState = new State(this.n1, this.n2);
             newState.core = this.core;
 
             newState.Tin1 = this.Tin1;
@@ -646,7 +646,7 @@ module SubgraphIsomorphism {
         //GreatestConstraintFirst();
 ////////////////////////////////////////////////////////////////////////////////////
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
-        proc addToTinTout (u: int, v: int, state: State) {
+        proc addToTinTout (u: int, v: int, ref state: State) {
             state.core[v] = u; // v from g2 to a u from g1
             state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
 
@@ -797,7 +797,9 @@ module SubgraphIsomorphism {
             
         /** Creates an initial, empty state.*/
         proc createInitialState(n1: int, n2: int): State throws {
-            return new owned State(n1, n2);
+            var state = new State(n1,n2);
+            //state.init(n1,n2);
+            return state;
         } // end of createInitialState
 
         /** Check that node labels are the same.*/
@@ -811,37 +813,48 @@ module SubgraphIsomorphism {
         } // end of nodesLabelCompatible
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
-        proc vf2Helper(state: owned State, depth: int): list(int) throws {
+        proc vf2Helper(state: State, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
-            var stack: list(State, parSafe = true); // stack for backtracking
+            var stack: list(State); // stack for backtracking
 
+            writeln("Pushed to stacked");
             stack.pushBack(state); // Initialize stack.
+            writeln("at the begining stack size is = ", stack.size);
             while stack.size > 0 {
+                writeln("**************************************");
+                writeln("stack size is = ", stack.size);
 
                 var Poped_state = stack.popBack();
-
+                writeln("Poped_state.depth = ", Poped_state.depth);
                 // Base case: check if a complete mapping is found
                 if Poped_state.depth == g2.n_vertices {
-                    //writeln("Isos found = ", state.core);
+                    writeln("////////////////////////////////");
+                    writeln("Isos found = ", Poped_state.core);
                     // Process the found solution
                     for elem in  Poped_state.core do allmappings.pushBack(elem);
-                    return allmappings;
+                    writeln("allmappings = ", allmappings);
+                    writeln("////////////////////////////////");
+
+                    //return allmappings;
                 }
                 // Generate candidate pairs (n1, n2) for mapping
-                var candidatePairs = getCandidatePairsOpti(state);
+                var candidatePairs = getCandidatePairsOpti(Poped_state);
 
+                writeln("state is :", Poped_state);
+                writeln("candidatePairs is :", candidatePairs);
                 // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref Poped_state, ref allmappings, ref stack) {
+                forall (n1, n2) in candidatePairs with (ref stack) {
                     if isFeasible(n1, n2, Poped_state) {
+                        writeln("isFeasible TRUE for n1 = ", n1, " n2 = ", n2);
                         var newState = Poped_state.clone();
-
+                        writeln("newState generated: ");
                         // Update state with the new mapping
                         addToTinTout(n1, n2, newState);
+                        writeln("addToTinTout completed: ");
 
                         stack.pushBack(newState);
+                        writeln("stack pushed Back: ");
 
-                        // Use a loop to add elements from newMappings to allmappings
-                        //for mapping in newMappings do allmappings.pushBack(mapping);
                     }
                 }
             } 
