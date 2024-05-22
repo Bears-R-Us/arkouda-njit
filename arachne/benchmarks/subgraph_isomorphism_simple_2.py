@@ -108,11 +108,12 @@ if __name__ == "__main__":
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
 
     # 5. Run the subgraph isomorphism.
+    print("Arachne ...")
     start_time = time.time()
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-
+    print("Arachne isos = ", isos)
     #### Compare Arachne subgraph isomorphism to NetworkX.
     isos_list = isos.to_list()
     isos_sublists = [isos_list[i:i+4] for i in range(0, len(isos_list), 4)]

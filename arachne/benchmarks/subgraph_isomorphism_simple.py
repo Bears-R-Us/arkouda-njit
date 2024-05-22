@@ -26,59 +26,22 @@ if __name__ == "__main__":
     ak.verbose = False
     ak.connect(args.hostname, args.port)
 
-    #### Run NetworkX subgraph isomorphism.
-    # Get the NetworkX version
-    print("NetworkX version:", nx.__version__)
-    # Creating directed graphs
-    G = nx.DiGraph()
-    H = nx.DiGraph()
-
-    # Clearing graphs (optional in this context)
-    G.clear()
-    H.clear()
-
-    # Adding nodes and edges to directed graphs
-    G.add_nodes_from(range(0, 30))
-    G.add_edges_from([(3, 0), (1, 3), (4, 1), (2, 4), (5, 2), (3, 4), (4, 5),
-                      (3, 7), (7, 6), (4, 8), (5, 9), (1, 0), (2, 1), (8, 7), (7,4), (8, 5), (9,8)])
-
-    H.add_nodes_from(range(0, 4))
-    H.add_edges_from([(0, 1), (1, 2), (2, 0), (1, 3)])
-
-    NODE_LABEL = 'NodeLabel'
-    EDGE_LABEL = 'EdgeLabel'
-    nx.set_node_attributes(G, NODE_LABEL, 'label1')
-    nx.set_edge_attributes(G, EDGE_LABEL, 'Y1')
-
-    nx.set_node_attributes(H, NODE_LABEL, 'label1')
-    nx.set_edge_attributes(H, EDGE_LABEL, 'Y1')
-
-    # Measure execution time.
-    start_time = time.time()
-
-    # Find subgraph isomorphisms of H in G.
-    GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
-
-    # List of dicts. For each dict, keys is original graph vertex, values are subgraph vertices.
-    subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
-
-    elapsed_time = time.time() - start_time
-    print(f"NetworkX execution time: {elapsed_time} seconds")
-
     #### Run Arachne subgraph isomorphism.
     # 1. Create vertices, edges, and attributes for main property graph.
-    src_prop_graph = ak.array([1, 1, 2, 2, 5, 4, 5, 5,  6, 6, 6,  7, 7,  10, 10, 11, 11, 12])
-    dst_prop_graph = ak.array([5, 0, 1, 6, 0, 3, 6, 10, 1, 7, 11, 2, 12,  6,  9, 7 , 10, 11])
-    labels1_prop_graph = ak.array(["lbl1"] * 12)
-    labels2_prop_graph = ak.array(["lbl2"] * 12)
-    rels1_prop_graph = ak.array(["rel1"] * 18)
-    rels2_prop_graph =  ak.array(["rel2"] * 18)
+    src_prop_graph = ak.array([1, 2, 3, 3, 5, 6, 7, 1, 6, 2, 7, 3, 8, 4, 5, 10, 6 , 11, 7 , 11, 8, 9 , 10, 11])
+    dst_prop_graph = ak.array([0, 1, 2, 4, 6, 7, 8, 5, 1, 6, 2, 7, 3, 8, 9, 5 , 10, 6 , 11, 8, 12, 10, 11, 12])
+    
+   
+    labels1_prop_graph = ak.array(["lbl1"] * 13)
+    labels2_prop_graph = ak.array(["lbl2"] * 13)
+    rels1_prop_graph = ak.array(["rel1"] * src_prop_graph.size)
+    rels2_prop_graph =  ak.array(["rel2"] * src_prop_graph.size)
 
     # 2. Transer data above into main property graph.
     prop_graph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_prop_graph, "dst":dst_prop_graph,
                             "rels1":rels1_prop_graph, "rels2":rels2_prop_graph})
-    node_df_h = ak.DataFrame({"nodes": ak.arange(0,12), "lbls1":labels1_prop_graph,
+    node_df_h = ak.DataFrame({"nodes": ak.arange(0,13), "lbls1":labels1_prop_graph,
                               "lbls2":labels2_prop_graph})
     prop_graph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1","rels2"])
@@ -103,6 +66,7 @@ if __name__ == "__main__":
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
 
     # 5. Run the subgraph isomorphism.
+    print("Arachne running ...")
     start_time = time.time()
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     print("isos = ",isos)
