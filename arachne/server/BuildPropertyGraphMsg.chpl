@@ -173,14 +173,6 @@ module BuildPropertyGraphMsg {
                 {inputIndices[inputIndices.domain.low]..inputIndices[inputIndices.domain.high]}
             ); // Block domains can be created as long as the range is consecutive.
 
-        // // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
-        // //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
-        // if !consecutive {
-        //     var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
-        //     bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-        //     return new MsgTuple(errorMsg, MsgType.ERROR);
-        // }
-
         // Call helper method that handles attribute insertions regardless of the type of attribute
         // or of the datatype of each attribute.
         var timer:stopwatch;

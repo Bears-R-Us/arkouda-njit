@@ -440,7 +440,9 @@ class PropGraph(ar.DiGraph):
             if isinstance(relationships[col], ak.Strings) and convert_strings_to_categoricals:
                 self.edge_attributes[col] = ak.Categorical(relationships[col])
                 self.edge_attributes[col].register(generate_string())
-                edge_relationships_symbol_table_ids.append(self.edge_attributes[col].registered_name)
+                edge_relationships_symbol_table_ids.append(
+                    self.edge_attributes[col].registered_name
+                )
                 edge_relationships_object_types.append("Categorical")
             elif isinstance(relationships[col], ak.Strings) and not convert_strings_to_categoricals:
                 self.edge_attributes[col] = relationships[col]
@@ -522,8 +524,8 @@ class PropGraph(ar.DiGraph):
         # 1. Sort the data and remove duplicates.
         edge_attributes_gb = edge_attributes.groupby([source_column, destination_column])
         edge_attributes = edge_attributes[edge_attributes_gb.permutation
-                                          [edge_attributes_gb.segments]
-                                        ]
+                                                [edge_attributes_gb.segments]
+                                            ]
         self.multied = 0 # TODO: Multigraphs are planned work.
 
         # 2. Store the modified edge attributes into the class variable.

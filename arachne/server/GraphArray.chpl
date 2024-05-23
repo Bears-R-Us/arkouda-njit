@@ -230,20 +230,7 @@ module GraphArray {
         return (entry: borrowed GraphSymEntry);
     }
 
-    class PropertySegStringSymEntry : SegStringSymEntry(?) {
-        var indicesEntry: shared SymEntry(int);
-
-        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SymEntry(int), type etype) {
-            super.init(offsetsSymEntry, bytesSymEntry, etype);
-            this.indicesEntry = indicesSymEntry;
-        }
-    }
-
-    proc toPropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
-        return (entry: borrowed PropertySegStringSymEntry);
-    }
-
-    class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
+    class SparseSegStringSymEntry : SegStringSymEntry(?) {
         var indicesEntry: shared SparseSymEntry(?);
 
         proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(?), type etype) {
@@ -252,7 +239,7 @@ module GraphArray {
         }
     }
 
-    proc toSparsePropertySegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
-        return (entry: borrowed SparsePropertySegStringSymEntry);
+    proc toSparseSegStringSymEntry(entry: borrowed AbstractSymEntry) throws {
+        return (entry: borrowed SparseSegStringSymEntry);
     }
 }

@@ -48,11 +48,8 @@ module BuildPropertyGraph {
     proc addSparseArrayToSymbolTable(newSparseArray, st): (string,string) throws {
         var attrName = st.nextName();
         var attrEntry = new shared SparseSymEntry(newSparseArray);
-        writeln("We get here 1");
         st.addEntry(attrName, attrEntry);
-        writeln("We get here 2");
-        var repMsg = "created " + st.attrib(attrName) + "+ ";
-        writeln("We get here 3");
+        var repMsg = "created " + attrName + "+ ";
         return (repMsg, attrName);
     }
 
@@ -206,7 +203,7 @@ module BuildPropertyGraph {
                                 var indicesEntry = new shared SparseSymEntry(newData);
 
                                 // Create new object that is a wrapper to the Arkouda SegStringSymEntry class.
-                                var sparsePropertySegStringSymEntry = new shared SparsePropertySegStringSymEntry(   
+                                var sparseSegStringSymEntry = new shared SparseSegStringSymEntry(   
                                     newOffsetsEntry, 
                                     newBytesEntry, 
                                     indicesEntry,
@@ -216,7 +213,7 @@ module BuildPropertyGraph {
                                 // Add the new object to the symbol table so we can extract this data at another
                                 // time. 
                                 var attrName = st.nextName();
-                                st.addEntry(attrName, sparsePropertySegStringSymEntry);
+                                st.addEntry(attrName, sparseSegStringSymEntry);
                                 attributeMap.add(attributeName, (dataArraySymTabId, dataArrayType));
                                 repMsg += "created " + st.attrib(attrName) + "+ ";
                             }
