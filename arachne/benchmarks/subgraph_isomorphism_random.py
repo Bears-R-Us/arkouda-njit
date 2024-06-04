@@ -178,7 +178,7 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
     print(f"Arachne found: {len(isos)/4} isos")
-
+    #print(isos)
 
     #### Run NetworkX subgraph isomorphism.
     # Grab vertex and edge data from the Arachne dataframes.
@@ -256,7 +256,7 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
-
+    #print(subgraph_isomorphisms)
 
     motif = Motif("""
     A -> B 

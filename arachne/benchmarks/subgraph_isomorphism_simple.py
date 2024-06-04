@@ -72,10 +72,11 @@ if __name__ == "__main__":
     print("isos = ",isos)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
 
     #### Run NetworkX subgraph isomorphism.
     # Get the NetworkX version
-    print("NetworkX version:", nx.__version__)
+    #print("NetworkX version:", nx.__version__)
 
     # Grab vertex and edge data from the Arachne dataframes.
     graph_node_information = prop_graph.get_node_attributes()
@@ -141,10 +142,11 @@ if __name__ == "__main__":
 
     # List of dicts. For each dict, keys is original graph vertex, values are subgraph vertices.
     subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
-    print("Networkx found = ")
-    print(subgraph_isomorphisms)
+    #print("Networkx found = ")
+    #print(subgraph_isomorphisms)
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
+    print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
 
     #### Compare Arachne subgraph isomorphism to NetworkX.
     isos_list = isos.to_list()

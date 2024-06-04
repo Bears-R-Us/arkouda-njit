@@ -98,7 +98,52 @@ module SubgraphIsomorphism {
         }
 
     } // end of State class 
+    
+    class ThreadSafeStack {
+    var stack: list(State);
+    var lock: sync bool;
 
+    proc init() {
+        writeln("ThreadSafeStack.init()");
+        this.stack = new list(State);
+        this.lock = false; // Initialize the sync variable to empty
+    }
+
+    proc pushBack(state: State) {
+        writeln("ThreadSafeStack.pushBack()");
+
+        this.lock.writeEF(false); // Ensure exclusive access
+        this.stack.pushBack(state);
+        this.lock.writeXF(false); // Release exclusive access
+    }
+
+    proc popBack(): State {
+        writeln("ThreadSafeStack.popBack()");
+
+        this.lock.writeEF(false); // Ensure exclusive access
+        var state = this.stack.popBack();
+        this.lock.writeXF(false); // Release exclusive access
+        return state;
+    }
+
+    proc size(): int {
+        writeln("ThreadSafeStack.size()");
+
+        this.lock.readFE(); // Ensure exclusive access
+        var size = this.stack.size;
+        this.lock = false; // Release the lock
+        return size;
+    }
+
+    proc isEmpty(): bool {
+        writeln("ThreadSafeStack.isEmpty()");
+
+        this.lock.readFE(); // Ensure exclusive access
+        var isEmpty = this.stack.size == 0;
+        this.lock = false; // Release the lock
+        return isEmpty;
+    }
+    }
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
@@ -299,7 +344,7 @@ module SubgraphIsomorphism {
         timer2.stop();
         writeln(" timer2 = ", timer2.elapsed());
         */
-        //writeln("Main version which Oliver pushed to the server\n\n");
+        writeln("runVF2 after loading everything\n\n");
          
         //var ffcandidates = findOutEdges();
         //var ffcandidates = findOutWedgesLight();
@@ -815,20 +860,23 @@ module SubgraphIsomorphism {
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: State, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
-            var stack: list(State); // stack for backtracking
+            //var stack: list(State); // stack for backtracking
+            var stack = new ThreadSafeStack(); // Use the custom thread-safe stack
 
             writeln("Pushed to stacked");
             stack.pushBack(state); // Initialize stack.
-            writeln("at the begining stack size is = ", stack.size);
-            while stack.size > 0 {
+            writeln("state", state);
+            writeln("at the begining stack size is = ", stack.size());
+            //while stack.size > 0 {
+            while !stack.isEmpty() {
                 writeln("**************************************");
-                writeln("stack size is = ", stack.size);
+                writeln("stack size is = ", stack.size());
 
                 var Poped_state = stack.popBack();
                 writeln("Poped_state.depth = ", Poped_state.depth);
                 // Base case: check if a complete mapping is found
                 if Poped_state.depth == g2.n_vertices {
-                    writeln("////////////////////////////////");
+                    writeln("///////////////depth == g2.n_vertices/////////////////");
                     writeln("Isos found = ", Poped_state.core);
                     // Process the found solution
                     for elem in  Poped_state.core do allmappings.pushBack(elem);
@@ -842,8 +890,13 @@ module SubgraphIsomorphism {
 
                 writeln("state is :", Poped_state);
                 writeln("candidatePairs is :", candidatePairs);
+                writeln("/////////////FORALL////////////////////");
                 // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref stack) {
+                var tid: atomic int;
+                //forall (n1, n2) in candidatePairs with (const myTid = tid.fetchAdd(1), ref stack) {
+                coforall (n1, n2) in candidatePairs with (ref stack){
+
+                    //writeln("current tid = ",myTid);
                     if isFeasible(n1, n2, Poped_state) {
                         writeln("isFeasible TRUE for n1 = ", n1, " n2 = ", n2);
                         var newState = Poped_state.clone();
