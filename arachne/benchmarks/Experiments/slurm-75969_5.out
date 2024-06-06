@@ -1,0 +1,6 @@
+Starting experiment with probability 0.0005 and nodes 30000, trial 3
+Checking Arkouda server readiness...
+Arkouda server is ready.
+Waiting for Arkouda server to shut down...
+/var/spool/slurmd/job75969/slurm_script: line 48: 4049209 Terminated              ./arkouda_server -nl 1 1>&${LOG_DIR}/server_prob_${PROBABILITY}_nodes_${NODES}_trial_${TRIAL_NUMBER}.txt  (wd: /scratch/users/md724/arkouda-2023.11.15)
+Experiment for trial 3 completed.

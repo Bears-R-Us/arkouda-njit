@@ -99,6 +99,9 @@ module SubgraphIsomorphism {
 
     } // end of State class 
     
+    // Define a sync variable to control access to the stack
+    var stackMutex: sync bool = false;
+
     class ThreadSafeStack {
     var stack: list(State);
     var lock: sync bool;
@@ -106,7 +109,7 @@ module SubgraphIsomorphism {
     proc init() {
         writeln("ThreadSafeStack.init()");
         this.stack = new list(State);
-        this.lock = false; // Initialize the sync variable to empty
+        this.lock = true; // Initialize the sync variable to empty
     }
 
     proc pushBack(state: State) {
@@ -114,7 +117,7 @@ module SubgraphIsomorphism {
 
         this.lock.writeEF(false); // Ensure exclusive access
         this.stack.pushBack(state);
-        this.lock.writeXF(false); // Release exclusive access
+        this.lock.writeXF(true); // Release exclusive access
     }
 
     proc popBack(): State {
@@ -122,7 +125,7 @@ module SubgraphIsomorphism {
 
         this.lock.writeEF(false); // Ensure exclusive access
         var state = this.stack.popBack();
-        this.lock.writeXF(false); // Release exclusive access
+        this.lock.writeXF(true); // Release exclusive access
         return state;
     }
 
@@ -131,7 +134,7 @@ module SubgraphIsomorphism {
 
         this.lock.readFE(); // Ensure exclusive access
         var size = this.stack.size;
-        this.lock = false; // Release the lock
+        this.lock = true; // Release the lock
         return size;
     }
 
@@ -140,7 +143,7 @@ module SubgraphIsomorphism {
 
         this.lock.readFE(); // Ensure exclusive access
         var isEmpty = this.stack.size == 0;
-        this.lock = false; // Release the lock
+        this.lock = true; // Release the lock
         return isEmpty;
     }
     }
@@ -860,53 +863,61 @@ module SubgraphIsomorphism {
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: State, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
-            //var stack: list(State); // stack for backtracking
-            var stack = new ThreadSafeStack(); // Use the custom thread-safe stack
+            var stack: list(State, parSafe=true); // stack for backtracking
+            //var stack = new ThreadSafeStack(); // Use the custom thread-safe stack
 
-            writeln("Pushed to stacked");
+            //writeln("Pushed to stacked");
             stack.pushBack(state); // Initialize stack.
-            writeln("state", state);
-            writeln("at the begining stack size is = ", stack.size());
-            //while stack.size > 0 {
-            while !stack.isEmpty() {
-                writeln("**************************************");
-                writeln("stack size is = ", stack.size());
+            //writeln("state", state);
+            //writeln("at the begining stack size is = ", stack.size);
+            //writeln("at the begining stack size is = ", stack.size());
+            while stack.size > 0 {
+            //while !stack.isEmpty() {
+                //writeln("**************************************");
+                //writeln("stack size inside the while = ", stack.size);
+                //writeln("stack size is = ", stack.size());
 
-                var Poped_state = stack.popBack();
-                writeln("Poped_state.depth = ", Poped_state.depth);
+
+                var Poped_state = stack.popBack();  // Critical section?
+
+                //writeln("Poped_state.depth = ", Poped_state.depth);
                 // Base case: check if a complete mapping is found
                 if Poped_state.depth == g2.n_vertices {
-                    writeln("///////////////depth == g2.n_vertices/////////////////");
-                    writeln("Isos found = ", Poped_state.core);
+                    //writeln("///////////////depth == g2.n_vertices/////////////////");
+                    //writeln("Isos found = ", Poped_state.core);
                     // Process the found solution
                     for elem in  Poped_state.core do allmappings.pushBack(elem);
-                    writeln("allmappings = ", allmappings);
-                    writeln("////////////////////////////////");
+                    //writeln("allmappings = ", allmappings);
+                    //writeln("////////////////////////////////");
 
                     //return allmappings;
                 }
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(Poped_state);
 
-                writeln("state is :", Poped_state);
-                writeln("candidatePairs is :", candidatePairs);
-                writeln("/////////////FORALL////////////////////");
+                //writeln("state is :", Poped_state);
+                //writeln("candidatePairs is :", candidatePairs);
+                //writeln("/////////////FORALL////////////////////");
                 // Iterate in parallel over candidate pairs
                 var tid: atomic int;
                 //forall (n1, n2) in candidatePairs with (const myTid = tid.fetchAdd(1), ref stack) {
-                coforall (n1, n2) in candidatePairs with (ref stack){
+                forall (n1, n2) in candidatePairs with (ref stack){
 
                     //writeln("current tid = ",myTid);
                     if isFeasible(n1, n2, Poped_state) {
-                        writeln("isFeasible TRUE for n1 = ", n1, " n2 = ", n2);
+                        //writeln("isFeasible TRUE for n1 = ", n1, " n2 = ", n2);
                         var newState = Poped_state.clone();
-                        writeln("newState generated: ");
+                        //writeln("newState generated: ");
                         // Update state with the new mapping
                         addToTinTout(n1, n2, newState);
-                        writeln("addToTinTout completed: ");
+                        //writeln("addToTinTout completed: ");
 
-                        stack.pushBack(newState);
-                        writeln("stack pushed Back: ");
+
+                   // Acquire the lock before pushing the new state onto the stack
+                    //stackMutex.writeEF(true);  // Wait until we can acquire the lock
+                        stack.pushBack(newState); // Critical section: push the new state onto the stack
+                        //writeln("stack pushed Back: ");
+                    //stackMutex.writeFE(false);  // Release the lock
 
                     }
                 }
@@ -920,9 +931,12 @@ module SubgraphIsomorphism {
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
+            //writeln("---------vf2 started----------");
+
             var initial = createInitialState(g1.n_vertices, g2.n_vertices);
             var solutions = vf2Helper(initial, 0);
             var subIsoArrToReturn: [0..#solutions.size](int);
+
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
             return(subIsoArrToReturn);
         } // end of vf2
