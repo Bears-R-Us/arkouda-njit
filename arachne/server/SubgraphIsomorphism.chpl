@@ -795,6 +795,28 @@ module SubgraphIsomorphism {
             return true;
         } // end of isFeasible
 
+
+        /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
+        proc isFeasibleFirstState(n1: int, state: State,getOutN2size: int,getInN2size: int  ) throws {
+            
+            var new1, new2 : int = 0;
+            
+            // Process the out-neighbors + in-neighbors of g2.
+            new2 = getOutN2size + getInN2size ;
+
+            // Process the out-neighbors + in-neighbors of g1. 
+            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+
+            new1 = getOutN1.size + getInN1.size;
+            writeln("n1 = ", n1, " getOutN2size = ", getOutN2size, " getInN2size = ", getInN2size, "new1 = ", new1, " new2 = ", new2); 
+            if !new2 <= new1 then return false;
+
+            if !nodesLabelCompatible(n1, 0) then return false;
+
+            return true;
+        } // end of isFeasibleFirstState
+        
         /** Return the unmapped vertices for g1 and g2. */
         proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, int) throws {
             var UnMapG1: [0..<state.n1] int = -1;
@@ -862,72 +884,71 @@ module SubgraphIsomorphism {
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: State, depth: int): list(int) throws {
-            var allmappings: list(int, parSafe=true);
-            var stack: list(State, parSafe=true); // stack for backtracking
-            //var stack = new ThreadSafeStack(); // Use the custom thread-safe stack
+            var allMappings: list(int, parSafe=true);
 
-            //writeln("Pushed to stacked");
-            stack.pushBack(state); // Initialize stack.
-            //writeln("state", state);
-            //writeln("at the begining stack size is = ", stack.size);
-            //writeln("at the begining stack size is = ", stack.size());
-            while stack.size > 0 {
-            //while !stack.isEmpty() {
-                //writeln("**************************************");
-                //writeln("stack size inside the while = ", stack.size);
-                //writeln("stack size is = ", stack.size());
+            //var getOutN2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+            //var getInN2 = dstRG2[segRG2[0]..<segRG2[1]];
 
+            // Process each candidate pair and continue from there
+            forall (n1) in 0..<g1.n_vertices with(ref allMappings) {
+                var stack: list(State, parSafe=true);
+                //var newFirstState = state.clone();
+                var newFirstState =createInitialState(g1.n_vertices, g2.n_vertices);
+                addToTinTout(n1, 0, newFirstState);
 
-                var Poped_state = stack.popBack();  // Critical section?
+                //writeln("------------------------------");
+                //writeln("n1 = ", n1 , " , n2 = ", n2);
 
-                //writeln("Poped_state.depth = ", Poped_state.depth);
-                // Base case: check if a complete mapping is found
-                if Poped_state.depth == g2.n_vertices {
-                    //writeln("///////////////depth == g2.n_vertices/////////////////");
-                    //writeln("Isos found = ", Poped_state.core);
-                    // Process the found solution
-                    for elem in  Poped_state.core do allmappings.pushBack(elem);
-                    //writeln("allmappings = ", allmappings);
-                    //writeln("////////////////////////////////");
-
-                    //return allmappings;
+/*
+                if nodesLabelCompatible(n1, 0){
+                    var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+                    var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+                    
+                    var newN2 = getOutN2.size + getInN2.size;
+                    var newN1 = getOutN1.size + getInN1.size;
+                    
+                    if newN2 <= newN1 {
+                        var newFirstState = state.clone();
+                        addToTinTout(n1, 0, newFirstState);
+                        stack.pushBack(newFirstState);
+                    }
+OR
+                if isFeasibleFirstState(n1, state, getOutN2.size,getInN2.size ){
+                    var newFirstState = state.clone();
+                    addToTinTout(n1, 0, newFirstState);
+                    stack.pushBack(newFirstState);
                 }
-                // Generate candidate pairs (n1, n2) for mapping
-                var candidatePairs = getCandidatePairsOpti(Poped_state);
-
-                //writeln("state is :", Poped_state);
-                //writeln("candidatePairs is :", candidatePairs);
-                //writeln("/////////////FORALL////////////////////");
-                // Iterate in parallel over candidate pairs
-                var tid: atomic int;
-                //forall (n1, n2) in candidatePairs with (const myTid = tid.fetchAdd(1), ref stack) {
-                forall (n1, n2) in candidatePairs with (ref stack){
-
-                    //writeln("current tid = ",myTid);
-                    if isFeasible(n1, n2, Poped_state) {
-                        //writeln("isFeasible TRUE for n1 = ", n1, " n2 = ", n2);
-                        var newState = Poped_state.clone();
-                        //writeln("newState generated: ");
-                        // Update state with the new mapping
-                        addToTinTout(n1, n2, newState);
-                        //writeln("addToTinTout completed: ");
-
-
-                   // Acquire the lock before pushing the new state onto the stack
-                    //stackMutex.writeEF(true);  // Wait until we can acquire the lock
-                        stack.pushBack(newState); // Critical section: push the new state onto the stack
-                        //writeln("stack pushed Back: ");
-                    //stackMutex.writeFE(false);  // Release the lock
-
+*/
+                stack.pushBack(newFirstState);
+                    //writeln("FORALL 1--- state is:", newFirstState);
+                //}
+                // Process the root states and its descendants
+                while stack.size > 0 {
+                    var currentState = stack.popBack();
+                    // Process the state
+                    if currentState.depth == g2.n_vertices {
+                        //writeln("currentState:", currentState);
+                        for elem in currentState.core { 
+                            allMappings.pushBack(elem);
+                        }    
+                        //writeln("currentState added to allMappings : ", currentState.core);
+                        
+                    } else {
+                        // Generate candidate pairs for the current state
+                        var newCandidatePairs = getCandidatePairsOpti(currentState);
+                        forall (newN1, newN2) in newCandidatePairs with(ref stack) {
+                            if isFeasible(newN1, newN2, currentState) {
+                                var newState = currentState.clone();
+                                addToTinTout(newN1, newN2, newState);
+                                stack.pushBack(newState);
+                            }
+                        }
                     }
                 }
-            } 
-            
+            }
 
-
-            return allmappings;
+            return allMappings;
         }
-        
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
