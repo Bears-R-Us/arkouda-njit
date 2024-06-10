@@ -809,11 +809,17 @@ module SubgraphIsomorphism {
             var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
 
             new1 = getOutN1.size + getInN1.size;
-            writeln("n1 = ", n1, " getOutN2size = ", getOutN2size, " getInN2size = ", getInN2size, "new1 = ", new1, " new2 = ", new2); 
-            if !new2 <= new1 then return false;
 
-            if !nodesLabelCompatible(n1, 0) then return false;
-
+            //writeln("n1 = ", n1, " getOutN2size = ", getOutN2size, " getInN2size = ", getInN2size, "new1 = ", new1, " new2 = ", new2); 
+            if !(new2 <= new1) { 
+                //writeln("new2 <= new1  ", new2 <= new1);
+                return false;
+            }
+            if !nodesLabelCompatible(n1, 0) { 
+                //writeln("nodeLabel returned false");
+                return false;
+            }
+            //writeln("isFeasibleFirstState returned true");
             return true;
         } // end of isFeasibleFirstState
         
@@ -877,6 +883,8 @@ module SubgraphIsomorphism {
             var labelsG1n1 = convertedLabelsG1[n1];
             var labelsG2n2 = convertedLabelsG2[n2];
 
+            //writeln("labelsG1(", n1, " ) =", labelsG1n1);
+            //writeln("labelsG2(", n2, " ) =", labelsG2n2);
             if labelsG1n1 != labelsG2n2 then return false;
 
             return true;
@@ -886,20 +894,24 @@ module SubgraphIsomorphism {
         proc vf2Helper(state: State, depth: int): list(int) throws {
             var allMappings: list(int, parSafe=true);
 
-            //var getOutN2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
-            //var getInN2 = dstRG2[segRG2[0]..<segRG2[1]];
+            var getOutN2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+            var getInN2 = dstRG2[segRG2[0]..<segRG2[1]];
 
+            //writeln("getOutN2 = ", getOutN2);
+            //writeln("getInN2 = ", getInN2);
             // Process each candidate pair and continue from there
             forall (n1) in 0..<g1.n_vertices with(ref allMappings) {
+/*
                 var stack: list(State, parSafe=true);
                 //var newFirstState = state.clone();
                 var newFirstState =createInitialState(g1.n_vertices, g2.n_vertices);
                 addToTinTout(n1, 0, newFirstState);
+                stack.pushBack(newFirstState);
 
                 //writeln("------------------------------");
                 //writeln("n1 = ", n1 , " , n2 = ", n2);
 
-/*
+
                 if nodesLabelCompatible(n1, 0){
                     var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
                     var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
@@ -912,14 +924,19 @@ module SubgraphIsomorphism {
                         addToTinTout(n1, 0, newFirstState);
                         stack.pushBack(newFirstState);
                     }
-OR
+OR*/
+                var stack: list(State, parSafe=true);
+
                 if isFeasibleFirstState(n1, state, getOutN2.size,getInN2.size ){
-                    var newFirstState = state.clone();
+                    //var newFirstState = state.clone();
+                    //writeln("n1 = ", n1, "is feasible");
+                    var newFirstState =createInitialState(g1.n_vertices, g2.n_vertices);
+
                     addToTinTout(n1, 0, newFirstState);
+                    //writeln("after addToTinTout state is ",newFirstState);
                     stack.pushBack(newFirstState);
                 }
-*/
-                stack.pushBack(newFirstState);
+
                     //writeln("FORALL 1--- state is:", newFirstState);
                 //}
                 // Process the root states and its descendants
