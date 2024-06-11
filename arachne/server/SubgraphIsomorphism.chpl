@@ -154,6 +154,8 @@ module SubgraphIsomorphism {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
+        var elapsed_time_vf2Helper: atomic real;
+
         // Extract the g1/G/g information from the SegGraph data structure.
         var srcNodesG1Dist = toSymEntry(g1.getComp("SRC"), int).a;
         var dstNodesG1Dist = toSymEntry(g1.getComp("DST"), int).a;
@@ -348,7 +350,9 @@ module SubgraphIsomorphism {
         writeln(" timer2 = ", timer2.elapsed());
         */
         writeln("runVF2 after loading everything\n\n");
-         
+        
+        var candidateslist = findInOutWedges_new();
+        addToTinTout_new (candidateslist);
         //var ffcandidates = findOutEdges();
         //var ffcandidates = findOutWedgesLight();
         //var ffstates = CandidToState(ffcandidates);
@@ -374,7 +378,7 @@ module SubgraphIsomorphism {
 /////////////////////////////State Injection//////////////////////////////////////////
         proc CandidToState(ffcandidates) throws{
             //var StateList: list(owned State) = new list(owned State);
-            var StateList: list(owned State);
+            var StateList: list( State, parSafe=true);
             forall n1Arr in ffcandidates with (ref StateList) {
                 
                 var newState = addToTinToutArray(n1Arr);
@@ -384,30 +388,93 @@ module SubgraphIsomorphism {
             }
             return (StateList);
         }
-        
-        proc findOutWedgesLight()throws {
-            var outWedges: list(int, parSafe=true);
-            
-            var inNeighborsg2 = dstRG2[segRG2[0]..<segRG2[1]];            
-            var outNeighborsg2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
-            
-            writeln("Index 0 in G2 has ",inNeighborsg2.size, " inNeighbors" );
-            writeln("Index 0 in G2 has ",outNeighborsg2.size, " outNeighbors" );
-            // Iterate over each node and its out-neighbors
-            forall u in 0..g1.n_vertices-1 with (ref outWedges) {
-            //for u in 0..g1.n_vertices-1 {
-                var outNeighborsg1 = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
-                var inNeighborsg1 = dstRG1[segRG1[u]..<segRG1[u+1]];
+   
+        // Function to find path (A -> B -> C)
+        proc findInOutWedges_new() throws{
 
-                if outNeighborsg1.size >= outNeighborsg2.size & inNeighborsg1.size >= inNeighborsg2.size{
-                    outWedges.pushBack(u); 
-                }
+            // List to store found wedges
+            var path: list((int, int), parSafe=true);
+
+            // Parallel processing for nodes
+            forall v in 0..g1.n_vertices-1 with(ref path) {
+                // Retrieve in-neighbors and out-neighbors for node v
+                var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];
+                var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+                // Check each in-neighbor against each out-neighbor to find potential wedges
+                //forall inN in inNeighborsg1 with(ref path){
+                    forall outN in outNeighborsg1  with(ref path){
+                        // For each pair (inN, outN), we have a potential wedge (inN, v, outN)
+                        //writeln("Wedge found: ", inN, " -> ", v, " -> ", outN);
+                        path.pushBack((v, outN));
+
+                    }
+                //}
             }
-            writeln("/////////////////////////////State Injection//////////////////////////////////////////");
-            writeln("g1 num vertices is : ",g1.n_vertices );
-            writeln("outWedges size is: ", outWedges.size);
-            return(outWedges);
+            writeln("path size = ", path.size);
+
+            return (path);
         }
+        /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
+        proc addToTinTout_new (ref passedList: list((int, int))) throws{
+            var listStateToPass: list (State, parSafe =true);
+            var initialstate = createInitialState(g1.n_vertices, g2.n_vertices);
+            
+            var inNeighborsg2_0 = dstRG2(segRG2[0]..<segRG2[1]);            
+            var outNeighborsg2_0 = dstNodesG2(segGraphG2[0]..<segGraphG2[1]);
+
+            //initialstate.Tin2.remove(0);
+            //initialstate.Tout2.remove(0);
+
+            for n2 in inNeighborsg2_0 do initialstate.Tin2.add(n2);
+            for n2 in outNeighborsg2_0 do initialstate.Tout2.add(n2);
+
+            var inNeighborsg2_1 = dstRG2(segRG2[1]..<segRG2[2]);            
+            var outNeighborsg2_1 = dstNodesG2(segGraphG2[1]..<segGraphG2[2]);
+
+    
+
+            initialstate.Tin2.remove(1);
+            initialstate.Tout2.remove(1);
+
+            for n2 in inNeighborsg2_1 do if n2 != 0 then initialstate.Tin2.add(n2);
+            for n2 in outNeighborsg2_1 do if n2 != 0 then initialstate.Tout2.add(n2);
+
+            forall elem in passedList with(ref listStateToPass) {
+                    var state = initialstate.clone();
+
+                    var (first, second) = elem;
+                    //writeln("First element: ", first, ", Second element: ", second);
+                    state.core[0] = first;
+                    state.core[1] = second;
+                    state.depth = 2; // a pair of vertices were mapped therefore increment depth by 2
+
+                    var inNeighborsfirst = dstRG1[segRG1[first]..<segRG1[first+1]];
+                    var inNeighborsSecond = dstRG1[segRG1[second]..<segRG1[second+1]];
+
+                    var outNeighborsfirst = dstNodesG1[segGraphG1[first]..<segGraphG1[first+1]];
+                    var outNeighborssecond = dstNodesG1[segGraphG1[second]..<segGraphG1[second+1]];
+                    
+                    for n1 in inNeighborsfirst do state.Tin1.add(n1);
+                    for n1 in outNeighborsfirst do state.Tout1.add(n1);                    
+
+
+                    for n1 in inNeighborsSecond do if n1 != first then state.Tin1.add(n1);
+                    for n1 in outNeighborssecond do if n1 != first then state.Tout1.add(n1);
+                    
+                    //state.Tin1.remove(first);
+                    //state.Tout1.remove(first);
+                    
+                    state.Tin1.remove(second);
+                    state.Tout1.remove(second);
+
+                    listStateToPass.pushBack(state);
+                    //writeln("for first = ", first," , second = ", second," state = ", state );
+            }
+            return(listStateToPass);
+
+        } // end of addToTinTout_new
+
 /////////////////////////////End of State Injection///////////////////////////////////
         
 //////////////////////////RI///////////////////////////////////////////////////
@@ -901,30 +968,9 @@ module SubgraphIsomorphism {
             //writeln("getInN2 = ", getInN2);
             // Process each candidate pair and continue from there
             forall (n1) in 0..<g1.n_vertices with(ref allMappings) {
-/*
-                var stack: list(State, parSafe=true);
-                //var newFirstState = state.clone();
-                var newFirstState =createInitialState(g1.n_vertices, g2.n_vertices);
-                addToTinTout(n1, 0, newFirstState);
-                stack.pushBack(newFirstState);
-
-                //writeln("------------------------------");
-                //writeln("n1 = ", n1 , " , n2 = ", n2);
-
-
-                if nodesLabelCompatible(n1, 0){
-                    var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-                    var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-                    
-                    var newN2 = getOutN2.size + getInN2.size;
-                    var newN1 = getOutN1.size + getInN1.size;
-                    
-                    if newN2 <= newN1 {
-                        var newFirstState = state.clone();
-                        addToTinTout(n1, 0, newFirstState);
-                        stack.pushBack(newFirstState);
-                    }
-OR*/
+                var timerforall:stopwatch;
+                timerforall.start();
+                
                 var stack: list(State, parSafe=true);
 
                 if isFeasibleFirstState(n1, state, getOutN2.size,getInN2.size ){
@@ -962,8 +1008,11 @@ OR*/
                         }
                     }
                 }
-            }
+            timerforall.stop();
+            elapsed_time_vf2Helper.fetchAdd(timerforall.elapsed());
 
+            }
+            writeln(" elapsed_time_vf2Helper ",elapsed_time_vf2Helper.read());
             return allMappings;
         }
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
