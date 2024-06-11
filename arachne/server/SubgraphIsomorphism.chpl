@@ -352,7 +352,7 @@ module SubgraphIsomorphism {
         writeln("runVF2 after loading everything\n\n");
         
         var candidateslist = findInOutWedges_new();
-        addToTinTout_new (candidateslist);
+        var ffstates = addToTinTout_new (candidateslist);
         //var ffcandidates = findOutEdges();
         //var ffcandidates = findOutWedgesLight();
         //var ffstates = CandidToState(ffcandidates);
@@ -967,6 +967,7 @@ module SubgraphIsomorphism {
             //writeln("getOutN2 = ", getOutN2);
             //writeln("getInN2 = ", getInN2);
             // Process each candidate pair and continue from there
+/*
             forall (n1) in 0..<g1.n_vertices with(ref allMappings) {
                 var timerforall:stopwatch;
                 timerforall.start();
@@ -982,7 +983,12 @@ module SubgraphIsomorphism {
                     //writeln("after addToTinTout state is ",newFirstState);
                     stack.pushBack(newFirstState);
                 }
+*/
+            forall (onestate) in ffstates with(ref allMappings) {
 
+                var stack: list(State, parSafe=true);
+
+                stack.pushBack(onestate);
                     //writeln("FORALL 1--- state is:", newFirstState);
                 //}
                 // Process the root states and its descendants
@@ -1008,11 +1014,8 @@ module SubgraphIsomorphism {
                         }
                     }
                 }
-            timerforall.stop();
-            elapsed_time_vf2Helper.fetchAdd(timerforall.elapsed());
 
             }
-            writeln(" elapsed_time_vf2Helper ",elapsed_time_vf2Helper.read());
             return allMappings;
         }
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
