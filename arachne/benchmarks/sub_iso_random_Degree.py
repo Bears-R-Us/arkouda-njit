@@ -58,7 +58,7 @@ if __name__ == "__main__":
 
     ### Generate an Erdős-Rényi random graph
     num_nodes = args.n  # Number of nodes
-    p = 0.5  # Probability of edge creation
+    p = 0.0005  # Probability of edge creation
     print("Beginning of Random Directed graph with P= ", p)
 
     random_graph, src, dst = create_random_directed_graph(num_nodes, p)

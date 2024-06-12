@@ -320,11 +320,16 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        //writeln("srcNodesG1 = ", srcNodesG1);
-        //writeln("dstNodesG1 = ", dstNodesG1); 
+        writeln("srcNodesG2 = ", srcNodesG2);
+        writeln("dstNodesG2 = ", dstNodesG2); 
         
-        //writeln("\nsegGraphG1 = ", segGraphG1);
+        writeln("\nsegGraphG2 = ", segGraphG2);
+
+
+        writeln("srcRG2 = ", srcRG2);
+        writeln("dstRG2 = ", dstRG2); 
         
+        writeln("\nsegRG2 = ", segRG2);
         //writeln("\nsrcRG1 = ", srcRG1); 
         //writeln("dstRG1 = ", dstRG1);
 
@@ -350,9 +355,22 @@ module SubgraphIsomorphism {
         writeln(" timer2 = ", timer2.elapsed());
         */
         writeln("runVF2 after loading everything\n\n");
-        
-        var candidateslist = findInOutWedges_new();
+        var timer1:stopwatch;
+            timer1.start();
+            
+
+        //var candidateslist = findTwoStep();
+        var candidateslist = findTwoStep_faster();
+
+            timer1.stop();
+            writeln(" time soend on findTwoStep_faster =",timer1.elapsed());
+            
+            timer1.start();
+
         var ffstates = addToTinTout_new (candidateslist);
+
+            timer1.stop();
+            writeln(" time spend on addToTinTout_new to create states =",timer1.elapsed());
         //var ffcandidates = findOutEdges();
         //var ffcandidates = findOutWedgesLight();
         //var ffstates = CandidToState(ffcandidates);
@@ -389,8 +407,8 @@ module SubgraphIsomorphism {
             return (StateList);
         }
    
-        // Function to find path (A -> B -> C)
-        proc findInOutWedges_new() throws{
+        // Function to find path (A -> B)
+        proc findTwoStep() throws{
 
             // List to store found wedges
             var path: list((int, int), parSafe=true);
@@ -412,6 +430,21 @@ module SubgraphIsomorphism {
                 //}
             }
             writeln("path size = ", path.size);
+
+            return (path);
+        }        
+        // Function to find path (A -> B)
+        proc findTwoStep_faster() throws{
+
+            // List to store found wedges
+            var path: list((int, int), parSafe=true);
+
+            // Parallel processing for nodes
+            forall edgeIndex in 0..mG1-1 with(ref path) {
+                path.pushBack((srcNodesG1[edgeIndex],  dstNodesG1[edgeIndex]));
+                //writeln("edge from ",srcNodesG1[edgeIndex] ," to ",dstNodesG1[edgeIndex]);
+            }
+            //writeln("path size = ", path.size);
 
             return (path);
         }
