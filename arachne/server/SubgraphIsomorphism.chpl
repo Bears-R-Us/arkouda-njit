@@ -23,7 +23,7 @@ module SubgraphIsomorphism {
     use SegmentedString;
 
     /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
-    record State {
+    class State {
         var n1: int; // size of main graph
         var n2: int; // size of subgraph
     
@@ -70,8 +70,8 @@ module SubgraphIsomorphism {
         }
         
         /** Method to create a copy of the instance.*/
-        proc clone(): State throws {
-            var newState = new State(this.n1, this.n2);
+        proc clone(): owned State throws {
+            var newState = new owned State(this.n1, this.n2);
             newState.core = this.core;
 
             newState.Tin1 = this.Tin1;
@@ -98,64 +98,14 @@ module SubgraphIsomorphism {
         }
 
     } // end of State class 
-    
-    // Define a sync variable to control access to the stack
-    var stackMutex: sync bool = false;
 
-    class ThreadSafeStack {
-    var stack: list(State);
-    var lock: sync bool;
-
-    proc init() {
-        writeln("ThreadSafeStack.init()");
-        this.stack = new list(State);
-        this.lock = true; // Initialize the sync variable to empty
-    }
-
-    proc pushBack(state: State) {
-        writeln("ThreadSafeStack.pushBack()");
-
-        this.lock.writeEF(false); // Ensure exclusive access
-        this.stack.pushBack(state);
-        this.lock.writeXF(true); // Release exclusive access
-    }
-
-    proc popBack(): State {
-        writeln("ThreadSafeStack.popBack()");
-
-        this.lock.writeEF(false); // Ensure exclusive access
-        var state = this.stack.popBack();
-        this.lock.writeXF(true); // Release exclusive access
-        return state;
-    }
-
-    proc size(): int {
-        writeln("ThreadSafeStack.size()");
-
-        this.lock.readFE(); // Ensure exclusive access
-        var size = this.stack.size;
-        this.lock = true; // Release the lock
-        return size;
-    }
-
-    proc isEmpty(): bool {
-        writeln("ThreadSafeStack.isEmpty()");
-
-        this.lock.readFE(); // Ensure exclusive access
-        var isEmpty = this.stack.size == 0;
-        this.lock = true; // Release the lock
-        return isEmpty;
-    }
-    }
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
+    
     proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
-
-        var elapsed_time_vf2Helper: atomic real;
-
         // Extract the g1/G/g information from the SegGraph data structure.
         var srcNodesG1Dist = toSymEntry(g1.getComp("SRC"), int).a;
         var dstNodesG1Dist = toSymEntry(g1.getComp("DST"), int).a;
@@ -320,16 +270,11 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        writeln("srcNodesG2 = ", srcNodesG2);
-        writeln("dstNodesG2 = ", dstNodesG2); 
+        //writeln("srcNodesG1 = ", srcNodesG1);
+        //writeln("dstNodesG1 = ", dstNodesG1); 
         
-        writeln("\nsegGraphG2 = ", segGraphG2);
-
-
-        writeln("srcRG2 = ", srcRG2);
-        writeln("dstRG2 = ", dstRG2); 
+        //writeln("\nsegGraphG1 = ", segGraphG1);
         
-        writeln("\nsegRG2 = ", segRG2);
         //writeln("\nsrcRG1 = ", srcRG1); 
         //writeln("dstRG1 = ", dstRG1);
 
@@ -354,26 +299,26 @@ module SubgraphIsomorphism {
         timer2.stop();
         writeln(" timer2 = ", timer2.elapsed());
         */
-        writeln("runVF2 after loading everything\n\n");
-        var timer1:stopwatch;
-            timer1.start();
-            
-
-        //var candidateslist = findTwoStep();
-        var candidateslist = findTwoStep_faster();
-
-            timer1.stop();
-            writeln(" time soend on findTwoStep_faster =",timer1.elapsed());
-            
-            timer1.start();
-
-        var ffstates = addToTinTout_new (candidateslist);
-
-            timer1.stop();
-            writeln(" time spend on addToTinTout_new to create states =",timer1.elapsed());
+        //writeln("Main version which Oliver pushed to the server\n\n");
+         
         //var ffcandidates = findOutEdges();
         //var ffcandidates = findOutWedgesLight();
         //var ffstates = CandidToState(ffcandidates);
+        /*
+        var state = createInitialState(g1.n_vertices, g2.n_vertices);
+        var candidatePairs = getCandidatePairsOpti(state);
+        var counter:int =0;
+        for (n1, n2) in candidatePairs{
+            if isFeasible(n1, n2, state) {
+                counter += 1;
+
+            }
+        }
+        writeln("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
+        writeln("candidatePairs.size = ", candidatePairs.size);
+        writeln("Feasible Candidate # = ", counter);
+        writeln("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
+*/
         var IsoArrtemp = vf2(g1, g2);
         /*
         //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
@@ -396,7 +341,7 @@ module SubgraphIsomorphism {
 /////////////////////////////State Injection//////////////////////////////////////////
         proc CandidToState(ffcandidates) throws{
             //var StateList: list(owned State) = new list(owned State);
-            var StateList: list( State, parSafe=true);
+            var StateList: list(owned State);
             forall n1Arr in ffcandidates with (ref StateList) {
                 
                 var newState = addToTinToutArray(n1Arr);
@@ -406,108 +351,30 @@ module SubgraphIsomorphism {
             }
             return (StateList);
         }
-   
-        // Function to find path (A -> B)
-        proc findTwoStep() throws{
-
-            // List to store found wedges
-            var path: list((int, int), parSafe=true);
-
-            // Parallel processing for nodes
-            forall v in 0..g1.n_vertices-1 with(ref path) {
-                // Retrieve in-neighbors and out-neighbors for node v
-                var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];
-                var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-
-                // Check each in-neighbor against each out-neighbor to find potential wedges
-                //forall inN in inNeighborsg1 with(ref path){
-                    forall outN in outNeighborsg1  with(ref path){
-                        // For each pair (inN, outN), we have a potential wedge (inN, v, outN)
-                        //writeln("Wedge found: ", inN, " -> ", v, " -> ", outN);
-                        path.pushBack((v, outN));
-
-                    }
-                //}
-            }
-            writeln("path size = ", path.size);
-
-            return (path);
-        }        
-        // Function to find path (A -> B)
-        proc findTwoStep_faster() throws{
-
-            // List to store found wedges
-            var path: list((int, int), parSafe=true);
-
-            // Parallel processing for nodes
-            forall edgeIndex in 0..mG1-1 with(ref path) {
-                path.pushBack((srcNodesG1[edgeIndex],  dstNodesG1[edgeIndex]));
-                //writeln("edge from ",srcNodesG1[edgeIndex] ," to ",dstNodesG1[edgeIndex]);
-            }
-            //writeln("path size = ", path.size);
-
-            return (path);
-        }
-        /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
-        proc addToTinTout_new (ref passedList: list((int, int))) throws{
-            var listStateToPass: list (State, parSafe =true);
-            var initialstate = createInitialState(g1.n_vertices, g2.n_vertices);
+        
+        proc findOutWedgesLight()throws {
+            var outWedges: list(int, parSafe=true);
             
-            var inNeighborsg2_0 = dstRG2(segRG2[0]..<segRG2[1]);            
-            var outNeighborsg2_0 = dstNodesG2(segGraphG2[0]..<segGraphG2[1]);
+            var inNeighborsg2 = dstRG2[segRG2[0]..<segRG2[1]];            
+            var outNeighborsg2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+            
+            writeln("Index 0 in G2 has ",inNeighborsg2.size, " inNeighbors" );
+            writeln("Index 0 in G2 has ",outNeighborsg2.size, " outNeighbors" );
+            // Iterate over each node and its out-neighbors
+            forall u in 0..g1.n_vertices-1 with (ref outWedges) {
+            //for u in 0..g1.n_vertices-1 {
+                var outNeighborsg1 = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
+                var inNeighborsg1 = dstRG1[segRG1[u]..<segRG1[u+1]];
 
-            //initialstate.Tin2.remove(0);
-            //initialstate.Tout2.remove(0);
-
-            for n2 in inNeighborsg2_0 do initialstate.Tin2.add(n2);
-            for n2 in outNeighborsg2_0 do initialstate.Tout2.add(n2);
-
-            var inNeighborsg2_1 = dstRG2(segRG2[1]..<segRG2[2]);            
-            var outNeighborsg2_1 = dstNodesG2(segGraphG2[1]..<segGraphG2[2]);
-
-    
-
-            initialstate.Tin2.remove(1);
-            initialstate.Tout2.remove(1);
-
-            for n2 in inNeighborsg2_1 do if n2 != 0 then initialstate.Tin2.add(n2);
-            for n2 in outNeighborsg2_1 do if n2 != 0 then initialstate.Tout2.add(n2);
-
-            forall elem in passedList with(ref listStateToPass) {
-                    var state = initialstate.clone();
-
-                    var (first, second) = elem;
-                    //writeln("First element: ", first, ", Second element: ", second);
-                    state.core[0] = first;
-                    state.core[1] = second;
-                    state.depth = 2; // a pair of vertices were mapped therefore increment depth by 2
-
-                    var inNeighborsfirst = dstRG1[segRG1[first]..<segRG1[first+1]];
-                    var inNeighborsSecond = dstRG1[segRG1[second]..<segRG1[second+1]];
-
-                    var outNeighborsfirst = dstNodesG1[segGraphG1[first]..<segGraphG1[first+1]];
-                    var outNeighborssecond = dstNodesG1[segGraphG1[second]..<segGraphG1[second+1]];
-                    
-                    for n1 in inNeighborsfirst do state.Tin1.add(n1);
-                    for n1 in outNeighborsfirst do state.Tout1.add(n1);                    
-
-
-                    for n1 in inNeighborsSecond do if n1 != first then state.Tin1.add(n1);
-                    for n1 in outNeighborssecond do if n1 != first then state.Tout1.add(n1);
-                    
-                    //state.Tin1.remove(first);
-                    //state.Tout1.remove(first);
-                    
-                    state.Tin1.remove(second);
-                    state.Tout1.remove(second);
-
-                    listStateToPass.pushBack(state);
-                    //writeln("for first = ", first," , second = ", second," state = ", state );
+                if outNeighborsg1.size >= outNeighborsg2.size & inNeighborsg1.size >= inNeighborsg2.size{
+                    outWedges.pushBack(u); 
+                }
             }
-            return(listStateToPass);
-
-        } // end of addToTinTout_new
-
+            writeln("/////////////////////////////State Injection//////////////////////////////////////////");
+            writeln("g1 num vertices is : ",g1.n_vertices );
+            writeln("outWedges size is: ", outWedges.size);
+            return(outWedges);
+        }
 /////////////////////////////End of State Injection///////////////////////////////////
         
 //////////////////////////RI///////////////////////////////////////////////////
@@ -794,7 +661,7 @@ module SubgraphIsomorphism {
         //GreatestConstraintFirst();
 ////////////////////////////////////////////////////////////////////////////////////
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
-        proc addToTinTout (u: int, v: int, ref state: State) {
+        proc addToTinTout (u: int, v: int, state: State) {
             state.core[v] = u; // v from g2 to a u from g1
             state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
 
@@ -816,6 +683,30 @@ module SubgraphIsomorphism {
             for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
             for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
         } // end of addToTinTout
+
+
+        proc addToTinTout_firstStep (u: int, v: int, state: State) {
+            state.core[0] = u; // v from g2 to a u from g1
+            state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
+
+            var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
+            var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+
+            //state.Tin1.remove(u);
+            //state.Tout1.remove(u);
+    
+            for n1 in inNeighbors do state.Tin1.add(n1);
+            for n1 in outNeighbors do state.Tout1.add(n1);
+  
+            var inNeighborsg2 = dstRG2[segRG2[0]..<segRG2[1]];            
+            var outNeighborsg2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+
+            //state.Tin2.remove(v);
+            //state.Tout2.remove(v);
+
+            for n2 in inNeighborsg2 do state.Tin2.add(n2);
+            for n2 in outNeighborsg2 do state.Tout2.add(n2);
+        } // end of addToTinTout_firstStep
 
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
@@ -895,34 +786,6 @@ module SubgraphIsomorphism {
             return true;
         } // end of isFeasible
 
-
-        /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
-        proc isFeasibleFirstState(n1: int, state: State,getOutN2size: int,getInN2size: int  ) throws {
-            
-            var new1, new2 : int = 0;
-            
-            // Process the out-neighbors + in-neighbors of g2.
-            new2 = getOutN2size + getInN2size ;
-
-            // Process the out-neighbors + in-neighbors of g1. 
-            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-
-            new1 = getOutN1.size + getInN1.size;
-
-            //writeln("n1 = ", n1, " getOutN2size = ", getOutN2size, " getInN2size = ", getInN2size, "new1 = ", new1, " new2 = ", new2); 
-            if !(new2 <= new1) { 
-                //writeln("new2 <= new1  ", new2 <= new1);
-                return false;
-            }
-            if !nodesLabelCompatible(n1, 0) { 
-                //writeln("nodeLabel returned false");
-                return false;
-            }
-            //writeln("isFeasibleFirstState returned true");
-            return true;
-        } // end of isFeasibleFirstState
-        
         /** Return the unmapped vertices for g1 and g2. */
         proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, int) throws {
             var UnMapG1: [0..<state.n1] int = -1;
@@ -973,9 +836,7 @@ module SubgraphIsomorphism {
             
         /** Creates an initial, empty state.*/
         proc createInitialState(n1: int, n2: int): State throws {
-            var state = new State(n1,n2);
-            //state.init(n1,n2);
-            return state;
+            return new owned State(n1, n2);
         } // end of createInitialState
 
         /** Check that node labels are the same.*/
@@ -983,83 +844,102 @@ module SubgraphIsomorphism {
             var labelsG1n1 = convertedLabelsG1[n1];
             var labelsG2n2 = convertedLabelsG2[n2];
 
-            //writeln("labelsG1(", n1, " ) =", labelsG1n1);
-            //writeln("labelsG2(", n2, " ) =", labelsG2n2);
             if labelsG1n1 != labelsG2n2 then return false;
 
             return true;
         } // end of nodesLabelCompatible
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
-        proc vf2Helper(state: State, depth: int): list(int) throws {
-            var allMappings: list(int, parSafe=true);
+        proc vf2Helper(state: owned State, depth: int): list(int) throws {
+            var allmappings: list(int, parSafe=true);
+            
+            //var newState = state.clone();
+            // Base case: check if a complete mapping is found
+            if depth == g2.n_vertices {
+                //writeln("Isos found = ", state.core);
+                // Process the found solution
+                for elem in state.core do allmappings.pushBack(elem);
+                return allmappings;
+            }
 
-            var getOutN2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
-            var getInN2 = dstRG2[segRG2[0]..<segRG2[1]];
-
-            //writeln("getOutN2 = ", getOutN2);
-            //writeln("getInN2 = ", getInN2);
-            // Process each candidate pair and continue from there
-/*
-            forall (n1) in 0..<g1.n_vertices with(ref allMappings) {
-                var timerforall:stopwatch;
-                timerforall.start();
-                
-                var stack: list(State, parSafe=true);
-
-                if isFeasibleFirstState(n1, state, getOutN2.size,getInN2.size ){
-                    //var newFirstState = state.clone();
-                    //writeln("n1 = ", n1, "is feasible");
-                    var newFirstState =createInitialState(g1.n_vertices, g2.n_vertices);
-
-                    addToTinTout(n1, 0, newFirstState);
-                    //writeln("after addToTinTout state is ",newFirstState);
-                    stack.pushBack(newFirstState);
-                }
-*/
-            forall (onestate) in ffstates with(ref allMappings) {
-
-                var stack: list(State, parSafe=true);
-
-                stack.pushBack(onestate);
-                    //writeln("FORALL 1--- state is:", newFirstState);
-                //}
-                // Process the root states and its descendants
-                while stack.size > 0 {
-                    var currentState = stack.popBack();
-                    // Process the state
-                    if currentState.depth == g2.n_vertices {
-                        //writeln("currentState:", currentState);
-                        for elem in currentState.core { 
-                            allMappings.pushBack(elem);
-                        }    
-                        //writeln("currentState added to allMappings : ", currentState.core);
+           if depth == 0 {
+                var n2: int = 0;
+                forall n1 in 0..g1.n_vertices-1 with (ref state, ref allmappings) {
+                //for n1Arr in ffcandidates {
+                        var newState = state.clone();
                         
-                    } else {
-                        // Generate candidate pairs for the current state
-                        var newCandidatePairs = getCandidatePairsOpti(currentState);
-                        forall (newN1, newN2) in newCandidatePairs with(ref stack) {
-                            if isFeasible(newN1, newN2, currentState) {
-                                var newState = currentState.clone();
-                                addToTinTout(newN1, newN2, newState);
-                                stack.pushBack(newState);
-                            }
+                        
+                        //writeln("addToTinToutArray called");
+                        // Update state with the new mapping
+                        //var newState = addToTinToutArray(n1Arr);
+                        addToTinTout_firstStep(n1, n2, newState);
+
+                        //writeln("First_state_Tin1 size =", newState.Tin1.size);
+                        //writeln("First_state_Tout1 size =", newState.Tout1.size);
+                        //writeln("-------------------");
+
+                        //writeln("First_state_Tin2 size =", newState.Tin2.size);
+                        //writeln("First_state_Tout2 size =", newState.Tout2.size);
+
+                        // Recursive call with updated state and increased depth
+                //forall newState in ffstates with (ref allmappings) {
+
+                        var newMappings = vf2Helper(newState, 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
+                    
+                }
+            } 
+            else {
+                
+                // Generate candidate pairs (n1, n2) for mapping
+                var candidatePairs = getCandidatePairsOpti(state);
+
+                // Iterate in parallel over candidate pairs
+                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+                //for (n1, n2) in candidatePairs {
+                    if isFeasible(n1, n2, state) {
+                        var newState = state.clone();
+
+                        if depth == g2.n_vertices -1 {
+                            newState.core[n2] =n1;
                         }
+                        else{
+                            addToTinTout(n1, n2, newState);
+                        }
+                        // Update state with the new mapping
+
+                        //writeln("newState =", newState);
+
+                        //writeln("Tin1 size =", newState.Tin1.size);
+                        //writeln("Tout1 size =", newState.Tout1.size);
+
+                        //writeln("Tin2 size =", newState.Tin2.size);
+                        //writeln("Tout2 size =", newState.Tout2.size);
+                        //writeln("-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+
+                        // Recursive call with updated state and increased depth
+                        var newMappings: list(int, parSafe=true);
+                        newMappings = vf2Helper(newState, depth + 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
                     }
                 }
+            } 
+            
 
-            }
-            return allMappings;
+
+            return allmappings;
         }
+        
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
-            //writeln("---------vf2 started----------");
-
             var initial = createInitialState(g1.n_vertices, g2.n_vertices);
             var solutions = vf2Helper(initial, 0);
             var subIsoArrToReturn: [0..#solutions.size](int);
-
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
             return(subIsoArrToReturn);
         } // end of vf2
