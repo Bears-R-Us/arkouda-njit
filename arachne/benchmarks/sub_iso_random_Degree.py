@@ -14,6 +14,7 @@ def create_parser():
     )
     script_parser.add_argument("hostname", help="Hostname of arkouda server")
     script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
+    script_parser.add_argument("p", type=float, default=0.0005, help="Port of arkouda server")
     script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
     script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
     script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
@@ -58,7 +59,7 @@ if __name__ == "__main__":
 
     ### Generate an Erdős-Rényi random graph
     num_nodes = args.n  # Number of nodes
-    p = 0.0005  # Probability of edge creation
+    p = args.p  # Probability of edge creation
     print("Beginning of Random Directed graph with P= ", p)
 
     random_graph, src, dst = create_random_directed_graph(num_nodes, p)
