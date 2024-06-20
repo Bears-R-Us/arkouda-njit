@@ -22,7 +22,7 @@ def create_parser():
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
     return script_parser
 
-def create_scale_free_directed_graph(num_nodes, alpha=0.6, beta=0.2, gamma=0.2, delta_in=0.1, delta_out=0.5, seed=42):
+def create_scale_free_directed_graph(num_nodes,  alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2, delta_out=0.2 , seed=42):
     """
     Generates a scale-free directed graph with specified parameters and returns the src and dst arrays.
     
@@ -40,10 +40,26 @@ def create_scale_free_directed_graph(num_nodes, alpha=0.6, beta=0.2, gamma=0.2, 
     """
     scale_free_graph = nx.scale_free_graph(num_nodes, alpha=alpha, beta=beta, gamma=gamma, delta_in=delta_in, delta_out=delta_out, seed=seed)
 
+    # Convert to directed graph and remove self-loops and redundant edges
+    G = nx.DiGraph()
+    for u, v in scale_free_graph.edges():
+        if u != v:  # Remove self-loops
+            G.add_edge(u, v)
+    
     # Extract src and dst arrays
-    src = [edge[0] for edge in scale_free_graph.edges()]
-    dst = [edge[1] for edge in scale_free_graph.edges()]
+    src = [edge[0] for edge in G.edges()]
+    dst = [edge[1] for edge in G.edges()]
+    #print("src = ", src)
+    #print("dst = ", dst)
+    # Calculate in-degree and out-degree for each node
+    #in_degrees = [G.in_degree(n) for n in G.nodes()]
+    #out_degrees = [G.out_degree(n) for n in G.nodes()]
 
+    # Print in-degree and out-degree arrays
+    #print("In-Degrees:", in_degrees)
+    #print("Out-Degrees:", out_degrees)
+    #print("src = ", src)
+    #print("dst = ", dst)
     return src, dst
 
 if __name__ == "__main__":
@@ -113,7 +129,7 @@ if __name__ == "__main__":
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst", relationship_columns=["rels1"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
 
-    print("Running Arachne...")
+    print("1st Running Arachne...")
     ### Run subgraph isomorphism.
     start_time = time.time()
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
@@ -121,6 +137,25 @@ if __name__ == "__main__":
     print(f"Arachne execution time: {elapsed_time} seconds")
     print(f"Arachne found: {len(isos)/4} isos")
 
+
+    print("2nd Running Arachne...")
+    ### Run subgraph isomorphism.
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    
+    print("3rd Running Arachne...")
+    ### Run subgraph isomorphism.
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    
     #### Run NetworkX subgraph isomorphism for comparison.
     # Convert Arachne dataframes to NetworkX graph for subgraph isomorphism.
     G = nx.DiGraph()
