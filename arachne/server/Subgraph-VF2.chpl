@@ -830,18 +830,9 @@ module SubgraphIsomorphism {
                 //for (n1, n2) in candidatePairs {
                     if isFeasible(n1, n2, state) {
                         var newState = state.clone();
-                        //last step optimization
-                        
-                        if depth == g2.n_vertices -1 {
-                            newState.core[n2] =n1;
-                        }
-                        else{
-                            // Update state with the new mapping
-                            addToTinTout(n1, n2, newState);
-                        }
 
                         // Update state with the new mapping
-                        //addToTinTout(n1, n2, newState);
+                        addToTinTout(n1, n2, newState);
 
                         // Recursive call with updated state and increased depth
                         var newMappings: list(int, parSafe=true);

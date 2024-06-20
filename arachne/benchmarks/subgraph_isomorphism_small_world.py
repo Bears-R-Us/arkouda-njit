@@ -22,7 +22,7 @@ def create_parser():
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
     return script_parser
 
-def create_small_world_directed_graph(num_nodes, k=20, p=0.5, seed=42):
+def create_small_world_directed_graph(num_nodes, k=10, p=0.01, seed=42):
     """
     Generates a small-world directed graph using the Watts-Strogatz model and returns the src and dst arrays.
 
@@ -36,9 +36,10 @@ def create_small_world_directed_graph(num_nodes, k=20, p=0.5, seed=42):
     tuple: A tuple containing two lists (src, dst) representing the source and destination of each edge.
     """
     # Create a Watts-Strogatz small-world graph
-    small_world_graph = nx.watts_strogatz_graph(num_nodes, 20, 0.5, seed)
+    small_world_graph = nx.watts_strogatz_graph(num_nodes, k, p, seed)
+    #small_world_graph = nx.watts_strogatz_graph(num_nodes, 10, 0.01, seed)
     print("Create a Watts-Strogatz small-world graph with")
-    print("with k = 20, p = 0.5")
+    #print("with k = 10, p = 0.01")
     # Convert to a directed graph to simulate directed behavior
     small_world_directed = nx.DiGraph(small_world_graph)
 
@@ -46,6 +47,8 @@ def create_small_world_directed_graph(num_nodes, k=20, p=0.5, seed=42):
     src = [edge[0] for edge in small_world_directed.edges()]
     dst = [edge[1] for edge in small_world_directed.edges()]
 
+    #print("src = ", src)
+    #print("dst = ", dst)
     return src, dst
 
 if __name__ == "__main__":
@@ -104,26 +107,45 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
 
     ### Create the subgraph we are searching for.
-    src_subgraph = ak.array([1, 2, 0])
-    dst_subgraph = ak.array([2, 0, 1])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1"])
-    rels1_subgraph = ak.array(["rel1", "rel1", "rel1"])
+    src_subgraph = ak.array([0, 1, 2, 1])
+    dst_subgraph = ak.array([1, 2, 0, 3])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
+    rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
 
     # Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels1":rels1_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2]), "lbls1":labels1_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0,1,2,3]), "lbls1":labels1_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst", relationship_columns=["rels1"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
 
-    print("Running Arachne...")
+    print("1st Running Arachne...")
     ### Run subgraph isomorphism.
     start_time = time.time()
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/3} isos")
+    print(f"Arachne found: {len(isos)/4} isos")
 
+
+    print("2nd Running Arachne...")
+    ### Run subgraph isomorphism.
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    
+    print("3rd Running Arachne...")
+    ### Run subgraph isomorphism.
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    
     #### Run NetworkX subgraph isomorphism for comparison.
     # Convert Arachne dataframes to NetworkX graph for subgraph isomorphism.
     G = nx.DiGraph()
@@ -139,7 +161,8 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
-    
+
+
     motif = Motif("""
     A -> B 
     B -> D

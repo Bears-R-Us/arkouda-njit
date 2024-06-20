@@ -116,7 +116,25 @@ if __name__ == "__main__":
                                   relationship_columns=["rels1"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
 
-    print("Running Arachne...")
+    print("first Running Arachne...")
+    # Run subgraph isomorphism.
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+
+
+
+    print("2nd Running Arachne...")
+    # Run subgraph isomorphism.
+    start_time = time.time()
+    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    print("3rd Running Arachne...")
     # Run subgraph isomorphism.
     start_time = time.time()
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
