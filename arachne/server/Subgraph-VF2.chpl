@@ -655,9 +655,15 @@ module SubgraphIsomorphism {
 
             state.Tin1.remove(u);
             state.Tout1.remove(u);
-    
-            for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
-            for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
+            
+            state.Tin1 += inNeighbors;
+            state.Tout1 += outNeighbors;
+            
+            for i in state.D_core do if state.core[i] != -1 then state.Tin1.remove(state.core[i]);
+            for i in state.D_core do if state.core[i] != -1 then state.Tout1.remove(state.core[i]);
+
+            //for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
+            //for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
   
             var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
             var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
@@ -668,7 +674,6 @@ module SubgraphIsomorphism {
             for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
             for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
         } // end of addToTinTout
-
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
             var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
@@ -821,7 +826,29 @@ module SubgraphIsomorphism {
                 for elem in state.core do allmappings.pushBack(elem);
                 return allmappings;
             }
-             
+/*
+            if depth == 0 {
+                var n2: int = 0;
+
+                forall n1 in 0..g1.n_vertices-1 with (ref state, ref allmappings) {
+                //for n1 in 0..g1.n_vertices-1 {
+                    if isFeasible_light(n1, n2) {
+                    //if isFeasible(n1, n2, state) {
+
+                        //writeln("n1 = ", n1, " n2 = ", n2, "Passed isFeasible_light()");
+                        var newState = state.clone();
+                        addToTinTout(n1, n2, newState);
+
+                        //var newMappings = vf2Helper(newState, 1);
+                        var newMappings = vf2Helper(newState, 1);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
+                    }
+                }
+            } 
+            else{
+*/             
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
 
@@ -843,7 +870,7 @@ module SubgraphIsomorphism {
                     }
                 }
             
-
+        //}
 
             return allmappings;
         }

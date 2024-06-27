@@ -125,7 +125,6 @@ if __name__ == "__main__":
     print(f"Arachne found: {len(isos)/4} isos")
 
 
-
     print("2nd Running Arachne...")
     # Run subgraph isomorphism.
     start_time = time.time()

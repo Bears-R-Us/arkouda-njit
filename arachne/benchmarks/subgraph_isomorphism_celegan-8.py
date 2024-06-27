@@ -4,10 +4,40 @@ import pandas as pd
 import time as time
 import networkx as nx
 import random
-
+import argparse
 from dotmotif import Motif, GrandIsoExecutor 
 
-ak.connect("n115", 5555)
+def create_parser():
+    """Creates the command line parser for this script"""
+    script_parser = argparse.ArgumentParser(
+        description="Benchmark for subgraph isomorphism."
+    )
+    script_parser.add_argument("hostname", help="Hostname of arkouda server")
+    script_parser.add_argument("port", type=int, default=5555, help="Port of arkouda server")
+    #script_parser.add_argument("n", type=int, default=1000, help="Number of vertices for graph")
+    #script_parser.add_argument("m", type=int, default=2000, help="Number of edges for graph")
+    script_parser.add_argument("x", type=int, default=5, help="Number of labels for graph")
+    script_parser.add_argument("y", type=int, default=10, help="Number of relationships for graph")
+    #script_parser.add_argument("s", type=int, default=2, help="Random seed for reproducibility")
+    script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
+
+    return script_parser
+
+if __name__ == "__main__":
+    #### Command line parser and extraction.
+    parser = create_parser()
+    args = parser.parse_args()
+    #check
+    #### Connect to the Arkouda server.
+    ak.verbose = False
+    ak.connect(args.hostname, args.port)
+
+    ### Get Arkouda server configuration information.
+    config = ak.get_config()
+    num_locales = config["numLocales"]
+    num_pus = config["numPUs"]
+    print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
+
 
 microns = pd.read_csv("/scratch/users/oaa9/experimentation/data/connectome/MICrONS/soma_subgraph_synapses_spines_v185.csv")
 microns
@@ -17,7 +47,7 @@ microns.columns
 
 hemibrain_traced_roi_connections = pd.read_csv("/scratch/users/oaa9/experimentation/data/connectome/hemibrain/exported-traced-adjacencies-v1.2/traced-roi-connections.csv")
 hemibrain_traced_roi_connections
-
+print("C_elegan began")
 c_elegans = pd.read_csv("/scratch/users/oaa9/experimentation/data/connectome/c.elegans/celegans_actual.csv")
 print(c_elegans)
 c_elegans.columns = c_elegans.columns.str.replace(" ", "")
@@ -106,7 +136,7 @@ del ak_celegans_sorted['pre']  # Remove the original column
 ak_celegans_sorted['dst'] = ak_celegans_sorted['post']
 del ak_celegans_sorted['post']  # Remove the original column
 
-#ak_celegans_sorted.columns
+ak_celegans_sorted.columns
 
 
 #ak_microns_sorted.columns
@@ -129,7 +159,7 @@ del ak_hemibrain_traced_roi_connections_sorted['bodyId_post']  # Remove the orig
 ak_hemibrain_traced_roi_connections_sorted.columns
 
 #ak_celegans_sorted
-"""
+
 ar_celegans = ar.PropGraph()
 
 ar_celegans.load_edge_attributes(ak_celegans_sorted, source_column="src", destination_column="dst", relationship_columns=["type"])
@@ -141,9 +171,9 @@ lbls = ak.array(["1"]*unique_nodes.size)
 celegan_node_df = ak.DataFrame({"nodes": unique_nodes, "lbls":lbls})
 
 ar_celegans.load_node_attributes(celegan_node_df,node_column="nodes", label_columns=["lbls"])
+
+
 """
-
-
 ar_microns = ar.PropGraph()
 ar_microns.load_edge_attributes(ak_microns_sorted, source_column="src", destination_column="dst", relationship_columns=["id"])
 all_nodes = ak.concatenate([ak_microns_sorted['src'], ak_microns_sorted['dst']])
@@ -154,7 +184,7 @@ microns_node_df = ak.DataFrame({"nodes": unique_nodes, "lbls":lbls})
 
 ar_microns.load_node_attributes(microns_node_df,node_column="nodes", label_columns=["lbls"])
                                  
-
+"""
 print("Data loaded now we are loading the subraph....")
 subgraph = ar.PropGraph()
 motif = Motif("""
@@ -163,8 +193,8 @@ B -> A
 C -> B
 B -> C
 """)
-src_subgraph = ak.array([0, 1, 2, 0])
-dst_subgraph = ak.array([1, 0, 0, 2])
+src_subgraph = ak.array([ 1, 1])
+dst_subgraph = ak.array([ 0, 2])
 lbls_subgraph = ak.array(["1"]*3)
 rels_subgraph = ak.array([  "chemical"]*len(src_subgraph))
 edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels":rels_subgraph})
@@ -174,8 +204,8 @@ subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column
 subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls"])
 
 
-#prop_graph= ar_celegans
-prop_graph= ar_microns
+prop_graph= ar_celegans
+#prop_graph= ar_microns
 # Grab vertex and edge data from the Arachne dataframes.
 graph_node_information = prop_graph.get_node_attributes()
 graph_edge_information = prop_graph.get_edge_attributes()
@@ -221,8 +251,8 @@ nx.set_node_attributes(H, subgraph_node_attributes_final)
 
 print(" Arachne....")
 start = time.time()
-#isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
-isos = ar.subgraph_isomorphism(ar_microns, subgraph)
+isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
+#isos = ar.subgraph_isomorphism(ar_microns, subgraph)
 end = time.time()
 print(f"Finding {len(isos)/3} monomorphisms took {end-start} secs")
 print("************************************************************")

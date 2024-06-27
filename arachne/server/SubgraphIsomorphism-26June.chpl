@@ -102,10 +102,10 @@ module SubgraphIsomorphism {
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
+    
     proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
-
         // Extract the g1/G/g information from the SegGraph data structure.
         var srcNodesG1Dist = toSymEntry(g1.getComp("SRC"), int).a;
         var dstNodesG1Dist = toSymEntry(g1.getComp("DST"), int).a;
@@ -304,6 +304,22 @@ module SubgraphIsomorphism {
         //var ffcandidates = findOutEdges();
         //var ffcandidates = findOutWedgesLight();
         //var ffstates = CandidToState(ffcandidates);
+        /*
+        var state = createInitialState(g1.n_vertices, g2.n_vertices);
+        var candidatePairs = getCandidatePairsOpti(state);
+        var counter:int =0;
+        for (n1, n2) in candidatePairs{
+            if isFeasible(n1, n2, state) {
+                counter += 1;
+
+            }
+        }
+        writeln("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
+        writeln("candidatePairs.size = ", candidatePairs.size);
+        writeln("Feasible Candidate # = ", counter);
+        writeln("+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-");
+*/
+        //GreatestConstraintFirst();
         var IsoArrtemp = vf2(g1, g2);
         /*
         //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
@@ -359,6 +375,21 @@ module SubgraphIsomorphism {
             writeln("g1 num vertices is : ",g1.n_vertices );
             writeln("outWedges size is: ", outWedges.size);
             return(outWedges);
+        }
+                // Function to find edge (A -> B)
+        proc findTwoStep_faster() throws{
+
+            // List to store found wedges
+            var path: list((int, int), parSafe=true);
+
+            // Parallel processing for nodes
+            forall edgeIndex in 0..mG1-1 with(ref path) {
+                path.pushBack((srcNodesG1[edgeIndex],  dstNodesG1[edgeIndex]));
+                //writeln("edge from ",srcNodesG1[edgeIndex] ," to ",dstNodesG1[edgeIndex]);
+            }
+            //writeln("path size = ", path.size);
+
+            return (path);
         }
 /////////////////////////////End of State Injection///////////////////////////////////
         
@@ -646,27 +677,18 @@ module SubgraphIsomorphism {
         //GreatestConstraintFirst();
 ////////////////////////////////////////////////////////////////////////////////////
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
-        proc addToTinTout (u: int, v: int, state: State): int throws {
+        proc addToTinTout (u: int, v: int, state: State) {
             state.core[v] = u; // v from g2 to a u from g1
             state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
-if state.depth==g2.n_vertices{
-            return 1;
 
-} else {
             var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
             var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
 
             state.Tin1.remove(u);
             state.Tout1.remove(u);
-            
-            state.Tin1 += inNeighbors;
-            state.Tout1 += outNeighbors;
-            
-            for i in state.D_core do if state.core[i] != -1 then state.Tin1.remove(state.core[i]);
-            for i in state.D_core do if state.core[i] != -1 then state.Tout1.remove(state.core[i]);
-
-            //for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
-            //for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
+    
+            for n1 in inNeighbors do if !state.isMappedn1(n1) then state.Tin1.add(n1);
+            for n1 in outNeighbors do if !state.isMappedn1(n1) then state.Tout1.add(n1);
   
             var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
             var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
@@ -676,40 +698,31 @@ if state.depth==g2.n_vertices{
 
             for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
             for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
-            return 1;
-}
-
-
         } // end of addToTinTout
 
-        /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
-        proc isFeasible_light(n1: int, n2: int) throws {
-            var new1, new2: int = 0;
-            // Process the out-neighbors of g2.
-            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
-            new2 += getOutN2.size;
-            
-                
-            // Process the in-neighbors of g2. 
-            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
-            new2 += getInN2.size;
 
-            // Process the out-neighbors of g1. 
-            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-            new1 += getOutN1.size;
+        proc addToTinTout_firstStep (u: int, v: int, state: State) {
+            state.core[0] = u; // v from g2 to a u from g1
+            state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
 
-            // Process the in-neighbors of g2.
-            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-            new1 += getInN1.size;
+            var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
+            var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
 
-            if !(new2 <= new1 ) then return false;
+            //state.Tin1.remove(u);
+            //state.Tout1.remove(u);
+    
+            for n1 in inNeighbors do state.Tin1.add(n1);
+            for n1 in outNeighbors do state.Tout1.add(n1);
+  
+            var inNeighborsg2 = dstRG2[segRG2[0]..<segRG2[1]];            
+            var outNeighborsg2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
 
-            if !nodesLabelCompatible(n1, n2) then return false;
+            //state.Tin2.remove(v);
+            //state.Tout2.remove(v);
 
-            return true;
-        } // end of isFeasible_light
-
-
+            for n2 in inNeighborsg2 do state.Tin2.add(n2);
+            for n2 in outNeighborsg2 do state.Tout2.add(n2);
+        } // end of addToTinTout_firstStep
 
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
@@ -805,7 +818,24 @@ if state.depth==g2.n_vertices{
         /** Create candidates based on current state and retuns a set of pairs.*/
         proc getCandidatePairsOpti(state: State): set((int, int)) throws {
             var candidates = new set((int, int), parSafe = true);
-            if state.depth ==0 {
+
+            if state.Tout1.size > 0 && state.Tout2.size > 0 {
+                var minTout2: int;
+                for elem in state.Tout2{
+                    minTout2 = elem;
+                    break;
+                }    
+                for n1 in state.Tout1 do candidates.add((n1, minTout2));          
+            } else {
+                if state.Tin1.size > 0 && state.Tin2.size > 0 {
+                    var minTin2: int;
+                    for elem in state.Tin2{
+                        minTin2 = elem;
+                        break;
+                    }
+                    for n1 in state.Tin1 do candidates.add((n1, minTin2));
+
+                } else { 
                     var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
                     //var flagunmappedG2 = false;
                     //var minUnmapped2 : int;
@@ -815,60 +845,11 @@ if state.depth==g2.n_vertices{
                             if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
                         } 
                     }
-  
+                } 
+            }   
             return candidates;
-            }
-            else {
-                if state.Tout1.size > 0 && state.Tout2.size > 0 {
-                    var minTout2: int;
-                    for elem in state.Tout2{
-                        minTout2 = elem;
-                        break;
-                    }    
-                    for n1 in state.Tout1 do candidates.add((n1, minTout2));          
-                } else {
-                    if state.Tin1.size > 0 && state.Tin2.size > 0 {
-                        var minTin2: int;
-                        for elem in state.Tin2{
-                            minTin2 = elem;
-                            break;
-                        }
-                        for n1 in state.Tin1 do candidates.add((n1, minTin2));
-
-                    } else { 
-                        var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                        //var flagunmappedG2 = false;
-                        //var minUnmapped2 : int;
-
-                        if unmappedG2 != -1 {
-                            for i in 0..<state.n1 {
-                                if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
-                            } 
-                        }
-                    } 
-                }   
-                return candidates;
-            }
-
         } // end of getCandidatePairsOpti
             
-                    /** Create candidates based on current state and retuns a set of pairs.*/
-        proc getCandidatePairsOpti_light(state: State): set((int, int)) throws {
-            var candidates = new set((int, int), parSafe = true);
-
-                    var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                    //var flagunmappedG2 = false;
-                    //var minUnmapped2 : int;
-
-                    if unmappedG2 != -1 {
-                        for i in 0..<state.n1 {
-                            if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
-                        } 
-                    }
-  
-            return candidates;
-        } // end of getCandidatePairsOpti_light
-           
         /** Creates an initial, empty state.*/
         proc createInitialState(n1: int, n2: int): State throws {
             return new owned State(n1, n2);
@@ -887,7 +868,8 @@ if state.depth==g2.n_vertices{
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: owned State, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
-
+            
+            //var newState = state.clone();
             // Base case: check if a complete mapping is found
             if depth == g2.n_vertices {
                 //writeln("Isos found = ", state.core);
@@ -895,33 +877,30 @@ if state.depth==g2.n_vertices{
                 for elem in state.core do allmappings.pushBack(elem);
                 return allmappings;
             }
-/*
-            if depth == 0 {
-                //var n2: int = 0;
 
-                // Generate candidate pairs (n1, n2) for mapping
-                var candidatePairs = getCandidatePairsOpti_light(state);
-
-                // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-                //for (n1, n2) in candidatePairs {
-                    if isFeasible_light(n1, n2) {
-                    //if isFeasible(n1, n2, state) {
-
-                        //writeln("n1 = ", n1, " n2 = ", n2, "Passed isFeasible_light()");
+            //first step optimization
+           if depth == 0 {
+                var n2: int = 0;
+                forall edgeIndex in 0..mG1-1 with (ref state, ref allmappings) {
+                //for n1 in 0..g1.n_vertices-1  {
+                //forall n1 in 0..g1.n_vertices-1 with (ref state, ref allmappings) {
+                //for n1Arr in ffcandidates {
                         var newState = state.clone();
-                        addToTinTout(n1, n2, newState);
+                        if isFeasible(srcNodesG1[edgeIndex], 0, newState) { 
+                            addToTinTout(srcNodesG1[edgeIndex], 0, newState);
+                            
+                            if isFeasible(dstNodesG1[edgeIndex], 1, newState){
+                                addToTinTout(dstNodesG1[edgeIndex], 1, newState);
+                                var newMappings = vf2Helper(newState, 2);
+                                for mapping in newMappings do allmappings.pushBack(mapping);
 
-                        //var newMappings = vf2Helper(newState, 1);
-                        var newMappings = vf2Helper(newState, 1);
-                        
-                        // Use a loop to add elements from newMappings to allmappings
-                        for mapping in newMappings do allmappings.pushBack(mapping);
-                    }
+                            }
+                        }
                 }
             } 
-            else{
- */            
+            else {
+
+                //original VF2
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
 
@@ -930,9 +909,15 @@ if state.depth==g2.n_vertices{
                 //for (n1, n2) in candidatePairs {
                     if isFeasible(n1, n2, state) {
                         var newState = state.clone();
-
-                        // Update state with the new mapping
-                        addToTinTout(n1, n2, newState);
+                        
+                        //last step optimization
+                        if depth == g2.n_vertices -1 {
+                            newState.core[n2] =n1;
+                        }
+                        else{
+                            // Update state with the new mapping
+                            addToTinTout(n1, n2, newState);
+                        }
 
                         // Recursive call with updated state and increased depth
                         var newMappings: list(int, parSafe=true);
@@ -942,8 +927,9 @@ if state.depth==g2.n_vertices{
                         for mapping in newMappings do allmappings.pushBack(mapping);
                     }
                 }
+            } 
             
-       // }
+
 
             return allmappings;
         }

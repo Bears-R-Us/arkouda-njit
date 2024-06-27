@@ -646,13 +646,10 @@ module SubgraphIsomorphism {
         //GreatestConstraintFirst();
 ////////////////////////////////////////////////////////////////////////////////////
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
-        proc addToTinTout (u: int, v: int, state: State): int throws {
+        proc addToTinTout (u: int, v: int, state: State) {
             state.core[v] = u; // v from g2 to a u from g1
             state.depth += 1; // a pair of vertices were mapped therefore increment depth by 1
-if state.depth==g2.n_vertices{
-            return 1;
 
-} else {
             var inNeighbors = dstRG1[segRG1[u]..<segRG1[u+1]];
             var outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
 
@@ -676,40 +673,7 @@ if state.depth==g2.n_vertices{
 
             for n2 in inNeighborsg2 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
             for n2 in outNeighborsg2 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
-            return 1;
-}
-
-
         } // end of addToTinTout
-
-        /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
-        proc isFeasible_light(n1: int, n2: int) throws {
-            var new1, new2: int = 0;
-            // Process the out-neighbors of g2.
-            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
-            new2 += getOutN2.size;
-            
-                
-            // Process the in-neighbors of g2. 
-            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
-            new2 += getInN2.size;
-
-            // Process the out-neighbors of g1. 
-            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-            new1 += getOutN1.size;
-
-            // Process the in-neighbors of g2.
-            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-            new1 += getInN1.size;
-
-            if !(new2 <= new1 ) then return false;
-
-            if !nodesLabelCompatible(n1, n2) then return false;
-
-            return true;
-        } // end of isFeasible_light
-
-
 
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
@@ -789,6 +753,33 @@ if state.depth==g2.n_vertices{
             return true;
         } // end of isFeasible
 
+        /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
+        proc isFeasible_light(n1: int, n2: int) throws {
+            var new1, new2: int = 0;
+            // Process the out-neighbors of g2.
+            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
+            new2 += getOutN2.size;
+            
+                
+            // Process the in-neighbors of g2. 
+            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
+            new2 += getInN2.size;
+
+            // Process the out-neighbors of g1. 
+            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+            new1 += getOutN1.size;
+
+            // Process the in-neighbors of g2.
+            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+            new1 += getInN1.size;
+
+            if !(new2 <= new1 ) then return false;
+
+            if !nodesLabelCompatible(n1, n2) then return false;
+
+            return true;
+        } // end of isFeasible_light
+
         /** Return the unmapped vertices for g1 and g2. */
         proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, int) throws {
             var UnMapG1: [0..<state.n1] int = -1;
@@ -805,7 +796,24 @@ if state.depth==g2.n_vertices{
         /** Create candidates based on current state and retuns a set of pairs.*/
         proc getCandidatePairsOpti(state: State): set((int, int)) throws {
             var candidates = new set((int, int), parSafe = true);
-            if state.depth ==0 {
+
+            if state.Tout1.size > 0 && state.Tout2.size > 0 {
+                var minTout2: int;
+                for elem in state.Tout2{
+                    minTout2 = elem;
+                    break;
+                }    
+                for n1 in state.Tout1 do candidates.add((n1, minTout2));          
+            } else {
+                if state.Tin1.size > 0 && state.Tin2.size > 0 {
+                    var minTin2: int;
+                    for elem in state.Tin2{
+                        minTin2 = elem;
+                        break;
+                    }
+                    for n1 in state.Tin1 do candidates.add((n1, minTin2));
+
+                } else { 
                     var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
                     //var flagunmappedG2 = false;
                     //var minUnmapped2 : int;
@@ -815,60 +823,11 @@ if state.depth==g2.n_vertices{
                             if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
                         } 
                     }
-  
+                } 
+            }   
             return candidates;
-            }
-            else {
-                if state.Tout1.size > 0 && state.Tout2.size > 0 {
-                    var minTout2: int;
-                    for elem in state.Tout2{
-                        minTout2 = elem;
-                        break;
-                    }    
-                    for n1 in state.Tout1 do candidates.add((n1, minTout2));          
-                } else {
-                    if state.Tin1.size > 0 && state.Tin2.size > 0 {
-                        var minTin2: int;
-                        for elem in state.Tin2{
-                            minTin2 = elem;
-                            break;
-                        }
-                        for n1 in state.Tin1 do candidates.add((n1, minTin2));
-
-                    } else { 
-                        var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                        //var flagunmappedG2 = false;
-                        //var minUnmapped2 : int;
-
-                        if unmappedG2 != -1 {
-                            for i in 0..<state.n1 {
-                                if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
-                            } 
-                        }
-                    } 
-                }   
-                return candidates;
-            }
-
         } // end of getCandidatePairsOpti
             
-                    /** Create candidates based on current state and retuns a set of pairs.*/
-        proc getCandidatePairsOpti_light(state: State): set((int, int)) throws {
-            var candidates = new set((int, int), parSafe = true);
-
-                    var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-                    //var flagunmappedG2 = false;
-                    //var minUnmapped2 : int;
-
-                    if unmappedG2 != -1 {
-                        for i in 0..<state.n1 {
-                            if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
-                        } 
-                    }
-  
-            return candidates;
-        } // end of getCandidatePairsOpti_light
-           
         /** Creates an initial, empty state.*/
         proc createInitialState(n1: int, n2: int): State throws {
             return new owned State(n1, n2);
@@ -885,6 +844,8 @@ if state.depth==g2.n_vertices{
         } // end of nodesLabelCompatible
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
+       var count:atomic int;
+
         proc vf2Helper(state: owned State, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
 
@@ -895,55 +856,40 @@ if state.depth==g2.n_vertices{
                 for elem in state.core do allmappings.pushBack(elem);
                 return allmappings;
             }
-/*
-            if depth == 0 {
-                //var n2: int = 0;
-
-                // Generate candidate pairs (n1, n2) for mapping
-                var candidatePairs = getCandidatePairsOpti_light(state);
-
-                // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-                //for (n1, n2) in candidatePairs {
-                    if isFeasible_light(n1, n2) {
-                    //if isFeasible(n1, n2, state) {
-
-                        //writeln("n1 = ", n1, " n2 = ", n2, "Passed isFeasible_light()");
-                        var newState = state.clone();
-                        addToTinTout(n1, n2, newState);
-
-                        //var newMappings = vf2Helper(newState, 1);
-                        var newMappings = vf2Helper(newState, 1);
-                        
-                        // Use a loop to add elements from newMappings to allmappings
-                        for mapping in newMappings do allmappings.pushBack(mapping);
-                    }
-                }
-            } 
-            else{
- */            
+            //here we only keep the depth!=0 branch
+            {
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
 
                 // Iterate in parallel over candidate pairs
                 forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-                //for (n1, n2) in candidatePairs {
+
                     if isFeasible(n1, n2, state) {
                         var newState = state.clone();
+                        //last step optimization
+                        
+                        if depth == g2.n_vertices -1 {
+                            newState.core[n2] =n1;
+                        }
+                        else{
+                            // Update state with the new mapping
+                            addToTinTout(n1, n2, newState);
+                        }
 
-                        // Update state with the new mapping
-                        addToTinTout(n1, n2, newState);
 
                         // Recursive call with updated state and increased depth
                         var newMappings: list(int, parSafe=true);
+                        //writeln(" Vf2Helper -- Rec+1 -- called for ", n1, "and ", n2, " while newState.core = ", newState.core);
+
                         newMappings = vf2Helper(newState, depth + 1);
+                        //count.add(1);
                         
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings do allmappings.pushBack(mapping);
                     }
                 }
             
-       // }
+            }
 
             return allmappings;
         }
@@ -951,10 +897,26 @@ if state.depth==g2.n_vertices{
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
-            var initial = createInitialState(g1.n_vertices, g2.n_vertices);
-            var solutions = vf2Helper(initial, 0);
+            var state = createInitialState(g1.n_vertices, g2.n_vertices);
+            var solutions: list(int, parSafe=true);
+
+                var n2: int = 0;
+
+                forall n1 in 0..g1.n_vertices-1 with (ref state, ref solutions) {
+ 
+                    if isFeasible_light(n1, n2) {
+                        var newState = state.clone();
+                        addToTinTout(n1, n2, newState);
+                        //writeln(" Vf2Helper -- Rec+0 -- called for ", n1, "and ", n2, " while newState.core = ", newState.core);
+                        var newMappings = vf2Helper(newState, 1);
+                        //count.add(1);
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do solutions.pushBack(mapping);
+                    }
+                }
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+            //writeln ("Total number of calls on vf2Helper is ", count.read());
             return(subIsoArrToReturn);
         } // end of vf2
         

@@ -22,7 +22,8 @@ def create_parser():
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
     return script_parser
 
-def create_scale_free_directed_graph(num_nodes,  alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2, delta_out=0.2 , seed=42):
+def create_scale_free_directed_graph(num_nodes,  alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2, delta_out=0.2  , seed=42):
+#def create_scale_free_directed_graph(num_nodes,  alpha=0.1, beta=0.7, gamma=0.2, delta_in=0.5, delta_out=0.1 , seed=42):
     """
     Generates a scale-free directed graph with specified parameters and returns the src and dst arrays.
     
@@ -164,6 +165,7 @@ if __name__ == "__main__":
     H.add_edges_from([(int(src), int(dst)) for src, dst in zip(src_subgraph.to_ndarray(), dst_subgraph.to_ndarray())])
 
     print("Running NetworkX... ")
+    
     # Find subgraph isomorphisms of H in G.
     start_time = time.time()
     GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)

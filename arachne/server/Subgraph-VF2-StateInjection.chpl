@@ -886,9 +886,11 @@ module SubgraphIsomorphism {
                 //forall n1 in 0..g1.n_vertices-1 with (ref state, ref allmappings) {
                 //for n1Arr in ffcandidates {
                         var newState = state.clone();
+                        if isFeasible(srcNodesG1[edgeIndex], 0, newState) &&  
+                        isFeasible(srcNodesG1[edgeIndex], 1, newState) { 
                             addToTinTout(srcNodesG1[edgeIndex], 0, newState);
                             addToTinTout(dstNodesG1[edgeIndex], 1, newState);
-
+                        
                         
                         //writeln("addToTinToutArray called");
                         // Update state with the new mapping
@@ -908,7 +910,7 @@ module SubgraphIsomorphism {
 
                         //var newMappings = vf2Helper(newState, 1);
                         var newMappings = vf2Helper(newState, 2);
-                        
+                        }
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings do allmappings.pushBack(mapping);
                     
