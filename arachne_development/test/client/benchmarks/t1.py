@@ -52,9 +52,9 @@ def time_ak_cc():
             [3387388,403394,2,0,HomeDir+"Adata/SNAP/amazon0601.mtx"],\
             [14855842,456626,2,0,HomeDir+"Adata/SNAP/higgs-twitter.mtx"],\
             [19753078,1634989,2,0,HomeDir+"Adata/SNAP/wikipedia-20051105.mtx"],\
-            [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             [68993773,4847571,2,0,HomeDir+"Adata/SNAP/soc-LiveJournal1.mtx"],\
             [117185083,3072441,2,0,HomeDir+"Adata/SNAP/com-Orkut.mtx"],\
+            [28854312,23947347,2,0,HomeDir+"Adata/road_usa/road_usa.mtx"],\
             ]
 
     MtxDelaunay=[ [3056,1024,2,0,HomeDir+"Adata/Delaunay/delaunay_n10/delaunay_n10.mtx"],\

@@ -915,7 +915,7 @@ module DiameterMsg {
                                     neiR, start_iR,srcR, dstR, i);
                             writeln("Graph BFS height=",mylevel);
                             lbound=max(lbound,mylevel);
-                            ubound=min(ubound, xx, 2*lbound);
+                            ubound=min(ubound, xx*2);
                             writeln("lbound=",lbound," ubound=",ubound);
                             diameter=lbound;
                             break;
