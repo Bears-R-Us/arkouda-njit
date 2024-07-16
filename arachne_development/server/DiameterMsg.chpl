@@ -94,7 +94,7 @@ module DiameterMsg {
           var cur_level=0;
           var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
-          SetCurF.add(root);
+          SetCurF.add(root,here.id);
           var numCurF=1:int;
           var topdown=0:int;
           var bottomup=0:int;
@@ -137,7 +137,7 @@ module DiameterMsg {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
                                                update=true;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               } 
@@ -151,7 +151,93 @@ module DiameterMsg {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
                                                update=true;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
+                                         }
+                                  }
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+
+
+          return cur_level;
+      }//end of bfs
+
+
+
+      proc tree_bfs (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int, father:[?D15] int):int throws{
+          var cur_level=0;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root,here.id);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          depth[root]=0;
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update ){
+                                         if (depth[j]==-1 && (father[i]==j ||father[j]==i)) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j,here.id);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update)  {
+                                         if (depth[j]==-1 && (father[i]==j ||father[j]==i)) {
+                                               depth[j]=cur_level+1;
+                                               update=true;
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               }
@@ -176,16 +262,13 @@ module DiameterMsg {
 
 
 
-
-
-
       proc bfs_maxv (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int):(int,int) throws{
           var cur_level=0;
           var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
-          SetCurF.add(root);
+          SetCurF.add(root,here.id);
           var numCurF=1:int;
           var topdown=0:int;
           var bottomup=0:int;
@@ -229,7 +312,7 @@ module DiameterMsg {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
                                                update=true;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                                maxv=j;
                                          }
                                   }
@@ -244,7 +327,7 @@ module DiameterMsg {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
                                                update=true;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                                maxv=j;
                                          }
                                   }
@@ -274,7 +357,7 @@ module DiameterMsg {
           var diameter=gdiameter;
           var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
-          SetCurF.add(root);
+          SetCurF.add(root,here.id);
           var numCurF=1:int;
           var topdown=0:int;
           var bottomup=0:int;
@@ -344,7 +427,7 @@ module DiameterMsg {
                                                leaf[i]=false;
                                                update=true;
                                                branchnum+=1;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               } 
@@ -361,7 +444,7 @@ module DiameterMsg {
                                                father[j]=i;
                                                update=true;
                                                branchnum+=1;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               }
@@ -563,7 +646,7 @@ module DiameterMsg {
           var diameter=gdiameter;
           var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
-          SetCurF.add(root);
+          SetCurF.add(root,here.id);
           var numCurF=1:int;
           var topdown=0:int;
           var bottomup=0:int;
@@ -633,7 +716,7 @@ module DiameterMsg {
                                                leaf[i]=false;
                                                update=true;
                                                branchnum+=1;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               } 
@@ -650,7 +733,7 @@ module DiameterMsg {
                                                father[j]=i;
                                                update=true;
                                                branchnum+=1;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               }
@@ -690,6 +773,178 @@ module DiameterMsg {
       }//end of component diameter
 
 
+
+
+
+
+      proc c_lu (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,plbound:int,pubound:int,iternum:int):(int,int) throws{
+          var i:int=0;
+          var maxv:int;
+          var tmpr=root;
+          var lbound=plbound;
+          var ubound=pubound;
+
+          var cur_level=0;
+          var diameter=lbound;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          SetCurF.add(root,here.id);
+          var numCurF=1:int;
+          var topdown=0:int;
+          var bottomup=0:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          var father=depth;
+          father[root]=-1;
+          depth[root]=0;
+          var leaf:[D1] bool;
+          leaf=true;
+          var branch:[D1] bool;
+          branch=false;
+          var visited=branch;
+          var maxdist: atomic int;
+          maxdist.write(0);
+          var maxvertex: int=-1;
+          var maxvx=-1:int;
+          var maxvy=-1:int;
+          record Mergedist {
+                var vx: atomic int;
+                var vxvertex:int;
+                var vy:atomic int;
+                var vyvertex:int;
+          }
+          var length:[D1] Mergedist;
+          forall i in D1 {
+                length[i].vx.write(0);
+                length[i].vy.write(0);
+                length[i].vxvertex=-1;
+                length[i].vyvertex=-1;
+          }
+
+          while (i<iternum){
+
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                   on loc {
+                       ref srcf=src;
+                       ref df=dst;
+                       ref nf=nei;
+                       ref sf=start_i;
+
+                       ref srcfR=srcR;
+                       ref dfR=dstR;
+                       ref nfR=neiR;
+                       ref sfR=start_iR;
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//top down
+                           topdown+=1;
+                           forall i in SetCurF with (ref SetNextF, ref update) {
+                              var branchnum=0:int;
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nf[i];
+                                  var    edgeId=sf[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=df[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update, ref branchnum){
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               father[j]=i;
+                                               leaf[i]=false;
+                                               update=true;
+                                               branchnum+=1;
+                                               SetNextF.add(j,here.id);
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=nfR[i];
+                                  var    edgeId=sfR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dfR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref branchnum)  {
+                                         if (depth[j]==-1) {
+                                               depth[j]=cur_level+1;
+                                               leaf[i]=false;
+                                               father[j]=i;
+                                               update=true;
+                                               branchnum+=1;
+                                               SetNextF.add(j,here.id);
+                                         }
+                                  }
+                              }
+                              if branchnum>1 {
+                                  branch[i]=true;
+                              }
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+                //writeln("BFS tree level=",cur_level);
+          }//end while  
+          //writeln("After BFS");
+          lbound=max(lbound,cur_level);
+          writeln("The height from root ", root, " is ", cur_level);
+
+          var mylevel:int;
+          var mymaxv:int;
+          for i in D1  {
+              if depth[i] ==cur_level {
+                            var xx=tree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, i,father);
+                            writeln("Tree BFS height=",xx);
+                            (mylevel,mymaxv)= bfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, i);
+                            writeln("Graph BFS height=",mylevel);
+                            lbound=max(lbound,mylevel);
+                            ubound=min(ubound, xx, 2*lbound);
+                            writeln("lbound=",lbound," ubound=",ubound);
+                            diameter=lbound;
+                            break;
+              }//end if
+          }
+
+
+
+          if lbound==ubound {
+               break;
+          }
+
+          i=i+1;
+          SetCurF.add(mymaxv,here.id);
+          numCurF=1;
+          update=false;
+          depth=-1;
+          father=depth;
+          father[mymaxv]=-1;
+          depth[mymaxv]=0;
+          cur_level=0;
+          }
+          return (diameter,ubound);
+          //return max(cur_level,xx);
+      }//end of component diameter
+
+
+
+
       proc c_supernode (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,gdiameter:int,numfarv:int):int throws{
@@ -701,7 +956,7 @@ module DiameterMsg {
           //{
           var depth:[D1] int;
           //}
-          SetCurF.add(root);
+          SetCurF.add(root,here.id);
           var numCurF=1:int;
           var update=false:bool;
           depth=-1;
@@ -740,7 +995,7 @@ module DiameterMsg {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
                                                update=true;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               } 
@@ -754,7 +1009,7 @@ module DiameterMsg {
                                          if (depth[j]==-1) {
                                                depth[j]=cur_level+1;
                                                update=true;
-                                               SetNextF.add(j);
+                                               SetNextF.add(j,here.id);
                                          }
                                   }
                               }
@@ -1872,6 +2127,8 @@ module DiameterMsg {
       // handle all components
       var largestD=0:int;
       var diameter=0:int ;
+      var Ubound=0:int;
+      var ubound:int;
       for i in CompSet  {
           writeln("Handle component ",i);
           var numV=f.count(i);
@@ -1885,8 +2142,13 @@ module DiameterMsg {
               writeln("*************************************");
               //diameter=c_diameter(nei, start_i,src, dst,
               //          neiR, start_iR,srcR, dstR, i,largestD);
-              diameter=c_supernode(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, i,largestD,10);
+              //diameter=c_supernode(nei, start_i,src, dst,
+              //          neiR, start_iR,srcR, dstR, i,largestD,10);
+              (diameter,ubound)=c_lu(nei, start_i,src, dst,
+                        neiR, start_iR,srcR, dstR, i,largestD,99999,10);
+              if largestD<diameter {
+                 Ubound=ubound;
+              }
               writeln("Pass 1  The diameter of component ",i,"=",diameter );
               largestD=max(largestD,diameter);
           } else {
@@ -2001,6 +2263,10 @@ module DiameterMsg {
 
       writeln("Size of the Components=",CompSet.size);
       writeln("The largest diameter =",largestD);
+      if Ubound<largestD {
+          Ubound=largestD;
+      }
+      writeln("The Ubound =",Ubound);
       /*
       largestD=0;
       diameter=0;

@@ -14,9 +14,10 @@ module Utils {
     /* A fast variant of localSubdomain() assumes 'blockArray' is a block-distributed array
        if it breaks, replace it with:
             inline proc fastLocalSubdomain(arr) do return arr.localSubdomain();*/
-    proc fastLocalSubdomain(const ref blockArray) const ref {
+    proc fastLocalSubdomain(const ref blockArray)  {
         assert(blockArray.targetLocales()[here.id] == here);
-        return blockArray._value.dom.locDoms[here.id].myBlock;
+        return blockArray.localSubdomain();
+        //return blockArray._value.dom.locDoms[here.id].myBlock;
     }
 
     /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
