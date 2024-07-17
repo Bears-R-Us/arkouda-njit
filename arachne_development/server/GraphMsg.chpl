@@ -3000,7 +3000,8 @@ module GraphMsg {
           }
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
-      var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      //var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      var graph = new shared SegGraph(Nv,Ne, DirectedFlag);
       graph.withSRC(createSymEntry(src):GenSymEntry)
            .withDST(createSymEntry(dst):GenSymEntry)
            .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
@@ -3426,7 +3427,8 @@ module GraphMsg {
 
 
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
-      var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      //var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      var graph = new shared SegGraph(Nv,Ne, DirectedFlag);
 
 
       proc readLinebyLine() throws {
@@ -4098,7 +4100,8 @@ module GraphMsg {
           }
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
-      var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      //var graph = new shared SegGraph(Ne, Nv, DirectedFlag);
+      var graph = new shared SegGraph(Nv,Ne, DirectedFlag);
       graph.withSRC(createSymEntry(src):GenSymEntry)
            .withDST(createSymEntry(dst):GenSymEntry)
            .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
@@ -4588,7 +4591,8 @@ module GraphMsg {
               OriVertexAry[i]=src[start_i[i]];
       }
       // Make a composable SegGraph object that we can store in a GraphSymEntry later
-      var graph = new shared SegGraph(Ne, Nv,DirectedFlag);
+      //var graph = new shared SegGraph(Ne, Nv,DirectedFlag);
+      var graph = new shared SegGraph(Nv,Ne,DirectedFlag);
       graph.withSRC(createSymEntry(src):GenSymEntry)
                .withDST(createSymEntry(dst):GenSymEntry)
                .withSTART_IDX(createSymEntry(start_i):GenSymEntry)
