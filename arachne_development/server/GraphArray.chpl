@@ -3,7 +3,7 @@ module GraphArray {
     // Chapel modules.
     use Map;
     use Reflection;
-    use Utils;
+    //use Utils;
 
     // Arkouda modules.
     use Logging;

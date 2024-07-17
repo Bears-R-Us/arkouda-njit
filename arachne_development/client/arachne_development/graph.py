@@ -350,11 +350,13 @@ class Graph:
         # 2. Extract the neighbor count by doing a count on the number of times each vertex appears
         #    in src.
         gb_src = ak.GroupBy(src)
+        #gb_src_indices, gb_src_neighbors = gb_src.count(src)
         gb_src_indices, gb_src_neighbors = gb_src.count()
         nei[gb_src_indices] = gb_src_neighbors
 
         # 2a. Same as 2 but for srcR.
         gb_srcR = ak.GroupBy(srcR)
+        #gb_srcR_indices, gb_srcR_neighbors = gb_srcR.count(srcR)
         gb_srcR_indices, gb_srcR_neighbors = gb_srcR.count()
         neiR[gb_srcR_indices] = gb_srcR_neighbors
 
