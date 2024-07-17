@@ -39,30 +39,35 @@ if __name__ == "__main__":
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
 
-
+    # Load the CSV file into a pandas DataFrame
     hemibrain_traced_roi_connections = pd.read_csv("/scratch/users/oaa9/experimentation/data/connectome/hemibrain/exported-traced-adjacencies-v1.2/traced-roi-connections.csv")
-    hemibrain_traced_roi_connections
     hemibrain_traced_roi_connections['type'] = 'T1'
+
+
     hemibrain_traced_roi_connections
     
-    neuron_dfs_in_pandas = [hemibrain_traced_roi_connections]
-    neuron_dfs_in_arkouda = [ak.DataFrame(pd_df) for pd_df in neuron_dfs_in_pandas]
-    
+    # Convert the pandas DataFrame to an Arkouda DataFrame
+    neuron_dfs_in_arkouda = [ak.DataFrame(hemibrain_traced_roi_connections)]
     ak_hemibrain_traced_roi_connections = neuron_dfs_in_arkouda[0]
 
+    # Group by "bodyId_pre" and "bodyId_post"
     ak_hemibrain_traced_roi_connections_gb = ak_hemibrain_traced_roi_connections.groupby(["bodyId_pre", "bodyId_post"])
     ak_hemibrain_traced_roi_connections_sorted = ak_hemibrain_traced_roi_connections[ak_hemibrain_traced_roi_connections_gb.permutation[ak_hemibrain_traced_roi_connections_gb.segments]]
-    #ak_hemibrain_traced_roi_connections_sorted
 
-  
-
+    # Rename columns
     ak_hemibrain_traced_roi_connections_sorted['src'] = ak_hemibrain_traced_roi_connections_sorted['bodyId_pre']
     del ak_hemibrain_traced_roi_connections_sorted['bodyId_pre']  # Remove the original column
-
+    
     ak_hemibrain_traced_roi_connections_sorted['dst'] = ak_hemibrain_traced_roi_connections_sorted['bodyId_post']
     del ak_hemibrain_traced_roi_connections_sorted['bodyId_post']  # Remove the original column
+    
+    print("Number of connections:", len(ak_hemibrain_traced_roi_connections_sorted['src']))
+
+    # Remove self-loops
+    ak_hemibrain_traced_roi_connections_no_self_loops = ak_hemibrain_traced_roi_connections_sorted[ak_hemibrain_traced_roi_connections_sorted['src'] != ak_hemibrain_traced_roi_connections_sorted['dst']]
 
     print(ak_hemibrain_traced_roi_connections_sorted.columns)
+    print("Number of connections:", len(ak_hemibrain_traced_roi_connections_no_self_loops))
 
     #ak_celegans_sorted
 
@@ -85,13 +90,13 @@ if __name__ == "__main__":
     B -> A 
     B -> C
     """)
-    src_subgraph = ak.array([1, 0, 1, 2, 0])
-    dst_subgraph = ak.array([0, 1, 2, 0, 2])
-    lbls_subgraph = ak.array(["1"]*3)
+    src_subgraph = ak.array([1, 0,0,2])
+    dst_subgraph = ak.array([0, 2,3,1])
+    lbls_subgraph = ak.array(["1"]*4)
     rels_subgraph = ak.array(["T1"]*len(src_subgraph))
 
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph, "rels":rels_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.arange(0,3), "lbls":lbls_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.arange(0,4), "lbls":lbls_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls"])
@@ -147,76 +152,10 @@ if __name__ == "__main__":
     #isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     end = time.time()
-    print(f"Finding {len(isos)/3} monomorphisms took {end-start} secs")
-    print("************************************************************")
-    
-    print(" Arachne....")
-    start = time.time()
-    #isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
-    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
-    end = time.time()
     print(f"Finding {len(isos)/4} monomorphisms took {end-start} secs")
-    
-    
-    print(" Arachne....")
-    start = time.time()
-    #isos = ar.subgraph_isomorphism(ar_celegans, subgraph)
-    isos = ar.subgraph_isomorphism(prop_graph, subgraph)
-    end = time.time()
-    print(f"Finding {len(isos)/4} monomorphisms took {end-start} secs")
-    print("************************************************************")
-    
     print("************************************************************")
     print(" NetworkX... ")
-    """
-    num_nodes = G.number_of_nodes()
-    num_edges = G.number_of_edges()
-    print(f"Number of nodes: {num_nodes}")
-    print(f"Number of edges: {num_edges}")
-    density = nx.density(G)
-    print(f"Density: {density}")
 
-    # Node-level properties
-    degree = dict(G.degree())
-    in_degree = dict(G.in_degree())
-    out_degree = dict(G.out_degree())
-    clustering_coefficient = nx.clustering(G)
-
-    # Global properties
-    average_degree = sum(degree.values()) / num_nodes
-    average_clustering_coefficient = nx.average_clustering(G)
-    print(f"Average degree: {average_degree}")
-    print(f"Average clustering coefficient: {average_clustering_coefficient}")
-    #diameter = nx.diameter(G)
-    #average_path_length = nx.average_shortest_path_length(G)
-
-    # Centrality measures
-    degree_centrality = nx.degree_centrality(G)
-    print("Degree centrality:", degree_centrality)
-
-    betweenness_centrality = nx.betweenness_centrality(G)
-    print("Betweenness centrality:", betweenness_centrality)
-
-    closeness_centrality = nx.closeness_centrality(G)
-    #eigenvector_centrality = nx.eigenvector_centrality(G)
-
-    # Connected components
-    #components = list(nx.connected_components(G))
-
-    # Community detection
-    # Example using Girvan-Newman algorithm
-    communities = nx.community.girvan_newman(G)
-    first_level_communities = next(communities)
-
-    # Print some results
-
-
-    #print(f"Diameter: {diameter}")
-    #print(f"Average path length: {average_path_length}")
-
-    print("Closeness centrality:", closeness_centrality)
-    #print("Eigenvector centrality:", eigenvector_centrality)
-    """
         # Find subgraph isomorphisms of H in G.
     start_time = time.time()
     GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)

@@ -81,8 +81,8 @@ if __name__ == "__main__":
     B -> C
     """)
     
-    src_subgraph = ak.array([1, 1, 0, 0, 2])
-    dst_subgraph = ak.array([0, 2, 1, 2, 0])
+    src_subgraph = ak.array([0, 1, 2])
+    dst_subgraph = ak.array([1, 2, 0])
     lbls_subgraph = ak.array(["1"] * 3)
     rels_subgraph = ak.array(["T1"] * len(src_subgraph))
 

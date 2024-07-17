@@ -270,7 +270,40 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        SortSubGraphbyDegree();
+        //writeln("srcNodesG1 = ", srcNodesG1);
+        //writeln("dstNodesG1 = ", dstNodesG1); 
+        
+        //writeln("\nsegGraphG1 = ", segGraphG1);
+        
+        //writeln("\nsrcRG1 = ", srcRG1); 
+        //writeln("dstRG1 = ", dstRG1);
+
+        //writeln("\nsegRG1 = ", segRG1);
+        /*
+        var candidatesStru = new set((int, int), parSafe = true);
+        var timer2:stopwatch;
+        timer2.start();
+
+         
+
+        forall v in 0..<g1.n_vertices with(ref candidatesStru){
+            var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
+            var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+
+            if (inNeighborsg1.size >= 1) && (outNeighborsg1.size >= 2){
+                //writeln("\nCandidate found = ", v);
+                candidatesStru.add((v, 1));
+            }
+        }
+        timer2.stop();
+        writeln(" timer2 = ", timer2.elapsed());
+        */
+        //writeln("Main version which Oliver pushed to the server\n\n");
+         
+        //var ffcandidates = findOutEdges();
+        //var ffcandidates = findOutWedgesLight();
+        //var ffstates = CandidToState(ffcandidates);
         var IsoArrtemp = vf2(g1, g2);
         /*
         //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
@@ -286,8 +319,6 @@ module SubgraphIsomorphism {
         //writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
 
         //writeln("IsoArr     = ", IsoArr);
-        writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
-        writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
         //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
@@ -332,60 +363,58 @@ module SubgraphIsomorphism {
 /////////////////////////////End of State Injection///////////////////////////////////
         
 //////////////////////////RI///////////////////////////////////////////////////
-        proc SortSubGraphbyDegree():[] int throws {
-            var NodeInDegree: [0..<g2.n_vertices] int = 0;
-            var NodeOutDegree: [0..<g2.n_vertices] int = 0;
-            var NodeDegree: [0..<g2.n_vertices] (int, int) = (0, 0); // Tuple to hold (sum of degrees, out-degree)
+        proc SortSubGraphbyDegree():[] int throws{
+            var NodeDegree:[0..<g2.n_vertices] int = 0;
+            writeln("inNeighborsg2 dstRG2 = ", dstRG2);
+            writeln("segRG2 = ", segRG2);
+            
+            
+            writeln("\n\noutNeighborsg2 dstNodesG2 = ", dstNodesG2);
+            writeln("segGraphG2 = ", segGraphG2);
 
-            for v in 0..<g2.n_vertices {
+            for v in 0..<g2.n_vertices{
                 var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
                 var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
+                writeln("v = ", v);
+                writeln("inNeighbors = ", inNeighborsg2);
+                writeln("outNeighbors = ", outNeighborsg2);
 
-                NodeInDegree[v] = inNeighborsg2.size;
-                NodeOutDegree[v] = outNeighborsg2.size;
-                NodeDegree[v] = (NodeInDegree[v] + NodeOutDegree[v], NodeOutDegree[v]);
+                NodeDegree[v]= inNeighborsg2.size + outNeighborsg2.size;
             }
 
             // Create an array of tuples (value, original index)
-            var zipped: [NodeDegree.domain] (int, int, int);
-            writeln("NodeDegree.domain = ", NodeDegree.domain);
-            writeln("g2.n_vertices = ", g2.n_vertices);
+            var zipped: [NodeDegree.domain] (int, int);
+
             // Populate the zipped array
             for i in NodeDegree.domain {
-                zipped[i] = (NodeDegree[i][0], NodeDegree[i][1], i);
+                zipped[i] = (NodeDegree[i], i);
             }
-            writeln("zipped.size = ", zipped.size);
-
             // Define a custom comparator for sorting tuples
-            record Comparator {
-                proc compare(a: (int, int, int), b: (int, int, int)) {
-                    // Compare by sum of degrees first
-                    if a(0) != b(0) {
-                        return b(0) - a(0);
-                    } else {
-                        // If tied, compare by out-degree
-                        return b(1) - a(1);
-                    }
+            record Comparator { 
+                proc compare(a: (int, int), b: (int, int)) {
+                    // Return the difference between the first elements of the tuples
+                    return b(0) - a(0);
                 }
             }
 
             var TupleComparator: Comparator;
 
-            // Sort the zipped array using the custom comparator
+            // Sort the zipped array using a lambda function as the comparator
             sort(zipped, comparator=TupleComparator);
 
             // Extract the sorted array and the indices
             var sortedArray: [NodeDegree.domain] int;
             var sortedIndices: [NodeDegree.domain] int;
             for i in NodeDegree.domain{
-                sortedIndices[i] = zipped[i](2);
+                sortedArray[i] = zipped[i](0);
+                sortedIndices[i] = zipped[i](1);
             }
 
             // Print the results
+            writeln("Sorted array: ", sortedArray);
             writeln("Original indices of sorted elements: ", sortedIndices);
             return (sortedIndices);
-        }   
-
+        }      
         //SortSubGraphbyDegree();
         
         
@@ -656,8 +685,6 @@ if state.depth==g2.n_vertices{
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible_light(n1: int, n2: int) throws {
             var new1, new2: int = 0;
-            if !nodesLabelCompatible(n1, n2) then return false;
-
             // Process the out-neighbors of g2.
             var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
             new2 += getOutN2.size;
@@ -897,7 +924,7 @@ if state.depth==g2.n_vertices{
  */            
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
-                //writeln("\nstate depth = ", state.depth, " Candidte size = ", candidatePairs.size);
+
                 // Iterate in parallel over candidate pairs
                 forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 //for (n1, n2) in candidatePairs {

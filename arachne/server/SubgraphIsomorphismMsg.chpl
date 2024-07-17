@@ -58,7 +58,7 @@ module SubgraphIsomorphismMsg {
             timer.start();
             var isoArray = runVF2(g,h,st);
             timer.stop();
-            outMsg = "Sequential subgraph isomorphism took " + timer.elapsed():string + " sec";
+            outMsg = "Parallel subgraph isomorphism took " + timer.elapsed():string + " sec";
             
             var isoDistArray = makeDistArray(isoArray.size, int);
             isoDistArray = isoArray;

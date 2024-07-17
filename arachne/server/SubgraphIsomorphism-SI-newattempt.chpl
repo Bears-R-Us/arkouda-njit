@@ -270,7 +270,77 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        SortSubGraphbyDegree();
+        //writeln("srcNodesG1 = ", srcNodesG1);
+        //writeln("dstNodesG1 = ", dstNodesG1); 
+        
+        //writeln("\nsegGraphG1 = ", segGraphG1);
+        
+        //writeln("\nsrcRG1 = ", srcRG1); 
+        //writeln("dstRG1 = ", dstRG1);
+
+        //writeln("\nsegRG1 = ", segRG1);
+        /*
+        var candidatesStru = new set((int, int), parSafe = true);
+        var timer2:stopwatch;
+        timer2.start();
+
+         
+
+        forall v in 0..<g1.n_vertices with(ref candidatesStru){
+            var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
+            var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+
+            if (inNeighborsg1.size >= 1) && (outNeighborsg1.size >= 2){
+                //writeln("\nCandidate found = ", v);
+                candidatesStru.add((v, 1));
+            }
+        }
+        timer2.stop();
+        writeln(" timer2 = ", timer2.elapsed());
+        */
+        //writeln("Main version which Oliver pushed to the server\n\n");
+         GreatestConstraintFirst();
+        //var ffcandidates = findOutEdges();
+        //var ffcandidates = findOutWedgesLight();
+        //var ffstates = CandidToState(ffcandidates);
+        /*
+        var g1InDegree:[0..g1.n_vertices -1]  int = 0;
+        var g1OutDegree: [0..g1.n_vertices -1] int = 0;
+        
+        forall n in 0..g1.n_vertices {
+            var inNeighbors = dstRG1[segRG1[n]..<segRG1[n+1]];
+            g1InDegree[n] = inNeighbors.size;
+            var outNeighbors = dstNodesG1[segGraphG1[n]..<segGraphG1[n+1]];
+            g1OutDegree[n]= g1OutDegree.size;
+        }
+        writeln("g1InDegree = ", g1InDegree);
+        writeln("g1OutDegree = ", g1OutDegree);
+        */
+        // Define an array of size 4 with domains
+        var subgraphTin: [0..g2.n_vertices-1] domain(int);
+        var subgraphTout: [0..g2.n_vertices-1] domain(int);
+
+        for i in 0..g2.n_vertices-1 {
+            subgraphTin[i] = {1..0};
+            subgraphTout[i] = {1..0};
+        }        
+        
+        for i in 0..g2.n_vertices-1 {
+            subgraphTin[i] = dstRG2[segRG2[i]..<segRG2[i+1]];
+            subgraphTout[i] = dstNodesG2[segGraphG2[i]..<segGraphG2[i+1]];
+        }
+
+
+        for i in 0..g2.n_vertices-1 {
+            writeln("after" ,subgraphTin[i]);
+            writeln("after" ,subgraphTout[i]);
+
+        }
+
+        var (G2In , G2Out) = SubGraphbyDegree();
+        var (G1In , G1Out) = GraphbyDegree(); 
+
         var IsoArrtemp = vf2(g1, g2);
         /*
         //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
@@ -286,8 +356,6 @@ module SubgraphIsomorphism {
         //writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
 
         //writeln("IsoArr     = ", IsoArr);
-        writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
-        writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
         //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
@@ -332,60 +400,58 @@ module SubgraphIsomorphism {
 /////////////////////////////End of State Injection///////////////////////////////////
         
 //////////////////////////RI///////////////////////////////////////////////////
-        proc SortSubGraphbyDegree():[] int throws {
-            var NodeInDegree: [0..<g2.n_vertices] int = 0;
-            var NodeOutDegree: [0..<g2.n_vertices] int = 0;
-            var NodeDegree: [0..<g2.n_vertices] (int, int) = (0, 0); // Tuple to hold (sum of degrees, out-degree)
+        proc SortSubGraphbyDegree():[] int throws{
+            var NodeDegree:[0..<g2.n_vertices] int = 0;
+            writeln("inNeighborsg2 dstRG2 = ", dstRG2);
+            writeln("segRG2 = ", segRG2);
+            
+            
+            writeln("\n\noutNeighborsg2 dstNodesG2 = ", dstNodesG2);
+            writeln("segGraphG2 = ", segGraphG2);
 
-            for v in 0..<g2.n_vertices {
+            for v in 0..<g2.n_vertices{
                 var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
                 var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
+                writeln("v = ", v);
+                writeln("inNeighbors = ", inNeighborsg2);
+                writeln("outNeighbors = ", outNeighborsg2);
 
-                NodeInDegree[v] = inNeighborsg2.size;
-                NodeOutDegree[v] = outNeighborsg2.size;
-                NodeDegree[v] = (NodeInDegree[v] + NodeOutDegree[v], NodeOutDegree[v]);
+                NodeDegree[v]= inNeighborsg2.size + outNeighborsg2.size;
             }
 
             // Create an array of tuples (value, original index)
-            var zipped: [NodeDegree.domain] (int, int, int);
-            writeln("NodeDegree.domain = ", NodeDegree.domain);
-            writeln("g2.n_vertices = ", g2.n_vertices);
+            var zipped: [NodeDegree.domain] (int, int);
+
             // Populate the zipped array
             for i in NodeDegree.domain {
-                zipped[i] = (NodeDegree[i][0], NodeDegree[i][1], i);
+                zipped[i] = (NodeDegree[i], i);
             }
-            writeln("zipped.size = ", zipped.size);
-
             // Define a custom comparator for sorting tuples
-            record Comparator {
-                proc compare(a: (int, int, int), b: (int, int, int)) {
-                    // Compare by sum of degrees first
-                    if a(0) != b(0) {
-                        return b(0) - a(0);
-                    } else {
-                        // If tied, compare by out-degree
-                        return b(1) - a(1);
-                    }
+            record Comparator { 
+                proc compare(a: (int, int), b: (int, int)) {
+                    // Return the difference between the first elements of the tuples
+                    return b(0) - a(0);
                 }
             }
 
             var TupleComparator: Comparator;
 
-            // Sort the zipped array using the custom comparator
+            // Sort the zipped array using a lambda function as the comparator
             sort(zipped, comparator=TupleComparator);
 
             // Extract the sorted array and the indices
             var sortedArray: [NodeDegree.domain] int;
             var sortedIndices: [NodeDegree.domain] int;
             for i in NodeDegree.domain{
-                sortedIndices[i] = zipped[i](2);
+                sortedArray[i] = zipped[i](0);
+                sortedIndices[i] = zipped[i](1);
             }
 
             // Print the results
+            writeln("Sorted array: ", sortedArray);
             writeln("Original indices of sorted elements: ", sortedIndices);
             return (sortedIndices);
-        }   
-
+        }      
         //SortSubGraphbyDegree();
         
         
@@ -616,6 +682,37 @@ module SubgraphIsomorphism {
         }// end of GreatestConstraintFirst
         //GreatestConstraintFirst();
 ////////////////////////////////////////////////////////////////////////////////////
+        proc SubGraphbyDegree() throws{
+            var NodeIndegree:[0..<g2.n_vertices] int = 0;
+            var NodeOutdegree:[0..<g2.n_vertices] int = 0;
+
+            for v in 0..<g2.n_vertices{
+                var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
+                var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
+
+                NodeIndegree[v]= inNeighborsg2.size ;
+                NodeOutdegree[v]= outNeighborsg2.size ;
+            }
+            return(NodeIndegree,NodeOutdegree);
+        }  
+
+
+        proc GraphbyDegree()throws{
+                var NodeIndegree:[0..<g1.n_vertices] int = 0;
+                var NodeOutdegree:[0..<g1.n_vertices] int = 0;
+
+                for v in 0..<g1.n_vertices{
+                    var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
+                    var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+                    NodeIndegree[v]= inNeighborsg1.size ;
+                    NodeOutdegree[v]= outNeighborsg1.size ;
+
+                }
+                return(NodeIndegree,NodeOutdegree);
+
+        }
+
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
         proc addToTinTout (u: int, v: int, state: State): int throws {
             state.core[v] = u; // v from g2 to a u from g1
@@ -768,7 +865,7 @@ if state.depth==g2.n_vertices{
             var UnMapG2: int = -1;
 
             for i in state.D_core by -1{
-                if state.core[i] == -1 then UnMapG2 = i; // Node i in G2 is mapped
+                if state.core[i] == -1 then UnMapG2 = i; // Node i in G2 is unmapped
                 else UnMapG1[state.core[i]] = 0; // Corresponding node in G1 is mapped
             }
             
@@ -897,7 +994,7 @@ if state.depth==g2.n_vertices{
  */            
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
-                //writeln("\nstate depth = ", state.depth, " Candidte size = ", candidatePairs.size);
+
                 // Iterate in parallel over candidate pairs
                 forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 //for (n1, n2) in candidatePairs {
@@ -925,7 +1022,34 @@ if state.depth==g2.n_vertices{
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
             var initial = createInitialState(g1.n_vertices, g2.n_vertices);
-            var solutions = vf2Helper(initial, 0);
+            
+            //var solutions = vf2Helper(initial, 0);
+            var solutions: list(int, parSafe=true);
+            
+            forall edgeIndex in 0..mG1-1 with (ref initial, ref solutions){
+                var newState = initial.clone();
+
+                if G2In[0] <= G1In[srcNodesG1[edgeIndex]] && 
+                    G2Out[0] <= G1Out [srcNodesG1[edgeIndex]] && 
+                    G2In[1] <= G1In[dstNodesG1[edgeIndex]] && 
+                    G2Out[1] <= G1Out [dstNodesG1[edgeIndex]] //&&
+                    //isFeasible(dstNodesG1[edgeIndex], 1, newState) 
+                    {
+                        
+                        addToTinTout(srcNodesG1[edgeIndex], 0, newState);
+                        addToTinTout(dstNodesG1[edgeIndex], 1, newState);
+
+                        var newMappings = vf2Helper(newState, 2);
+                        //count.add(1);
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do solutions.pushBack(mapping);
+                    } 
+            }
+            
+            
+            
+            
+            
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
             return(subIsoArrToReturn);

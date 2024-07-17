@@ -16,6 +16,78 @@ def create_parser():
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
 
     return script_parser
+def SubgraphMatchingOrder(src, dst):
+    # Find unique nodes
+    unique_nodes = ak.unique(ak.concatenate([src, dst]))
+    
+    # Initialize degree arrays
+    in_degree = ak.zeros(len(unique_nodes), dtype=ak.int64)
+    out_degree = ak.zeros(len(unique_nodes), dtype=ak.int64)
+    
+    # Convert Arkouda arrays to Python lists for iteration
+    unique_nodes_list = unique_nodes.to_list()
+    src_list = src.to_list()
+    dst_list = dst.to_list()
+    
+    # Create a dictionary to map nodes to their index in unique_nodes
+    node_to_index = {node: idx for idx, node in enumerate(unique_nodes_list)}
+    
+    # Calculate out-degrees
+    for node in src_list:
+        out_degree[node_to_index[node]] += 1
+    
+    # Calculate in-degrees
+    for node in dst_list:
+        in_degree[node_to_index[node]] += 1
+    
+    # Calculate total degrees
+    total_degree = in_degree + out_degree
+    
+    # Combine the degrees into a single list of tuples for sorting
+    nodes_with_degrees = [(unique_nodes[i], total_degree[i], out_degree[i], in_degree[i]) for i in range(len(unique_nodes))]
+    
+    # Sort nodes to determine the starting node
+    nodes_with_degrees.sort(key=lambda x: (-x[1], -x[2]))
+    
+    sorted_nodes = []
+    selected_set = set()
+    
+    def select_node(node):
+        sorted_nodes.append(node)
+        selected_set.add(node)
+    
+    # Select the initial node
+    initial_node = nodes_with_degrees[0][0]
+    select_node(initial_node)
+    
+    current_node = initial_node
+    
+    while len(sorted_nodes) < len(unique_nodes):
+        # Find out-neighbors of the current node that are not yet selected
+        out_neighbors = [dst_list[i] for i in range(len(src_list)) if src_list[i] == current_node and dst_list[i] not in selected_set]
+        
+        if out_neighbors:
+            # Sort out-neighbors based on the criteria
+            out_neighbors_degrees = [(node, total_degree[node_to_index[node]], out_degree[node_to_index[node]]) for node in out_neighbors]
+            out_neighbors_degrees.sort(key=lambda x: (-x[1], -x[2]))
+            next_node = out_neighbors_degrees[0][0]
+        else:
+            # If no out-neighbors, pick the highest degree node from remaining unselected nodes
+            remaining_nodes_degrees = [(node, total_degree[node_to_index[node]], out_degree[node_to_index[node]]) for node in unique_nodes_list if node not in selected_set]
+            remaining_nodes_degrees.sort(key=lambda x: (-x[1], -x[2]))
+            next_node = remaining_nodes_degrees[0][0]
+        
+        select_node(next_node)
+        current_node = next_node
+    
+    # Create a mapping from original node to sorted node
+    node_to_sorted = {original: sorted_nodes[i] for i, original in enumerate(unique_nodes_list)}
+    
+    # Update src and dst based on the sorted nodes
+    updated_src = ak.array([node_to_sorted[node] for node in src_list])
+    updated_dst = ak.array([node_to_sorted[node] for node in dst_list])
+    
+    return updated_src, updated_dst, sorted_nodes, unique_nodes
 
 if __name__ == "__main__":
     #### Command line parser and extraction.
@@ -48,13 +120,19 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
 
     # 3. Create vertices, edges, and attributes for subgraph.
-    src_subgraph = ak.array([0, 1, 2, 1])
-    dst_subgraph = ak.array([1, 2, 0, 3])
+    src_subgraph = ak.array([1, 0, 0, 3])
+    dst_subgraph = ak.array([0, 2, 3, 1])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
     rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
+    updated_src, updated_dst, Subgraph_new_key, Subgraph_old_key = SubgraphMatchingOrder(src_subgraph, dst_subgraph)
+    print("Subgraph Original Key:", Subgraph_old_key)
+    print("Subgraph Updated Key:", Subgraph_new_key)
+
+    print("Updated src:", updated_src)
+    print("Updated dst:", updated_dst)
     # 4. Transer data above into subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,

@@ -149,8 +149,8 @@ if __name__ == "__main__":
 
     ### Create the subgraph we are searching for.
     # 1. Create labels and relationships to search for.
-    src_subgraph = ak.array([0, 1, 1, 2])
-    dst_subgraph = ak.array([1, 2, 3, 0])
+    src_subgraph = ak.array([3, 2, 2, 0])
+    dst_subgraph = ak.array([2, 0, 1, 3])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     #labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
@@ -172,6 +172,29 @@ if __name__ == "__main__":
     #print(node_df_h.__str__)
     #print(edge_df_h.__str__)
     print("Running Arachne...")
+    print("Trial 1")
+
+    ### Run subgraph isomorphism.
+    start_time = time.time()
+    #print("start_time = ", start_time)
+    isos = ar.subgraph_isomorphism(prop_graph,subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    print("Trial 2")
+
+    ### Run subgraph isomorphism.
+    start_time = time.time()
+    #print("start_time = ", start_time)
+    isos = ar.subgraph_isomorphism(prop_graph,subgraph)
+    elapsed_time = time.time() - start_time
+    print(f"Arachne execution time: {elapsed_time} seconds")
+    print(f"Arachne found: {len(isos)/4} isos")
+    
+    
+    print("Trial 3")
+
     ### Run subgraph isomorphism.
     start_time = time.time()
     #print("start_time = ", start_time)

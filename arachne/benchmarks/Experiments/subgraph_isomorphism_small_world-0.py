@@ -1,4 +1,4 @@
-"""Generate scale-free directed graph and benchmark for subgraph isomorphism."""
+"""Generate small-world directed graph and benchmark for subgraph isomorphism."""
 
 import argparse
 import time
@@ -22,43 +22,31 @@ def create_parser():
     script_parser.add_argument('--print_isos', action='store_true', help="Print isos?")
     return script_parser
 
-#def create_scale_free_directed_graph(num_nodes,  alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2, delta_out=0.2  , seed=42):
-def create_scale_free_directed_graph(num_nodes,  alpha=0.1, beta=0.7, gamma=0.2, delta_in=0.5, delta_out=0.1 , seed=42):
+def create_small_world_directed_graph(num_nodes, k=10, p=0.01, seed=42):
     """
-    Generates a scale-free directed graph with specified parameters and returns the src and dst arrays.
-    
+    Generates a small-world directed graph using the Watts-Strogatz model and returns the src and dst arrays.
+
     Parameters:
     num_nodes (int): Number of nodes in the graph.
-    alpha (float): Probability for adding a new node connected to an existing node chosen according to in-degree.
-    beta (float): Probability for adding an edge between two existing nodes.
-    gamma (float): Probability for adding a new node connected to an existing node chosen according to out-degree.
-    delta_in (float): Bias for choosing nodes from in-degree distribution.
-    delta_out (float): Bias for choosing nodes from out-degree distribution.
+    k (int): Each node is connected to k nearest neighbors in the ring topology.
+    p (float): The probability of rewiring each edge.
     seed (int): Seed for the random number generator.
-    
+
     Returns:
     tuple: A tuple containing two lists (src, dst) representing the source and destination of each edge.
     """
-    scale_free_graph = nx.scale_free_graph(num_nodes, alpha=alpha, beta=beta, gamma=gamma, delta_in=delta_in, delta_out=delta_out, seed=seed)
+    # Create a Watts-Strogatz small-world graph
+    small_world_graph = nx.watts_strogatz_graph(num_nodes, k, p, seed)
+    #small_world_graph = nx.watts_strogatz_graph(num_nodes, 10, 0.01, seed)
+    print("Create a Watts-Strogatz small-world graph with")
+    #print("with k = 10, p = 0.01")
+    # Convert to a directed graph to simulate directed behavior
+    small_world_directed = nx.DiGraph(small_world_graph)
 
-    # Convert to directed graph and remove self-loops and redundant edges
-    G = nx.DiGraph()
-    for u, v in scale_free_graph.edges():
-        if u != v:  # Remove self-loops
-            G.add_edge(u, v)
-    
     # Extract src and dst arrays
-    src = [edge[0] for edge in G.edges()]
-    dst = [edge[1] for edge in G.edges()]
-    #print("src = ", src)
-    #print("dst = ", dst)
-    # Calculate in-degree and out-degree for each node
-    #in_degrees = [G.in_degree(n) for n in G.nodes()]
-    #out_degrees = [G.out_degree(n) for n in G.nodes()]
+    src = [edge[0] for edge in small_world_directed.edges()]
+    dst = [edge[1] for edge in small_world_directed.edges()]
 
-    # Print in-degree and out-degree arrays
-    #print("In-Degrees:", in_degrees)
-    #print("Out-Degrees:", out_degrees)
     #print("src = ", src)
     #print("dst = ", dst)
     return src, dst
@@ -78,11 +66,11 @@ if __name__ == "__main__":
     num_pus = config["numPUs"]
     print(f"Arkouda server running with {num_locales}L and {num_pus}PUs.")
 
-    ### Generate a scale-free directed graph
+    ### Generate a small-world directed graph
     num_nodes = args.n
-    print("Beginning of Scale-Free Directed graph generation")
-    src, dst = create_scale_free_directed_graph(num_nodes)
-    print("Scale-Free Directed graph created")
+    print("Beginning of Small-World Directed graph generation")
+    src, dst = create_small_world_directed_graph(num_nodes, k=10, p=0.01)  # Example values for k and p
+    print("Small-World Directed graph created")
 
     src_ak = ak.array(src)
     dst_ak = ak.array(dst)
@@ -115,11 +103,12 @@ if __name__ == "__main__":
     # Create new property graph with node labels and edge relationships.
     prop_graph = ar.PropGraph()
     prop_graph.load_edge_attributes(edge_df, source_column="src", destination_column="dst", relationship_columns=["rels1"])
+   
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
 
     ### Create the subgraph we are searching for.
-    src_subgraph = ak.array([0, 1, 2, 1])
-    dst_subgraph = ak.array([1, 2, 0, 3])
+    src_subgraph = ak.array([3, 1, 1, 2])
+    dst_subgraph = ak.array([1, 0, 2, 3])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
 
@@ -165,7 +154,6 @@ if __name__ == "__main__":
     H.add_edges_from([(int(src), int(dst)) for src, dst in zip(src_subgraph.to_ndarray(), dst_subgraph.to_ndarray())])
 
     print("Running NetworkX... ")
-    
     # Find subgraph isomorphisms of H in G.
     start_time = time.time()
     GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
@@ -173,38 +161,5 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
-
-
-    motif = Motif("""
-    A -> B 
-    B -> D
-    B -> C
-    C -> A
-    """)
-    print("************************************************************")
-    print(" DotMotif....")
-    E = GrandIsoExecutor(graph=G)
-
-    # Create the search engine.
-
-    start = time.time()
-
-    results = E.find(motif)
-    elapsed_time = time.time() - start_time
-    print(f"DotMotif execution time: {elapsed_time} seconds")
-    print(f"Dotmotif found: {len(subgraph_isomorphisms)} isos")
-    print(len(results))
     
-    
-    ### Optionally print isomorphisms.
-    if args.print_isos:
-        print("Arachne isomorphisms:")
-        for iso in isos.to_list():
-            print(iso)
-
-        print("\nNetworkX isomorphisms:")
-        for iso in subgraph_isomorphisms:
-            print(iso)
-
-    ### Shutdown Arkouda connection.
     ak.shutdown()

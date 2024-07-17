@@ -270,7 +270,53 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        SortSubGraphbyDegree();
+        //writeln("srcNodesG1 = ", srcNodesG1);
+        //writeln("dstNodesG1 = ", dstNodesG1); 
+        
+        //writeln("\nsegGraphG1 = ", segGraphG1);
+        
+        //writeln("\nsrcRG1 = ", srcRG1); 
+        //writeln("dstRG1 = ", dstRG1);
+
+        //writeln("\nsegRG1 = ", segRG1);
+        /*
+        var candidatesStru = new set((int, int), parSafe = true);
+        var timer2:stopwatch;
+        timer2.start();
+
+         
+
+        forall v in 0..<g1.n_vertices with(ref candidatesStru){
+            var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
+            var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+
+            if (inNeighborsg1.size >= 1) && (outNeighborsg1.size >= 2){
+                //writeln("\nCandidate found = ", v);
+                candidatesStru.add((v, 1));
+            }
+        }
+        timer2.stop();
+        writeln(" timer2 = ", timer2.elapsed());
+        */
+        //writeln("Main version which Oliver pushed to the server\n\n");
+         //GreatestConstraintFirst();
+        //var ffcandidates = findOutEdges();
+        //var ffcandidates = findOutWedgesLight();
+        //var ffstates = CandidToState(ffcandidates);
+        /*
+        var g1InDegree:[0..g1.n_vertices -1]  int = 0;
+        var g1OutDegree: [0..g1.n_vertices -1] int = 0;
+        
+        forall n in 0..g1.n_vertices {
+            var inNeighbors = dstRG1[segRG1[n]..<segRG1[n+1]];
+            g1InDegree[n] = inNeighbors.size;
+            var outNeighbors = dstNodesG1[segGraphG1[n]..<segGraphG1[n+1]];
+            g1OutDegree[n]= g1OutDegree.size;
+        }
+        writeln("g1InDegree = ", g1InDegree);
+        writeln("g1OutDegree = ", g1OutDegree);
+        */
         var IsoArrtemp = vf2(g1, g2);
         /*
         //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
@@ -286,8 +332,6 @@ module SubgraphIsomorphism {
         //writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
 
         //writeln("IsoArr     = ", IsoArr);
-        writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
-        writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
         //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
@@ -897,7 +941,7 @@ if state.depth==g2.n_vertices{
  */            
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
-                //writeln("\nstate depth = ", state.depth, " Candidte size = ", candidatePairs.size);
+
                 // Iterate in parallel over candidate pairs
                 forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 //for (n1, n2) in candidatePairs {
