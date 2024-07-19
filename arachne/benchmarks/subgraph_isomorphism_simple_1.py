@@ -48,8 +48,8 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
 
     # 3. Create vertices, edges, and attributes for subgraph.
-    src_subgraph = ak.array([0, 1, 2, 1])
-    dst_subgraph = ak.array([1, 2, 0, 3])
+    src_subgraph = ak.array([0, 0, 1, 2])
+    dst_subgraph = ak.array([1, 3, 2, 0])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])

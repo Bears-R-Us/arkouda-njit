@@ -118,8 +118,8 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
 
     ### Create the subgraph we are searching for.
-    src_subgraph = ak.array([0, 1, 2, 1])
-    dst_subgraph = ak.array([1, 2, 0, 3])
+    src_subgraph = ak.array([2, 0, 1, 0])
+    dst_subgraph = ak.array([0, 1, 2, 3])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
 

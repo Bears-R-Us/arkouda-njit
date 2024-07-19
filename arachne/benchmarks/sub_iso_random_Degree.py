@@ -264,10 +264,10 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
 
     # Create the subgraph we are searching for.
-    src_subgraph = ak.array([0, 0, 0, 1, 2, 2, 2])
-    dst_subgraph = ak.array([2, 1, 5, 5, 1, 4, 3])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1", "lbl1", "lbl1"])
-    rels1_subgraph = ak.array(["rel1", "rel1","rel1", "rel1", "rel1","rel1", "rel1"])
+    src_subgraph = ak.array([0, 1, 1, 2])
+    dst_subgraph = ak.array([1, 2, 3, 0])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
+    rels1_subgraph = ak.array(["rel1", "rel1","rel1", "rel1"])
 
     updated_src, updated_dst, unique_nodes_list, replaced_nodes = SubgraphMatchingOrder(src_subgraph, dst_subgraph)
 
@@ -283,7 +283,7 @@ if __name__ == "__main__":
     # Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src": src_subgraph, "dst": dst_subgraph, "rels1": rels1_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0, 1, 2,3,4,5]), "lbls1": labels1_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0, 1, 2,3]), "lbls1": labels1_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                   relationship_columns=["rels1"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
