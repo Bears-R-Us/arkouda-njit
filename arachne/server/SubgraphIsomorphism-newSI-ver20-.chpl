@@ -627,14 +627,12 @@ module SubgraphIsomorphism {
 
                     if relationshipsG1eid1 != relationshipsG2eid2 then return false;
                     return true;
-///////////////////////////////////////////
-
-
-//////////////////////////////////////////////////       
+                
         }
         proc addToTinToutMVE(u0_g1: int, u1_g1: int, state: State): (int, bool) throws {
             var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int);
             var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int);
+            
             //writeln("/////////addToTinToutMVE//// u0_g1 = ", u0_g1, " //////// u1_g1 = ", u1_g1);
             
             Tin_u0 = dstRG1[segRG1[u0_g1]..<segRG1[u0_g1 + 1]];
@@ -649,16 +647,12 @@ module SubgraphIsomorphism {
             Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
             Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
             
-            //writeln("we are Here 1");
-            //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
-
             if !nodesLabelCompatible(u0_g1, 0) {
+                //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
                 //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
                 return (u0_g1, false);
             }
             const cond1 = Tin_u0.size >= Tin_0.size && Tout_u0.size >= Tout_0.size;
-            //writeln("we are Here 2");
-
             if !cond1 {
                 //writeln("Tin_u0 >= Tin_0 = ", Tin_u0.size >= Tin_0.size);
                 //writeln("Tout_u0 >= Tout_0 = ", Tout_u0.size >= Tout_0.size);
@@ -666,55 +660,17 @@ module SubgraphIsomorphism {
                 //writeln("Tout_u1 >= Tout_1 = ", Tout_u1.size >= Tout_1.size);
                 return (u0_g1, false);
             }      
-            //writeln("we are Here 3");
-
-            //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
 
             if !nodesLabelCompatible(u1_g1, 1) {
-              //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
+                //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
+                //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
                 return (-1, false);
             }
-/*            if !checkEdge(u0_g1, u1_g1) {
+            if !checkEdge(u0_g1, u1_g1) {
                 //writeln("checkEdge(u0_g1, u1_g1) = ", checkEdge(u0_g1, u1_g1));
                 return (-1, false);
             }
-            */
-//////////////////////////////////
-//checkEdge-out
-            //writeln("we are Here 5");
 
-
-            var eid1 = getEdgeId(u0_g1, u1_g1, dstNodesG1, segGraphG1);
-            var eid2 = getEdgeId(0, 1, dstNodesG2, segGraphG2);
-
-            var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-            var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-            //writeln("relationshipsG1eid1 = ", relationshipsG1eid1);
-            //writeln("relationshipsG2eid2 = ", relationshipsG2eid2);
-            if relationshipsG1eid1 != relationshipsG2eid2 then return (-1, false);
-            //writeln("we are Here 7");
-
-//checkEdge-out
-            var eid1_rev = getEdgeId(u1_g1, u0_g1, dstNodesG1, segGraphG1);
-            var eid2_rev = getEdgeId(1, 0, dstNodesG2, segGraphG2);
-            //writeln("edge from ",u1_g1, " to ", u0_g1 );
-            //writeln("eid1 = ", eid1);
-            //writeln("eid2 = ", eid2);
-            if eid2_rev != -1 && eid1_rev == -1 then return (-1, false);
-            //writeln("we are Here 4");
-
-            if eid1_rev != -1 && eid2_rev != -1 then{
-                relationshipsG1eid1 = convertedRelationshipsG1[eid1_rev];
-                relationshipsG2eid2 = convertedRelationshipsG2[eid2_rev];
-                if relationshipsG1eid1 != relationshipsG2eid2 then return (-1, false);
-
-            }
-            //writeln("relationshipsG1eid1 = ", relationshipsG1eid1);
-            //writeln("relationshipsG2eid2 = ", relationshipsG2eid2);
-
-                    // TODO: Add better relationship matching function.
-
-/////////////////////////////////
             // Refactored condition
             const cond2 = Tin_u1.size >= Tin_1.size && Tout_u1.size >= Tout_1.size;
 
@@ -770,7 +726,7 @@ module SubgraphIsomorphism {
 
             state.Tin2.remove(0); state.Tout2.remove(0);
             state.Tin2.remove(1); state.Tout2.remove(1);
-/*
+
             for i in state.D_core do if state.core[i] != -1 then state.Tin1.remove(state.core[i]);
             for i in state.D_core do if state.core[i] != -1 then state.Tout1.remove(state.core[i]);
 
@@ -779,7 +735,6 @@ module SubgraphIsomorphism {
 
             for n2 in Tin_1 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
             for n2 in Tout_1 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
-*/            
             //writeln("state is = ", state);
             return (-1, true);
         }

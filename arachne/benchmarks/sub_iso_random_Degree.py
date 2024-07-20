@@ -264,13 +264,13 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df, node_column="nodes", label_columns=["lbls1"])
 
     # Create the subgraph we are searching for.
-    src_subgraph = ak.array([0, 1, 1, 2])
-    dst_subgraph = ak.array([1, 2, 3, 0])
-    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
-    rels1_subgraph = ak.array(["rel1", "rel1","rel1", "rel1"])
+    src_subgraph = ak.array([0, 1, 0, 2, 1])
+    dst_subgraph = ak.array([1, 0, 2, 0, 2])
+    labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1"])
+    rels1_subgraph = ak.array(["rel1"]* len(src_subgraph))
 
     updated_src, updated_dst, unique_nodes_list, replaced_nodes = SubgraphMatchingOrder(src_subgraph, dst_subgraph)
-
+    """
     print("\nFinal Results:")
     print("Unique Nodes:", unique_nodes_list)
     print("Replaced Nodes:", replaced_nodes)
@@ -279,11 +279,11 @@ if __name__ == "__main__":
     
     src_subgraph = updated_src
     dst_subgraph = updated_dst
-    
+    """
     # Populate the subgraph.
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src": src_subgraph, "dst": dst_subgraph, "rels1": rels1_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.array([0, 1, 2,3]), "lbls1": labels1_subgraph})
+    node_df_h = ak.DataFrame({"nodes": ak.array([0, 1, 2]), "lbls1": labels1_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                   relationship_columns=["rels1"])
     subgraph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1"])
@@ -296,7 +296,7 @@ if __name__ == "__main__":
     print(f"Arachne execution time: {elapsed_time} seconds")
     print(f"Arachne found: {len(isos)/4} isos")
 
-    """
+    
     print("2nd Running Arachne...")
     # Run subgraph isomorphism.
     start_time = time.time()
@@ -312,7 +312,7 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
     print(f"Arachne found: {len(isos)/4} isos")
-    """
+    
     ### Run NetworkX subgraph isomorphism.
     # Grab vertex and edge data from the Arachne dataframes.
     graph_node_information = prop_graph.get_node_attributes()
@@ -415,5 +415,6 @@ if __name__ == "__main__":
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
 
-
+    for iso in subgraph_isomorphisms:
+        print(iso)
     ak.shutdown()

@@ -13,10 +13,10 @@ conda activate arkouda-dev
 # Define variables
 ARKOUDA_DIR=/scratch/users/md724/arkouda-2023.11.15
 BENCHMARKS_DIR=/scratch/users/md724/arkouda-njit/arachne/benchmarks/
-PYTHON_SCRIPT=subgraph_isomorphism_Hemibrain-1.py
+PYTHON_SCRIPT=subgraph_isomorphism_Hemibrain-5.py
 SERVER_PORT=5555
 NUM_TRIALS=3
-LOG_DIR=/scratch/users/md724/arkouda-njit/arachne/benchmarks/logs-Hemibrain-1/
+LOG_DIR=/scratch/users/md724/arkouda-njit/arachne/benchmarks/logs-Hemibrain-5/
 
 # Ensure log directory exists
 mkdir -p $LOG_DIR
