@@ -25,7 +25,7 @@ def create_parser():
 #def create_scale_free_directed_graph(num_nodes,  alpha=0.41, beta=0.54, gamma=0.05, delta_in=0.2, delta_out=0.2  , seed=42):
 def create_scale_free_directed_graph(num_nodes,  alpha=0.1, beta=0.7, gamma=0.2, delta_in=0.5, delta_out=0.1 , seed=42):
     """
-    Generates a scale-free directed graph with specified parameters and returns the src and dst arrays.
+    Genexcxcrates a scale-free directed graph with specified parameters and returns the src and dst arrays.
     
     Parameters:
     num_nodes (int): Number of nodes in the graph.
