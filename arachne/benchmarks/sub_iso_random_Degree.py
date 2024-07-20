@@ -303,7 +303,7 @@ if __name__ == "__main__":
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/4} isos")
+    print(f"Arachne found: {len(isos)/3} isos")
     
     print("3rd Running Arachne...")
     # Run subgraph isomorphism.
@@ -311,7 +311,7 @@ if __name__ == "__main__":
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/4} isos")
+    print(f"Arachne found: {len(isos)/3} isos")
     
     ### Run NetworkX subgraph isomorphism.
     # Grab vertex and edge data from the Arachne dataframes.
