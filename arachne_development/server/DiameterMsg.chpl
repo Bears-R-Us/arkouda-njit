@@ -56,8 +56,8 @@ module DiameterMsg {
   proc segDiameterMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     // Get the values passeed to Python and now, Chapel. 
     //var (n_verticesN, n_edgesN, directedN, weightedN, graphEntryName, restpart) = payload.splitMsgToTuple(6);
-    
     //var msgArgs = parseMessageArgs(payload, argSize);
+
     var n_verticesN=msgArgs.getValueOf("NumOfVertices");
     var n_edgesN=msgArgs.getValueOf("NumOfEdges");
     var directedN=msgArgs.getValueOf("Directed");
@@ -87,7 +87,7 @@ module DiameterMsg {
     var ag = gEntry.graph;
 
 
-
+/*
       proc bfs (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int):int throws{
@@ -104,7 +104,7 @@ module DiameterMsg {
           depth[root]=0;
           while (numCurF>0) {
                 update=false;
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref depth,ref update) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -190,7 +190,7 @@ module DiameterMsg {
           depth[root]=0;
           while (numCurF>0) {
                 update=false;
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref depth,ref update) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -254,13 +254,200 @@ module DiameterMsg {
                 //writeln("BFS tree level=",cur_level);
           }//end while  
 
-
           return cur_level;
       }//end of bfs
 
 
+ 
+*/
+
+      proc Stree_bfs (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                       neiR:[?D11] int, start_iR:[?D12] int, srcR:[?D13] int, dstR:[?D14] int, 
+                       root:int,removed:[?D15] bool, father:[?D16] int,printflag=false:bool):(int,int) throws {
+          var cur_level=0;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          var SetRemoved=  new distBag(int,Locales); //use bag to keep the removed vertices
+          var SetNextRemoved=  new distBag(int,Locales); //use bag to keep the next removed vertices
+          SetCurF.add(root,here.id);
+          var numCurF=1:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          depth[root]=0;
+          var maxv:int=-1;
+          writeln("The tree root=",root);
+          if removed[root] {
+              writeln("Vertex ", root, " has been removed, WRONG!!!");
+          }
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF, ref depth,ref update,ref maxv,
+                             ref SetRemoved, ref SetNextRemoved) {
+                   on loc {
+
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//
+                           forall i in SetCurF with (ref SetNextF,ref depth, ref update, ref maxv,
+                              ref SetRemoved, ref SetNextRemoved ) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nei[i];
+                                  var    edgeId=start_i[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dst[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref depth, ref update,ref maxv ){
+                                         if (depth[j]==-1 ) {
+                                               if removed[j] {
+                                                   SetRemoved.add(j,here.id); 
+                                                   depth[j]=cur_level+1;
+                                               } else {
+                                                   if (father[j]==i ||father[i]==j) {
+                                                       update=true;
+                                                       SetNextF.add(j,here.id);
+                                                       maxv=j;
+                                                       if (printflag) {
+                                                            write("current level is ",cur_level+1,"," );
+                                                            if father[j]==i {
+                                                                writeln(j,"->",i);
+                                                            } else {
+                                                                writeln(i,"->",j);
+                                                            }
+                                                       }
+                                                       depth[j]=cur_level+1;
+                                                   }
+                                               }
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=neiR[i];
+                                  var    edgeId=start_iR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dstR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref depth,ref update,ref maxv)  {
+                                         if (depth[j]==-1) {
+                                               if removed[j] {
+                                                   SetRemoved.add(j,here.id); 
+                                                   depth[j]=cur_level+1;
+                                               } else {
+                                                   if (father[j]==i ||father[i]==j) {
+                                                       update=true;
+                                                       SetNextF.add(j,here.id);
+                                                       maxv=j;
+                                                       if (printflag) {
+                                                            write("current level is ",cur_level+1,"," );
+                                                            if father[j]==i {
+                                                                writeln(j,"->",i);
+                                                            } else {
+                                                                writeln(i,"->",j);
+                                                            }
+                                                       }
+                                                       depth[j]=cur_level+1;
+                                                   }
+                                               }
+                                         }
+                                  }
+                              }
+
+                              //handle the removed vertices
+                              while SetRemoved.getSize()>0 {
+                                   forall k in SetRemoved  with (ref SetNextF, ref depth, ref update, 
+                                                                 ref maxv, ref SetNextRemoved) {
+                                      if ((xlocal(k,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                          var    numNF=nei[k];
+                                          var    edgeId=start_i[k];
+                                          var nextStart=max(edgeId,edgeBegin);
+                                          var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                          ref NF=dst[nextStart..nextEnd];
+                                          forall j in NF with (ref SetNextF,ref depth, ref update, 
+                                                               ref maxv, ref SetNextRemoved){
+                                                 if (depth[j]==-1 ) {
+                                                       if removed[j] {
+                                                            SetNextRemoved.add(j,here.id); 
+                                                       } else {
+                                                           if (//father[j]==k ||father[k]==j ||
+                                                               father[j]==i ||father[i]==j ) {
+                                                               update=true;
+                                                               SetNextF.add(j,here.id);
+                                                               maxv=j;
+                                                               if (printflag) {
+                                                                   write("current level is ",cur_level+1,"," );
+                                                                   if father[j]==i {
+                                                                       writeln(j,"->",i);
+                                                                   } else {
+                                                                       writeln(i,"->",j);
+                                                                   }
+                                                               }
+                                                               depth[j]=cur_level+1;
+                                                           }
+                                                       }
+                                                 }
+                                          }
+                                      } 
+                                      if ((xlocal(k,vertexBeginR,vertexEndR))  )  {
+                                          var    numNF=neiR[k];
+                                          var    edgeId=start_iR[k];
+                                          var nextStart=max(edgeId,edgeBegin);
+                                          var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                          ref NF=dstR[nextStart..nextEnd];
+                                          forall j in NF with (ref SetNextF,ref depth, ref update,
+                                                               ref maxv, ref SetNextRemoved)  {
+                                                 if (depth[j]==-1 ) {
+                                                       if removed[j] {
+                                                            SetRemoved.add(j,here.id);
+                                                       } else {
+                                                           if (//father[j]==k ||father[k]==j ||
+                                                               father[j]==i ||father[i]==j ) {
+                                                               update=true;
+                                                               SetNextF.add(j,here.id);
+                                                               maxv=j;
+                                                               if (printflag) {
+                                                                   write("current level is ",cur_level+1,"," );
+                                                                   if father[j]==i {
+                                                                       writeln(j,"->",i);
+                                                                   } else {
+                                                                       writeln(i,"->",j);
+                                                                   }
+                                                               }
+                                                               depth[j]=cur_level+1;
+                                                           }
+                                                       }
+                                                 }
+                                          }
+                                      }
+                                 }//end forall
+                                 SetRemoved<=>SetNextRemoved;
+                                 SetNextRemoved.clear();
+                              }// end while
 
 
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if (update) {
+                    cur_level+=1;
+                    //writeln("Tree BFS, current level =",cur_level);
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+          }//end while  
+
+
+          return (cur_level,maxv);
+      }//end of bfs
+
+
+/*
 
       proc bfs_maxv (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
@@ -345,11 +532,172 @@ module DiameterMsg {
                 //writeln("BFS tree level=",cur_level);
           }//end while  
 
+          return (cur_level,maxv);
+      }//end of bfs
+
+
+*/
+
+
+      proc Sbfs_maxv (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                      neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
+                      root:int,removed:[?D15] bool, ref father:[?D16] int, setfather:bool):(int,int) throws{
+          var cur_level=0;
+          var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
+          var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          var SetRemoved=  new distBag(int,Locales); //use bag to keep the removed vertices
+          var SetNextRemoved=  new distBag(int,Locales); //use bag to keep the next removed vertices
+          SetCurF.add(root,here.id);
+          var numCurF=1:int;
+          var update=false:bool;
+          var depth:[D1] int;
+          depth=-1;
+          depth[root]=0;
+          var maxv:int=-1;
+          if removed[root] {
+             writeln("Vertex ", root, " has been removed, WRONG!!!");
+          }
+          while (numCurF>0) {
+                update=false;
+                coforall loc in Locales  with (ref SetNextF, ref depth,ref update,ref maxv,
+                             ref SetRemoved, ref SetNextRemoved,ref father) {
+                   on loc {
+                       var edgeBegin=src.localSubdomain().lowBound;
+                       var edgeEnd=src.localSubdomain().highBound;
+                       var vertexBegin=src[edgeBegin];
+                       var vertexEnd=src[edgeEnd];
+                       var vertexBeginR=srcR[edgeBegin];
+                       var vertexEndR=srcR[edgeEnd];
+
+                       {//
+                           forall i in SetCurF with (ref SetNextF, ref update, ref maxv,
+                              ref SetRemoved, ref SetNextRemoved, ref father) {
+                              if ((xlocal(i,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                  var    numNF=nei[i];
+                                  var    edgeId=start_i[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dst[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref maxv,ref father ){
+                                         if (depth[j]==-1) {
+                                               if removed[j] {
+                                                   SetRemoved.add(j,here.id); 
+                                                   //writeln("Found removed vertex ", j);
+                                               } else {
+                                                   update=true;
+                                                   SetNextF.add(j,here.id);
+                                                   maxv=j;
+                                                   if setfather {
+                                                       father[j]=i;
+                                                   }
+                                               }
+                                               depth[j]=cur_level+1;
+                                         }
+                                  }
+                              } 
+                              if ((xlocal(i,vertexBeginR,vertexEndR))  )  {
+                                  var    numNF=neiR[i];
+                                  var    edgeId=start_iR[i];
+                                  var nextStart=max(edgeId,edgeBegin);
+                                  var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                  ref NF=dstR[nextStart..nextEnd];
+                                  forall j in NF with (ref SetNextF,ref update,ref maxv, ref father)  {
+                                         if (depth[j]==-1) {
+                                               if removed[j] {
+                                                   SetRemoved.add(j,here.id); 
+                                                   //writeln("Found removed vertex ", j);
+                                               } else {
+                                                   update=true;
+                                                   SetNextF.add(j,here.id);
+                                                   maxv=j;
+                                                   if setfather {
+                                                       father[j]=i;
+                                                   }
+                                               }
+                                               depth[j]=cur_level+1;
+                                         }
+                                  }
+                              }
+
+
+
+                              //handle the removed vertices
+                              while (SetRemoved.getSize()>0) {
+                                   forall k in SetRemoved with (ref SetNextF, ref update, ref maxv, ref SetNextRemoved) {
+                                      if ((xlocal(k,vertexBegin,vertexEnd)) ) {// current edge has the vertex
+                                          var    numNF=nei[k];
+                                          var    edgeId=start_i[k];
+                                          var nextStart=max(edgeId,edgeBegin);
+                                          var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                          ref NF=dst[nextStart..nextEnd];
+                                          forall j in NF with (ref SetNextF,ref update, ref maxv, 
+                                                               ref SetNextRemoved,ref father){
+                                                 if (depth[j]==-1) {
+                                                       if removed[j] {
+                                                           SetNextRemoved.add(j,here.id); 
+                                                       } else {
+                                                           update=true;
+                                                           SetNextF.add(j,here.id);
+                                                           maxv=j;
+                                                           if setfather {
+                                                               father[j]=i;
+                                                           }
+                                                       }
+                                                       depth[j]=cur_level+1;
+                                                 }
+                                          }
+                                      } 
+                                      if ((xlocal(k,vertexBeginR,vertexEndR))  )  {
+                                          var    numNF=neiR[k];
+                                          var    edgeId=start_iR[k];
+                                          var nextStart=max(edgeId,edgeBegin);
+                                          var nextEnd=min(edgeEnd,edgeId+numNF-1);
+                                          ref NF=dstR[nextStart..nextEnd];
+                                          forall j in NF with (ref SetNextF,ref update,ref maxv,
+                                                               ref SetNextRemoved,ref father)  {
+                                                 if (depth[j]==-1) {
+                                                       if removed[j] {
+                                                           SetRemoved.add(j,here.id);
+                                                           //writeln("Found removed vertex ", j);
+                                                       } else {
+                                                           update=true;
+                                                           SetNextF.add(j,here.id);
+                                                           maxv=j;
+                                                           if setfather {
+                                                               father[j]=i;
+                                                           }
+                                                       }
+                                                       depth[j]=cur_level+1;
+                                                 }
+                                          }
+                                      }
+                                   }//end forall
+                                   SetRemoved<=>SetNextRemoved;
+                                   SetNextRemoved.clear();
+                              }//end while
+
+
+
+
+                           }//end coforall
+                       }
+                   }//end on loc
+                }//end coforall loc
+                if ( update) {
+                    cur_level+=1;
+                }
+                numCurF=SetNextF.getSize();
+                SetCurF<=>SetNextF;
+                SetNextF.clear();
+          }//end while  
+
 
           return (cur_level,maxv);
       }//end of bfs
 
 
+
+/*
       proc c_diameter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,gdiameter:int):int throws{
@@ -466,84 +814,6 @@ module DiameterMsg {
           //writeln("After BFS");
           diameter=max(diameter,cur_level);
           //unmark some branch vertex
-          /*
-          forall e in D3 {
-               var s=src[e];
-               var d=dst[e];
-               if (depth[s]>depth[d] && d!=father[s] ) {
-                     s=father[s];
-                     while s!=-1 && depth[s]>depth[d] {
-                         s=father[s];
-                     }
-               } else if (depth[s]<depth[d] && s!=father[d] ) {
-                     d=father[d];
-                     while d!=-1 && depth[s]<depth[d] {
-                         d=father[d];
-                     }
-               } 
-               if depth[s]==depth[d] && depth[s]!=-1 {
-                     if s==d {
-                         branch[s]=false;
-                     } else {
-                         var fs=father[s];
-                         var fd=father[d];
-                         while fs!=-1 && fd!=-1 && fs!=fd {
-                             fs=father[fs];
-                             fd=father[fd];
-                         } 
-                         if fs==fd {
-                             branch[fs]=false;
-                         }
-                     }
-               }
-          }
-
-
-          forall i in D1 with (ref maxdist, ref maxvertex,ref maxvx,ref maxvy,ref diameter) {
-          //for i in D1 {
-              if leaf[i]==true  {
-              //if leaf[i]==true && depth[i] >=diameter/2 {
-                   leaf[i]=false;
-                   var f=father[i];
-                   var height=1;
-                   var old:int;
-                   var newval:int;
-                   //while (f!=-1) && (leaf[f] ==false) {
-                   while (f!=-1)  && depth[i] >=diameter/2  {
-                        //writeln("Leaf ",i," search to vertex ",f, " with height ", height);
-                        if length[f].vx.read()<height && branch[f]==true {
-                             old=length[f].vx.read();
-                             while (old<height) {
-                                length[f].vx.compareAndSwap(old,height);
-                                old=length[f].vx.read();
-                             }
-                             if (old==height && length[f].vxvertex!=i) {
-                                length[f].vxvertex=i;
-                             } 
-                        } else {
-                            if length[f].vy.read()<height && branch[f]==true {
-                                 old=length[f].vy.read();
-                                 while (old<height) {
-                                    length[f].vy.compareAndSwap(old,height);
-                                    old=length[f].vy.read();
-                                 }
-                                 if (old==height && length[f].vyvertex!=i) {
-                                    length[f].vyvertex=i;
-                                 } 
-                         
-                            } else { 
-                                          break;
-                            }
-                        }
-                            
-                        f=father[f];
-                        height+=1;
-                   }//end while
-              }//end if
-          }
-
-
-          */
 
           var LeafSet=new set(int,parSafe = true);
           forall i in D1 with (ref maxdist, ref maxvertex,ref maxvx,ref maxvy,ref diameter,ref LeafSet) {
@@ -553,27 +823,6 @@ module DiameterMsg {
                    } else {
                       LeafSet.add(i);
                    }
-                   /*
-                   else {
-                       var f=father[i];
-                       var height=1;
-                       var old:int;
-                       var newval:int;
-                       while (f!=-1) && (branch[f] ==false) {
-                           f=father[f];
-                       }
-                       if f!=-1 && branch[f]==true {
-                           if height<length[f].vx.read(){
-                                leaf[i]=false;
-                           } else {
-                              if length[f].vxvertex!=i {
-                                leaf[i]=false;
-                              }
-                           }
-
-                       }
-                  }//end if
-                  */
           }
 
           for i in LeafSet {
@@ -632,7 +881,6 @@ module DiameterMsg {
           return diameter;
           //return max(cur_level,xx);
       }//end of component diameter
-
 
 
 
@@ -772,12 +1020,409 @@ module DiameterMsg {
           //return max(cur_level,xx);
       }//end of component diameter
 
+*/
+/*
+      proc c_lu (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                 neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                 root:int,plbound:int,pubound:int,iternum:int,varray:[?D15] int, f:[?D16]int):(int,int) throws{
+          var i=0:int;
+          var dindex:int=0;
+          var maxv:int;
+          var tmpr=root;
+          var lbound=0;
+          var ubound=999999;
+
+          var diameter=lbound;
+          var removed:[D1] bool;
+          removed=false;
+          var father:[D1] int;
+          father=-1;
+
+          var graphheight0,graphheight1,graphheight2:int;
+          var graphvertex0,graphvertex1,graphvertex2:int;
+          var treeheight0,treeheight1,treeheight2:int;
+          var treevertex0,treevertex1,treevertex2:int;
+
+          while i<iternum {
+          (graphheight0,graphvertex0)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, varray[i],removed,father,true );
+          writeln("iteration ",i,","," From vertex ", varray[i]," Step 0, Graph BFS height =",graphheight0, ", farest vertex is ", graphvertex0);
+
+          (treeheight0,treevertex0)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, varray[i],removed,father,true);
+          writeln("iteration ",i,","," From vertex ", varray[i]," Step 0, Tree BFS height =",treeheight0, ", farest vertex is ", treevertex0);
+          if treeheight0!=graphheight0 {
+               writeln("iteration ",i,","," Step 0 height is not equal, WRONG!!!");
+          }
+
+          (treeheight1,treevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, treevertex0,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", treevertex0," Step 0-1, Tree BFS height =",treeheight1, ", farest vertex is ", treevertex1);
+
+          (treeheight2,treevertex2)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, treevertex1,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", treevertex1," Step 0-2, Tree BFS height =",treeheight2, ", farest vertex is ", treevertex2);
+
+          writeln("iteration ",i,",","GraphHeight0=",graphheight0,"Tree height0=",treeheight0," Tree height1=",treeheight1," Tree height2=",treeheight2);
+          if graphheight0>min(treeheight2,treeheight1) {
+              writeln("WRONG!!!, graph height is larger than tree height");
+          }
+
+
+          father=-1;
+          (graphheight1,graphvertex1)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex0,removed,father,true );
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 1, Graph BFS height =",graphheight1, ", root is ",graphvertex0, ", farest vertex is ", graphvertex1);
+
+
+          (treeheight0,treevertex0)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex0,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 1, Tree BFS height =",treeheight0, ", root is ",graphvertex0,", farest vertex is ", treevertex0);
+          if treeheight0!=graphheight1 {
+               writeln("Step 1 height is not equal, WRONG!!!");
+          }
+
+          (treeheight1,treevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, treevertex0,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 1-1, Tree BFS height =",treeheight1, ", root is ",treevertex0,", farest vertex is ", treevertex1);
+
+          (treeheight2,treevertex2)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, treevertex1,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 1-2, Tree BFS height =",treeheight2, ", root is ",treevertex1,", farest vertex is ", treevertex2);
+
+          writeln("iteration ",i,",","GraphHeight1=",graphheight1,"Tree height0=",treeheight0," Tree height1=",treeheight1," Tree height2=",treeheight2);
+          if graphheight1>min(treeheight2,treeheight1) {
+              writeln("WRONG!!!, graph height is larger than tree height");
+          }
 
 
 
+          father=-1;
+          (graphheight2,graphvertex2)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex1,removed,father,true );
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 2, Graph BFS height =",graphheight2, ", root is ",graphvertex1, ", farest vertex is ", graphvertex2);
+
+
+          (treeheight0,treevertex0)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex1,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 2, Tree BFS height =",treeheight0, ", root is ",graphvertex1,", farest vertex is ", treevertex0);
+          if treeheight0!=graphheight2 {
+               writeln("Step 1 height is not equal, WRONG!!!");
+          }
+
+          (treeheight1,treevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, treevertex0,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 2-1, Tree BFS height =",treeheight1, ", root is ",treevertex0,", farest vertex is ", treevertex1);
+
+          (treeheight2,treevertex2)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, treevertex1,removed,father,true);
+          writeln("iteration ",i,",","From vertex ", varray[i]," Step 2-2, Tree BFS height =",treeheight2, ", root is ",treevertex1,", farest vertex is ", treevertex2);
+
+          writeln("iteration ",i,",","GraphHeight2=",graphheight2,", Tree height0=",treeheight0,", Tree height1=",treeheight1,", Tree height2=",treeheight2);
+          if graphheight2>min(treeheight2,treeheight1) {
+              writeln("WRONG!!!, graph height is larger than tree height");
+          }
+          i=i+1;
+          father=-1;
+          }
+          return (0,0);
+      }
+
+
+*/
 
 
       proc c_lu (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
+                 neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
+                 root:int,plbound:int,pubound:int,iternum:int,varray:[?D15] int, f:[?D16]int):(int,int) throws{
+          var i=0:int;
+          var dindex:int=0;
+          var maxv:int;
+          var tmpr=root;
+          var lbound=0;
+          var ubound=999999;
+
+          var diameter=lbound;
+          var removed:[D1] bool;
+          removed=false;
+          var visited=removed;
+          var father,oldfather:[D1] int;
+          var keep:[D1] atomic int;
+          forall i in D1 {
+             keep[i].write(-1);
+          }
+          forall i in D1 with (ref keep, ref removed) {
+             if nei[i]+neiR[i]==1 {
+                 if nei[i]==1 {
+                     var c=dst[start_i[i]];
+                     var old=keep[c].read();
+                     if (old!=-1) {
+                        removed[i]=true;
+                     } else {
+                          while old==-1 {
+                               keep[c].compareAndSwap(-1,i);
+                               old=keep[c].read();                   
+                          }
+                          if old !=i {
+                             removed[i]=true;
+                          }
+                     }
+                 } else {
+                     if neiR[i]==1 {
+                         var c=dstR[start_iR[i]];
+                         var old=keep[c].read();
+                         if (old!=-1) {
+                            removed[i]=true;
+                         } else {
+                              while old==-1 {
+                                  keep[c].compareAndSwap(-1,i);
+                                  old=keep[c].read();                   
+                              }
+                              if old !=i {
+                                 removed[i]=true;
+                              }
+                         }
+                     }
+                 } 
+
+             }//end if 
+          }// end forall
+
+          var graphheight0,graphheight1,graphheight2:int;
+          var graphvertex0,graphvertex1,graphvertex2:int;
+          var treeheight0,treeheight1,treeheight2:int;
+          var treevertex0,treevertex1,treevertex2:int;
+
+          var tmproot,tmpgraphheight0,tmpgraphheight1,tmpgraphheight2:int;
+          var tmpgraphvertex0,tmpgraphvertex1,tmpgraphvertex2:int;
+          var tmptreeheight0,tmptreeheight1,tmptreeheight2:int;
+          var tmptreevertex0,tmptreevertex1,tmptreevertex2:int;
+
+          tmpr=-1;
+          while (i<iternum){
+               while (varray.size>dindex) {
+                   if (removed[varray[dindex]] || visited[varray[dindex]] ) {
+                       dindex=dindex+1;
+                   } else {
+                       break;
+                   }
+               }
+               if dindex+1>=varray.size {
+                        break;
+               }
+
+               if tmpr==-1 {
+                    tmpr=varray[dindex];
+               }
+               father=-1;
+               //initial the two steps in one complete iteration
+               (graphheight0,graphvertex0)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, tmpr,removed,father,true );
+               visited[tmpr]=true;
+               tmpr=-1;
+               if (visited[graphvertex0]) {
+                    dindex=dindex+1;
+                    i=i+1;
+                    continue;
+               }
+               writeln("Iteration ",i,", Step 0, Graph BFS height =",graphheight0, ", farest vertex is ", graphvertex0);
+
+               (treeheight1,treevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex0,removed,father,false);
+
+               oldfather=father;
+               father=-1;
+               (graphheight1,graphvertex1)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex0,removed,father,true);
+               visited[graphvertex0]=true;
+               writeln("Iteration ",i,", Step 1, Tree BFS height =",treeheight1,", Graph BFS height =", graphheight1, 
+                  ",  Farest tree and graph vertices ",treevertex1,", ",graphvertex1);
+
+               if (visited[graphvertex1]) {
+                    dindex=dindex+1;
+                    i=i+1;
+                    continue;
+               }
+               if (treeheight1 == graphheight1) {
+                  lbound=max(lbound,graphheight1);
+                  ubound=lbound;
+                  i=iternum;
+                  break;
+               } else {
+                   if (treeheight1 < graphheight1) {
+                       writeln("Tree height ", treeheight1, " is less than the graph height ",graphheight1, " WRONG!!!");
+                       writeln("The Tree looks like this");
+                       (tmptreeheight1,tmptreevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex0,removed,oldfather,true);
+
+                       writeln("Tree height ", tmptreeheight1, " The farest vertex is ", tmptreevertex1);
+                       writeln("The BFS Tree looks like this");
+                       (tmptreeheight1,tmptreevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex0,removed,father,true);
+                       writeln("Tree height ", tmptreeheight1, " The farest vertex is ", tmptreevertex1);
+
+                   }
+                  lbound=max(lbound,graphheight1);
+                  ubound=min(ubound,treeheight1,2*graphheight0,2*graphheight1);
+               }
+
+              //check the second BFS step in one complete iteration
+              (treeheight2,treevertex2)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex1,removed,father,false);
+
+              oldfather=father;
+              father=-1;
+              (graphheight2,graphvertex2)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex1,removed,father,true);
+              visited[graphvertex1]=true;
+
+              if (treeheight2 < graphheight2) {
+                   writeln("Tree height ", treeheight2, " is less than the graph height ",graphheight2, " WRONG!!!");
+              }
+
+              writeln("Iteration ",i,", Step 2, Tree BFS height =",treeheight2,", Graph BFS height =", graphheight2, 
+                      ", Farest tree are graph vertices ",treevertex2,", ",graphvertex2);
+              if (treeheight2 == graphheight2) {
+                  lbound=max(lbound,graphheight2);
+                  ubound=lbound;
+                  break;
+              } else {
+                  lbound=max(lbound,graphheight2);
+                  ubound=min(ubound, treeheight2,2*graphheight2);
+              }
+              writeln("Iteration ",i," lbound=",lbound," ubound=",ubound);
+              if lbound>=ubound {
+                            i=iternum;
+                            break;
+              }
+              //if graphheight2 > graphheight1  {
+              //    removed[graphvertex0]=true;
+              //    writeln("Iteration ",i,", Removed the No. 0 farest vertex ",graphvertex0);
+              //} 
+              if visited[graphvertex2]==false {
+                  tmpr=graphvertex2;
+              }
+              /*
+              //while (graphheight2 == graphheight1) && (i<iternum)   {
+              if (graphheight2 == graphheight1) && (i<iternum)   {
+                  var tmpremoved=removed;
+                  tmpremoved[graphvertex1]=true;
+                  tmproot=oldfather[graphvertex1];
+                  while (tmproot!=-1) {
+                       if  visited[tmproot] || removed[tmproot] {
+                           tmproot=oldfather[tmproot];
+                       } else {
+                           break;
+                       }
+                  }
+                  if (tmproot==-1){
+                      writeln("No available father vertex, WRONG!!!");
+                      break;
+                  }
+             
+                  writeln("Iteration ",i,", Remove vertex ",graphvertex1,
+                          " to break the repeat pattern, select new root  vertex is  ", tmproot);
+                  father=-1;
+                  (tmpgraphheight0,tmpgraphvertex0)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, tmproot,tmpremoved,father,true );
+                  writeln("Iteration ",i,", Tmp Step 0, Graph BFS height =",tmpgraphheight0, 
+                          ", farest vertex is ",tmpgraphvertex0);
+                  //if visited[tmpgraphvertex0] {
+                  //     break;
+                  //}
+
+                  (tmptreeheight1,tmptreevertex1)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, tmpgraphvertex0,tmpremoved,father);
+                  father=-1;
+                  (tmpgraphheight1,tmpgraphvertex1)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, tmpgraphvertex0,tmpremoved,father,true);
+                  writeln("Iteration ",i,", Tmp Step 1, Tree BFS height =",tmptreeheight1,
+                          ", Graph BFS height =",tmpgraphheight1, ", Farest tree are graph vertices ",tmptreevertex1,
+                          ", ",tmpgraphvertex1);
+                  //if visited[tmpgraphvertex1] {
+                  //     break;
+                  //}
+
+                  if (tmpgraphheight1>=graphheight1) {
+                     writeln("confirmed the removed vertex ",graphvertex1," is feasible because the new graph height ", tmpgraphheight1," is not less than the old graph height ",graphheight1);
+                     visited[tmproot]=true;
+                     visited[tmpgraphvertex0]=true;
+                     graphheight1=tmpgraphheight1;
+                     graphheight0=tmpgraphheight0;
+                     graphvertex1=tmpgraphvertex1;
+                     graphvertex0=tmpgraphvertex0;
+                     treeheight1=tmptreeheight1;
+                     treevertex1=tmptreevertex1;
+                     removed=tmpremoved;
+
+                     //check the last step in one complete iteration
+                     (treeheight2,treevertex2)=Stree_bfs( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex1,removed,father,false);
+
+                     oldfather=father;
+                     father=-1;
+                     (graphheight2,graphvertex2)= Sbfs_maxv( nei, start_i,src, dst,
+                                    neiR, start_iR,srcR, dstR, graphvertex1,removed,father,true);
+                     visited[graphvertex1]=true;
+                     //if visited[graphvertex2] {
+                     //     break;
+                     //}
+
+                     if (treeheight2 < graphheight2) {
+                           writeln("Tree height ", treeheight2, " is less than the graph height ",graphheight2, " WRONG!!!");
+                     }
+
+                     writeln("Iteration ",i,", Step 2, Tree BFS height =",treeheight2,
+                             ", Graph BFS height =", graphheight2, 
+                             ", Farest tree and graph vertices ",treevertex2,", ",graphvertex2);
+                     if (treeheight1 == graphheight1) {
+                             lbound=max(lbound,graphheight1);
+                             ubound=lbound;
+                             i=iternum;
+                             break;
+                     } 
+                     if (treeheight2 == graphheight2) {
+                             lbound=max(lbound,graphheight2);
+                             ubound=lbound;
+                             i=iternum;
+                             break;
+                      } else {
+                          lbound=max(lbound,graphheight0,graphheight1,graphheight2);
+                          ubound=min(ubound, treeheight1, treeheight2,2*graphheight0,2*graphheight1,2*graphheight2);
+                      }
+                      writeln("Iteration ",i," lbound=",lbound," ubound=",ubound);
+                      if lbound>=ubound {
+                            i=iternum;
+                            break;
+                      }
+                      i=i+1;
+                  } else {
+                      //break;
+                  } 
+
+              }
+              */
+              //if graphheight2 < graphheight1  {
+              //    removed[graphvertex1]=true;
+              //    writeln("Iteration ",i,", Removed the No. 1 farest vertex ",graphvertex1);
+              //} 
+              writeln("lbound=",lbound," ubound=",ubound," after iteration ",i);
+              if lbound==ubound {
+                   break;
+              }
+
+              i=i+1;
+              dindex=dindex+1;
+          }
+          lbound=max(lbound,plbound);
+          ubound=min(ubound,pubound);
+          diameter=lbound;
+          return (diameter,ubound);
+      }//end of component diameter
+
+
+/*
+      proc bak_c_lu (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,plbound:int,pubound:int,iternum:int):(int,int) throws{
           var i:int=0;
@@ -790,6 +1435,7 @@ module DiameterMsg {
           var diameter=lbound;
           var SetCurF=  new distBag(int,Locales);//use bag to keep the current frontier
           var SetNextF=  new distBag(int,Locales); //use bag to keep the next frontier
+          var SetRemoved=  new distBag(int,Locales); //use bag to keep the removed vertices
           SetCurF.add(root,here.id);
           var numCurF=1:int;
           var topdown=0:int;
@@ -797,6 +1443,7 @@ module DiameterMsg {
           var update=false:bool;
           var depth:[D1] int;
           depth=-1;
+          var removed=update;
           var father=depth;
           father[root]=-1;
           depth[root]=0;
@@ -828,7 +1475,34 @@ module DiameterMsg {
 
           while (numCurF>0) {
                 update=false;
-                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update) {
+                SetRemoved.clear();
+          forall i in D1 {
+                length[i].vx.write(0);
+                length[i].vy.write(0);
+                length[i].vxvertex=-1;
+                length[i].vyvertex=-1;
+          }
+
+          while (i<iternum){
+
+          while (numCurF>0) {
+                update=false;
+                SetRemoved.clear();
+          }
+          var length:[D1] Mergedist;
+          forall i in D1 {
+                length[i].vx.write(0);
+                length[i].vy.write(0);
+                length[i].vxvertex=-1;
+                length[i].vyvertex=-1;
+          }
+
+          while (i<iternum){
+
+          while (numCurF>0) {
+                update=false;
+                SetRemoved.clear();
+                coforall loc in Locales  with (ref SetNextF,+ reduce topdown, + reduce bottomup, ref root, ref src, ref depth,ref update, ref SetRemoved) {
                    on loc {
                        ref srcf=src;
                        ref df=dst;
@@ -859,12 +1533,12 @@ module DiameterMsg {
                                   ref NF=df[nextStart..nextEnd];
                                   forall j in NF with (ref SetNextF,ref update, ref branchnum){
                                          if (depth[j]==-1) {
-                                               depth[j]=cur_level+1;
-                                               father[j]=i;
-                                               leaf[i]=false;
-                                               update=true;
-                                               branchnum+=1;
-                                               SetNextF.add(j,here.id);
+                                                   depth[j]=cur_level+1;
+                                                   father[j]=i;
+                                                   leaf[i]=false;
+                                                   update=true;
+                                                   branchnum+=1;
+                                                   SetNextF.add(j,here.id);
                                          }
                                   }
                               } 
@@ -874,17 +1548,18 @@ module DiameterMsg {
                                   var nextStart=max(edgeId,edgeBegin);
                                   var nextEnd=min(edgeEnd,edgeId+numNF-1);
                                   ref NF=dfR[nextStart..nextEnd];
-                                  forall j in NF with (ref SetNextF,ref update,ref branchnum)  {
+                                  forall j in NF with (ref SetNextF,ref update,ref branchnum,ref SetRemoved)  {
                                          if (depth[j]==-1) {
-                                               depth[j]=cur_level+1;
-                                               leaf[i]=false;
-                                               father[j]=i;
-                                               update=true;
-                                               branchnum+=1;
-                                               SetNextF.add(j,here.id);
+                                                   depth[j]=cur_level+1;
+                                                   leaf[i]=false;
+                                                   father[j]=i;
+                                                   update=true;
+                                                   branchnum+=1;
+                                                   SetNextF.add(j,here.id);
                                          }
                                   }
                               }
+
                               if branchnum>1 {
                                   branch[i]=true;
                               }
@@ -906,6 +1581,8 @@ module DiameterMsg {
 
           var mylevel:int;
           var mymaxv:int;
+          var oldheight:int;
+          oldheight=cur_level;
           for i in D1  {
               if depth[i] ==cur_level {
                             var xx=tree_bfs( nei, start_i,src, dst,
@@ -913,9 +1590,13 @@ module DiameterMsg {
                             writeln("Tree BFS height=",xx);
                             (mylevel,mymaxv)= bfs_maxv( nei, start_i,src, dst,
                                     neiR, start_iR,srcR, dstR, i);
+                            if mylevel>oldheight {
+                                removed[i]=true;
+                            }
+                            oldheight=mylevel;
                             writeln("Graph BFS height=",mylevel);
                             lbound=max(lbound,mylevel);
-                            ubound=min(ubound, xx*2);
+                            ubound=min(ubound, xx,2*lbound);
                             writeln("lbound=",lbound," ubound=",ubound);
                             diameter=lbound;
                             break;
@@ -929,6 +1610,9 @@ module DiameterMsg {
           }
 
           i=i+1;
+          if father[mymaxv]!=-1 {
+             mymaxv=father[mymaxv];
+          }
           SetCurF.add(mymaxv,here.id);
           numCurF=1;
           update=false;
@@ -941,8 +1625,6 @@ module DiameterMsg {
           return (diameter,ubound);
           //return max(cur_level,xx);
       }//end of component diameter
-
-
 
 
       proc c_supernode (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
@@ -1047,6 +1729,11 @@ module DiameterMsg {
           //return max(cur_level,xx);
       }//end of component diameter
 
+
+*/
+
+
+/*
       proc c_iter (nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                        neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int, 
                        root:int,gdiameter:int, iternum:int):int throws{
@@ -1069,7 +1756,7 @@ module DiameterMsg {
           return diameter;
       }//end of component diameter
 
-
+*/
     inline proc find_split(u:int,  ref parents:[?D1] int):int {
        var i=u;
        var v,w:int;
@@ -1308,557 +1995,8 @@ module DiameterMsg {
 
 
 
-    // Contour: a minimum mapping based connected components algorithm, a mixed method
-    proc cc_contour(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
 
 
-      localtimer.clear();
-      localtimer.start(); 
-      coforall loc in Locales with (ref f) {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd with (ref f) {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-      localtimer.stop(); 
-      executime=localtimer.elapsed();
-      myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
-      //we vx check with order=1 mapping method
-      while( (!converged) && (itera<FirstOrderIters) && 
-               ( (Ne/here.numPUs() < LargeScale) )) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count, ref f) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        writeln("My Order is 1"); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-
-
-      if (Ne/here.numPUs() < LargeScale) {
-           ORDERH=2;
-      }else {
-           ORDERH=1024;
-      }  
-      // then we use 1m1m method
-      while( (!converged) ) {
-        localtimer.clear();
-        localtimer.start(); 
-        coforall loc in Locales with ( + reduce count, ref f) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
-              var u = src[x];
-              var v = dst[x];
-
-                         var TmpMin:int;
-                         TmpMin=min(f[u],f[v]);
-                         if(TmpMin < f[u]) {
-                             f[u] = TmpMin;
-                             count=count+1;
-                         }
-                         if(TmpMin < f[v]) {
-                             f[v] = TmpMin;
-                             count=count+1;
-                         }
-                  
-            }//end of forall
-          }
-        }
-
-
-        itera += 1;
-        //writeln("My Order is 1"); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-        if( (count==0) ) {
-          converged = true;
-          continue;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-
-        // In the second step, we employ high order mapping
-        localtimer.clear();
-        localtimer.start(); 
-        if (ORDERH==2) {
-            coforall loc in Locales with ( + reduce count, ref f ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-
-                  TmpMin=min(f[f[u]],f[f[v]]);
-                  if(TmpMin < f[f[u]]) {
-                     f[f[u]] = TmpMin;
-                  }
-                  if(TmpMin < f[f[v]]) {
-                     f[f[v]] = TmpMin;
-                  }
-                  if(TmpMin < f[u]) {
-                    f[u] = TmpMin;
-                  }
-                  if(TmpMin < f[v]) {
-                    f[v] = TmpMin;
-                  }
-                }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                            count=1;
-                        } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-        } else {
-            coforall loc in Locales with ( + reduce count , ref f) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count, ref f)  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                      TmpMin=min(u,v);
-                  } else{
-                      TmpMin=min(find_split_h(u,f,ORDERH),find_split_h(v,f,ORDERH));
-                  }
-                  if ( (f[u]!=TmpMin) || (f[v]!=TmpMin)) {
-                      var myx=u;
-                      var lastx=u;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                      myx=v;
-                      while (f[myx] >TmpMin ) {
-                          lastx=f[myx];
-                          f[myx]=TmpMin;
-                          myx=lastx;
-                      }
-                  }
-                  
-                }//end of forall
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                    if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                        count=1;
-                    } 
-                  }
-                }
-              }// end of on loc 
-            }// end of coforall loc 
-
-        }
-
-
-        if( (count==0) ) {
-          converged = true;
-        }
-        else {
-          converged = false;
-          count=0;
-        }
-        itera += 1;
-        writeln("My Order is ",ORDERH); 
-        localtimer.stop(); 
-        executime=localtimer.elapsed();
-        //myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-        //writeln("Efficiency is ", myefficiency, " time is ",executime);
-      }
-
-
-
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // union-find
-    proc cc_unionfind(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-
-      // Initialize f and f_low in distributed memory.
-
-      coforall loc in Locales with (ref f) {
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd with (ref f) {
-            f[i] = i;
-            if (nei[i] >0) {
-                var tmpv=dst[start_i[i]];
-                if ( tmpv <i ) {
-                     f[i]=tmpv;
-                }
-            }
-            if (neiR[i] >0) {
-                var tmpv=dstR[start_iR[i]];
-                if ( tmpv <f[i] ) {
-                     f[i]=tmpv;
-                }
-            }
-          }
-        }
-      }
-
-
-
-      var converged:bool = false;
-      var itera = 1;
-      {
-        var count:int=0;
-        var count1:int=0;
-        coforall loc in Locales with ( + reduce count, + reduce count1, ref f) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd  with (ref f)   {
-              var u = src[x];
-              var v = dst[x];
-              unite(u,v,f);
-            }//end of forall
-            forall x in edgeBegin..edgeEnd  with (ref f)  {
-              var u = src[x];
-              var v = dst[x];
-              var l=find_half(u,f);
-              var t=u;
-              var ft=f[t];
-              while (f[t]>l) {
-                  ft=f[t];
-                  f[t]=l;
-                  t=ft;
-              }
-              l=find_half(v,f);
-              t=v;
-              while (f[t]>l) {
-                  ft=f[t];
-                  f[t]=l;
-                  t=ft;
-              }
-            }//end of forall
-          }
-        }
-      }
-      writeln("Number of iterations = ", itera);
-
-      return f;
-    }
-
-
-
-
-
-
-
-    // distance=2;
-    proc cc_2(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var af = makeDistArray(Nv, atomic int); 
-      var converged:bool = false;
-      var count:int=0;
-      var itera = 1;
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-      if (numLocales>1 && MultiLocale==1) {
-
-           coforall loc in Locales with (ref af) {
-                on loc {
-                    forall i in f.localSubdomain() with (ref af)  {
-                         af[i].write(i);
-                    }
-                }
-           }
-           while( (!converged) ) {
-             // In the second step, we employ high order mapping
-             localtimer.clear();
-             localtimer.start(); 
-
-             
-             coforall loc in Locales with ( + reduce count, ref af ) {
-                     on loc {
-                             var localf:[0..Nv-1] atomic int;
-                             var lconverged:bool = false;
-                             var litera = 1;
-                             var lcount:int=0;
-                             forall i in 0..Nv-1 with (ref af)  {
-                                 localf[i].write(af[i].read());
-                             }
-                             while (!lconverged) {
-                                forall x in src.localSubdomain()  with ( + reduce lcount)  {
-                                        var u = src[x];
-                                        var v = dst[x];
-                                        var TmpMin:int;
-                                        var fu=localf[u].read();
-                                        var fv=localf[v].read();
-                                        TmpMin=min(localf[fu].read(),localf[fv].read());
-                                        var oldx=localf[u].read();
-                                        while (oldx>TmpMin) {
-                                              if (localf[u].compareAndSwap(oldx,TmpMin)) {
-                                                  u=oldx;
-                                              }
-                                              oldx=localf[u].read();
-                                              lcount+=1;
-                                        }
-                                        oldx=localf[v].read();
-                                        while (oldx>TmpMin) {
-                                              if (localf[v].compareAndSwap(oldx,TmpMin)) {
-                                                  v=oldx;
-                                              }
-                                              oldx=localf[v].read();
-                                              lcount+=1;
-                                        }
-                                        oldx=localf[fu].read();
-                                        while (oldx>TmpMin) {
-                                              if (localf[fu].compareAndSwap(oldx,TmpMin)) {
-                                                  fu=oldx;
-                                              }
-                                              oldx=localf[fu].read();
-                                              lcount+=1;
-                                        }
-
-
-                                        oldx=localf[fv].read();
-                                        while (oldx>TmpMin) {
-                                              if (localf[fv].compareAndSwap(oldx,TmpMin)) {
-                                                  fv=oldx;
-                                              }
-                                              oldx=localf[fv].read();
-                                              lcount+=1;
-                                        }
-
-
-                                }// forall
-                                if( (lcount==0) ) {
-                                    lconverged = true;
-                                    writeln("Loale ", here.id, " inner iteration=", litera," lcount=",lcount);
-                                }
-                                else {
-                                    lconverged = false;
-                                    lcount=0;
-                                }
-                                litera+=1;
-                             }// while
-                             writeln("Converge local ------------------------------------------");
-                             forall i in 0..Nv-1 with (+ reduce count) {
-                                 var old=af[i].read();
-                                 var newval=localf[i].read();
-                                 while old>newval {
-                                     af[i].compareAndSwap(old,newval);
-                                     old=af[i].read();
-                                     count+=1;
-                                 }
-                             }
-
-                     }// end of on loc 
-                 }// end of coforall loc 
-
-                 if( (count==0) ) {
-                      converged = true;
-                 }
-                 else {
-                     converged = false;
-                     count=0;
-                 }
-                 itera += 1;
-                 writeln(" -----------------------------------------------------------------");
-                 writeln(" outter iteration=", itera);
-
-           }//while
-           forall i in 0..Nv-1 with (+ reduce count) {
-                    f[i]=af[i].read();
-           }
-
-      } else {
-
-      // Initialize f and f_low in distributed memory.
-
-          coforall loc in Locales with (ref f){
-            on loc {
-              var vertexBegin = f.localSubdomain().lowBound;
-              var vertexEnd = f.localSubdomain().highBound;
-              forall i in vertexBegin..vertexEnd {
-                f[i] = i;
-                if (nei[i] >0) {
-                    var tmpv=dst[start_i[i]];
-                    if ( tmpv <i ) {
-                         f[i]=tmpv;
-                    }
-                }
-                if (neiR[i] >0) {
-                    var tmpv=dstR[start_iR[i]];
-                    if ( tmpv <f[i] ) {
-                         f[i]=tmpv;
-                    }
-                }
-              }
-            }
-          }
-
-
-          while(!converged) {
-            var count:int=0;
-            localtimer.clear();
-            localtimer.start(); 
-            coforall loc in Locales with ( + reduce count,ref f ) {
-              on loc {
-                var edgeBegin = src.localSubdomain().lowBound;
-                var edgeEnd = src.localSubdomain().highBound;
-
-                forall x in edgeBegin..edgeEnd  with ( + reduce count )  {
-                  var u = src[x];
-                  var v = dst[x];
-
-                  var TmpMin:int;
-                  if (itera==1) {
-                         TmpMin=min(u,v);
-                  } else {
-                    TmpMin=min(f[f[u]],f[f[v]]);
-                  }
-                  if(TmpMin < f[f[u]]) {
-                         f[f[u]] = TmpMin;
-                  }
-                  if(TmpMin < f[f[v]]) {
-                         f[f[v]] = TmpMin;
-                  }
-                  if(TmpMin < f[u]) {
-                    f[u] = TmpMin;
-                  }
-                  if(TmpMin < f[v]) {
-                    f[v] = TmpMin;
-                  }
-                }//end of forall
-                forall x in edgeBegin..edgeEnd  with ( + reduce count)  {
-                  var u = src[x];
-                  var v = dst[x];
-                  if (count==0) {
-                        if (f[u]!=f[f[u]] || f[v]!=f[f[v]] || f[f[u]]!=f[f[v]]) {
-                            count=1;
-                        } 
-                  }
-                }
-              }
-            }
-
-
-
-            localtimer.stop(); 
-            executime=localtimer.elapsed();
-            myefficiency=(Ne:real/executime/1024.0/1024.0/here.numPUs():real):real;
-            //writeln("Efficiency is ", myefficiency, " time is ",executime);
-            if( (count==0) ) {
-              converged = true;
-            }
-            else {
-              converged = false;
-            }
-            itera += 1;
-          }
-      }
-      writeln("Number of iterations = ", itera-1);
-
-      return f;
-    }
 
 
     // Contour variant: a  mapping based connected components algorithm
@@ -2136,8 +2274,14 @@ module DiameterMsg {
               writeln("no more than  two or ", largestD, " vertices, contiune");
               continue;
           }
-          //if true {
           if numV>2500 {
+              var vset= new set(int, parSafe = true); 
+              for k in D1 {
+                  if f[k]==i {
+                     vset.add(k);
+                  }
+              }
+              var vertexarray=vset.toArray();
               writeln("Enter BFS method");
               writeln("*************************************");
               //diameter=c_diameter(nei, start_i,src, dst,
@@ -2145,7 +2289,7 @@ module DiameterMsg {
               //diameter=c_supernode(nei, start_i,src, dst,
               //          neiR, start_iR,srcR, dstR, i,largestD,10);
               (diameter,ubound)=c_lu(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, i,largestD,99999,10);
+                        neiR, start_iR,srcR, dstR, vertexarray[0],largestD,99999,10,vertexarray,f);
               if largestD<diameter {
                  Ubound=ubound;
               }
@@ -2267,220 +2411,8 @@ module DiameterMsg {
           Ubound=largestD;
       }
       writeln("The Ubound =",Ubound);
-      /*
-      largestD=0;
-      diameter=0;
-      var diameter1=0:int;
-      var diameter2=0:int;
-      var largestD1=0:int;
-      var largestD2:int=0;
-      for i in CompSet  {
-          writeln("Handle component ",i);
-          var numV=f.count(i);
-          if numV<=max(2,largestD) {
-              writeln("no more than  two or ", largestD, " vertices, contiune");
-              continue;
-          }
-          {
-              //writeln("Enter BFS method");
-              //writeln("*************************************");
-              var localtimer:stopwatch;
-              var executime:real;
-              localtimer.start();
-              diameter1=c_iter(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, i,largestD,10);
-              
-              executime=localtimer.elapsed();
-              writeln("Pass 1  The diameter of component ",i,"=",diameter1," execution time is ",executime );
-              localtimer.stop();
-
-              localtimer.clear();
-              localtimer.start();
-              diameter2=c_farthest(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, i,largestD,10);
-              writeln("Difference=",executime-localtimer.elapsed(),", Pass 1 needs ", executime, " Pass 2 needs ", localtimer.elapsed());
-              if diameter1!=diameter2 {
-                  writeln("not equal, diameter 1=",diameter1,", diameter 2=",diameter2);
-              } else  {
-                  writeln("equal, diameter =",diameter1);
-              }
-              largestD1=max(largestD1,diameter1);
-              largestD2=max(largestD2,diameter2);
-              largestD=max(largestD1,largestD2);
-          } 
-      }
-      writeln("Size of the Components=",CompSet.size);
-      writeln("The largest diameter =",largestD);
-
-      */
       return largestD;
     }
-
-
-
-
-    // the atomic method for union find implementation
-    proc cc_connectit(nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int, neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int) throws {
-      // Initialize the parent vectors f that will form stars. 
-      var f = makeDistArray(Nv, int); 
-      var af = makeDistArray(Nv, atomic int); 
-      var f_low = makeDistArray(Nv, atomic int); 
-      var localtimer:stopwatch;
-      var myefficiency:real;
-      var executime:real;
-
-      // Initialize f and f_low in distributed memory.
-      coforall loc in Locales  with (ref af, ref f, ref f_low){
-        on loc {
-          var vertexBegin = f.localSubdomain().lowBound;
-          var vertexEnd = f.localSubdomain().highBound;
-          forall i in vertexBegin..vertexEnd with (ref af, ref f, ref f_low) {
-            f_low[i].write(i);
-            f[i]=i;
-            af[i].write(i);
-          }
-        }
-      }
-
-
-      var converged:bool = false;
-      var itera = 1;
-      var count:int=0;
-      var count1:int=0;
-
-
-      if (numLocales>1 && MultiLocale==1) {
-
-           while( (!converged) ) {
-             // In the second step, we employ high order mapping
-             localtimer.clear();
-             localtimer.start(); 
-
-             
-             coforall loc in Locales with ( + reduce count, ref af ) {
-                     on loc {
-                                var localf_low:[0..Nv-1] atomic int;
-                                var lconverged:bool = false;
-                                var litera = 1;
-                                var lcount:int=0;
-                                forall i in 0..Nv-1 {
-                                    localf_low[i].write(af[i].read());
-                                }
-
-                                forall x in src.localSubdomain()    {
-                                    var u = src[x];
-                                    var v = dst[x];
-                                    unite_atomic(u,v,localf_low);
-                                }
-                                forall x in src.localSubdomain()    {
-                                     var u = src[x];
-                                     var v = dst[x];
-                                     var l=find_naive_atomic(u,localf_low);
-                                     var oldx=localf_low[u].read();
-                                     while (oldx>l) {
-                                           if (localf_low[u].compareAndSwap(oldx,l)) {
-                                               u=oldx;
-                                           }
-                                           oldx=localf_low[u].read();
-                                     }
-                                     //l=find_naive_atomic(v,localf_low);
-                                     oldx=localf_low[v].read();
-                                     while (oldx>l) {
-                                           if (localf_low[v].compareAndSwap(oldx,l)) {
-                                               v=oldx;
-                                           }
-                                           oldx=localf_low[v].read();
-                                     }
-
-                                }//end of forall
-
-                                writeln("Converge local ------------------------------------------");
-                                forall i in 0..Nv-1 with (+ reduce count) {
-                                    var old=af[i].read();
-                                    var newval=localf_low[i].read();
-                                    while old>newval {
-                                        af[i].compareAndSwap(old,newval);
-                                        old=af[i].read();
-                                        count+=1;
-                                    }
-                                }
-
-                     }// end of on loc 
-                 }// end of coforall loc 
-
-                 if( (count==0) ) {
-                      converged = true;
-                 }
-                 else {
-                     converged = false;
-                     count=0;
-                 }
-                 itera += 1;
-                 writeln(" -----------------------------------------------------------------");
-                 writeln(" outter iteration=", itera);
-
-           }//while
-
-           forall i in 0..Nv-1 with (+ reduce count) {
-                    f[i]=af[i].read();
-           }
-      } else {
-
-      {
-        coforall loc in Locales with ( + reduce count, + reduce count1, ref f_low) {
-          on loc {
-            var edgeBegin = src.localSubdomain().lowBound;
-            var edgeEnd = src.localSubdomain().highBound;
-
-            forall x in edgeBegin..edgeEnd    {
-              var u = src[x];
-              var v = dst[x];
-
-              unite_atomic(u,v,f_low);
-            }
-            forall x in edgeBegin..edgeEnd    {
-              var u = src[x];
-              var v = dst[x];
-              var l=find_naive_atomic(u,f_low);
-              var oldx=f_low[u].read();
-              while (oldx>l) {
-                    if (f_low[u].compareAndSwap(oldx,l)) {
-                        u=oldx;
-                    }
-                    oldx=f_low[u].read();
-              }
-              //l=find_naive_atomic(v,f_low);
-              oldx=f_low[v].read();
-              while (oldx>l) {
-                    if (f_low[v].compareAndSwap(oldx,l)) {
-                        v=oldx;
-                    }
-                    oldx=f_low[v].read();
-              }
-
-            }//end of forall
-          }
-        }
-        
-      }
-
-
-      itera+=1;
-      coforall loc in Locales with (ref f) {
-        on loc {
-          forall i in f.localSubdomain() {
-            f[i] = f_low[i].read();
-          }
-        }
-      }
-      }
-
-      writeln("Number of iterations = ", itera-1);
-      return f;
-    }
-
-
-
 
 
 
@@ -2488,9 +2420,6 @@ module DiameterMsg {
     var timer:stopwatch;
     var retDiameter:int;
     if (Directed == 0) {
-
-
-
 
         timer.clear();
         timer.start();
@@ -2510,7 +2439,6 @@ module DiameterMsg {
     }
    
 
-
     var repMsg = retDiameter:string;
     return new MsgTuple(repMsg, MsgType.NORMAL);
   }
@@ -2518,55 +2446,3 @@ module DiameterMsg {
   use CommandMap;
   registerFunction("segmentedGraphDiameter", segDiameterMsg,getModuleName());
 }
-
-
-
-
-
-
-
-
-      /*
-      diameter=largestD;
-      for i in CompSet  {
-          writeln("Handle component ",i);
-          var numV=f.count(i);
-          if numV<diameter {
-              writeln("no more than ",diameter,"  vertices, contiune");
-              continue;
-          }
-          {
-              var depth=f;
-              depth=-1;
-              depth[i]=0; 
-              var leaf=depth;
-              leaf[i]=-1;//means it is a leaf vertex
-              var level=bfs(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, 
-                        depth,i,leaf,diameter);
-              diameter =max(diameter,level);
-              var longestvertexSet=new set(int,parSafe = true);
-              forall s in 0..depth.size-1 with (ref longestvertexSet) {
-                   if (depth[s] >= diameter/2 ) && (leaf[s]==-1) {
-                        longestvertexSet.add(s);
-                   }
-              }
-              for s in longestvertexSet {
-                  depth=-1;
-                  depth[s]=0;
-                  leaf=depth;
-                  leaf[i]=-1;//means it is a leaf vertex
-                  level=bfs(nei, start_i,src, dst,
-                        neiR, start_iR,srcR, dstR, 
-                        depth,s,leaf,diameter);
-                  diameter =max(diameter,level);
-
-              }
-              writeln("The diameter of component ",i,"=",diameter );
-              largestD=max(largestD,diameter);
-          } 
-      }
-      */
-
-
-
