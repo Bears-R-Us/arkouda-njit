@@ -141,7 +141,7 @@ class Graph:
             The array containing the degree for each node.
         """
         (src,dst) = self._internal_edges()
-        degree = ak.GroupBy(src, assume_sorted=True).count()[1]
+        degree = ak.GroupBy(src, assume_sorted=True).size()[1]
         self_loops = src == dst
         degree[src[self_loops]] += 1
 
@@ -226,7 +226,7 @@ class Graph:
         ### Create vertex index arrays.
         # 1. Build the neighbors of the adjacency lists for each vertex.
         gb_vertices = ak.GroupBy(src, assume_sorted=True)
-        gb_src_neighbors = gb_vertices.count()[1]
+        gb_src_neighbors = gb_vertices.size()[1]
 
         # 2. Run a prefix (cumulative) sum on neis to get the starting indices for each vertex.
         segs = ak.cumsum(gb_src_neighbors)
@@ -334,12 +334,12 @@ class Graph:
         # 2. Extract the neighbor count by doing a count on the number of times each vertex appears
         #    in src.
         gb_src = ak.GroupBy(src)
-        gb_src_indices, gb_src_neighbors = gb_src.count()
+        gb_src_indices, gb_src_neighbors = gb_src.size()
         nei[gb_src_indices] = gb_src_neighbors
 
         # 2a. Same as 2 but for src_reversed.
         gb_src_reversed = ak.GroupBy(src_reversed)
-        gb_src_reversed_indices, gb_src_reversed_neighbors = gb_src_reversed.count()
+        gb_src_reversed_indices, gb_src_reversed_neighbors = gb_src_reversed.size()
         nei_reversed[gb_src_reversed_indices] = gb_src_reversed_neighbors
 
         # 3. Find where each vertex starts inside of src and src_reversed.
