@@ -7,9 +7,7 @@ module TrussMsg {
   // Chapel modules.
   use Reflection;
   use Time;
-
-	// Package modules.
-	use DistributedBag;
+  use List;
   
   // Arachne modules.
   use GraphArray;
@@ -130,8 +128,8 @@ module TrussMsg {
     proc kTrussMinSearch(kvalue:int,nei:[?D1] int, start_i:[?D2] int,src:[?D3] int, dst:[?D4] int,
                         neiR:[?D11] int, start_iR:[?D12] int,srcR:[?D13] int, dstR:[?D14] int,
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws {
-			var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-			var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+			var SetCurF=  new list(int,parSafe=true);//use bag to keep the current frontier
+			var SetNextF=  new list((int,int),parSafe=true); //use bag to keep the next frontier
 			var N1=0:int;
 			var N2=0:int;
 			var ConFlag=true:bool;
@@ -389,7 +387,7 @@ module TrussMsg {
                                if (EdgeDeleted[i]==-1) {
                                   if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
+                                     SetCurF.pushBack(i);
                                   } else {
                                        if (TriCount[i].read() <MinNumTri[here.id].read()) {
                                             MinNumTri[here.id].write(TriCount[i].read());
@@ -410,7 +408,7 @@ module TrussMsg {
               // we try to remove as many edges as possible in the following code
               var tmpN2=0:int;
 
-              while (SetCurF.getSize()>0) {
+              while (SetCurF.size>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
@@ -548,7 +546,7 @@ module TrussMsg {
                       }
                   }
 
-                  RemovedEdge.add(SetCurF.getSize());
+                  RemovedEdge.add(SetCurF.size);
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
@@ -562,7 +560,7 @@ module TrussMsg {
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
+                                     SetCurF.pushBack(i);
                                   } else {
                                       if (TriCount[i].read() < MinNumTri[here.id].read()) {
                                            MinNumTri[here.id].write(TriCount[i].read());
@@ -581,7 +579,7 @@ module TrussMsg {
 
 
 
-              if ( SetCurF.getSize()<=0){
+              if ( SetCurF.size<=0){
                       ConFlag=false;
               } else {
                       ConFlag=true;
@@ -623,8 +621,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):int throws{ 
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new list(int,parSafe=true);//use bag to keep the current frontier
+          var SetNextF=  new list((int,int),parSafe=true); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -744,7 +742,7 @@ module TrussMsg {
                      forall i in startEdge..endEdge with(ref SetCurF){
                                if ((EdgeDeleted[i]==-1) && (TriCount[i].read() < k-2)) {
                                      EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
+                                     SetCurF.pushBack(i);
                                }
                      }
                   }// end of  on loc 
@@ -759,7 +757,7 @@ module TrussMsg {
               // we try to remove as many edges as possible in the following code
               var tmpN2=0:int;
 
-              while (SetCurF.getSize()>0) {
+              while (SetCurF.size>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
@@ -897,7 +895,7 @@ module TrussMsg {
                       }
                   }
 
-                  RemovedEdge.add(SetCurF.getSize());
+                  RemovedEdge.add(SetCurF.size);
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
@@ -911,7 +909,7 @@ module TrussMsg {
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
+                                     SetCurF.pushBack(i);
                                   } else {
                                       if (TriCount[i].read() < MinNumTri[here.id].read()) {
                                            MinNumTri[here.id].write(TriCount[i].read());
@@ -1134,8 +1132,8 @@ module TrussMsg {
                         ref TriCount:[?D5] atomic int, ref EdgeDeleted:[?D6] int ):string throws{
 
 
-          var SetCurF=  new DistBag(int,Locales);//use bag to keep the current frontier
-          var SetNextF=  new DistBag((int,int),Locales); //use bag to keep the next frontier
+          var SetCurF=  new list(int,parSafe=true);//use bag to keep the current frontier
+          var SetNextF=  new list((int,int),parSafe=true); //use bag to keep the next frontier
           var N1=0:int;
           var N2=0:int;
           var ConFlag=true:bool;
@@ -1416,7 +1414,7 @@ module TrussMsg {
                                if (EdgeDeleted[i]==-1) {
                                   if (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
+                                     SetCurF.pushBack(i);
                                   } else {
                                        if (TriCount[i].read() <MinNumTri[here.id].read()) {
                                             MinNumTri[here.id].write(TriCount[i].read());
@@ -1437,7 +1435,7 @@ module TrussMsg {
               // we try to remove as many edges as possible in the following code
               var tmpN2=0:int;
 
-              while (SetCurF.getSize()>0) {
+              while (SetCurF.size>0) {
                   //first we build the edge set that will be affected by the removed edges in SetCurF
                   coforall loc in Locales with ( ref SetNextF) {
                       on loc {
@@ -1575,7 +1573,7 @@ module TrussMsg {
                       }
                   }
 
-                  RemovedEdge.add(SetCurF.getSize());
+                  RemovedEdge.add(SetCurF.size);
                   SetCurF.clear();
 
                   // then we try to remove the affected edges
@@ -1589,7 +1587,7 @@ module TrussMsg {
                                if (EdgeDeleted[i]==-1) {
                                   if  (TriCount[i].read() < k-2) {
                                      EdgeDeleted[i] = 1-k;
-                                     SetCurF.add(i);
+                                     SetCurF.pushBack(i);
                                   } else {
                                       if (TriCount[i].read() < MinNumTri[here.id].read()) {
                                            MinNumTri[here.id].write(TriCount[i].read());
@@ -1608,7 +1606,7 @@ module TrussMsg {
 
 
 
-              if ( SetCurF.getSize()<=0){
+              if ( SetCurF.size<=0){
                       ConFlag=false;
               } else {
                       ConFlag=true;
