@@ -44,7 +44,7 @@ class DiGraph(ar.Graph):
         """
         src = self._internal_edges()[0]
 
-        out_degree_keys,out_degree_count = ak.GroupBy(src, assume_sorted=True).count()
+        out_degree_keys,out_degree_count = ak.GroupBy(src, assume_sorted=True).size()
         out_degree = ak.full(self.n_vertices, 0, dtype=ak.int64)
         out_degree[out_degree_keys] = out_degree_count
 
@@ -60,7 +60,7 @@ class DiGraph(ar.Graph):
         """
         dst = self._internal_edges()[1]
 
-        in_degree_keys,in_degree_count = ak.GroupBy(dst).count()
+        in_degree_keys,in_degree_count = ak.GroupBy(dst).size()
         in_degree = ak.full(self.n_vertices, 0, dtype=ak.int64)
         in_degree[in_degree_keys] = in_degree_count
 
@@ -145,7 +145,7 @@ class DiGraph(ar.Graph):
         ### Create vertex index arrays.
         # 1. Build the out-neighbors of the adjacency lists for each vertex.
         gb_src = ak.GroupBy(src, assume_sorted = True)
-        gb_src_indices, gb_src_neighbors = gb_src.count()
+        gb_src_indices, gb_src_neighbors = gb_src.size()
         neis = ak.full(gb_vertices.unique_keys.size, 0, dtype=ak.int64)
         neis[gb_src_indices] = gb_src_neighbors
 
@@ -166,7 +166,7 @@ class DiGraph(ar.Graph):
 
         # 2. Build the in-neighbors of the adjacency lists for each vertex.
         gb_src_reversed = ak.GroupBy(src_reversed, assume_sorted = True)
-        gb_src_indices_reversed, gb_src_neighbors_reversed = gb_src_reversed.count()
+        gb_src_indices_reversed, gb_src_neighbors_reversed = gb_src_reversed.size()
         neis_reversed = ak.full(gb_vertices.unique_keys.size, 0, dtype=ak.int64)
         neis_reversed[gb_src_indices_reversed] = gb_src_neighbors_reversed
 
