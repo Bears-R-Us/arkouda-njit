@@ -46,7 +46,7 @@ module Utils {
 
     /* Convenience procedure to return the type of the ranges array. */
     proc getRangesType() type {
-        var tempD = {0..numLocales-1} dmapped replicatedDist();
+        var tempD = {0..numLocales-1} dmapped new replicatedDist();
         var temp : [tempD] (int,locale,int);
         return borrowed ReplicatedSymEntry(temp.type);
     }
@@ -62,7 +62,7 @@ module Utils {
         // Create a domain in the range of locales that the array was distributed to. In general,
         // this will be the whole locale space, and we deal with gaps in the array through the 
         // isEmpty() method for subdomains.
-        var D = {min reduce targetLocIds .. max reduce targetLocIds} dmapped replicatedDist();
+        var D = {min reduce targetLocIds .. max reduce targetLocIds} dmapped new replicatedDist();
         var ranges : [D] (int,locale,int);
 
         // Write the local subdomain low value to the ranges array.
