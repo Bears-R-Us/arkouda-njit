@@ -360,7 +360,8 @@ def diameter(graph: Graph) -> int:
 
 @typechecked
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
-                         semantic_check:bool=False) -> pdarray:
+                         semantic_check:str = None,
+                         size_limit:int = None) -> pdarray:
     """
     Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
     are isomorphic to the subgraph. Uses parallel implementation of the VF2 algorithm 
@@ -372,8 +373,11 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         Host graph that will be searched into. 
     H : PropGraph
         Subgraph (pattern/query) that is being searched for.
-    semantic_check : bool
-        Enable default attribute checking.
+    semantic_check : str
+        Enables semantic checking on the attributes of the graphs. If `None` then no semantic 
+        checking is performed. If `"and"` then all attributes must match for every vertex and edge in
+        both the graph and subgraph. If `"or"` then at least one attribute must match for evert vertex
+        and edge in both the graph and subgraph.
 
     Returns
     -------
@@ -397,7 +401,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
     cmd = "subgraphIsomorphism"
     args = { "MainGraphName":graph.name,
              "SubGraphName":subgraph.name,
-             "SemanticCheck": str(semantic_check).lower() }
+             "SemanticCheckType": str(semantic_check).lower(),
+             "TrackSize": str(size_limit).lower() }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(rep_msg)
