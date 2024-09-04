@@ -9,6 +9,7 @@ module SubgraphIsomorphism {
     use Set;
     use Map;
     use CommDiagnostics;
+    use Collectives;
 
     // Arachne modules.
     use GraphArray;
@@ -103,8 +104,16 @@ module SubgraphIsomorphism {
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runVF2 (g1: SegGraph, g2: SegGraph, semanticCheck: bool, st: borrowed SymTab):[] int throws {
+    proc runVF2 (g1: SegGraph, g2: SegGraph, 
+                 semanticCheckType: string, 
+                 sizeLimit: string, 
+                 st: borrowed SymTab):[] int throws {
         var numIso: int = 0;
+        var numIsoAtomic: chpl__processorAtomicType(int) = 0;
+        var semanticAndCheck = if semanticCheckType == "and" then true else false;
+        var semanticOrCheck = if semanticCheckType == "or" then true else false;
+        var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
+        var limitSize:bool = if matchLimit > 0 then true else false;
 
         // Extract the g1/G/g information from the SegGraph data structure.
         const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -143,10 +152,14 @@ module SubgraphIsomorphism {
         NOTE: checking categoricals is very time consuming as internal indices need to be mapped to 
         strings and then compared. Users should be encouraged to maintain their own integer 
         categorical consistencies and use integer attribute matching instead.*/
-        proc doAttributesMatch(graphIdx, subgraphIdx, const ref graphAttributes, const ref subgraphAttributes) throws {
+        proc doAttributesMatch(graphIdx, subgraphIdx, const ref graphAttributes, const ref subgraphAttributes, matchType:string) throws {
+            var outerMatch:bool;
+            if matchType == "and" then outerMatch = true;
+            if matchType == "or" then outerMatch = false;
             for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
                 if !graphAttributes.contains(k) then return false; // check if attributes are same
                 if v[1] != graphAttributes[k][1] then return false; // check if types are same
+                var innerMatch:bool;
 
                 // Check the actual data.
                 select v[1] {
@@ -159,8 +172,7 @@ module SubgraphIsomorphism {
                         const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
                         const ref graphCats = getSegString(graphArrEntry.categories, st);
 
-                        var match = subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]];
-                        return match;
+                        innerMatch = (subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]]);
                     }
                     when "Strings" {
                         var subgraphStringEntry = toSegStringSymEntry(getGenericTypedArrayEntry(v[0], st));
@@ -175,8 +187,7 @@ module SubgraphIsomorphism {
                         const ref string1 = subgraphStringBytes[subgraphStringOffsets[subgraphIdx]..<subgraphStringOffsets[subgraphIdx+1]];
                         const ref string2 = graphStringBytes[graphStringOffsets[graphIdx]..<graphStringOffsets[graphIdx+1]];
 
-                        var match = || reduce (string1 == string2);
-                        return match;
+                        innerMatch = || reduce (string1 == string2);
                     }
                     when "pdarray" {
                         var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
@@ -188,33 +199,32 @@ module SubgraphIsomorphism {
                             when (DType.Int64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, int).a;
-                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                return match;
+                                innerMatch = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                             }
                             when (DType.UInt64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, uint).a;
-                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                return match;
+                                innerMatch = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                             }
                             when (DType.Float64) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, real).a;
-                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                return match;
+                                innerMatch = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                             }
                             when (DType.Bool) {
                                 const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
                                 const ref graphArr = toSymEntry(graphArrEntry, bool).a;
-                                var match = subgraphArr[subgraphIdx] == graphArr[graphIdx];
-                                return match;
+                                innerMatch = subgraphArr[subgraphIdx] == graphArr[graphIdx];
                             }
                         }
                     }
                 }
+                if matchType == "or" then outerMatch = outerMatch || innerMatch;
+                if matchType == "and" then outerMatch = outerMatch && innerMatch;
 
+                if matchType == "or" && outerMatch then return true;
             }
-            return true;
+            return outerMatch;
         }
         
         var IsoArrtemp = vf2(g1, g2);
@@ -247,6 +257,7 @@ module SubgraphIsomorphism {
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
             var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
+            var outNeighborsCheck, inNeighborsCheck, edgeCheck:bool;
             
             // Process the out-neighbors of g2.
             const ref getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
@@ -258,9 +269,12 @@ module SubgraphIsomorphism {
 
                     if eid1 == -1 || eid2 == -1 then return false;
 
-                    if semanticCheck then
-                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes) 
-                            then return false;
+                    if semanticAndCheck then
+                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and") then
+                            return false;
+                    else if semanticOrCheck then
+                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or") then
+                            return false;
                 } 
                 else {
                     if state.Tin2.contains(Out2) then termin2 += 1;
@@ -279,9 +293,12 @@ module SubgraphIsomorphism {
 
                     if eid1 == -1 || eid2 == -1 then return false;
                     
-                    if semanticCheck then 
-                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes) 
-                            then return false;
+                    if semanticAndCheck then 
+                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and") then
+                            return false;
+                    else if semanticOrCheck then
+                        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or") then 
+                            return false;
                 }
                 else {
                     if state.Tin2.contains(In2) then termin2 += 1;
@@ -314,11 +331,13 @@ module SubgraphIsomorphism {
                     (termin2 + termout2 + new2) <= (termin1 + termout1 + new1)
                 ) then return false;
 
-            //if !nodesLabelCompatible(n1, n2) then return false;
-            if semanticCheck then 
-                if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes) 
+            if semanticAndCheck then 
+                if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "and") 
                     then return false;
-
+            else if semanticOrCheck then
+                if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "or")
+                    then return false;
+            
             return true;
         } // end of isFeasible
 
@@ -369,37 +388,41 @@ module SubgraphIsomorphism {
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
         proc vf2Helper(state: owned State, depth: int): list(int) throws {
-            var allmappings: list(int, parSafe=true);
+        var allmappings: list(int, parSafe=true);
 
-            // Base case: check if a complete mapping is found
-            if depth == g2.n_vertices {
-                // Process the found solution
-                for elem in state.core do allmappings.pushBack(elem);
-                return allmappings;
-            }
-
-            // Generate candidate pairs (n1, n2) for mapping
-            var candidatePairs = getCandidatePairsOpti(state);
-
-            // Iterate in parallel over candidate pairs
-            forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-                if isFeasible(n1, n2, state) {
-                    var newState = state.clone();
-
-                    // Update state with the new mapping
-                    addToTinTout(n1, n2, newState);
-
-                    // Recursive call with updated state and increased depth
-                    var newMappings: list(int, parSafe=true);
-                    newMappings = vf2Helper(newState, depth + 1);
-                    
-                    // Use a loop to add elements from newMappings to allmappings
-                    for mapping in newMappings do allmappings.pushBack(mapping);
-                }
-            }
+        // Base case is found when the depth is equivalent to the number of vertices in the
+        // subgraph.
+        if depth == g2.n_vertices {
+            for elem in state.core do allmappings.pushBack(elem);
+            if limitSize then numIsoAtomic.add(1);
             return allmappings;
         }
-        
+
+        // Generate candidate pairs (n1, n2) for mapping
+        var candidatePairs = getCandidatePairsOpti(state);
+
+        if limitSize then
+            if numIsoAtomic.compareAndSwap(matchLimit, matchLimit) then return allmappings;
+
+        // Iterate in parallel over candidate pairs
+        forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+            if isFeasible(n1, n2, state) {
+                var newState = state.clone();
+
+                // Update state with the new mapping
+                addToTinTout(n1, n2, newState);
+
+                // Recursive call with updated state and increased depth
+                var newMappings: list(int, parSafe=true);
+                newMappings = vf2Helper(newState, depth + 1);
+                
+                // Use a loop to add elements from newMappings to allmappings
+                for mapping in newMappings do allmappings.pushBack(mapping);
+            }
+        }
+        return allmappings;
+        }
+
         /** Main procedure that invokes all of the vf2 steps using the graph data that is
             initialized by `runVF2`.*/
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
