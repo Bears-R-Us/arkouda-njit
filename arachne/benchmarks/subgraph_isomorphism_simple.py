@@ -56,6 +56,21 @@ def update_degrees(src_temp, dst_temp, unique_nodes_list):
     total_degree = [in_degree[i] + out_degree[i] for i in range(len(unique_nodes_list))]
     
     return in_degree, out_degree, total_degree
+def graph_to_grf(G, output_file):
+    with open(output_file, 'w') as f:
+        # Write the number of nodes
+        f.write(f"{G.number_of_nodes()}\n")
+
+        # Write each node and its label (assuming label is 1 for all nodes)
+        for node in sorted(G.nodes()):
+            f.write(f"{node} 1\n")  # Replace 1 with your label logic if needed
+
+        # Write the number of outgoing edges and the edges themselves
+        for node in sorted(G.nodes()):
+            out_edges = list(G.successors(node))  # Get the list of successors (outgoing edges)
+            f.write(f"{len(out_edges)}\n")  # Write the number of outgoing edges
+            for target in out_edges:
+                f.write(f"{node} {target}\n")  # Write each edge on a new line
 
 def SubgraphMatchingOrder(src, dst):
     # Make copies of src and dst
@@ -206,20 +221,17 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
 
     # 3. Create vertices, edges, and attributes for subgraph.
-    src_subgraph = ak.array([2, 0, 1, 0])
-    dst_subgraph = ak.array([0, 1, 2, 3])
+    src_subgraph = ak.array([0, 1, 1, 2])
+    dst_subgraph = ak.array([1, 2, 3, 0])
     labels1_subgraph = ak.array(["lbl1", "lbl1", "lbl1", "lbl1"])
     labels2_subgraph = ak.array(["lbl2", "lbl2", "lbl2", "lbl2"])
     rels1_subgraph = ak.array(["rel1", "rel1", "rel1", "rel1"])
     rels2_subgraph = ak.array(["rel2", "rel2", "rel2", "rel2"])
 
-    updated_src, updated_dst, unique_nodes_list, replaced_nodes = SubgraphMatchingOrder(src_subgraph, dst_subgraph)
+    #updated_src, updated_dst, unique_nodes_list, replaced_nodes = SubgraphMatchingOrder(src_subgraph, dst_subgraph)
+    updated_src = src_subgraph
+    updated_dst = dst_subgraph
 
-    print("\nFinal Results:")
-    print("Unique Nodes:", unique_nodes_list)
-    print("Replaced Nodes:", replaced_nodes)
-    print("Updated src_temp:", updated_src.to_list())
-    print("Updated dst_temp:", updated_dst.to_list())
     
     src_subgraph = updated_src
     dst_subgraph = updated_dst
@@ -315,6 +327,9 @@ if __name__ == "__main__":
     elapsed_time = time.time() - start_time
     print(f"NetworkX execution time: {elapsed_time} seconds")
     print(f"NetworkX found: {len(subgraph_isomorphisms)} isos")
+    
+    graph_to_grf(G, 'simple_graph.grf')
+    graph_to_grf(H, 'simple_sub_graph.grf')
 
     #### Compare Arachne subgraph isomorphism to NetworkX.
     isos_list = isos.to_list()

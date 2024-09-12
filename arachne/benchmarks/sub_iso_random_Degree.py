@@ -309,7 +309,7 @@ if __name__ == "__main__":
     isos = ar.subgraph_isomorphism(prop_graph, subgraph)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/3} isos")
+    print(f"Arachne found: {len(isos)/4} isos")
     
     ### Run NetworkX subgraph isomorphism.
     # Grab vertex and edge data from the Arachne dataframes.
@@ -404,6 +404,25 @@ if __name__ == "__main__":
     print(f'Mean in-degree: {mean_in_degree}')
     print(f'Mean out-degree: {mean_out_degree}')
     print(f'Mean total degree: {mean_total_degree}')
+    
+    def graph_to_grf(G, output_file):
+        with open(output_file, 'w') as f:
+            # Write the number of nodes
+            f.write(f"{G.number_of_nodes()}\n")
+
+            # Write each node and its label (assuming label is 1 for all nodes)
+            for node in sorted(G.nodes()):
+                f.write(f"{node} 1\n")  # Replace 1 with your label logic if needed
+
+            # Write the number of outgoing edges and the edges themselves
+            for node in sorted(G.nodes()):
+                out_edges = list(G.successors(node))  # Get the list of successors (outgoing edges)
+                f.write(f"{len(out_edges)}\n")  # Write the number of outgoing edges
+                for target in out_edges:
+                    f.write(f"{node} {target}\n")  # Write each edge on a new line
+                    
+    graph_to_grf(G, 'simple_graph.grf')
+    graph_to_grf(H, 'simple_sub_graph.grf')
     
     # Find subgraph isomorphisms of H in G.
     start_time = time.time()

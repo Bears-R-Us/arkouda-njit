@@ -277,7 +277,7 @@ module SubgraphIsomorphism {
         var NodeFlag: [0..<g1.n_vertices] bool = false;
         var counter1: int=0;
         var counter2: int=0;
-        //GraphbyDegree();
+        GraphbyDegree();
 /*
         for i in 0..<g1.n_vertices{
             if NodeFlag[i] == true {
@@ -545,6 +545,7 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
                 }
 
             }
+            writeln("NodeFlag = ", NodeFlag);
             return ;
         }
         proc SortSubGraphbyDegree():[] int throws {
@@ -1274,6 +1275,7 @@ if state.depth==g2.n_vertices{
  */            
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
+                //writeln("////////////////////////////////////////////////////////////////////////////");
                 //writeln("\nstate depth = ", state.depth, " Candidte size = ", candidatePairs.size);
                 //writeln("\n  state = ", state);
                 //writeln("\n  Candidte = ", candidatePairs);
@@ -1282,15 +1284,19 @@ if state.depth==g2.n_vertices{
                 forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 //for (n1, n2) in candidatePairs {
                     if isFeasible(n1, n2, state) {
-                        //var newState = state.clone();
+                        //writeln("n1 = ", n1, "n2 = ", n2);
+
+                        var newState = state.clone();
 
                         // Update state with the new mapping
-                        //addToTinTout(n1, n2, newState);
-                        addToTinTout(n1, n2, state);
+                        addToTinTout(n1, n2, newState);
+                        //addToTinTout(n1, n2, state);
+                        //writeln("state after addToTinTout = ", newState);
+                        //writeln("now depth  = ", depth);
 
                         // Recursive call with updated state and increased depth
                         var newMappings: list(int, parSafe=true);
-                        newMappings = vf2Helper(state, depth + 1);
+                        newMappings = vf2Helper(newState, depth + 1);
                         
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings do allmappings.pushBack(mapping);
@@ -1307,10 +1313,9 @@ if state.depth==g2.n_vertices{
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
             var state = createInitialState(g1.n_vertices, g2.n_vertices);
             var solutions: list(int, parSafe=true);
-writeln("Vf2 begin");
+            writeln("Vf2 begin");
                 var n2: int = 0;
-        var numStates: atomic int =0;
-        writeln("At the begining numStates = ", numStates.read());
+
 
                 forall edgeIndex in 0..mG1-1 with (ref solutions) {
                 //for edgeIndex in 0..mG1-1  {
@@ -1320,18 +1325,17 @@ writeln("Vf2 begin");
                         //writeln("We are here 1");
                         //writeln("g1.n_vertices = ", g1.n_vertices);
                         //writeln(" g2.n_vertices = ",  g2.n_vertices);
-                        var newState = createInitialState(g1.n_vertices, g2.n_vertices);
+                        var InitState = createInitialState(g1.n_vertices, g2.n_vertices);
                         //writeln("We are here 2");
-                        //writeln("srcNodesG1[edgeIndex] = ", srcNodesG1[edgeIndex]);
-                        //writeln("dstNodesG1[edgeIndex] = ", dstNodesG1[edgeIndex]);
-                        var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], newState);
-                        //writeln("We are here 3");
-
+                        //writeln("src = ", srcNodesG1[edgeIndex], " dst = ", dstNodesG1[edgeIndex]);
+                        var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], InitState);
+                        //writeln(" addToTinToutMVE for edge (", srcNodesG1[edgeIndex], " to ", dstNodesG1[edgeIndex], ") returned = ", edgechecked);
                         if edgechecked{
                             //numStates.add(1);
+                        //writeln(" InitState = ", InitState);
 
                             //writeln(" addToTinToutMVE returned true");
-                            var newMappings = vf2Helper(newState, 2);
+                            var newMappings = vf2Helper(InitState, 2);
                         //writeln("We are here 2");
 
                             //count.add(1);
@@ -1344,7 +1348,7 @@ writeln("Vf2 begin");
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
             //writeln ("Total number of calls on vf2Helper is ", count.read());
-                    writeln("numStates = ",numStates.read());
+                    //writeln("numStates = ",numStates.read());
 
             return(subIsoArrToReturn);
         } // end of vf2
