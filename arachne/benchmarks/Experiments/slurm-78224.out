@@ -1,4 +1,0 @@
-Starting experiment with probability 0.0005 and nodes 100000, trial 1
-Checking Arkouda server readiness...
-Arkouda server failed to start within the expected time.
-Aborting due to Arkouda server startup failure.

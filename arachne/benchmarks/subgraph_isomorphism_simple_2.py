@@ -205,10 +205,10 @@ if __name__ == "__main__":
     prop_graph.load_node_attributes(node_df_h, node_column="nodes", label_columns=["lbls1","lbls2"])
 
     # 3. Create vertices, edges, and attributes for subgraph.
-    src_subgraph = ak.array([0, 1, 0,2, 1])
-    dst_subgraph = ak.array([1, 0, 2,0, 2])
-    labels1_subgraph = ak.array(["lbl1"] * 3)
-    labels2_subgraph = ak.array(["lbl2"]*3)
+    src_subgraph = ak.array([0, 1, 2, 1])
+    dst_subgraph = ak.array([1, 2, 0, 3])
+    labels1_subgraph = ak.array(["lbl1"] * 4)
+    labels2_subgraph = ak.array(["lbl2"]*4)
     rels1_subgraph = ak.array(["rel1"]* src_subgraph.size)
     rels2_subgraph = ak.array(["rel2"]* src_subgraph.size)
 
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     subgraph = ar.PropGraph()
     edge_df_h = ak.DataFrame({"src":src_subgraph, "dst":dst_subgraph,
                             "rels1":rels1_subgraph, "rels2":rels2_subgraph})
-    node_df_h = ak.DataFrame({"nodes": ak.arange(0,3), "lbls1":labels1_subgraph,
+    node_df_h = ak.DataFrame({"nodes": ak.arange(0,4), "lbls1":labels1_subgraph,
                               "lbls2":labels2_subgraph})
     subgraph.load_edge_attributes(edge_df_h, source_column="src", destination_column="dst",
                                     relationship_columns=["rels1","rels2"])
@@ -239,7 +239,7 @@ if __name__ == "__main__":
     print("isos = ",isos)
     elapsed_time = time.time() - start_time
     print(f"Arachne execution time: {elapsed_time} seconds")
-    print(f"Arachne found: {len(isos)/3} isos")
+    print(f"Arachne found: {len(isos)/4} isos")
 
     #### Run NetworkX subgraph isomorphism.
     # Get the NetworkX version

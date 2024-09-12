@@ -270,31 +270,10 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        
-
         var NodeInDegree: [0..<g1.n_vertices] int = 0;
         var NodeOutDegree: [0..<g1.n_vertices] int = 0;
         var NodeFlag: [0..<g1.n_vertices] bool = false;
-        var counter1: int=0;
-        var counter2: int=0;
-        //GraphbyDegree();
-/*
-        for i in 0..<g1.n_vertices{
-            if NodeFlag[i] == true {
-                counter1 += 1;
-                counter2 += NodeOutDegree[i];
-                //writeln("i = ", i, " is a candidate");
-            }
-        } 
-        writeln("Node Candidates = ", counter1);
-        writeln("Edge candidates = ", counter2);
-*/
 
-
-
-
-        //var degrees = computeDegrees();
-        //var coreNumbers = kCoreDecomposition(degrees[0],degrees[1] );
 
         SortSubGraphbyDegree();
         var IsoArrtemp = vf2(g1, g2);
@@ -318,172 +297,6 @@ module SubgraphIsomorphism {
         
         //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
         //writeln("\nEquality check = ",IsoArrtemp.equals(IsoArr));
-        ////////////////K-core O(m)///////////////////////////////////
-
-        //Compute the degrees of all vertices
-proc computeDegrees(): ([0..<g1.n_vertices] int, [0..<g1.n_vertices] int) {
-    writeln("Computing initial degrees...");
-    var G1_Node_InDegree: [0..<g1.n_vertices] int;
-    var G1_Node_OutDegree: [0..<g1.n_vertices] int;
-    
-    forall v in 0..<g1.n_vertices {
-        var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
-        var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-        G1_Node_InDegree[v] = inNeighborsg1.size;
-        G1_Node_OutDegree[v] = outNeighborsg1.size;
-    }
-
-    writeln("In-degrees: ", G1_Node_InDegree);
-    writeln("Out-degrees: ", G1_Node_OutDegree);
-
-    return (G1_Node_InDegree, G1_Node_OutDegree);
-}
-proc kCoreDecomposition(inDegrees: [?D] int, outDegrees: [D] int): [D] int {
-    writeln("Starting k-core decomposition...");
-
-    // Step 1: Compute the total degree for each vertex
-    var degrees: [D] int = inDegrees + outDegrees;
-    writeln("Degrees of vertices: ", degrees);
-
-    // Initialize core number array
-    var coreNumber: [D] int = -1;
-
-    // Find the maximum degree in the graph
-    var maxDegree = max reduce degrees;
-    writeln("Max degree found: ", maxDegree);
-
-    // Initialize bins and vertex positions
-    var binCount: [0..maxDegree] atomic int;
-    var bins: [0..maxDegree][0..D.size-1] int;
-
-    // Initialize bins with -1 to indicate empty slots
-    forall d in 0..maxDegree {
-        for i in 0..D.size-1 {
-            bins[d][i] = -1;
-        }
-    }
-
-    var vertexPos: [D] int;
-    for v in D {
-        var d = degrees[v];
-        var pos = binCount[d].fetchAdd(1);
-        bins[d][pos] = v;
-        vertexPos[v] = pos;
-    }
-
-    writeln("\nInitial bins and vertex positions:");
-    writeln("bins = ", bins);
-    writeln("vertexPos = ", vertexPos);
-    writeln("binCount = ", binCount);
-
-    writeln("\nInitial bin counts:");
-    for d in 0..maxDegree {
-        writeln("Degree ", d, ": ", binCount[d].read(), " vertices");
-    }
-
-    // Prepare the bins for processing
-    var binStart: [0..maxDegree] int;
-    binStart[0] = 0;
-    for d in 1..maxDegree {
-        binStart[d] = binStart[d-1] + binCount[d-1].read();
-    }
-
-    writeln("\nBin start positions: ", binStart);
-
-    var vertexOrder: [D] int = -1;
-    writeln("vertexOrder = ", vertexOrder);
-
-    for d in 0..maxDegree {
-        var start = binStart[d];
-        for i in 0..<binCount[d].read() {
-            vertexOrder[start + i] = bins[d][i];
-            writeln("For degree ", d, " changed vertexOrder to ", vertexOrder);
-        }
-    }
-
-    writeln("\nVertex order after bin placement: ", vertexOrder);
-
-    // Actual k-core processing
-    writeln("\nUpdate neighbors' degrees, core numbers, etc.");
-
-    for i in 0..D.size-1 { // Iterate over all nodes
-        var v = vertexOrder[i];
-        var d = degrees[v];
-        coreNumber[v] = d;
-        writeln("\nIteration ", i, ": Processing vertex ", v, " with degree ", d, " coreNumber is now ", coreNumber[v]);
-
-        // Fetch in-neighbors and out-neighbors
-        var inNei: domain(int);
-        var outNei: domain(int);
-        inNei = dstRG1[segRG1[v]..<segRG1[v+1]];
-        outNei = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-
-        var neighbors_v: domain(int);
-        neighbors_v = inNei + outNei;
-
-        writeln("Neighbors of vertex ", v, ": ", neighbors_v);
-
-        // Update neighbors' degrees and re-bin if necessary
-        for neighbor in neighbors_v {
-            if (degrees[neighbor] > d) {
-                writeln("Vertex ", neighbor, " (neighbor of ", v, ") has a higher degree.");
-
-                degrees[neighbor] -= 1;
-                writeln("Decrementing degree of vertex ", neighbor, ". New degrees = ", degrees);
-
-                // Re-bin the neighbor
-                var oldPos = vertexPos[neighbor];
-                var newDegree = degrees[neighbor];
-                writeln("Re-binning vertex ", neighbor, ": old position = ", oldPos, ", new degree = ", newDegree);
-
-                // Check array bounds before accessing
-                if (newDegree < 0 || newDegree > maxDegree) {
-                    writeln("Error: newDegree out of bounds! newDegree = ", newDegree);
-                    halt("newDegree out of bounds!");
-                }
-
-                var newBinPos = binCount[newDegree].fetchAdd(1);
-
-                // Ensure newBinPos is within bounds
-                if (newBinPos < 0 || newBinPos >= D.size) {
-                    writeln("Error: newBinPos out of bounds! newBinPos = ", newBinPos);
-                    halt("newBinPos out of bounds!");
-                }
-
-                bins[newDegree][newBinPos] = neighbor;
-                vertexPos[neighbor] = newBinPos;
-
-                writeln("After re-binning, bins = ", bins);
-                writeln("Updated vertexPos = ", vertexPos);
-
-                // Swap the last vertex in the old bin with the current neighbor to remove it
-                var lastVertexInOldBin = bins[d][binCount[d].fetchSub(1) - 1];
-
-                // Ensure oldPos and lastVertexInOldBin are valid
-                if (oldPos < 0 || oldPos >= D.size || lastVertexInOldBin < 0 || lastVertexInOldBin >= D.size) {
-                    writeln("oldPos: ", oldPos, " lastVertexInOldBin: ", lastVertexInOldBin);
-writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
-
-                    writeln("Error: oldPos or lastVertexInOldBin out of bounds!");
-                    halt("oldPos or lastVertexInOldBin out of bounds!");
-                }
-
-                bins[d][oldPos] = lastVertexInOldBin;
-                vertexPos[lastVertexInOldBin] = oldPos;
-
-                writeln("After removing from old bin, bins = ", bins);
-                writeln("Updated vertexPos = ", vertexPos);
-            }
-        }
-    }
-
-    writeln("\nFinal core numbers: ", coreNumber);
-    return coreNumber;
-}
-
-
-
-        //////////////////////////////////////////////////////////////
 /////////////////////////////State Injection//////////////////////////////////////////
         proc CandidToState(ffcandidates) throws{
             //var StateList: list(owned State) = new list(owned State);
@@ -524,14 +337,14 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
 /////////////////////////////End of State Injection///////////////////////////////////
         
 //////////////////////////RI///////////////////////////////////////////////////
-        proc GraphbyDegree()throws{
+/*        proc GraphbyDegree(){
 
             //var NodeDegree: [0..<g1.n_vertices] int = 0; // Tuple to hold (sum of degrees, out-degree)
             
-            var Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
-            var Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+            Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
+            Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
 
-            forall v in 0..<g1.n_vertices {
+            forall v in 0..<g1.n_vertices with (ref ){
                 var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
                 var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
 
@@ -546,7 +359,7 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
 
             }
             return ;
-        }
+        }*/
         proc SortSubGraphbyDegree():[] int throws {
             var NodeInDegree: [0..<g2.n_vertices] int = 0;
             var NodeOutDegree: [0..<g2.n_vertices] int = 0;
@@ -847,13 +660,12 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
 
 //////////////////////////////////////////////////       
         }
-        proc addToTinToutMVE(u0_g1: int, u1_g1: int, state: State): bool throws {
+        proc addToTinToutMVE(u0_g1: int, u1_g1: int, state: State): (int, bool) throws {
             var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int);
             var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int);
             //writeln("/////////addToTinToutMVE//// u0_g1 = ", u0_g1, " //////// u1_g1 = ", u1_g1);
             //Check for self-loops
             //if u0_g1 == u1_g1 then return (-1, false);
-            
             Tin_u0 = dstRG1[segRG1[u0_g1]..<segRG1[u0_g1 + 1]];
             Tout_u0 = dstNodesG1[segGraphG1[u0_g1]..<segGraphG1[u0_g1 + 1]];
             
@@ -866,14 +678,30 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
             Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
             Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
             
-  
+            //writeln("we are Here 1");
+            //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
+
+            if !nodesLabelCompatible(u0_g1, 0) {
+                //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
+                return (u0_g1, false);
+            }
+            const cond1 = Tin_u0.size >= Tin_0.size && Tout_u0.size >= Tout_0.size;
+            //writeln("we are Here 2");
+
+            if !cond1 {
+                //writeln("Tin_u0 >= Tin_0 = ", Tin_u0.size >= Tin_0.size);
+                //writeln("Tout_u0 >= Tout_0 = ", Tout_u0.size >= Tout_0.size);
+                //writeln("Tin_u1 >= Tin_1 = ", Tin_u1.size >= Tin_1.size);
+                //writeln("Tout_u1 >= Tout_1 = ", Tout_u1.size >= Tout_1.size);
+                return (u0_g1, false);
+            }      
             //writeln("we are Here 3");
 
             //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
 
             if !nodesLabelCompatible(u1_g1, 1) {
               //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
-                return false;
+                return (-1, false);
             }
 /*            if !checkEdge(u0_g1, u1_g1) {
                 //writeln("checkEdge(u0_g1, u1_g1) = ", checkEdge(u0_g1, u1_g1));
@@ -886,19 +714,13 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
 
 
             var eid1 = getEdgeId(u0_g1, u1_g1, dstNodesG1, segGraphG1);
-                        //writeln("we are Here 4");
-
             var eid2 = getEdgeId(0, 1, dstNodesG2, segGraphG2);
 
             var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-                        //writeln("we are Here 5");
-
             var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-                        //writeln("we are Here 6");
-
             //writeln("relationshipsG1eid1 = ", relationshipsG1eid1);
             //writeln("relationshipsG2eid2 = ", relationshipsG2eid2);
-            if relationshipsG1eid1 != relationshipsG2eid2 then return false;
+            if relationshipsG1eid1 != relationshipsG2eid2 then return (-1, false);
             //writeln("we are Here 7");
 
 //checkEdge-out
@@ -907,13 +729,13 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
             //writeln("edge from ",u1_g1, " to ", u0_g1 );
             //writeln("eid1 = ", eid1);
             //writeln("eid2 = ", eid2);
-            if eid2_rev != -1 && eid1_rev == -1 then return false;
-            //writeln("we are Here 8");
+            if eid2_rev != -1 && eid1_rev == -1 then return (-1, false);
+            //writeln("we are Here 4");
 
             if eid1_rev != -1 && eid2_rev != -1 then{
                 relationshipsG1eid1 = convertedRelationshipsG1[eid1_rev];
                 relationshipsG2eid2 = convertedRelationshipsG2[eid2_rev];
-                if relationshipsG1eid1 != relationshipsG2eid2 then return false;
+                if relationshipsG1eid1 != relationshipsG2eid2 then return (-1, false);
 
             }
             //writeln("relationshipsG1eid1 = ", relationshipsG1eid1);
@@ -932,7 +754,7 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
                 //writeln("Tout_u0 >= Tout_0 = ", Tout_u0.size >= Tout_0.size);
                 //writeln("Tin_u1 >= Tin_1 = ", Tin_u1.size >= Tin_1.size);
                 //writeln("Tout_u1 >= Tout_1 = ", Tout_u1.size >= Tout_1.size);
-                return false;
+                return (-1, false);
             }
 
             Nei_u0 += Tin_u0;
@@ -959,7 +781,7 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
             if !(intersecg1.size >= intersecg2.size) {
                 //writeln("intersecg1.size = ", intersecg1.size);
                 //writeln("intersecg2.size = ", intersecg2.size);
-                return false;
+                return (-1, false);
             }
             //writeln("all checks done!");
             state.Tin1 = Tin_u0 | Tin_u1;
@@ -988,7 +810,7 @@ writeln("bins.size: ", bins.size, " vertexPos.size: ", vertexPos.size);
             for n2 in Tout_1 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
 */            
             //writeln("state is = ", state);
-            return true;
+            return (-1, true);
         }
 
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
@@ -1153,7 +975,6 @@ if state.depth==g2.n_vertices{
         /** Create candidates based on current state and retuns a set of pairs.*/
         proc getCandidatePairsOpti(state: State): set((int, int)) throws {
             var candidates = new set((int, int), parSafe = true);
-            /* there is no need to check this if SI used
             if state.depth ==0 {
                     var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
                     //var flagunmappedG2 = false;
@@ -1168,7 +989,6 @@ if state.depth==g2.n_vertices{
             return candidates;
             }
             else {
-                */
                 if state.Tout1.size > 0 && state.Tout2.size > 0 {
                     var minTout2: int;
                     for elem in state.Tout2{
@@ -1198,7 +1018,7 @@ if state.depth==g2.n_vertices{
                     } 
                 }   
                 return candidates;
-            //}
+            }
 
         } // end of getCandidatePairsOpti
             
@@ -1275,22 +1095,18 @@ if state.depth==g2.n_vertices{
                 // Generate candidate pairs (n1, n2) for mapping
                 var candidatePairs = getCandidatePairsOpti(state);
                 //writeln("\nstate depth = ", state.depth, " Candidte size = ", candidatePairs.size);
-                //writeln("\n  state = ", state);
-                //writeln("\n  Candidte = ", candidatePairs);
-                
                 // Iterate in parallel over candidate pairs
                 forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
                 //for (n1, n2) in candidatePairs {
                     if isFeasible(n1, n2, state) {
-                        //var newState = state.clone();
+                        var newState = state.clone();
 
                         // Update state with the new mapping
-                        //addToTinTout(n1, n2, newState);
-                        addToTinTout(n1, n2, state);
+                        addToTinTout(n1, n2, newState);
 
                         // Recursive call with updated state and increased depth
                         var newMappings: list(int, parSafe=true);
-                        newMappings = vf2Helper(state, depth + 1);
+                        newMappings = vf2Helper(newState, depth + 1);
                         
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings do allmappings.pushBack(mapping);
@@ -1307,47 +1123,44 @@ if state.depth==g2.n_vertices{
         proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
             var state = createInitialState(g1.n_vertices, g2.n_vertices);
             var solutions: list(int, parSafe=true);
-writeln("Vf2 begin");
+
                 var n2: int = 0;
-        var numStates: atomic int =0;
-        writeln("At the begining numStates = ", numStates.read());
-
-                forall edgeIndex in 0..mG1-1 with (ref solutions) {
+                var notToCheck: int = -1;//LOL it shouldn't work! why it's working?
+                //forall n1 in 0..g1.n_vertices-1 with () {
+                forall edgeIndex in 0..mG1-1 with (ref solutions, ref notToCheck) {
                 //for edgeIndex in 0..mG1-1  {
-                    //writeln("edgeIndex = ", edgeIndex);
+                    
                     //If not already marked not to check and was not a self-loof
-                    if NodeFlag[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
-                        //writeln("We are here 1");
-                        //writeln("g1.n_vertices = ", g1.n_vertices);
-                        //writeln(" g2.n_vertices = ",  g2.n_vertices);
+                    if notToCheck != srcNodesG1[edgeIndex] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
                         var newState = createInitialState(g1.n_vertices, g2.n_vertices);
-                        //writeln("We are here 2");
-                        //writeln("srcNodesG1[edgeIndex] = ", srcNodesG1[edgeIndex]);
-                        //writeln("dstNodesG1[edgeIndex] = ", dstNodesG1[edgeIndex]);
                         var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], newState);
-                        //writeln("We are here 3");
-
-                        if edgechecked{
-                            //numStates.add(1);
-
+                        if edgechecked[1]{
                             //writeln(" addToTinToutMVE returned true");
                             var newMappings = vf2Helper(newState, 2);
-                        //writeln("We are here 2");
-
                             //count.add(1);
                             // Use a loop to add elements from newMappings to allmappings
                             for mapping in newMappings do solutions.pushBack(mapping);
                         }
+                        else {
+                            //writeln("else worked for",edgechecked[0] );
+                            if edgechecked[0] != -1 {
+                                notToCheck = edgechecked[0];
+                                //writeln("else worked for",edgechecked[0] );
 
+                            }
+                        }
                     }
                 }
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
             //writeln ("Total number of calls on vf2Helper is ", count.read());
-                    writeln("numStates = ",numStates.read());
-
             return(subIsoArrToReturn);
         } // end of vf2
+        
         return IsoArr;
     } //end of runVF2
 } // end of SubgraphIsomorphism module
+
+        
+        
+
