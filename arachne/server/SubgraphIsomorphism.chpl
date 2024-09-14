@@ -22,82 +22,31 @@ module SubgraphIsomorphism {
     use SegStringSort;
     use SegmentedString;
 
-    /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
-    class State {
-        var n1: int; // size of main graph
-        var n2: int; // size of subgraph
-    
-        var D_core: domain(1) = {0..<n2};
-        var core: [0..<n2] int;
-        
-        var Tin1: domain(int); // in-neighbors of current state for main graph
-        var Tout1: domain(int); // out-neighbors of current state for main graph
+    class Cluster {
+        //var id: int; // cluster id
+        var n_member: int; // size of cluster
+            
+        var members: [0..<n_member] int;
+        var is_wcc: bool;
 
-        var Tin2: domain(int); // in-neighbors of current state for subgraph
-        var Tout2: domain(int); // out-neighbors of current state for subgraph
-        
-        var depth:int; // recursion depth, when depth == n2 then all vertices are mapped.
+        var depth:int; // clustering depth
 
-        /** State initializer.*/
-        proc init(n1: int, n2: int) {
-            this.n1 = n1;
-            this.n2 = n2;
+        /** Cluster initializer.*/
+        proc init(id: int, membersArray: [] int) {
+            this.id = id;
+            this.n_member = membersArray.size;
             
-            this.D_core = {0..<n2};
-            this.core = -1;
-            
-            this.Tin1 = {1..0};
-            this.Tout1 = {1..0};
-            
-            this.Tin2 = {1..0};
-            this.Tout2 = {1..0};
-            
+            this.members = membersArray;
+            this.is_wcc = false;
             this.depth = 0;
         }
-        
-        /** Reset vectors during backtracking.*/
-        proc reset() {
-            this.D_core = {0..1};
-            this.core = -1;
-
-            this.Tin1  =  {1..0};
-            this.Tout1 =  {1..0};
-
-            this.Tin2  =  {1..0};
-            this.Tout2 =  {1..0};
-
-            this.depth = 0;
-        }
-        
-        /** Method to create a copy of the instance.*/
-        proc clone(): owned State throws {
-            var newState = new owned State(this.n1, this.n2);
-            newState.core = this.core;
-
-            newState.Tin1 = this.Tin1;
-            newState.Tout1 = this.Tout1;
-            
-            newState.Tin2 = this.Tin2;
-            newState.Tout2 = this.Tout2;
-            
-            newState.depth = this.depth;
-
-            return newState;
+        proc removeDegreeOne() {
+            //claculate cluster degree and remove the nodes with degree 1
+            //update cluster nodes
         }
 
-        /** Check if a given node is mapped in g1.*/
-        proc isMappedn1(n1: int): bool {
-            var Mapflag: bool = false;
-            for i in D_core do if this.core[i] == n1 then Mapflag = true;
-            return Mapflag;
-        }
-        
-        /** Check if a given node is mapped in g2.*/
-        proc isMappedn2(n2: int): bool {
-            return (this.core[n2] != -1);
-        }
 
-    } // end of State class 
+    } // end of Cluster class 
 
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
@@ -292,497 +241,7 @@ module SubgraphIsomorphism {
         
         //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
         //writeln("\nEquality check = ",IsoArrtemp.equals(IsoArr));
-/////////////////////////////State Injection//////////////////////////////////////////
-        proc CandidToState(ffcandidates) throws{
-            //var StateList: list(owned State) = new list(owned State);
-            var StateList: list(owned State);
-            forall n1Arr in ffcandidates with (ref StateList) {
-                
-                var newState = addToTinToutArray(n1Arr);
-                //writeln("state added: ", newState );
 
-                StateList.pushBack(newState);
-            }
-            return (StateList);
-        }
-        
-        proc findOutWedgesLight()throws {
-            var outWedges: list(int, parSafe=true);
-            
-            var inNeighborsg2 = dstRG2[segRG2[0]..<segRG2[1]];            
-            var outNeighborsg2 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
-            
-            writeln("Index 0 in G2 has ",inNeighborsg2.size, " inNeighbors" );
-            writeln("Index 0 in G2 has ",outNeighborsg2.size, " outNeighbors" );
-            // Iterate over each node and its out-neighbors
-            forall u in 0..g1.n_vertices-1 with (ref outWedges) {
-            //for u in 0..g1.n_vertices-1 {
-                var outNeighborsg1 = dstNodesG1.localSlice(segGraphG1[u]..<segGraphG1[u+1]);
-                var inNeighborsg1 = dstRG1[segRG1[u]..<segRG1[u+1]];
-
-                if outNeighborsg1.size >= outNeighborsg2.size & inNeighborsg1.size >= inNeighborsg2.size{
-                    outWedges.pushBack(u); 
-                }
-            }
-            writeln("/////////////////////////////State Injection//////////////////////////////////////////");
-            writeln("g1 num vertices is : ",g1.n_vertices );
-            writeln("outWedges size is: ", outWedges.size);
-            return(outWedges);
-        }
-/////////////////////////////End of State Injection///////////////////////////////////
-        
-//////////////////////////RI///////////////////////////////////////////////////
-        proc SortSubGraphbyDegree():[] int throws {
-            var NodeInDegree: [0..<g2.n_vertices] int = 0;
-            var NodeOutDegree: [0..<g2.n_vertices] int = 0;
-            var NodeDegree: [0..<g2.n_vertices] (int, int) = (0, 0); // Tuple to hold (sum of degrees, out-degree)
-
-            for v in 0..<g2.n_vertices {
-                var inNeighborsg2 = dstRG2[segRG2[v]..<segRG2[v+1]];            
-                var outNeighborsg2 = dstNodesG2[segGraphG2[v]..<segGraphG2[v+1]];
-
-                NodeInDegree[v] = inNeighborsg2.size;
-                NodeOutDegree[v] = outNeighborsg2.size;
-                NodeDegree[v] = (NodeInDegree[v] + NodeOutDegree[v], NodeOutDegree[v]);
-            }
-
-            // Create an array of tuples (value, original index)
-            var zipped: [NodeDegree.domain] (int, int, int);
-            writeln("NodeDegree.domain = ", NodeDegree.domain);
-            writeln("g2.n_vertices = ", g2.n_vertices);
-            // Populate the zipped array
-            for i in NodeDegree.domain {
-                zipped[i] = (NodeDegree[i][0], NodeDegree[i][1], i);
-            }
-            writeln("zipped.size = ", zipped.size);
-
-            // Define a custom comparator for sorting tuples
-            record Comparator {
-                proc compare(a: (int, int, int), b: (int, int, int)) {
-                    // Compare by sum of degrees first
-                    if a(0) != b(0) {
-                        return b(0) - a(0);
-                    } else {
-                        // If tied, compare by out-degree
-                        return b(1) - a(1);
-                    }
-                }
-            }
-
-            var TupleComparator: Comparator;
-
-            // Sort the zipped array using the custom comparator
-            sort(zipped, comparator=TupleComparator);
-
-            // Extract the sorted array and the indices
-            var sortedArray: [NodeDegree.domain] int;
-            var sortedIndices: [NodeDegree.domain] int;
-            for i in NodeDegree.domain{
-                sortedIndices[i] = zipped[i](2);
-            }
-
-            // Print the results
-            writeln("Original indices of sorted elements: ", sortedIndices);
-            return (sortedIndices);
-        }   
-
-        //SortSubGraphbyDegree();
-        
-        
-        proc GreatestConstraintFirst() throws {
-            var u_0: int = -1;
-            var V: set(int);
-            for i in 0..<g2.n_vertices{
-                V.add(i);
-            }    
-
-            var Visited: [0..<g2.n_vertices] bool = false; 
-            var Miu:list(int) ; 
-            var ParentMiu:list(int) ; 
-            var step: int = 0;
-            var uRank: [0..2] int;
-            var u_m: int = -1;
-
-
-            var sortedIndices = SortSubGraphbyDegree();
-
-            u_0 = sortedIndices[0]; //Vertex u0 in the subgraph is the maximum (in + out degree) 
-            writeln("u_0 = ", u_0);
-            Miu.pushBack(u_0);
-            writeln("Miu = ", Miu);
-
-            Visited(u_0) = true;
-            writeln("Visited = ", Visited);
-
-            ParentMiu.pushBack(-1);
-            uRank = (-1, -1, -1);
-
-            V.remove(u_0);
-            writeln("V after removing u_0 = ", V);
-            writeln("Begining of the while");
-            //var counter =10;
-            while(V.size > 0 ) {
-                var m = Miu.size;
-                writeln("m is = ", m);
-
-
-                for u in 0..<g2.n_vertices {
-                    var V_u_vis :int = 0;
-                    var V_u_neig :int = 0;
-                    var V_u_unvis :int = 0;
-                    
-                    writeln("\nbegingig of the for With u = ", u);
-                    var inNeighborsg2_u = dstRG2[segRG2[u]..<segRG2[u+1]];            
-                    var outNeighborsg2_u = dstNodesG2[segGraphG2[u]..<segGraphG2[u+1]];
-                    //writeln("inNeighborsg2_u = ", inNeighborsg2_u);
-                    //writeln("outNeighborsg2_u = ", outNeighborsg2_u);
-
-                    if(Visited[u] == false) {
-                       writeln("Visited = ", Visited);
-                       writeln("u = ",u," is not visited");
-                       writeln("before loop Miu = ",Miu);
-
-                        //V_{u, vis}
-                        
-                        for MiuVal in Miu {
-                            writeln("here V_{u, vis} = ", MiuVal);
-                            //writeln("inNeighborsg2_u.find(MiuVal) = ", inNeighborsg2_u.find(MiuVal));
-                            //writeln("outNeighborsg2_u .find(MiuVal) = ", outNeighborsg2_u .find(MiuVal));
-                            if inNeighborsg2_u.find(MiuVal)!= -1 || outNeighborsg2_u .find(MiuVal) != -1{
-                            V_u_vis += 1 ;
-                            writeln("V_u_vis =", V_u_vis);
-                            }
-                        }
-                        //V_{u, neig}
-                        writeln("******************end of V_u_vis***************************\n");
-
-                        for MiuVal in Miu {
-                            writeln("here V_{u, neig} ", MiuVal);
-
-                            var inNeighborsg2_MiuVal = dstRG2[segRG2[MiuVal]..<segRG2[MiuVal+1]];            
-                            var outNeighborsg2_MiuVal = dstNodesG2[segGraphG2[MiuVal]..<segGraphG2[MiuVal+1]];
-                            
-                            var combinedSet_MiuVal: set(int);
-                            // Add elements of in-neigh to the set
-                            for elem in inNeighborsg2_MiuVal {
-                                combinedSet_MiuVal.add(elem);
-                            }
-
-                            // Add elements of out-neigh to the set
-                            for elem in outNeighborsg2_MiuVal {
-                                combinedSet_MiuVal.add(elem);
-                            }
-                            writeln("combinedSet_MiuVal = ", combinedSet_MiuVal);
-                            var combinedSet_u: set(int);
-                            
-                            // Add elements of arr1 to the set
-                            for elem in inNeighborsg2_u {
-                                combinedSet_u.add(elem);
-                            }
-
-                            // Add elements of arr2 to the set
-                            for elem in outNeighborsg2_u {
-                                combinedSet_u.add(elem);
-                            }
-                            writeln("combinedSet_u = ", combinedSet_u);
-
-                            // Find the intersection of the two sets
-                            var intersection = combinedSet_MiuVal & combinedSet_u;
-                            writeln("intersection = ", intersection);
-
-                            for elem in intersection {
-                                if Visited[elem] == false{
-                                    V_u_neig += 1;
-                                }
-                            }
-                            writeln("V_u_neig = ",V_u_neig );
-                            writeln("******************end of V_u_neig***************************\n");
-                        }
-                        //V_{u, unvis}
-                        var setMiu: set(int);
-                        for elem in Miu {
-                            setMiu.add(elem);
-                            var inNeighborsg2_MiuVal = dstRG2[segRG2[elem]..<segRG2[elem+1]];            
-                            var outNeighborsg2_MiuVal = dstNodesG2[segGraphG2[elem]..<segGraphG2[elem+1]];
-                            for elem in inNeighborsg2_MiuVal {
-                                setMiu.add(elem);
-                            }                            
-                            
-                            for elem in outNeighborsg2_MiuVal {
-                                setMiu.add(elem);
-                            }
-                        }
-
-                        for i in 0..<g2.n_vertices {
-                            if Visited[i] == false{
-                                for elem in inNeighborsg2_u {
-                                    if !setMiu.contains(elem) {
-                                        V_u_unvis += 1;
-                                    }
-                                }
-                                for elem in outNeighborsg2_u {
-                                    if !setMiu.contains(elem) {
-                                        V_u_unvis += 1;
-                                    }
-                                }
-                            }
-                        }
-                        writeln("V_u_unvis = ", V_u_unvis);
-                            writeln("******************end of V_u_unvis***************************\n");
-
-                    }
-
-                    if(V_u_vis > uRank[0]) {
-                        writeln("Here 1 checked");
-                        u_m = u;
-                        uRank[0] = V_u_vis;
-                        uRank[1] = V_u_neig;
-                        uRank[2] = V_u_unvis;
-                        writeln("Now u_m = " , u_m, " uRank changed to = ", uRank);
-                    }
-                    else if(V_u_vis == uRank[0]) {
-                        if(V_u_neig > uRank[1]) {
-                            writeln("Here 2 checked");
-
-                            u_m = u;
-                            uRank[0] = V_u_vis;
-                            uRank[1] = V_u_neig;
-                            uRank[2] = V_u_unvis;
-                        writeln("Now u_m = " , u_m, "uRank changed to = ", uRank);
-
-                        }
-                        else if(V_u_neig == uRank[1]) {
-                            if(V_u_unvis > uRank[2]) {
-                               writeln("Here 3 checked");
-
-                                u_m = u;
-                                uRank[0] = V_u_vis;
-                                uRank[1] = V_u_neig;
-                                uRank[2] = V_u_unvis;
-                        writeln("Now u_m = " , u_m, "uRank changed to = ", uRank);
-
-                            }
-                        }
-                    }
-
-
-                }
-                //writeln("uRank = ", uRank);
-                writeln("////////////////////////////lets update/////////////////////////////////////////\n\n");
-                var inNeighborsg2_u_m = dstRG2[segRG2[u_m]..<segRG2[u_m+1]];            
-                var outNeighborsg2_u_m = dstNodesG2[segGraphG2[u_m]..<segGraphG2[u_m+1]];
-                
-                var combinedSet_u_m: set(int);
-                // Add elements of in-neigh to the set
-                for elem in inNeighborsg2_u_m {
-                    combinedSet_u_m.add(elem);
-                }
-                
-                for elem in outNeighborsg2_u_m {
-                    combinedSet_u_m.add(elem);
-                }
-
-                writeln("u_m = ", u_m);
-                writeln("combinedSet_u_m = ", combinedSet_u_m);
-                var minIndex = -1;
-                
-                for elem in combinedSet_u_m{
-                    if Visited[elem] == true {
-                        if minIndex <= elem then minIndex = elem;
-                    }
-                }
-                writeln("minIndex = ", minIndex);
-                Miu.pushBack(u_m);
-                ParentMiu.pushBack(minIndex);
-                Visited(u_m) = true;
-
-
-                writeln("\n Updateing V , Miu, ParentMiu: ---------------");
-                writeln("V = ", V);
-                writeln("Miu = ", Miu);
-                writeln("ParentMiu = ", ParentMiu);
-                V.remove(u_m);
-                writeln("u_m removed now V = ", V);
-
-                writeln("V.size = ", V.size);
-
-            }// end While
-            writeln("end of the while");
-
-            writeln("Miu = ", Miu);
-            writeln("ParentMiu = ", ParentMiu);
-
-            return(Miu, ParentMiu);
-        }// end of GreatestConstraintFirst
-        //GreatestConstraintFirst();
-////////////////////////////////////////////////////////////////////////////////////
-
-        proc checkEdge(In1: int, Out1:int): bool throws {
-
-                    var eid1 = getEdgeId(In1, Out1, dstNodesG1, segGraphG1);
-                    var eid2 = getEdgeId(0, 1, dstNodesG2, segGraphG2);
-
-                    var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-                    var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-
-                    if relationshipsG1eid1 != relationshipsG2eid2 then return false;
-                    return true;
-///////////////////////////////////////////
-
-
-//////////////////////////////////////////////////       
-        }
-        proc addToTinToutMVE(u0_g1: int, u1_g1: int, state: State): (int, bool) throws {
-            var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int);
-            var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int);
-            //writeln("/////////addToTinToutMVE//// u0_g1 = ", u0_g1, " //////// u1_g1 = ", u1_g1);
-            
-            Tin_u0 = dstRG1[segRG1[u0_g1]..<segRG1[u0_g1 + 1]];
-            Tout_u0 = dstNodesG1[segGraphG1[u0_g1]..<segGraphG1[u0_g1 + 1]];
-            
-            Tin_u1 = dstRG1[segRG1[u1_g1]..<segRG1[u1_g1 + 1]];
-            Tout_u1 = dstNodesG1[segGraphG1[u1_g1]..<segGraphG1[u1_g1 + 1]];
-            
-            Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
-            Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
-            
-            Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
-            Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
-            
-            //writeln("we are Here 1");
-            //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
-
-            if !nodesLabelCompatible(u0_g1, 0) {
-                //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
-                return (u0_g1, false);
-            }
-            const cond1 = Tin_u0.size >= Tin_0.size && Tout_u0.size >= Tout_0.size;
-            //writeln("we are Here 2");
-
-            if !cond1 {
-                //writeln("Tin_u0 >= Tin_0 = ", Tin_u0.size >= Tin_0.size);
-                //writeln("Tout_u0 >= Tout_0 = ", Tout_u0.size >= Tout_0.size);
-                //writeln("Tin_u1 >= Tin_1 = ", Tin_u1.size >= Tin_1.size);
-                //writeln("Tout_u1 >= Tout_1 = ", Tout_u1.size >= Tout_1.size);
-                return (u0_g1, false);
-            }      
-            //writeln("we are Here 3");
-
-            //writeln("nodesLabelCompatible(u1_g1, 1) = ", nodesLabelCompatible(u1_g1, 1));
-
-            if !nodesLabelCompatible(u1_g1, 1) {
-              //writeln("nodesLabelCompatible(u0_g1, 0) = ", nodesLabelCompatible(u0_g1, 0));
-                return (-1, false);
-            }
-/*            if !checkEdge(u0_g1, u1_g1) {
-                //writeln("checkEdge(u0_g1, u1_g1) = ", checkEdge(u0_g1, u1_g1));
-                return (-1, false);
-            }
-            */
-//////////////////////////////////
-//checkEdge-out
-            //writeln("we are Here 5");
-
-
-            var eid1 = getEdgeId(u0_g1, u1_g1, dstNodesG1, segGraphG1);
-            var eid2 = getEdgeId(0, 1, dstNodesG2, segGraphG2);
-
-            var relationshipsG1eid1 = convertedRelationshipsG1[eid1];
-            var relationshipsG2eid2 = convertedRelationshipsG2[eid2];
-            //writeln("relationshipsG1eid1 = ", relationshipsG1eid1);
-            //writeln("relationshipsG2eid2 = ", relationshipsG2eid2);
-            if relationshipsG1eid1 != relationshipsG2eid2 then return (-1, false);
-            //writeln("we are Here 7");
-
-//checkEdge-out
-            var eid1_rev = getEdgeId(u1_g1, u0_g1, dstNodesG1, segGraphG1);
-            var eid2_rev = getEdgeId(1, 0, dstNodesG2, segGraphG2);
-            //writeln("edge from ",u1_g1, " to ", u0_g1 );
-            //writeln("eid1 = ", eid1);
-            //writeln("eid2 = ", eid2);
-            if eid2_rev != -1 && eid1_rev == -1 then return (-1, false);
-            //writeln("we are Here 4");
-
-            if eid1_rev != -1 && eid2_rev != -1 then{
-                relationshipsG1eid1 = convertedRelationshipsG1[eid1_rev];
-                relationshipsG2eid2 = convertedRelationshipsG2[eid2_rev];
-                if relationshipsG1eid1 != relationshipsG2eid2 then return (-1, false);
-
-            }
-            //writeln("relationshipsG1eid1 = ", relationshipsG1eid1);
-            //writeln("relationshipsG2eid2 = ", relationshipsG2eid2);
-
-                    // TODO: Add better relationship matching function.
-
-/////////////////////////////////
-            // Refactored condition
-            const cond2 = Tin_u1.size >= Tin_1.size && Tout_u1.size >= Tout_1.size;
-
-      
-            
-            if !cond2 {
-                //writeln("Tin_u0 >= Tin_0 = ", Tin_u0.size >= Tin_0.size);
-                //writeln("Tout_u0 >= Tout_0 = ", Tout_u0.size >= Tout_0.size);
-                //writeln("Tin_u1 >= Tin_1 = ", Tin_u1.size >= Tin_1.size);
-                //writeln("Tout_u1 >= Tout_1 = ", Tout_u1.size >= Tout_1.size);
-                return (-1, false);
-            }
-
-            Nei_u0 += Tin_u0;
-            Nei_u0 += Tout_u0;
-            //writeln("Nei_u0 = ", Nei_u0);
-            Nei_u1 += Tin_u1;
-            Nei_u1 += Tout_u1;
-            //writeln("Nei_u1 = ", Nei_u1);
-
-            var intersecg1, intersecg2: domain(int);
-            intersecg1 = Nei_u0 & Nei_u1;
-            //writeln("intersecg1 = ", intersecg1);
-
-            Nei_0 += Tin_0;
-            Nei_0 += Tout_0;
-            //writeln("Nei_0 = ", Nei_0);
-            Nei_1 += Tin_1;
-            Nei_1 += Tout_1;
-            //writeln("Nei_1 = ", Nei_1);
-
-            intersecg2 = Nei_0 & Nei_1;
-            //writeln("intersecg2 = ", intersecg2);
-
-            if !(intersecg1.size >= intersecg2.size) {
-                //writeln("intersecg1.size = ", intersecg1.size);
-                //writeln("intersecg2.size = ", intersecg2.size);
-                return (-1, false);
-            }
-            //writeln("all checks done!");
-            state.Tin1 = Tin_u0 | Tin_u1;
-            state.Tout1 = Tout_u0 | Tout_u1;
-
-            state.Tin2 = Tin_0 | Tin_1;
-            state.Tout2 = Tout_0 | Tout_1;
-
-            state.depth += 2;
-            state.core[0] = u0_g1;
-            state.core[1] = u1_g1;
-
-            state.Tin1.remove(u0_g1); state.Tout1.remove(u0_g1);
-            state.Tin1.remove(u1_g1); state.Tout1.remove(u1_g1);
-
-            state.Tin2.remove(0); state.Tout2.remove(0);
-            state.Tin2.remove(1); state.Tout2.remove(1);
-/*
-            for i in state.D_core do if state.core[i] != -1 then state.Tin1.remove(state.core[i]);
-            for i in state.D_core do if state.core[i] != -1 then state.Tout1.remove(state.core[i]);
-
-            for n2 in Tin_0 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
-            for n2 in Tout_0 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
-
-            for n2 in Tin_1 do if !state.isMappedn2(n2) then state.Tin2.add(n2);
-            for n2 in Tout_1 do if !state.isMappedn2(n2) then state.Tout2.add(n2);
-*/            
-            //writeln("state is = ", state);
-            return (-1, true);
-        }
 
         /** Generate in-neighbors and out-neighbors for a given subgraph state.*/
         proc addToTinTout (u: int, v: int, state: State): int throws {
@@ -820,37 +279,6 @@ if state.depth==g2.n_vertices{
 
 
         } // end of addToTinTout
-
-        /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
-        proc isFeasible_light(n1: int, n2: int) throws {
-            var new1, new2: int = 0;
-            if !nodesLabelCompatible(n1, n2) then return false;
-
-            // Process the out-neighbors of g2.
-            var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
-            new2 += getOutN2.size;
-            
-                
-            // Process the in-neighbors of g2. 
-            var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
-            new2 += getInN2.size;
-
-            // Process the out-neighbors of g1. 
-            var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-            new1 += getOutN1.size;
-
-            // Process the in-neighbors of g2.
-            var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-            new1 += getInN1.size;
-
-            if !(new2 <= new1 ) then return false;
-
-            if !nodesLabelCompatible(n1, n2) then return false;
-
-            return true;
-        } // end of isFeasible_light
-
-
 
         /** Check to see if the mapping of n1 from g1 to n2 from g2 is feasible.*/
         proc isFeasible(n1: int, n2: int, state: State) throws {
@@ -1011,9 +439,11 @@ if state.depth==g2.n_vertices{
         } // end of getCandidatePairsOpti_light
            
         /** Creates an initial, empty state.*/
-        proc createInitialState(n1: int, n2: int): State throws {
-            return new owned State(n1, n2);
-        } // end of createInitialState
+
+        proc createInitialClusters(id: int, membersArray: [] int): Cluster throws{
+            // Create a Cluster object with the members from 'membersArray'
+            return new owned Cluster(id, membersArray);
+        }
 
         /** Check that node labels are the same.*/
         proc nodesLabelCompatible(n1: int, n2: int): bool throws {
@@ -1026,48 +456,22 @@ if state.depth==g2.n_vertices{
         } // end of nodesLabelCompatible
 
         /** Perform the vf2 recursive steps returning all found isomorphisms.*/
-        proc vf2Helper(state: owned State, depth: int): list(int) throws {
+        proc wccHelper(cluster: owned Cluster, depth: int): list(int) throws {
             var allmappings: list(int, parSafe=true);
 
             // Base case: check if a complete mapping is found
-            if depth == g2.n_vertices {
+            if cluster.is_wcc == true; {
                 //writeln("Isos found = ", state.core);
                 // Process the found solution
                 for elem in state.core do allmappings.pushBack(elem);
                 return allmappings;
             }
-/*
-            if depth == 0 {
-                //var n2: int = 0;
 
                 // Generate candidate pairs (n1, n2) for mapping
-                var candidatePairs = getCandidatePairsOpti_light(state);
-
-                // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-                //for (n1, n2) in candidatePairs {
-                    if isFeasible_light(n1, n2) {
-                    //if isFeasible(n1, n2, state) {
-
-                        //writeln("n1 = ", n1, " n2 = ", n2, "Passed isFeasible_light()");
-                        var newState = state.clone();
-                        addToTinTout(n1, n2, newState);
-
-                        //var newMappings = vf2Helper(newState, 1);
-                        var newMappings = vf2Helper(newState, 1);
-                        
-                        // Use a loop to add elements from newMappings to allmappings
-                        for mapping in newMappings do allmappings.pushBack(mapping);
-                    }
-                }
-            } 
-            else{
- */            
-                // Generate candidate pairs (n1, n2) for mapping
-                var candidatePairs = getCandidatePairsOpti(state);
+                var candidateClusters = getCandidatePairsOpti(state);
                 //writeln("\nstate depth = ", state.depth, " Candidte size = ", candidatePairs.size);
                 // Iterate in parallel over candidate pairs
-                forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+                forall (n1, n2) in candidateClusters with (ref state, ref allmappings) {
                 //for (n1, n2) in candidatePairs {
                     if isFeasible(n1, n2, state) {
                         var newState = state.clone();
@@ -1077,7 +481,7 @@ if state.depth==g2.n_vertices{
 
                         // Recursive call with updated state and increased depth
                         var newMappings: list(int, parSafe=true);
-                        newMappings = vf2Helper(newState, depth + 1);
+                        newMappings = wccHelper(newState, depth + 1);
                         
                         // Use a loop to add elements from newMappings to allmappings
                         for mapping in newMappings do allmappings.pushBack(mapping);
@@ -1089,47 +493,24 @@ if state.depth==g2.n_vertices{
             return allmappings;
         }
         
-        /** Main procedure that invokes all of the vf2 steps using the graph data that is
-            initialized by `runVF2`.*/
-        proc vf2(g1: SegGraph, g2: SegGraph): [] int throws {
-            var state = createInitialState(g1.n_vertices, g2.n_vertices);
-            var solutions: list(int, parSafe=true);
 
-                var n2: int = 0;
-                var notToCheck: int = -1;//LOL it shouldn't work! why it's working?
-                //forall n1 in 0..g1.n_vertices-1 with () {
-                forall edgeIndex in 0..mG1-1 with (ref solutions, ref notToCheck) {
-                //for edgeIndex in 0..mG1-1  {
+        proc wcc(g1: SegGraph, inputArrOfArrs: [] [] int): [] int throws {
+            //var inputArrOfArrs: [] [] int;
+            for i in 0..inputArrOfArrs.size {
+                var initial = createInitialClusters(i, inputArrOfArrs[i]);
+                var solutions = wccHelper(initial);
+            }
 
-                    if notToCheck != srcNodesG1[edgeIndex]{
-                        var newState = createInitialState(g1.n_vertices, g2.n_vertices);
-                        var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], newState);
-                        if edgechecked[1]{
-                            //writeln(" addToTinToutMVE returned true");
-                            var newMappings = vf2Helper(newState, 2);
-                            //count.add(1);
-                            // Use a loop to add elements from newMappings to allmappings
-                            for mapping in newMappings do solutions.pushBack(mapping);
-                        }
-                        else {
-                            //writeln("else worked for",edgechecked[0] );
-                            if edgechecked[0] != -1 {
-                                notToCheck = edgechecked[0];
-                                //writeln("else worked for",edgechecked[0] );
-
-                            }
-                        }
-                    }
-                }
+            //var solutions = wccHelper();
             var subIsoArrToReturn: [0..#solutions.size](int);
             for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
-            //writeln ("Total number of calls on vf2Helper is ", count.read());
             return(subIsoArrToReturn);
-        } // end of vf2
+        } // end of WCC
+
         
         return IsoArr;
-    } //end of runVF2
-} // end of SubgraphIsomorphism module
+    } //end of runWCC
+} // end of WellConnected module
 
         
 
