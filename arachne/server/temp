@@ -22,34 +22,31 @@ module SubgraphIsomorphism {
     use SegmentedString;
 
     class Cluster {
-        var n_member: int;           // Size of the cluster
-        var members: domain(int);    // Domain to store cluster members
-        var is_wcc: bool = false;    // Indicates if it's a well-connected component
-        var is_singleton: bool = false; // Indicates if it's a singleton cluster
-        var depth: int;              // Clustering depth
+        //var id: int; // cluster id
+        var n_member: int; // size of cluster
+            
+        var members: [0..<n_member] int;
+        var is_wcc: bool;
 
-        /** Cluster initializer. */
-        proc init(membersArray: [] int) {
+        var depth:int; // clustering depth
+
+        /** Cluster initializer.*/
+
+        proc init(id: int, membersArray: [] int) {
+            this.id = id;
             this.n_member = membersArray.size;
-
-            // Initialize an empty domain and add members from the array
-            this.members = {1..0};
-            this.members += membersArray;
-            // Check if it's a singleton cluster (only one member)
-            if this.n_member <= 1 then
-            this.is_singleton = true;
-
+            
+            this.members = membersArray;
             this.is_wcc = false;
             this.depth = 0;
         }
-
-        /** Method to remove nodes with degree 1 (to be implemented). */
         proc removeDegreeOne() {
-            // Calculate cluster degree and remove nodes with degree 1
-            // Update cluster nodes accordingly
+            //claculate cluster degree and remove the nodes with degree 1
+            //update cluster nodes
         }
-    }
- 
+
+
+    } // end of Cluster class 
 
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
@@ -222,88 +219,101 @@ module SubgraphIsomorphism {
         var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
         var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
-        var IsoArr:[0..3] int = [0,1,2];
+        
+        var inputClusters: list(list (int));
+        // Assign values to each list element
+        inputClusters.push_back([0, 4, 5, 6, 7, 1, 8, 9, 10, 2]);  // First array
+        inputClusters.pushBack([3, 11, 12, 13, 14, 15, 17, 16, 18, 19]);  // Second array
 
-        // Define the clusters as arrays
-        var cluster1 = [0, 4, 5, 6, 7, 1, 8, 9, 10, 2];  // First array
-        var cluster2 = [3, 11, 12, 13];  // Second array
-        var cluster3 = [14, 15, 17, 16, 18, 19];  // Third array
-        var cluster4 = [14];  // Forth array
+        var IsoArrtemp = wcc(g1, inputClusters);
+        /*
+        //writeln("IsoArrtemp Divisiblity test = ", IsoArrtemp.size/4);
+        
+        for i in 0..g1.n_vertices {
+            if !(IsoArrtemp[i] > -1 && IsoArrtemp[i] < g1.n_vertices+1){
+                writeln("There is an out of range ", IsoArrtemp[i]);
+            }
+        }
+        */
+        var IsoArr = nodeMapGraphG1[IsoArrtemp]; // Map vertices back to original values.
+        
+        //writeln("\nIsoArr Divisiblity test = ", IsoArr.size/4);
 
-        wcc (g1, cluster1);
-
+        //writeln("IsoArr     = ", IsoArr);
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
-        proc calculateDegree(cluster: Cluster, elem: int): int throws{
-            var Neighbours: domain(int);
-            var inNeigh_elem  = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
-            var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
-            Neighbours += inNeigh_elem;
-            Neighbours += outNeigh_elem;
+        //writeln("\nDomain check = ", IsoArrtemp.domain == IsoArr.domain );
+        //writeln("\nEquality check = ",IsoArrtemp.equals(IsoArr));
 
-            var intersectionDomain = Neighbours & cluster.members;
-            //writeln("processing node ", elem);
-            //writeln("intersectionDomain = ", intersectionDomain);
-            //writeln("degree of elem(", elem, ") = ",intersectionDomain.size );
-            return(intersectionDomain.size);
 
+        /** Creates an initial, empty state.*/
+
+        proc createInitialClusters(id: int, membersArray: [] int): Cluster throws{
+            // Create a Cluster object with the members from 'membersArray'
+            return new owned Cluster(id, membersArray);
         }
-        proc removeDegreeOne(cluster: borrowed Cluster){
-            var toRemove: domain(int);  // Create a domain to store elements to be removed
 
-            // Iterate over the members and collect elements that need to be removed
-            forall elem in cluster.members {
-                if calculateDegree(cluster, elem) < 2 {
-                    cluster.members.remove(elem);
-                    writeln("Marked for removal: ", elem);
-                }
-            }
-            cluster.n_member = cluster.members.size;
-            if cluster.n_member <2 then cluster.is_singleton = true;
-            //return cluster;  // Return the modified cluster
-        }
-/*
-        proc isWellConnected(cluster: borrowed Cluster): bool throws{
-            forall elem in cluster.
+        /** Check that node labels are the same.*/
+        proc nodesLabelCompatible(n1: int, n2: int): bool throws {
+            var labelsG1n1 = convertedLabelsG1[n1];
+            var labelsG2n2 = convertedLabelsG2[n2];
+
+            if labelsG1n1 != labelsG2n2 then return false;
+
             return true;
-        }
+        } // end of nodesLabelCompatible
 
-        proc callMinCut(cluster:Cluster):[] Clusters{
-           //do mincut
-           //return arrays of clusters
-           return clusterArr; 
-        }
-*/
-        proc wccHelper(cluster: borrowed Cluster): Cluster throws{
-            // Base case: check if a well connected cluster is found
+        /** Perform the vf2 recursive steps returning all found isomorphisms.*/
+        proc wccHelper(cluster: owned Cluster): list(int) throws {
+            var allmappings: list(int, parSafe=true);
+
+            // Base case: check if a complete mapping is found
             if cluster.is_wcc == true {
                 writeln("WC Cluster found = ", cluster.members);
                 // Process the found solution
                 //for elem in state.core do allmappings.pushBack(elem);
-                return cluster;
+                return allmappings;
             }
-            removeDegreeOne(cluster);
-            var cuttedClusters=callMinCut(cluster);
+
+                // Generate candidate pairs (n1, n2) for mapping
+                var candidateClusters = getClusters(cluster);
+
+                forall candidates in candidateClusters with (ref allmappings) {
+                    if isWellConnected(candidates) {
+                        candidates.is_wcc = true;
+                    } else{
+                        candidates.removeDegreeOne();
+                        
+                        // Recursive call with updated state and increased depth
+                        var newMappings: list(int, parSafe=true);
+                        newMappings = wccHelper(candidates);
+                        
+                        // Use a loop to add elements from newMappings to allmappings
+                        for mapping in newMappings do allmappings.pushBack(mapping);
+                    }
+                }
             
-            for NewCluster in cuttedClusters{
-                wccHelper(NewCluster);
-            }
-            return(temp);
+       // }
+
+            return allmappings;
         }
-        proc wcc(g1: SegGraph, inputClusterArr: [?D] int): [] int throws {
-            writeln("Running");
-            var clusterInit = new owned Cluster(inputClusterArr);
-            writeln("Cluster created = ", clusterInit);
+        
 
-            if !clusterInit.is_singleton && !clusterInit.is_wcc {
-                wccHelper(clusterInit);
+        proc wcc(g1: SegGraph, inputArrOfArrs: list( [] int)): [] int throws {
+            //var inputArrOfArrs: [] [] int;
+            var solutions:list (int);
+
+            for i in 0..inputArrOfArrs.size {
+                var initial = createInitialClusters(i, inputArrOfArrs[i]);
+                var returnCluster = wccHelper(initial);
+                solutions.pushBack(returnCluster);
             }
-            //wccHelper(clusterInit);
-            writeln("Cluster after call and return = ", clusterInit);
-            return([0,9,9,9]);
-
+            //var solutions = wccHelper();
+            var subIsoArrToReturn: [0..#solutions.size](int);
+            for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+            return(subIsoArrToReturn);
         } // end of WCC
 
         
