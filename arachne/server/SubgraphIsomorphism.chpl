@@ -236,26 +236,25 @@ module SubgraphIsomorphism {
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         
-        proc calculateDegree(cluster: Cluster, elem: int): int throws{
+        proc calculateDegree(cluster: domain(int), elem: int): int throws{
             var Neighbours: domain(int);
             var inNeigh_elem  = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
             var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
             Neighbours += inNeigh_elem;
             Neighbours += outNeigh_elem;
 
-            var intersectionDomain = Neighbours & cluster.members;
+            var intersectionDomain = Neighbours & cluster;
             //writeln("processing node ", elem);
             //writeln("intersectionDomain = ", intersectionDomain);
             //writeln("degree of elem(", elem, ") = ",intersectionDomain.size );
             return(intersectionDomain.size);
 
         }
-        proc removeDegreeOne(cluster: borrowed Cluster){
-            var toRemove: domain(int);  // Create a domain to store elements to be removed
+        proc removeDegreeOne(cluster: borrowed Cluster) throws{
 
             // Iterate over the members and collect elements that need to be removed
             forall elem in cluster.members {
-                if calculateDegree(cluster, elem) < 2 {
+                if calculateDegree(cluster.members, elem) < 2 {
                     cluster.members.remove(elem);
                     writeln("Marked for removal: ", elem);
                 }
@@ -264,18 +263,91 @@ module SubgraphIsomorphism {
             if cluster.n_member <2 then cluster.is_singleton = true;
             //return cluster;  // Return the modified cluster
         }
-/*
-        proc isWellConnected(cluster: borrowed Cluster): bool throws{
-            forall elem in cluster.
+        // function is wrong I should call it by edgeCutSize
+        proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
+            var total: int;
+            total = + reduce forall elem in cluster.members do
+                calculateDegree(cluster.members, elem);
+            writeln("total = ", total);
+
+            var numEdges: int;
+
+            if total % 2 == 0 {
+                // 'total' is even, proceed with the division
+                numEdges = total / 2;
+                writeln("numEdges: ", numEdges);
+            } else {
+                // 'total' is odd, throw an error
+                throw new Error("Error: total degree is odd.");
+            }
+
+            if numEdges > 0 then {
+                // Compute the base-10 logarithm of 'numEdges' and take the floor
+                var logValue = floor(log10(numEdges: real));
+
+                // Convert the result to an integer if needed
+                var floorLog10NumEdges: int = logValue:int;
+
+                // Output the result
+                writeln("The floor of log base 10 of ", numEdges, " is: ", floorLog10NumEdges);
+            } else {
+                throw new Error("Error: 'numEdges' must be a positive integer.");
+            }
+
+            // Determine the return value later
+            // For now, return true if the cluster is well-connected
             return true;
         }
 
-        proc callMinCut(cluster:Cluster):[] Clusters{
-           //do mincut
-           //return arrays of clusters
-           return clusterArr; 
+        
+
+        //Assumptions:
+        //The graph is undirected, and each edge is represented in both directions in src and dst. Oliver?
+        //The cluster (graph) is connected.
+/*
+        // Function to perform a simple randomized min-cut (Karger's algorithm)
+        proc callMinCut(nodes: domain(int)) {
+
+            // Number of nodes remaining
+            var remainingNodes = nodes.size;
+            var total:int;
+            total = + reduce forall elem in nodes do
+                calculateDegree(nodes, elem);
+            
+            var edgesSize: int = total/2; 
+            var nodesArr: [0..<nodes.size] int;
+            nodesArr += nodes;
+
+            var supernodes = nodesArr;
+
+            // Create a random number generator (RNG) stream
+            var rng = new owned RandomStream(int);
+
+            // Randomized contraction process
+            while remainingNodes > 2 {
+                // Randomly select an edge
+                var edgeIndex = Random.rand(0, edges.size - 1);
+                var (u, v) = edges[edgeIndex];
+
+                // Get supernodes for u and v
+                var su = supernodes[u];
+                var sv = supernodes[v];
+
+                // If they are already in the same supernode, skip
+                if su == sv {
+                    edges.remove(edgeIndex);
+                    continue;
+                }
+
+
+        }
         }
 */
+        proc callMinCut(nodes: domain(int)) {
+            writeln("MinCut called");
+            //bring an int cutSize
+            //bring list of uniqu nodes in each new partition
+        }
         proc wccHelper(cluster: borrowed Cluster): Cluster throws{
             // Base case: check if a well connected cluster is found
             if cluster.is_wcc == true {
@@ -285,11 +357,28 @@ module SubgraphIsomorphism {
                 return cluster;
             }
             removeDegreeOne(cluster);
-            var cuttedClusters=callMinCut(cluster);
-            
+
+            if !cluster.is_singleton == true && cluster.n_member > 10 && !cluster.is_wcc == true{
+                
+                var (cutSize, clusterNew1, clusterNew2) = callMinCut(cluster.members);
+                
+                isWellConnected(cluster, cutSize);
+
+                if !cluster.is_wcc == true {
+                    //create new cluster for each and call the wccHelper
+                    // Viecut brings src , dst?!
+                    forallreturnedcluster{}
+                    wccHelper();
+                }
+                }
+
+            }
+            /*
             for NewCluster in cuttedClusters{
                 wccHelper(NewCluster);
             }
+            */
+            var temp = cluster;
             return(temp);
         }
         proc wcc(g1: SegGraph, inputClusterArr: [?D] int): [] int throws {
