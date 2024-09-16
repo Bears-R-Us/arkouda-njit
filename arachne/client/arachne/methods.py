@@ -19,6 +19,7 @@ __all__ = ["read_matrix_market_file",
            "k_truss",
            "triangle_centrality",
            "connected_components",
+           "well_connected_components"
            ]
 
 @typechecked

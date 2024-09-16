@@ -34,6 +34,8 @@ module WellConnectedComponentsMsg {
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var g = gEntry.graph;
 
+        //var clusterArr = makeDistArray(, int);
+
         // Execute sequential VF2 subgraph isomorphism.
         var timer:stopwatch;
         if g.isDirected() {

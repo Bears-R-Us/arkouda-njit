@@ -1,4 +1,4 @@
-module WellConnectedComponents {
+module SubgraphIsomorphism {
     // Chapel modules.
     use Reflection;
     use List;
@@ -50,7 +50,8 @@ module WellConnectedComponents {
             // Update cluster nodes accordingly
         }
     }
- 
+    
+
     // Define a record to encapsulate an array with its own domain
     record DomVarryArray {
         var DOM: domain(1);       // Domain of the array
@@ -64,10 +65,11 @@ module WellConnectedComponents {
             this.Arr = [i in DOM] data[i];
         }
     }
+
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runWCC (g1: SegGraph, st: borrowed SymTab):[] int throws {
+    proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
@@ -80,9 +82,20 @@ module WellConnectedComponents {
         var segRG1Dist = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
         var nodeMapGraphG1Dist = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
 
+        // Extract the g2/H/h information from the SegGraph data structure.
+        var srcNodesG2Dist = toSymEntry(g2.getComp("SRC"), int).a;
+        var dstNodesG2Dist = toSymEntry(g2.getComp("DST"), int).a;
+        var segGraphG2Dist = toSymEntry(g2.getComp("SEGMENTS"), int).a;
+        var srcRG2Dist = toSymEntry(g2.getComp("SRC_R"), int).a;
+        var dstRG2Dist = toSymEntry(g2.getComp("DST_R"), int).a;
+        var segRG2Dist = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
+        var nodeMapGraphG2Dist = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
+
         // Get the number of vertices and edges for each graph.
         var nG1 = nodeMapGraphG1Dist.size;
         var mG1 = srcNodesG1Dist.size;
+        var nG2 = nodeMapGraphG2Dist.size;
+        var mG2 = srcNodesG2Dist.size;
 
         //******************************************************************************************
         //******************************************************************************************
@@ -111,6 +124,13 @@ module WellConnectedComponents {
                                             string, (string, borrowed SegStringSymEntry)
                                         ))).stored_map;
 
+        var edgeRelationshipsGraphG2 = (g2.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
+                                            string, (string, borrowed SegStringSymEntry)
+                                        ))).stored_map;
+        var nodeLabelsGraphG2 = (g2.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
+                                            string, (string, borrowed SegStringSymEntry)
+                                        ))).stored_map;
+
         var relationshipStringToInt, labelStringToInt = new map(string, int);
 
         // Create global relationship mapper for G1 and G2.
@@ -118,6 +138,16 @@ module WellConnectedComponents {
         for k in edgeRelationshipsGraphG1.keys() {
             var segString = getSegString(edgeRelationshipsGraphG1[k][1].name, st);
             for i in 0..segString.size-1 {
+                var val = segString[i];
+                if !relationshipStringToInt.contains(val) {
+                    relationshipStringToInt.add(val, id);
+                    id += 1;
+                }
+            }
+        }
+        for k in edgeRelationshipsGraphG2.keys() {
+            var segString = getSegString(edgeRelationshipsGraphG2[k][1].name, st);
+            for i in 0..edgeRelationshipsGraphG2[k][1].size-1 {
                 var val = segString[i];
                 if !relationshipStringToInt.contains(val) {
                     relationshipStringToInt.add(val, id);
@@ -138,11 +168,23 @@ module WellConnectedComponents {
                 }
             }
         }
+        for k in nodeLabelsGraphG2.keys() {
+            var segString = getSegString(nodeLabelsGraphG2[k][1].name, st);
+            for i in 0..nodeLabelsGraphG2[k][1].size-1 {
+                var val = segString[i];
+                if !labelStringToInt.contains(val) {
+                    labelStringToInt.add(val, id);
+                    id += 1;
+                }
+            }
+        }
 
         // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
         // internal hash table intersections via sets.
         var convertedRelationshipsG1Dist = makeDistArray(g1.n_edges, domain(int));
+        var convertedRelationshipsG2Dist = makeDistArray(g2.n_edges, domain(int));
         var convertedLabelsG1Dist = makeDistArray(g1.n_vertices, domain(int));
+        var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int));
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
@@ -151,11 +193,25 @@ module WellConnectedComponents {
                 convertedRelationshipsG1Dist[i].add(relationshipStringToInt[mapper[x]]);
         }
 
+        for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
+            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
+            var mapper = getSegString(v[1].name,st);
+            forall (x,i) in zip(arr, arr.domain) do
+                convertedRelationshipsG2Dist[i].add(relationshipStringToInt[mapper[x]]);
+        }
+
         for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
             forall (x,i) in zip(arr, arr.domain) do 
                 convertedLabelsG1Dist[i].add(labelStringToInt[mapper[x]]);
+        }
+
+        for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
+            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
+            var mapper = getSegString(v[1].name,st);
+            forall (x,i) in zip(arr, arr.domain) do 
+                convertedLabelsG2Dist[i].add(labelStringToInt[mapper[x]]);
         }
         //******************************************************************************************
         //******************************************************************************************
@@ -170,8 +226,17 @@ module WellConnectedComponents {
         var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Dist;
         var convertedRelationshipsG1: [0..<mG1] domain(int) = convertedRelationshipsG1Dist;
         var convertedLabelsG1: [0..<nG1] domain(int) = convertedLabelsG1Dist;
-        //******************************************************************************************
 
+        var srcNodesG2: [0..<mG2] int = srcNodesG2Dist;
+        var dstNodesG2: [0..<mG2] int = dstNodesG2Dist;
+        var segGraphG2: [0..<nG2+1] int = segGraphG2Dist;
+        var srcRG2: [0..<mG2] int = srcRG2Dist;
+        var dstRG2: [0..<mG2] int = dstRG2Dist;
+        var segRG2: [0..<nG2+1] int = segRG2Dist;
+        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Dist;
+        var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
+        var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
+        //******************************************************************************************
         var IsoArr:[0..3] int = [0,1,2];
 
         // Define the clusters as arrays
@@ -180,7 +245,7 @@ module WellConnectedComponents {
         var cluster3 = [14, 15, 17, 16, 18, 19];  // Third array
         var cluster4 = [14];  // Forth array
 
-        wcc(g1, cluster1);
+        wcc (g1, cluster1);
 
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
@@ -211,14 +276,11 @@ module WellConnectedComponents {
             }
             cluster.n_member = cluster.members.size;
             if cluster.n_member <2 then cluster.is_singleton = true;
-            writeln("cluster after removeing degree one nodes: ", cluster);
             //return cluster;  // Return the modified cluster
         }
-        
-        // function is wrong I should call it by edgeCutSize
-        proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
-            writeln("////////////////************isWellConnected begin");
 
+        proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
+            
             // Compute the base-10 logarithm of 'numEdges' and take the floor
             var logN = floor(log10(cluster.members.size: real));
             // Convert the result to an integer if needed
@@ -235,63 +297,57 @@ module WellConnectedComponents {
             return false;
         }
 
-        proc createVieCutGraph(nodes: domain(int)){
-            writeln("////////////////************createVieCutGraph begin");
+        
 
-            var edgeSet:  set((int, int));  // A set to store unique edges as (src, dst) pairs
-            writeln("Nodes are: ", nodes);
-            for elem in nodes {
-                // Find in-neighbors of the current element
-                var inNeigh_elem = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
-                
-                // Find out-neighbors of the current element
-                var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
+        //Assumptions:
+        //The graph is undirected, and each edge is represented in both directions in src and dst. Oliver?
+        //The cluster (graph) is connected.
+/*
+        // Function to perform a simple randomized min-cut (Karger's algorithm)
+        proc callMinCut(nodes: domain(int)) {
 
-                // Process in-neighbors and add unique edges to src and dst
-                for neigh in inNeigh_elem & nodes {
-                    edgeSet.add((neigh, elem));
-                }
-                writeln("edgeSet- inNeigh added = ", edgeSet);
-                // Process out-neighbors and add unique edges to src and dst
-                for neigh in outNeigh_elem & nodes {
-                    edgeSet.add((elem, neigh));
-                }
-                writeln("edgeSet- outNeigh added = ", edgeSet);
-
-            }
-    
-            // Initialize the src and dst arrays based on the size of the edgeSet
-            var src, dst: [0..edgeSet.size] int;
-
-            // Populate src and dst arrays from the edgeSet
+            // Number of nodes remaining
+            var remainingNodes = nodes.size;
+            var total:int;
+            total = + reduce forall elem in nodes do
+                calculateDegree(nodes, elem);
             
-            var src_index = 0;
+            var edgesSize: int = total/2; 
+            var nodesArr: [0..<nodes.size] int;
+            nodesArr += nodes;
 
-            for edge in edgeSet {
-                src[src_index] = edge(0);  // The source node
-                dst[src_index] = edge(1);  // The destination node
-                src_index += 1;
-            }
+            var supernodes = nodesArr;
+
+            // Create a random number generator (RNG) stream
+            var rng = new owned RandomStream(int);
+
+            // Randomized contraction process
+            while remainingNodes > 2 {
+                // Randomly select an edge
+                var edgeIndex = Random.rand(0, edges.size - 1);
+                var (u, v) = edges[edgeIndex];
+
+                // Get supernodes for u and v
+                var su = supernodes[u];
+                var sv = supernodes[v];
+
+                // If they are already in the same supernode, skip
+                if su == sv {
+                    edges.remove(edgeIndex);
+                    continue;
+                }
 
 
-            writeln("src: ", src);
-            writeln("dst: ", dst);
-            return(src,dst);
         }
-
+        }
+*/
         proc callMinCut(nodes: domain(int)): (int, list(DomVarryArray)) {
-            writeln("////////////////************callMinCut begin");
-
+            writeln("MinCut called");
             //bring an int cutSize
             //bring list of uniqu nodes in each new partition
             //should return List or arrys of clusters
-            var src, dst = createVieCutGraph(nodes);
-
-            // supposed *Viecut called* and it returned cluster1, cluster2
-
-            var cluster1 = [0, 4, 5 ];  // First array
-            var cluster2 = [6, 7, 1, 8, 9, 10, 2];  // Second array
-
+            var cluster1 = [0, 4, 5, 6, 7, 1, 8, 9, 10, 2];  // First array
+            var cluster2 = [3, 11, 12, 13];  // Second array
             // Create DomVarryArray instances
             var domVarryArray1 = new DomVarryArray(cluster1);
             var domVarryArray2 = new DomVarryArray(cluster2);
@@ -300,14 +356,10 @@ module WellConnectedComponents {
             // Push the instances into the list
             cluslist.pushBack(domVarryArray1);
             cluslist.pushBack(domVarryArray2);
-            writeln("cluslist = ", cluslist);
             return(0, cluslist);
         }
 
-
         proc wccHelper(cluster: borrowed Cluster): list(int) throws{
-            writeln("////////////////************wccHelper begin");
-
             // Initialize an empty list to collect well-connected clusters
             var allWCC: list(int);
             
@@ -315,23 +367,23 @@ module WellConnectedComponents {
             if cluster.is_wcc == true {
                 writeln("WC Cluster found = ", cluster.members);
                 // Add the well-connected cluster to the list
-                //allWCC.pushBack(domVarryArray1);
+                //allWCC.pushBack(cluster.members);
                 return allWCC;
             }
+
+            // Remove nodes of degree one or singletons
             removeDegreeOne(cluster);
 
             // Check if the cluster is not a singleton (because i am not sure if there is some after removing) 
             // and has more than 10 members
 
-            //if !cluster.is_singleton == true && cluster.n_member > 10 {
-            if !cluster.is_singleton == true && cluster.n_member > 1 {
+            if !cluster.is_singleton == true && cluster.n_member > 10 {
                 // Perform min-cut to get sub-clusters
                 var (cutSize, clusterList) = callMinCut(cluster.members);
                 
-                //forall minCutReturnedArr in clusterList{
-                for minCutReturnedArr in clusterList{
+                forall returnedNewClusterArr in clusterList{
 
-                    var subCluster = new owned Cluster(minCutReturnedArr.Arr);
+                    var subCluster = new owned Cluster(returnedNewClusterArr.Arr);
                     // Check if the returned cluster is well-connected
                     isWellConnected(subCluster, cutSize);
                     
@@ -350,19 +402,30 @@ module WellConnectedComponents {
             return allWCC;
         }
 
+        
         proc wcc(g1: SegGraph, inputClusterArr: [?D] int): [] int throws {
+            var collectedWCCluster: Cluster;
             writeln("Running");
             var clusterInit = new owned Cluster(inputClusterArr);
             writeln("Cluster created = ", clusterInit);
 
-            if !clusterInit.is_singleton && !clusterInit.is_wcc {
-                wccHelper(clusterInit);
+            if !clusterInit.is_singleton {
+                collectedWCCluster = wccHelper(clusterInit);
             }
             //wccHelper(clusterInit);
-            writeln("Cluster after call and return = ", clusterInit);
+            writeln("Clusters after call and return = ", collectedWCCluster);
+            ///I should process collectedWCCluster and return it.
+            // List or array to
+            // Reindexing?
+            //for clusterToReutrn in collectedWCCluster {
+                // Do something with each cluster
+                //writeln("Processing cluster: ", clusterToReutrn.members);
+            //}
             return([0,9,9,9]);
 
         } // end of WCC
+
+        
         return IsoArr;
     } //end of runWCC
-} // end of WellConnectedComponents module
+} // end of WellConnected module
