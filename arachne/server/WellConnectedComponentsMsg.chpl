@@ -1,4 +1,4 @@
-module SubgraphIsomorphismMsg {
+module WellConnectedComponentsMsg {
     // Chapel modules.
     use Reflection;
     use Map;
@@ -6,7 +6,7 @@ module SubgraphIsomorphismMsg {
     
     // Arachne modules.
     use GraphArray;
-    use SubgraphIsomorphism; 
+    use WellConnectedComponents; 
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
@@ -23,42 +23,24 @@ module SubgraphIsomorphismMsg {
     private config const logChannel = ServerConfig.logChannel;
     const siLogger = new Logger(logLevel, logChannel);
 
-    /**
-    Parses message from Python and invokes the kernel to find subgraphs from G that are isomorphic
-    to H.
-    
-    :arg cmd: operation to perform. 
-    :type cmd: string
-    :arg msgArgs: arguments passed to backend. 
-    :type msgArgs: borrowed MessageArgs
-    :arg st: symbol table used for storage.
-    :type st: borrowed SymTab
-    
-    :returns: MsgTuple
-    */
-    proc subgraphIsomorphismMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+    proc wellConnectedComponentsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         param pn = Reflection.getRoutineName();
         var repMsg, outMsg:string;
 
         // Extract messages sent from Python.
         var graphEntryName = msgArgs.getValueOf("MainGraphName");
-        var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
        
         // Pull out our graph from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var g = gEntry.graph;
 
-        // Pull out our subgraph from the symbol table.
-        var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
-        var h = hEntry.graph;
-
         // Execute sequential VF2 subgraph isomorphism.
         var timer:stopwatch;
         if g.isDirected() {
             timer.start();
-            var isoArray = runVF2(g,h,st);
+            var isoArray = runWCC(g,st);
             timer.stop();
-            outMsg = "Parallel subgraph isomorphism took " + timer.elapsed():string + " sec";
+            outMsg = "Well connected components took " + timer.elapsed():string + " sec";
             
             var isoDistArray = makeDistArray(isoArray.size, int);
             isoDistArray = isoArray;
@@ -75,8 +57,8 @@ module SubgraphIsomorphismMsg {
             siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
             return new MsgTuple(errorMsg, MsgType.ERROR);
         }
-    } // end of subgraphIsomorphismMsg
+    } // end of wellConnectedComponentsMsg
 
     use CommandMap;
-    registerFunction("subgraphIsomorphism", subgraphIsomorphismMsg, getModuleName());
+    registerFunction("wellConnectedComponents", wellConnectedComponentsMsg, getModuleName());
 } // end of module

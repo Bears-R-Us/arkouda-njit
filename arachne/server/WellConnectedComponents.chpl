@@ -1,4 +1,4 @@
-module SubgraphIsomorphism {
+module WellConnectedComponents {
     // Chapel modules.
     use Reflection;
     use List;
@@ -54,7 +54,7 @@ module SubgraphIsomorphism {
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runVF2 (g1: SegGraph, g2: SegGraph, st: borrowed SymTab):[] int throws {
+    proc runWCC (g1: SegGraph, st: borrowed SymTab):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
@@ -67,20 +67,9 @@ module SubgraphIsomorphism {
         var segRG1Dist = toSymEntry(g1.getComp("SEGMENTS_R"), int).a;
         var nodeMapGraphG1Dist = toSymEntry(g1.getComp("VERTEX_MAP"), int).a;
 
-        // Extract the g2/H/h information from the SegGraph data structure.
-        var srcNodesG2Dist = toSymEntry(g2.getComp("SRC"), int).a;
-        var dstNodesG2Dist = toSymEntry(g2.getComp("DST"), int).a;
-        var segGraphG2Dist = toSymEntry(g2.getComp("SEGMENTS"), int).a;
-        var srcRG2Dist = toSymEntry(g2.getComp("SRC_R"), int).a;
-        var dstRG2Dist = toSymEntry(g2.getComp("DST_R"), int).a;
-        var segRG2Dist = toSymEntry(g2.getComp("SEGMENTS_R"), int).a;
-        var nodeMapGraphG2Dist = toSymEntry(g2.getComp("VERTEX_MAP"), int).a;
-
         // Get the number of vertices and edges for each graph.
         var nG1 = nodeMapGraphG1Dist.size;
         var mG1 = srcNodesG1Dist.size;
-        var nG2 = nodeMapGraphG2Dist.size;
-        var mG2 = srcNodesG2Dist.size;
 
         //******************************************************************************************
         //******************************************************************************************
@@ -109,13 +98,6 @@ module SubgraphIsomorphism {
                                             string, (string, borrowed SegStringSymEntry)
                                         ))).stored_map;
 
-        var edgeRelationshipsGraphG2 = (g2.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
-                                            string, (string, borrowed SegStringSymEntry)
-                                        ))).stored_map;
-        var nodeLabelsGraphG2 = (g2.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
-                                            string, (string, borrowed SegStringSymEntry)
-                                        ))).stored_map;
-
         var relationshipStringToInt, labelStringToInt = new map(string, int);
 
         // Create global relationship mapper for G1 and G2.
@@ -123,16 +105,6 @@ module SubgraphIsomorphism {
         for k in edgeRelationshipsGraphG1.keys() {
             var segString = getSegString(edgeRelationshipsGraphG1[k][1].name, st);
             for i in 0..segString.size-1 {
-                var val = segString[i];
-                if !relationshipStringToInt.contains(val) {
-                    relationshipStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
-        for k in edgeRelationshipsGraphG2.keys() {
-            var segString = getSegString(edgeRelationshipsGraphG2[k][1].name, st);
-            for i in 0..edgeRelationshipsGraphG2[k][1].size-1 {
                 var val = segString[i];
                 if !relationshipStringToInt.contains(val) {
                     relationshipStringToInt.add(val, id);
@@ -153,23 +125,11 @@ module SubgraphIsomorphism {
                 }
             }
         }
-        for k in nodeLabelsGraphG2.keys() {
-            var segString = getSegString(nodeLabelsGraphG2[k][1].name, st);
-            for i in 0..nodeLabelsGraphG2[k][1].size-1 {
-                var val = segString[i];
-                if !labelStringToInt.contains(val) {
-                    labelStringToInt.add(val, id);
-                    id += 1;
-                }
-            }
-        }
 
         // Create new "arrays of sets" to make semantic checks quicker by allowing usage of Chapel's
         // internal hash table intersections via sets.
         var convertedRelationshipsG1Dist = makeDistArray(g1.n_edges, domain(int));
-        var convertedRelationshipsG2Dist = makeDistArray(g2.n_edges, domain(int));
         var convertedLabelsG1Dist = makeDistArray(g1.n_vertices, domain(int));
-        var convertedLabelsG2Dist = makeDistArray(g2.n_vertices, domain(int));
 
         for (k,v) in zip(edgeRelationshipsGraphG1.keys(), edgeRelationshipsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
@@ -178,25 +138,11 @@ module SubgraphIsomorphism {
                 convertedRelationshipsG1Dist[i].add(relationshipStringToInt[mapper[x]]);
         }
 
-        for (k,v) in zip(edgeRelationshipsGraphG2.keys(), edgeRelationshipsGraphG2.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do
-                convertedRelationshipsG2Dist[i].add(relationshipStringToInt[mapper[x]]);
-        }
-
         for (k,v) in zip(nodeLabelsGraphG1.keys(), nodeLabelsGraphG1.values()) {
             var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
             var mapper = getSegString(v[1].name,st);
             forall (x,i) in zip(arr, arr.domain) do 
                 convertedLabelsG1Dist[i].add(labelStringToInt[mapper[x]]);
-        }
-
-        for (k,v) in zip(nodeLabelsGraphG2.keys(), nodeLabelsGraphG2.values()) {
-            var arr = toSymEntry(getGenericTypedArrayEntry(k,st), int).a;
-            var mapper = getSegString(v[1].name,st);
-            forall (x,i) in zip(arr, arr.domain) do 
-                convertedLabelsG2Dist[i].add(labelStringToInt[mapper[x]]);
         }
         //******************************************************************************************
         //******************************************************************************************
@@ -211,17 +157,8 @@ module SubgraphIsomorphism {
         var nodeMapGraphG1: [0..<nG1] int = nodeMapGraphG1Dist;
         var convertedRelationshipsG1: [0..<mG1] domain(int) = convertedRelationshipsG1Dist;
         var convertedLabelsG1: [0..<nG1] domain(int) = convertedLabelsG1Dist;
-
-        var srcNodesG2: [0..<mG2] int = srcNodesG2Dist;
-        var dstNodesG2: [0..<mG2] int = dstNodesG2Dist;
-        var segGraphG2: [0..<nG2+1] int = segGraphG2Dist;
-        var srcRG2: [0..<mG2] int = srcRG2Dist;
-        var dstRG2: [0..<mG2] int = dstRG2Dist;
-        var segRG2: [0..<nG2+1] int = segRG2Dist;
-        var nodeMapGraphG2: [0..<nG2] int = nodeMapGraphG2Dist;
-        var convertedRelationshipsG2: [0..<mG2] domain(int) = convertedRelationshipsG2Dist;
-        var convertedLabelsG2: [0..<nG2] domain(int) = convertedLabelsG2Dist;
         //******************************************************************************************
+
         var IsoArr:[0..3] int = [0,1,2];
 
         // Define the clusters as arrays
@@ -230,7 +167,7 @@ module SubgraphIsomorphism {
         var cluster3 = [14, 15, 17, 16, 18, 19];  // Third array
         var cluster4 = [14];  // Forth array
 
-        wcc (g1, cluster1);
+        wcc(g1, cluster1);
 
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
@@ -367,9 +304,7 @@ module SubgraphIsomorphism {
                 if !cluster.is_wcc == true {
                     //create new cluster for each and call the wccHelper
                     // Viecut brings src , dst?!
-                    forallreturnedcluster{}
                     wccHelper();
-                }
                 }
 
             }
@@ -394,11 +329,6 @@ module SubgraphIsomorphism {
             return([0,9,9,9]);
 
         } // end of WCC
-
-        
         return IsoArr;
     } //end of runWCC
-} // end of WellConnected module
-
-        
-
+} // end of WellConnectedComponents module
