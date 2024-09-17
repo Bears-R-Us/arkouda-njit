@@ -9,6 +9,7 @@ module WellConnectedComponents {
     use Map;
     use Sort;
     use Math;
+    use Search;
 
     // Arachne modules.
     use GraphArray;
@@ -23,6 +24,7 @@ module WellConnectedComponents {
     use SegmentedString;
 
     class Cluster {
+        var id: int;                 // cluster id
         var n_member: int;           // Size of the cluster
         var members: domain(int);    // Domain to store cluster members
         var is_wcc: bool = false;    // Indicates if it's a well-connected component
@@ -31,6 +33,22 @@ module WellConnectedComponents {
 
         /** Cluster initializer. */
         proc init(membersArray: [] int) {
+            this.id = -1;
+            this.n_member = membersArray.size;
+
+            // Initialize an empty domain and add members from the array
+            this.members = {1..0};
+            this.members += membersArray;
+            // Check if it's a singleton cluster (only one member)
+            if this.n_member <= 1 then
+            this.is_singleton = true;
+
+            this.is_wcc = false;
+            this.depth = 0;
+        }        
+        
+        proc init(membersArray: domain(int)) {
+            this.id = -1;
             this.n_member = membersArray.size;
 
             // Initialize an empty domain and add members from the array
@@ -175,17 +193,82 @@ module WellConnectedComponents {
         var IsoArr:[0..3] int = [0,1,2];
 
         // Define the clusters as arrays
+        //Cluster 797 is the biggest cluster with 263 nodes
+
+
+
+        // Test area for functions:
+        //readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
+
         var cluster1 = [0, 4, 5, 6, 7, 1, 8, 9, 10, 2];  // First array
         var cluster2 = [3, 11, 12, 13];  // Second array
         var cluster3 = [14, 15, 17, 16, 18, 19];  // Third array
         var cluster4 = [14];  // Forth array
 
-        wcc(g1, cluster1);
+
+        ///////////////////////////////////////////////////////////////////////
+        wcc(g1);
 
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
-        
+
+
+        proc readClustersFile(filename: string) throws {
+            // Map from cluster ID to a domain of mapped nodes
+            var clusters = new map(int, domain(int));
+
+            var file = open(filename, ioMode.r);
+            var reader = file.reader();
+
+            for line in reader.lines() {
+                //writeln("line = ", line);
+                // Split the line by whitespace or tabs
+                var fields = line.split();
+                if fields.size >= 2 {
+
+                    var originalNode = fields(0): int;
+                    // Convert the second field to cluster ID
+                    var clusterID = fields(1): int;
+
+                    // Perform binary search on nodeMapGraphG1 to find the originalNode
+                    const (found, idx) = binarySearch(nodeMapGraphG1, originalNode);
+
+                    if found {
+                        // Use the index as the mapped node if the originalNode was found
+                        var mappedNode = idx;
+
+                        // Check if the clusterID exists in the map
+                        if clusters.contains(clusterID) {
+                            // Add the mapped node to the existing domain for that cluster
+                            clusters[clusterID].add(mappedNode);
+                        } else {
+                            // Create a new domain with the mapped node and add it to the map
+                            var d: domain(int) = {mappedNode};
+                            clusters[clusterID] = d;
+                        }
+                    } else {
+                        // Handle the case where the originalNode is not found in nodeMapGraphG1
+                        writeln("Error: Original node ", originalNode, " not found in nodeMapGraphG1.");
+                        writeln("dummy node found");
+                    }
+                }
+            }
+
+            // Close the file and reader after reading
+            reader.close();
+            file.close();
+
+
+            // Return the map of clusters (cluster ID -> domain of mapped nodes)
+            return clusters;
+        }
+
+
+
+
+
+
         proc calculateDegree(cluster: domain(int), elem: int): int throws{
             var Neighbours: domain(int);
             var inNeigh_elem  = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
@@ -239,29 +322,36 @@ module WellConnectedComponents {
             writeln("////////////////************createVieCutGraph begin");
 
             var edgeSet:  set((int, int));  // A set to store unique edges as (src, dst) pairs
-            writeln("Nodes are: ", nodes);
+
+            //writeln("Nodes are: ", nodes);
             for elem in nodes {
+                            
+                var node_nei: domain(int);
+                
+                //writeln("elem is ", elem);
                 // Find in-neighbors of the current element
                 var inNeigh_elem = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
-                
+                //writeln("inNeigh_elem = ", inNeigh_elem);
+                node_nei += inNeigh_elem;
+
                 // Find out-neighbors of the current element
                 var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
+                //writeln("outNeigh_elem = ", outNeigh_elem);
+                node_nei += outNeigh_elem;
 
-                // Process in-neighbors and add unique edges to src and dst
-                for neigh in inNeigh_elem & nodes {
+                var valid_neis = node_nei & nodes;
+                //writeln("valid neighbors = ", valid_neis);
+
+                for neigh in valid_neis {
+                    edgeSet.add((elem, neigh));
                     edgeSet.add((neigh, elem));
                 }
-                writeln("edgeSet- inNeigh added = ", edgeSet);
-                // Process out-neighbors and add unique edges to src and dst
-                for neigh in outNeigh_elem & nodes {
-                    edgeSet.add((elem, neigh));
-                }
-                writeln("edgeSet- outNeigh added = ", edgeSet);
+                //writeln("edgeSet- outNeigh added = ", edgeSet);
 
             }
     
             // Initialize the src and dst arrays based on the size of the edgeSet
-            var src, dst: [0..edgeSet.size] int;
+            var src, dst: [0..edgeSet.size-1] int;
 
             // Populate src and dst arrays from the edgeSet
             
@@ -324,14 +414,16 @@ module WellConnectedComponents {
             // and has more than 10 members
 
             //if !cluster.is_singleton == true && cluster.n_member > 10 {
-            if !cluster.is_singleton == true && cluster.n_member > 1 {
+            if !cluster.is_singleton == true && cluster.n_member > 10 {
                 // Perform min-cut to get sub-clusters
                 var (cutSize, clusterList) = callMinCut(cluster.members);
                 
                 //forall minCutReturnedArr in clusterList{
                 for minCutReturnedArr in clusterList{
-
+                    writeln("minCutReturnedArr = ", minCutReturnedArr);
                     var subCluster = new owned Cluster(minCutReturnedArr.Arr);
+                    writeln("subCluster = ", subCluster);
+
                     // Check if the returned cluster is well-connected
                     isWellConnected(subCluster, cutSize);
                     
@@ -350,16 +442,27 @@ module WellConnectedComponents {
             return allWCC;
         }
 
-        proc wcc(g1: SegGraph, inputClusterArr: [?D] int): [] int throws {
-            writeln("Running");
-            var clusterInit = new owned Cluster(inputClusterArr);
-            writeln("Cluster created = ", clusterInit);
+        proc wcc(g1: SegGraph): [] int throws {
+            var clusters = readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
 
-            if !clusterInit.is_singleton && !clusterInit.is_wcc {
-                wccHelper(clusterInit);
+            // Print each cluster with its mapped nodes
+            for key in clusters.keys() {
+                writeln("Cluster ID: ", key);
+                
+                var clusterInit = new owned Cluster(clusters[key]);
+                clusterInit.id = key;
+                writeln("Cluster created = ", clusterInit);
+
+                if !clusterInit.is_singleton && !clusterInit.is_wcc {
+                    wccHelper(clusterInit);
+                }
             }
-            //wccHelper(clusterInit);
-            writeln("Cluster after call and return = ", clusterInit);
+
+            
+            //var clusterInit = new owned Cluster(inputClusterArr);
+            //writeln("Cluster created = ", clusterInit);
+
+
             return([0,9,9,9]);
 
         } // end of WCC
