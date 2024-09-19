@@ -8,7 +8,7 @@ import random
 
 
 # %%
-ak.connect("n83", 5555)
+ak.connect("n85", 5555)
 
 # %%
 # Initialize a dictionary to store clusters
@@ -109,7 +109,9 @@ ar_network_graph.load_node_attributes(network_node_df, node_column="nodes", labe
 ar_network_graph
 
 # %%
-isos = ar.well_connected_components(ar_network_graph)
+print("Running Arachne")
+filePath = "/scratch/users/md724/DataSets/wcc/clustering.tsv"
+isos = ar.well_connected_components(ar_network_graph,filePath)
 
 
 

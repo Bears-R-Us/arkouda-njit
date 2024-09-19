@@ -306,7 +306,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph) -> pdarray:
     return create_pdarray(rep_msg)
 
 @typechecked
-def well_connected_components(graph: PropGraph) -> pdarray:
+def well_connected_components(graph: PropGraph, FilePath: str) -> pdarray:
     """
     WORK IN PROGRESS. This is just the skeletong to call the Chapel back-end functionality.
 
@@ -323,7 +323,8 @@ def well_connected_components(graph: PropGraph) -> pdarray:
     -----
     """
     cmd = "wellConnectedComponents"
-    args = { "MainGraphName":graph.name }
+    args = { "MainGraphName":graph.name,
+            "FilePath": FilePath}
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(rep_msg)

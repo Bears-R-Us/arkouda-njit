@@ -29,18 +29,19 @@ module WellConnectedComponentsMsg {
 
         // Extract messages sent from Python.
         var graphEntryName = msgArgs.getValueOf("MainGraphName");
+        var FilePath = msgArgs.getValueOf("FilePath");
        
         // Pull out our graph from the symbol table.
         var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
         var g = gEntry.graph;
-
+        var path = FilePath;
         //var clusterArr = makeDistArray(, int);
 
         // Execute sequential VF2 subgraph isomorphism.
         var timer:stopwatch;
         if g.isDirected() {
             timer.start();
-            var isoArray = runWCC(g,st);
+            var isoArray = runWCC(g,st, path);
             timer.stop();
             outMsg = "Well connected components took " + timer.elapsed():string + " sec";
             

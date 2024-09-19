@@ -85,7 +85,7 @@ module WellConnectedComponents {
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runWCC (g1: SegGraph, st: borrowed SymTab):[] int throws {
+    proc runWCC (g1: SegGraph, st: borrowed SymTab, filePath:string):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
@@ -199,20 +199,25 @@ module WellConnectedComponents {
 
         // Test area for functions:
         //readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
+        /*
 
         var cluster1 = [0, 4, 5, 6, 7, 1, 8, 9, 10, 2];  // First array
         var cluster2 = [3, 11, 12, 13];  // Second array
         var cluster3 = [14, 15, 17, 16, 18, 19];  // Third array
         var cluster4 = [14];  // Forth array
-
-
-        ///////////////////////////////////////////////////////////////////////
+        
+        var clusterInit = new owned Cluster(cluster1);
+        writeln("clusterInit = ", clusterInit);
+        writeln("clusterInit.members = ", clusterInit.members);
+        
+        KCoreDecomposition(clusterInit.members,2);
+        */
+        ////////////////////Test area///////////////////////////////////////////////////
         wcc(g1);
 
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
-
 
         proc readClustersFile(filename: string) throws {
             // Map from cluster ID to a domain of mapped nodes
@@ -228,7 +233,7 @@ module WellConnectedComponents {
                 if fields.size >= 2 {
 
                     var originalNode = fields(0): int;
-                    // Convert the second field to cluster ID
+                    // Cluster ID
                     var clusterID = fields(1): int;
 
                     // Perform binary search on nodeMapGraphG1 to find the originalNode
@@ -250,7 +255,7 @@ module WellConnectedComponents {
                     } else {
                         // Handle the case where the originalNode is not found in nodeMapGraphG1
                         writeln("Error: Original node ", originalNode, " not found in nodeMapGraphG1.");
-                        writeln("dummy node found");
+                        writeln("*****************dummy node found");
                     }
                 }
             }
@@ -264,32 +269,38 @@ module WellConnectedComponents {
             return clusters;
         }
 
-
-
-
-
-
+        // Function to calculate the degree of a node within the cluster
         proc calculateDegree(cluster: domain(int), elem: int): int throws{
+            writeln("////////////////************//calculateDegree begin");
+
             var Neighbours: domain(int);
-            var inNeigh_elem  = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
-            var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
+            //writeln("elem = ", elem);
+            // Retrieve in-neighbors
+            var inNeigh_elem = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
+            //writeln("inNeigh_elem: ", inNeigh_elem);
             Neighbours += inNeigh_elem;
+            
+            // Retrieve out-neighbors
+            var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
             Neighbours += outNeigh_elem;
+            //writeln("outNeigh_elem: ", outNeigh_elem);
+            //writeln("all Neighbours of (",elem," ): ", Neighbours);
+            
 
+            // Intersection with cluster to get valid neighbors
             var intersectionDomain = Neighbours & cluster;
-            //writeln("processing node ", elem);
-            //writeln("intersectionDomain = ", intersectionDomain);
-            //writeln("degree of elem(", elem, ") = ",intersectionDomain.size );
-            return(intersectionDomain.size);
+            writeln("elem : ",elem, " has degree = ",intersectionDomain.size );
 
+            return intersectionDomain.size;
         }
+
         proc removeDegreeOne(cluster: borrowed Cluster) throws{
 
             // Iterate over the members and collect elements that need to be removed
             forall elem in cluster.members {
                 if calculateDegree(cluster.members, elem) < 2 {
                     cluster.members.remove(elem);
-                    writeln("Marked for removal: ", elem);
+                    //writeln("Marked for removal: ", elem);
                 }
             }
             cluster.n_member = cluster.members.size;
@@ -317,7 +328,7 @@ module WellConnectedComponents {
 
             return false;
         }
-
+        // The created edges is not sorted. should be? 
         proc createVieCutGraph(nodes: domain(int)){
             writeln("////////////////************createVieCutGraph begin");
 
@@ -354,6 +365,7 @@ module WellConnectedComponents {
             var src, dst: [0..edgeSet.size-1] int;
 
             // Populate src and dst arrays from the edgeSet
+            // I should find better this will be too slow
             
             var src_index = 0;
 
@@ -405,45 +417,52 @@ module WellConnectedComponents {
             if cluster.is_wcc == true {
                 writeln("WC Cluster found = ", cluster.members);
                 // Add the well-connected cluster to the list
-                //allWCC.pushBack(domVarryArray1);
+                allWCC.pushBack(cluster.id);
                 return allWCC;
             }
+
+            //Remove degree one nodes from the cluster
             removeDegreeOne(cluster);
 
             // Check if the cluster is not a singleton (because i am not sure if there is some after removing) 
             // and has more than 10 members
 
-            //if !cluster.is_singleton == true && cluster.n_member > 10 {
-            if !cluster.is_singleton == true && cluster.n_member > 10 {
-                // Perform min-cut to get sub-clusters
+            if !cluster.is_singleton && cluster.n_member > 10 {
+                
+                var currentDpeth = cluster.depth;
+                var currentID = cluster.id;
+
+                // Perform min-cut to get cutSize and sub-clusters
                 var (cutSize, clusterList) = callMinCut(cluster.members);
                 
-                //forall minCutReturnedArr in clusterList{
-                for minCutReturnedArr in clusterList{
-                    writeln("minCutReturnedArr = ", minCutReturnedArr);
-                    var subCluster = new owned Cluster(minCutReturnedArr.Arr);
-                    writeln("subCluster = ", subCluster);
+                if !isWellConnected(cluster, cutSize){
+                    // Iterate over each sub-cluster
+                    //forall minCutReturnedArr in clusterList{
+                    for minCutReturnedArr in clusterList{
 
-                    // Check if the returned cluster is well-connected
-                    isWellConnected(subCluster, cutSize);
-                    
-                    // Recursively process the cluster if not well-connected
-                    if !subCluster.is_wcc == true {
-                       // Collect clusters from recursive call
+                        writeln("minCutReturnedArr = ", minCutReturnedArr);
+                        var subCluster = new owned Cluster(minCutReturnedArr.Arr);
+                        subCluster.depth = currentDpeth + 1;
+                        subCluster.id = currentID;
+
+                        writeln("subCluster created = ", subCluster);
+                        // Collect clusters from recursive call
                         var newSubClusters = wccHelper(subCluster);
-                        // Append the collected clusters to the main list
-                        //for newFoundWCC in newSubClusters do allWCC.pushBack(newFoundWCC.members);
+                        
                     }
-                    
-                }
 
+                }
             }
-            // Return the list of well-connected clusters collected
+
             return allWCC;
         }
 
         proc wcc(g1: SegGraph): [] int throws {
-            var clusters = readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
+            writeln("graph loaded with ", g1.n_vertices," and ", g1.n_edges," edges");
+            writeln("we are lading the clusters....");
+            
+            //var clusters = readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
+            var clusters = readClustersFile(filePath);
 
             // Print each cluster with its mapped nodes
             for key in clusters.keys() {
@@ -454,6 +473,9 @@ module WellConnectedComponents {
                 writeln("Cluster created = ", clusterInit);
 
                 if !clusterInit.is_singleton && !clusterInit.is_wcc {
+                    
+                    //ClusterKCoreDecomposition(clusterInit.members,2);
+
                     wccHelper(clusterInit);
                 }
             }
