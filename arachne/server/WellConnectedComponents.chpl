@@ -219,7 +219,15 @@ module WellConnectedComponents {
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
+//////////////////////////////////////Node-Disjoint Paths to Assess Cluster Connectivity//////////////
 
+
+
+  //const num_paths = nodeDisjointPaths(src, dst, n, source, target);
+
+
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////
         proc readClustersFile(filename: string) throws {
             // Map from cluster ID to a domain of mapped nodes
             var clusters = new map(int, domain(int));
