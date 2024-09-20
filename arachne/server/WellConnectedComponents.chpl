@@ -85,7 +85,7 @@ module WellConnectedComponents {
     /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
     searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
     array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-    proc runWCC (g1: SegGraph, st: borrowed SymTab, filePath:string):[] int throws {
+    proc runWCC (g1: SegGraph, st: borrowed SymTab, inputcluster_filePath:string):[] int throws {
         var TimerArrNew:[0..30] real(64) = 0.0;
         var numIso: int = 0;
 
@@ -213,7 +213,8 @@ module WellConnectedComponents {
         KCoreDecomposition(clusterInit.members,2);
         */
         ////////////////////Test area///////////////////////////////////////////////////
-        wcc(g1);
+        var clusterArrtemp = wcc(g1);
+        var clusterArr = nodeMapGraphG1[clusterArrtemp]; // Map vertices back to original values.
 
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
@@ -407,6 +408,38 @@ module WellConnectedComponents {
         }
 
 
+        // Function to write cluster members to a file
+        proc writeClusterToFile(cluster: borrowed Cluster) throws {
+            writeln("////////////////************writeClusterToFile begin");
+
+            // cluster ID to ve distinguished
+            var filename = "/scratch/users/md724/DataSets/wcc/WCC_Output/cluster_" + cluster.id:string + ".txt";
+   
+            
+            var file = open(filename, ioMode.cw); // 'cw' stands for Create and Write
+
+            // This fileWriter will not be used in parallel, so does not need to use
+            // locking)
+            var fileWriter = file.writer(locking=false);
+
+            fileWriter.writeln("# cluster ID: " + cluster.id: string); 
+            fileWriter.writeln("# number of members: " + cluster.n_member: string);
+            fileWriter.writeln("# cluster depth: " + cluster.depth: string);
+            // Write each member to the file, one per line. I am not sure!!!!!
+            for member in cluster.members {
+                writeln("member :", member:string);
+                fileWriter.writeln(member:string);
+            }
+            
+            // Close the file to ensure data is flushed. 
+            try fileWriter.close();
+            try file.close();
+            
+            writeln("WCC written to ", filename);
+        }
+
+
+
         proc wccHelper(cluster: borrowed Cluster): list(int) throws{
             writeln("////////////////************wccHelper begin");
 
@@ -418,17 +451,21 @@ module WellConnectedComponents {
                 writeln("WC Cluster found = ", cluster.members);
                 // Add the well-connected cluster to the list
                 allWCC.pushBack(cluster.id);
+                allWCC.pushBack(cluster.n_member);
+                
+                // Attempt to write the well-connected cluster to a file
+                writeClusterToFile(cluster);
+
                 return allWCC;
             }
 
-            //Remove degree one nodes from the cluster
+            //Preprocessing: remove degree-one 
             removeDegreeOne(cluster);
 
-            // Check if the cluster is not a singleton (because i am not sure if there is some after removing) 
-            // and has more than 10 members
-
+            // Check if the cluster is not a singleton and has more than 10 members
             if !cluster.is_singleton && cluster.n_member > 10 {
-                
+
+                // Update sub-cluster properties
                 var currentDpeth = cluster.depth;
                 var currentID = cluster.id;
 
@@ -446,9 +483,16 @@ module WellConnectedComponents {
                         subCluster.id = currentID;
 
                         writeln("subCluster created = ", subCluster);
+
+                        var newSubClusters: list(int, parSafe=true);
+
                         // Collect clusters from recursive call
-                        var newSubClusters = wccHelper(subCluster);
-                        
+                        newSubClusters = wccHelper(subCluster);
+
+                       
+                        // Use a loop to add elements from newMappings to allmappings
+                        for findings in newSubClusters do allWCC.pushBack(findings);
+                        writeln("newSubClusters found :", allWCC);
                     }
 
                 }
@@ -461,8 +505,10 @@ module WellConnectedComponents {
             writeln("graph loaded with ", g1.n_vertices," and ", g1.n_edges," edges");
             writeln("we are lading the clusters....");
             
+            var results: list(int, parSafe=true);
+
             //var clusters = readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
-            var clusters = readClustersFile(filePath);
+            var clusters = readClustersFile(inputcluster_filePath);
 
             // Print each cluster with its mapped nodes
             for key in clusters.keys() {
@@ -471,23 +517,32 @@ module WellConnectedComponents {
                 var clusterInit = new owned Cluster(clusters[key]);
                 clusterInit.id = key;
                 writeln("Cluster created = ", clusterInit);
+                
+                //writeClusterToFile(clusterInit);
 
                 if !clusterInit.is_singleton && !clusterInit.is_wcc {
                     
                     //ClusterKCoreDecomposition(clusterInit.members,2);
+                    writeln("we are here");
+                    var newResults = wccHelper(clusterInit);
+                    
+                    for mapping in newResults do results.pushBack(mapping);
 
-                    wccHelper(clusterInit);
                 }
             }
 
             
             //var clusterInit = new owned Cluster(inputClusterArr);
             //writeln("Cluster created = ", clusterInit);
+            var subClusterArrToReturn: [0..#results.size](int);
+            for i in 0..#results.size do subClusterArrToReturn[i] = results(i);
+            writeln ("subClusterArrToReturn: ", subClusterArrToReturn);
+            return(subClusterArrToReturn);
 
-
-            return([0,9,9,9]);
+            //return([0,9,9,9]);
 
         } // end of WCC
-        return IsoArr;
+        writeln("clusterArr: ", clusterArr);
+        return clusterArr;
     } //end of runWCC
 } // end of WellConnectedComponents module

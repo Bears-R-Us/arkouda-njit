@@ -8,7 +8,7 @@ import random
 
 
 # %%
-ak.connect("n85", 5555)
+ak.connect("n83", 5555)
 
 # %%
 # Initialize a dictionary to store clusters
@@ -111,9 +111,11 @@ ar_network_graph
 # %%
 print("Running Arachne")
 filePath = "/scratch/users/md724/DataSets/wcc/clustering.tsv"
-isos = ar.well_connected_components(ar_network_graph,filePath)
+print(type(ar_network_graph))  # Check if it's PropGraph
+print(type(filePath)) 
+clusters = ar.well_connected_components(ar_network_graph,filePath)
 
-
+print("clusters = ", clusters)
 
 ak.shutdown()
 
