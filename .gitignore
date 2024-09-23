@@ -1,3 +1,10 @@
+# External libs.
+arachne/server/external_libs/*
+!arachne/server/external_libs/README.md
+
+# C++ pbject files.
+*.o
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]

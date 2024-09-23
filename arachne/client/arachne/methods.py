@@ -21,7 +21,8 @@ __all__ = [ "read_matrix_market_file",
             "truss_decomposition",
             "triangle_centrality",
             "connected_components",
-            "diameter"
+            "diameter",
+            "well_connected_components"
            ]
 
 @typechecked
@@ -403,6 +404,31 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
              "SubGraphName":subgraph.name,
              "SemanticCheckType": str(semantic_check).lower(),
              "TrackSize": str(size_limit).lower() }
+
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(rep_msg)
+
+
+@typechecked
+def well_connected_components(graph: PropGraph, file_path: str) -> pdarray:
+    """
+    WORK IN PROGRESS. This is just the skeletong to call the Chapel back-end functionality.
+
+    Parameters
+    ----------
+
+    Returns
+    -------
+    
+    See Also
+    --------
+
+    Notes
+    -----
+    """
+    cmd = "wellConnectedComponents"
+    args = { "MainGraphName":graph.name,
+             "FilePath": file_path}
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(rep_msg)
