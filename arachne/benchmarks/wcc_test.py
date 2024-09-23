@@ -8,7 +8,7 @@ import random
 
 
 # %%
-ak.connect("n83", 5555)
+ak.connect("n117", 5555)
 
 # %%
 # Initialize a dictionary to store clusters

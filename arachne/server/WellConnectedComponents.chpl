@@ -10,6 +10,7 @@ module WellConnectedComponents {
     use Sort;
     use Math;
     use Search;
+use DistributedDeque;
 
     // Arachne modules.
     use GraphArray;
@@ -199,7 +200,7 @@ module WellConnectedComponents {
 
         // Test area for functions:
         //readClustersFile("/scratch/users/md724/DataSets/wcc/clustering.tsv");
-        /*
+        
 
         var cluster1 = [0, 4, 5, 6, 7, 1, 8, 9, 10, 2];  // First array
         var cluster2 = [3, 11, 12, 13];  // Second array
@@ -210,8 +211,12 @@ module WellConnectedComponents {
         writeln("clusterInit = ", clusterInit);
         writeln("clusterInit.members = ", clusterInit.members);
         
-        KCoreDecomposition(clusterInit.members,2);
-        */
+        for elem in clusterInit.members{   
+            var arr=findAdjNeighinCluster(clusterInit, elem);
+            writeln("elem is:", elem, " it's neighs are: ", arr);
+        }  
+        //KCoreDecomposition(clusterInit.members,2);
+        
         ////////////////////Test area///////////////////////////////////////////////////
         var clusterArrtemp = wcc(g1);
         var clusterArr = nodeMapGraphG1[clusterArrtemp]; // Map vertices back to original values.
@@ -219,13 +224,200 @@ module WellConnectedComponents {
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
         writeln("\n_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*_*");
-//////////////////////////////////////Node-Disjoint Paths to Assess Cluster Connectivity//////////////
+//////////////////////////////////////Edge-Disjoint Paths to Assess Cluster Connectivity//////////////
+        // -----------------------------
+        // Connectivity Assessment
+        // -----------------------------
+
+        record ConnectivityMetrics {
+            var averageEdgeDisjointPaths: real;
+            var threshold: real;
+            var isWellConnected: bool;
+
+            proc init() {
+                this.averageEdgeDisjointPaths = 0.0;
+                this.threshold = 0.0;
+                this.isWellConnected = false;
+            }
+        }
+        // Function to calculate the degree of a node within the cluster
+        proc findAdjNeighinCluster(cluster: borrowed Cluster, elem: int) throws{
+            writeln("////////////////************//calculateDegree begin");
+
+            var Neighbours: domain(int);
+            //writeln("elem = ", elem);
+            // Retrieve in-neighbors
+            var inNeigh_elem = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
+            //writeln("inNeigh_elem: ", inNeigh_elem);
+            Neighbours += inNeigh_elem;
+            
+            // Retrieve out-neighbors
+            var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
+            Neighbours += outNeigh_elem;
+            //writeln("outNeigh_elem: ", outNeigh_elem);
+            //writeln("all Neighbours of (",elem," ): ", Neighbours);
+            
+
+            // Intersection with cluster to get valid neighbors
+            var intersectionDomain = Neighbours & cluster.members;
+            //writeln("elem : ",elem, " has degree = ",intersectionDomain.size );
+
+            var NeiArr:[0..intersectionDomain.size-1] int;
+            var idx = 0;
+            
+            for elem in intersectionDomain {
+                NeiArr[idx] = elem;
+                idx += 1;
+            }
+            
+            //NeiArr = intersectionDomain;
+            return NeiArr;
+        }
+/*
+        // Function to calculate the number of edge-disjoint paths between two nodes in a cluster
+        // Uses Max Flow (Ford-Fulkerson or Edmonds-Karp) algorithm, where each edge has capacity 1.
+        proc calculateEdgeDisjointPaths(cluster: borrowed Cluster, nodeA: int, nodeB: int): int throws{
+            
+            const nc: int = cluster.n_member;
+            var clusterArr:[0..nc-1] int; 
+            var idx = 0;
+            for elem in cluster.members {
+                clusterArr[idx] = elem;
+                idx += 1;
+            }
+            // Check if nodeA and nodeB are the same
+            if nodeA == nodeB then return 0; // No path needed between the same nodes
+            
+            const (nodeA_found, nodeA_idx) = binarySearch(clusterArr, nodeA);
+            const (nodeB_found, nodeB_idx) = binarySearch(clusterArr, nodeB);
+            if !nodeA_found || !nodeB_found then return 0;
 
 
+            // Sparse residual graph
+            //const D: domain(2) = {0..nc-1, 0..nc-1};
+            //var residual: sparse subdomain(D);
 
-  //const num_paths = nodeDisjointPaths(src, dst, n, source, target);
+            var residual:[0..nc-1, 0..nc-1] int;
+            // Populate sparse residual graph from cluster
+            forall i in 0..nc-1 {
+                const u = clusterArr[i];
+                var Nei_u_in_cluster = findAdjNeighinCluster(cluster, u);
+                
+                forall v in Nei_u_in_cluster{
+                    const (found, idx) = binarySearch(clusterArr, v);
+                    if found {
+                        residual[u, idx] = 1;
+                        residual[idx, u] = 1;
+                    }
 
+                }
+            }
 
+            // Max Flow from nodeA to nodeB
+            var maxFlow = 0;
+
+            // Array to store parent nodes in the path (used to trace augmenting paths)
+            var parent: [0..nc-1] int;
+
+            // Breadth-First Search (BFS) to find augmenting paths in the residual graph
+            proc bfs(source: int, sink: int, parent: [] int): bool {
+                
+                var visited: [0..nc-1] bool;
+                visited = false;
+                
+                var queue: list(int);
+                queue.pushBack(source);
+
+                visited[source] = true;
+                parent[source] = -1;
+
+                var flag: bool = false;
+
+                while !queue.isEmpty() {
+                    const u = queue.popBack();
+
+                // Iterate only over neighbors of u in the residual graph
+                    for (u, v) in residual.domain {
+                        // If there's a residual capacity and v is not visited
+                        if !visited[v] && residual[u, v] > 0 {
+                            queue.pushBack(v);
+                            visited[v] = true;
+                            parent[v] = u;
+
+                            // If we reached the sink, stop the search
+                            if v == sink {
+                                flag = true;
+                            }
+                        }
+                    }
+                }
+                return flag;
+            }
+
+            // Ford-Fulkerson implementation using BFS to find augmenting paths
+            while bfs(nodeA_idx, nodeB_idx, parent) {
+                    // Find the minimum residual capacity in the augmenting path found by BFS
+                    var pathFlow: int;
+                    for v in nodeB_idx .. nodeA_idx by -1 {
+                        const u = parent[v];
+                        pathFlow = min(pathFlow, residual[u, v]);
+                    }
+
+                    // Update residual capacities along the path
+                    for v in nodeB_idx..nodeA_idx by -1 {
+                        const u = parent[v];
+                        residual[u, v] -= pathFlow;
+                        residual[v, u] += pathFlow; // Reverse flow for residual capacity
+                    }
+
+                    // Add path flow to the overall flow
+                    maxFlow += pathFlow;
+                }
+
+                // Return the maximum number of edge-disjoint paths
+                return maxFlow;
+            }
+
+        // Function to compute average number of edge-disjoint paths within a cluster
+        proc computeAverageEdgeDisjointPaths(cluster: borrowed Cluster): real {
+            var totalPaths: int = 0;
+            var count: int = 0;
+
+            // Iterate over all unique pairs in the cluster
+            for nodeA in cluster.members {
+                for nodeB in cluster.members {
+                    if nodeA < nodeB {
+                         
+                        totalPaths += calculateEdgeDisjointPaths(cluster, nodeA, nodeB);
+                        count += 1;
+                    }
+                }
+            }
+
+                if count > 0 {
+                    return real(totalPaths) / real(count);
+                } else {
+                    return 0.0;
+                }
+        }
+
+        // Function to determine if a cluster is well connected based on average paths
+        proc assessConnectivity(cluster: borrowed Cluster): ConnectivityMetrics {
+            var metrics = ConnectivityMetrics();
+
+            metrics.averageEdgeDisjointPaths = computeAverageEdgeDisjointPaths(cluster);
+            
+            // Define the threshold (e.g., log10(n))
+            metrics.threshold = log10(real(cluster.n_member));
+
+            // Determine connectivity
+            metrics.isWellConnected = metrics.averageEdgeDisjointPaths > metrics.threshold;
+
+            writeln("cluster: ", cluster," metrics: ", metrics);
+
+        return metrics;
+        }
+*/
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////
         proc readClustersFile(filename: string) throws {
@@ -527,7 +719,8 @@ module WellConnectedComponents {
                 writeln("Cluster created = ", clusterInit);
                 
                 //writeClusterToFile(clusterInit);
-
+                //if clusterInit.id == 905 then findAdjNeighinCluster(clusterInit, 415);
+                
                 if !clusterInit.is_singleton && !clusterInit.is_wcc {
                     
                     //ClusterKCoreDecomposition(clusterInit.members,2);

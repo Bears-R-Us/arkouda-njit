@@ -1,0 +1,581 @@
+Graph loaded with 906 nodes and 10429 edges.
+Example node attributes:
+Node 0: Cluster 164
+Node 391: Cluster 164
+Node 1945: Cluster 164
+Node 1698: Cluster 164
+Node 2: Cluster 164
+
+Cluster ID: 164 (Depth: 0)
+Cluster Size: 137
+Number of Edges in Cluster: 192
+Number of Connected Components in Cluster: 34
+Average Edge-Disjoint Paths: 0.5740661227994848
+Min-Cut Size: 0
+Cluster 1 Size: 136
+Cluster 2 Size: 1
+
+--Cluster ID: 164 (Depth: 1)
+--Cluster Size: 136
+--Number of Edges in Cluster: 192
+--Number of Connected Components in Cluster: 33
+--Average Edge-Disjoint Paths: 0.5825708061002178
+--Min-Cut Size: 0
+--Cluster 1 Size: 56
+--Cluster 2 Size: 80
+
+----Cluster ID: 164 (Depth: 2)
+----Cluster Size: 56
+----Number of Edges in Cluster: 35
+----Number of Connected Components in Cluster: 32
+----Average Edge-Disjoint Paths: 0.07142857142857142
+----Min-Cut Size: 0
+----Cluster 1 Size: 54
+----Cluster 2 Size: 2
+
+------Cluster ID: 164 (Depth: 3)
+------Cluster Size: 54
+------Number of Edges in Cluster: 34
+------Number of Connected Components in Cluster: 31
+------Average Edge-Disjoint Paths: 0.07617051013277429
+------Min-Cut Size: 0
+------Cluster 1 Size: 52
+------Cluster 2 Size: 2
+
+--------Cluster ID: 164 (Depth: 4)
+--------Cluster Size: 52
+--------Number of Edges in Cluster: 33
+--------Number of Connected Components in Cluster: 30
+--------Average Edge-Disjoint Paths: 0.08144796380090498
+--------Min-Cut Size: 0
+--------Cluster 1 Size: 51
+--------Cluster 2 Size: 1
+
+----------Cluster ID: 164 (Depth: 5)
+----------Cluster Size: 51
+----------Number of Edges in Cluster: 33
+----------Number of Connected Components in Cluster: 29
+----------Average Edge-Disjoint Paths: 0.08470588235294117
+----------Min-Cut Size: 3
+----------Cluster is well connected.
+Cluster size is too small to cut.
+
+--------Cluster ID: 164 (Depth: 4)
+--------Cluster Size: 2
+--------Number of Edges in Cluster: 1
+--------Number of Connected Components in Cluster: 1
+--------Average Edge-Disjoint Paths: 1.0
+--------Min-Cut Size: 1
+--------Cluster is well connected.
+
+------Cluster ID: 164 (Depth: 3)
+------Cluster Size: 2
+------Number of Edges in Cluster: 1
+------Number of Connected Components in Cluster: 1
+------Average Edge-Disjoint Paths: 1.0
+------Min-Cut Size: 1
+------Cluster is well connected.
+
+----Cluster ID: 164 (Depth: 2)
+----Cluster Size: 80
+----Number of Edges in Cluster: 157
+----Number of Connected Components in Cluster: 1
+----Average Edge-Disjoint Paths: 1.6575949367088607
+----Min-Cut Size: 1
+----Cluster 1 Size: 1
+----Cluster 2 Size: 79
+Cluster size is too small to cut.
+
+------Cluster ID: 164 (Depth: 3)
+------Cluster Size: 79
+------Number of Edges in Cluster: 156
+------Number of Connected Components in Cluster: 1
+------Average Edge-Disjoint Paths: 1.6744563453424213
+------Min-Cut Size: 2
+------Cluster is well connected.
+Cluster size is too small to cut.
+
+Cluster ID: 253 (Depth: 0)
+Cluster Size: 13
+Number of Edges in Cluster: 77
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 11.705128205128204
+Min-Cut Size: 12
+Cluster is well connected.
+
+Cluster ID: 7 (Depth: 0)
+Cluster Size: 2
+Number of Edges in Cluster: 1
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 1.0
+Min-Cut Size: 1
+Cluster is well connected.
+
+Cluster ID: 580 (Depth: 0)
+Cluster Size: 19
+Number of Edges in Cluster: 106
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 9.175438596491228
+Min-Cut Size: 7
+Cluster is well connected.
+
+Cluster ID: 380 (Depth: 0)
+Cluster Size: 14
+Number of Edges in Cluster: 68
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 8.32967032967033
+Min-Cut Size: 11
+Cluster is well connected.
+
+Cluster ID: 56 (Depth: 0)
+Cluster Size: 7
+Number of Edges in Cluster: 21
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 6.0
+Min-Cut Size: 6
+Cluster is well connected.
+
+Cluster ID: 42 (Depth: 0)
+Cluster Size: 3
+Number of Edges in Cluster: 3
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 2.0
+Min-Cut Size: 2
+Cluster is well connected.
+
+Cluster ID: 38 (Depth: 0)
+Cluster Size: 17
+Number of Edges in Cluster: 51
+Number of Connected Components in Cluster: 3
+Average Edge-Disjoint Paths: 3.6029411764705883
+Min-Cut Size: 0
+Cluster 1 Size: 3
+Cluster 2 Size: 14
+
+--Cluster ID: 38 (Depth: 1)
+--Cluster Size: 3
+--Number of Edges in Cluster: 1
+--Number of Connected Components in Cluster: 2
+--Average Edge-Disjoint Paths: 0.3333333333333333
+--Min-Cut Size: 0
+--Cluster 1 Size: 1
+--Cluster 2 Size: 2
+Cluster size is too small to cut.
+
+----Cluster ID: 38 (Depth: 2)
+----Cluster Size: 2
+----Number of Edges in Cluster: 1
+----Number of Connected Components in Cluster: 1
+----Average Edge-Disjoint Paths: 1.0
+----Min-Cut Size: 1
+----Cluster is well connected.
+
+--Cluster ID: 38 (Depth: 1)
+--Cluster Size: 14
+--Number of Edges in Cluster: 50
+--Number of Connected Components in Cluster: 1
+--Average Edge-Disjoint Paths: 5.373626373626373
+--Min-Cut Size: 7
+--Cluster is well connected.
+
+Cluster ID: 297 (Depth: 0)
+Cluster Size: 2
+Number of Edges in Cluster: 0
+Number of Connected Components in Cluster: 2
+Average Edge-Disjoint Paths: 0.0
+Min-Cut Size: 0
+Cluster 1 Size: 1
+Cluster 2 Size: 1
+Cluster size is too small to cut.
+Cluster size is too small to cut.
+
+Cluster ID: 207 (Depth: 0)
+Cluster Size: 10
+Number of Edges in Cluster: 42
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 7.933333333333334
+Min-Cut Size: 8
+Cluster is well connected.
+
+Cluster ID: 36 (Depth: 0)
+Cluster Size: 17
+Number of Edges in Cluster: 107
+Number of Connected Components in Cluster: 2
+Average Edge-Disjoint Paths: 10.845588235294118
+Min-Cut Size: 0
+Cluster 1 Size: 16
+Cluster 2 Size: 1
+
+--Cluster ID: 36 (Depth: 1)
+--Cluster Size: 16
+--Number of Edges in Cluster: 107
+--Number of Connected Components in Cluster: 1
+--Average Edge-Disjoint Paths: 12.291666666666666
+--Min-Cut Size: 8
+--Cluster is well connected.
+Cluster size is too small to cut.
+
+Cluster ID: 640 (Depth: 0)
+Cluster Size: 8
+Number of Edges in Cluster: 15
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 2.607142857142857
+Min-Cut Size: 3
+Cluster is well connected.
+
+Cluster ID: 55 (Depth: 0)
+Cluster Size: 14
+Number of Edges in Cluster: 91
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 13.0
+Min-Cut Size: 13
+Cluster is well connected.
+
+Cluster ID: 58 (Depth: 0)
+Cluster Size: 17
+Number of Edges in Cluster: 64
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 4.948529411764706
+Min-Cut Size: 2
+Cluster is well connected.
+Cluster size is too small to cut.
+
+Cluster ID: 905 (Depth: 0)
+Cluster Size: 49
+Number of Edges in Cluster: 1176
+Number of Connected Components in Cluster: 1
+Average Edge-Disjoint Paths: 48.0
+Min-Cut Size: 48
+Cluster is well connected.
+
+Cluster ID: 606 (Depth: 0)
+Cluster Size: 45
+Number of Edges in Cluster: 73
+Number of Connected Components in Cluster: 12
+Average Edge-Disjoint Paths: 1.0292929292929294
+Min-Cut Size: 0
+Cluster 1 Size: 13
+Cluster 2 Size: 32
+
+--Cluster ID: 606 (Depth: 1)
+--Cluster Size: 13
+--Number of Edges in Cluster: 2
+--Number of Connected Components in Cluster: 11
+--Average Edge-Disjoint Paths: 0.02564102564102564
+--Min-Cut Size: 0
+--Cluster 1 Size: 12
+--Cluster 2 Size: 1
+
+----Cluster ID: 606 (Depth: 2)
+----Cluster Size: 12
+----Number of Edges in Cluster: 2
+----Number of Connected Components in Cluster: 10
+----Average Edge-Disjoint Paths: 0.030303030303030304
+----Min-Cut Size: 0
+----Cluster 1 Size: 11
+----Cluster 2 Size: 1
+
+------Cluster ID: 606 (Depth: 3)
+------Cluster Size: 11
+------Number of Edges in Cluster: 2
+------Number of Connected Components in Cluster: 9
+------Average Edge-Disjoint Paths: 0.03636363636363636
+------Min-Cut Size: 0
+------Cluster 1 Size: 9
+------Cluster 2 Size: 2
+
+--------Cluster ID: 606 (Depth: 4)
+--------Cluster Size: 9
+--------Number of Edges in Cluster: 1
+--------Number of Connected Components in Cluster: 8
+--------Average Edge-Disjoint Paths: 0.027777777777777776
+--------Min-Cut Size: 0
+--------Cluster 1 Size: 8
+--------Cluster 2 Size: 1
+
+----------Cluster ID: 606 (Depth: 5)
+----------Cluster Size: 8
+----------Number of Edges in Cluster: 1
+----------Number of Connected Components in Cluster: 7
+----------Average Edge-Disjoint Paths: 0.03571428571428571
+----------Min-Cut Size: 1
+----------Cluster is well connected.
+Cluster size is too small to cut.
+
+--------Cluster ID: 606 (Depth: 4)
+--------Cluster Size: 2
+--------Number of Edges in Cluster: 1
+--------Number of Connected Components in Cluster: 1
+--------Average Edge-Disjoint Paths: 1.0
+--------Min-Cut Size: 1
+--------Cluster is well connected.
+Cluster size is too small to cut.
+Cluster size is too small to cut.
+
+--Cluster ID: 606 (Depth: 1)
+--Cluster Size: 32
+--Number of Edges in Cluster: 71
+--Number of Connected Components in Cluster: 1
+--Average Edge-Disjoint Paths: 2.0504032258064515
+--Min-Cut Size: 1
+--Cluster 1 Size: 31
+--Cluster 2 Size: 1
+
+----Cluster ID: 606 (Depth: 2)
+----Cluster Size: 31
+----Number of Edges in Cluster: 70
+----Number of Connected Components in Cluster: 1
+----Average Edge-Disjoint Paths: 2.120430107526882
+----Min-Cut Size: 1
+----Cluster 1 Size: 1
+----Cluster 2 Size: 30
+Cluster size is too small to cut.
+
+------Cluster ID: 606 (Depth: 3)
+------Cluster Size: 30
+------Number of Edges in Cluster: 69
+------Number of Connected Components in Cluster: 1
+------Average Edge-Disjoint Paths: 2.197701149425287
+------Min-Cut Size: 1
+------Cluster 1 Size: 29
+------Cluster 2 Size: 1
+
+--------Cluster ID: 606 (Depth: 4)
+--------Cluster Size: 29
+--------Number of Edges in Cluster: 68
+--------Number of Connected Components in Cluster: 1
+--------Average Edge-Disjoint Paths: 2.2832512315270934
+--------Min-Cut Size: 1
+--------Cluster 1 Size: 28
+--------Cluster 2 Size: 1
+
+----------Cluster ID: 606 (Depth: 5)
+----------Cluster Size: 28
+----------Number of Edges in Cluster: 67
+----------Number of Connected Components in Cluster: 1
+----------Average Edge-Disjoint Paths: 2.378306878306878
+----------Min-Cut Size: 2
+----------Cluster is well connected.
+Cluster size is too small to cut.
+Cluster size is too small to cut.
+Cluster size is too small to cut.
+
+Cluster ID: 557 (Depth: 0)
+Cluster Size: 98
+Number of Edges in Cluster: 230
+Number of Connected Components in Cluster: 12
+Average Edge-Disjoint Paths: 1.704818009678098
+Min-Cut Size: 0
+Cluster 1 Size: 96
+Cluster 2 Size: 2
+
+--Cluster ID: 557 (Depth: 1)
+--Cluster Size: 96
+--Number of Edges in Cluster: 229
+--Number of Connected Components in Cluster: 11
+--Average Edge-Disjoint Paths: 1.7767543859649122
+--Min-Cut Size: 0
+--Cluster 1 Size: 18
+--Cluster 2 Size: 78
+
+----Cluster ID: 557 (Depth: 2)
+----Cluster Size: 18
+----Number of Edges in Cluster: 8
+----Number of Connected Components in Cluster: 10
+----Average Edge-Disjoint Paths: 0.05228758169934641
+----Min-Cut Size: 0
+----Cluster 1 Size: 16
+----Cluster 2 Size: 2
+
+------Cluster ID: 557 (Depth: 3)
+------Cluster Size: 16
+------Number of Edges in Cluster: 7
+------Number of Connected Components in Cluster: 9
+------Average Edge-Disjoint Paths: 0.058333333333333334
+------Min-Cut Size: 0
+------Cluster 1 Size: 14
+------Cluster 2 Size: 2
+
+--------Cluster ID: 557 (Depth: 4)
+--------Cluster Size: 14
+--------Number of Edges in Cluster: 6
+--------Number of Connected Components in Cluster: 8
+--------Average Edge-Disjoint Paths: 0.06593406593406594
+--------Min-Cut Size: 1
+--------Cluster 1 Size: 13
+--------Cluster 2 Size: 1
+
+----------Cluster ID: 557 (Depth: 5)
+----------Cluster Size: 13
+----------Number of Edges in Cluster: 5
+----------Number of Connected Components in Cluster: 8
+----------Average Edge-Disjoint Paths: 0.0641025641025641
+----------Min-Cut Size: 0
+----------Cluster 1 Size: 11
+----------Cluster 2 Size: 2
+
+------------Cluster ID: 557 (Depth: 6)
+------------Cluster Size: 11
+------------Number of Edges in Cluster: 4
+------------Number of Connected Components in Cluster: 7
+------------Average Edge-Disjoint Paths: 0.07272727272727272
+------------Min-Cut Size: 0
+------------Cluster 1 Size: 9
+------------Cluster 2 Size: 2
+
+--------------Cluster ID: 557 (Depth: 7)
+--------------Cluster Size: 9
+--------------Number of Edges in Cluster: 3
+--------------Number of Connected Components in Cluster: 6
+--------------Average Edge-Disjoint Paths: 0.08333333333333333
+--------------Min-Cut Size: 0
+--------------Cluster 1 Size: 8
+--------------Cluster 2 Size: 1
+
+----------------Cluster ID: 557 (Depth: 8)
+----------------Cluster Size: 8
+----------------Number of Edges in Cluster: 3
+----------------Number of Connected Components in Cluster: 5
+----------------Average Edge-Disjoint Paths: 0.10714285714285714
+----------------Min-Cut Size: 0
+----------------Cluster 1 Size: 6
+----------------Cluster 2 Size: 2
+
+------------------Cluster ID: 557 (Depth: 9)
+------------------Cluster Size: 6
+------------------Number of Edges in Cluster: 2
+------------------Number of Connected Components in Cluster: 4
+------------------Average Edge-Disjoint Paths: 0.13333333333333333
+------------------Min-Cut Size: 0
+------------------Cluster 1 Size: 5
+------------------Cluster 2 Size: 1
+
+--------------------Cluster ID: 557 (Depth: 10)
+--------------------Cluster Size: 5
+--------------------Number of Edges in Cluster: 2
+--------------------Number of Connected Components in Cluster: 3
+--------------------Average Edge-Disjoint Paths: 0.2
+--------------------Min-Cut Size: 0
+--------------------Cluster 1 Size: 3
+--------------------Cluster 2 Size: 2
+
+----------------------Cluster ID: 557 (Depth: 11)
+----------------------Cluster Size: 3
+----------------------Number of Edges in Cluster: 1
+----------------------Number of Connected Components in Cluster: 2
+----------------------Average Edge-Disjoint Paths: 0.3333333333333333
+----------------------Min-Cut Size: 0
+----------------------Cluster 1 Size: 1
+----------------------Cluster 2 Size: 2
+Cluster size is too small to cut.
+
+------------------------Cluster ID: 557 (Depth: 12)
+------------------------Cluster Size: 2
+------------------------Number of Edges in Cluster: 1
+------------------------Number of Connected Components in Cluster: 1
+------------------------Average Edge-Disjoint Paths: 1.0
+------------------------Min-Cut Size: 1
+------------------------Cluster is well connected.
+
+----------------------Cluster ID: 557 (Depth: 11)
+----------------------Cluster Size: 2
+----------------------Number of Edges in Cluster: 1
+----------------------Number of Connected Components in Cluster: 1
+----------------------Average Edge-Disjoint Paths: 1.0
+----------------------Min-Cut Size: 1
+----------------------Cluster is well connected.
+Cluster size is too small to cut.
+
+------------------Cluster ID: 557 (Depth: 9)
+------------------Cluster Size: 2
+------------------Number of Edges in Cluster: 1
+------------------Number of Connected Components in Cluster: 1
+------------------Average Edge-Disjoint Paths: 1.0
+------------------Min-Cut Size: 1
+------------------Cluster is well connected.
+Cluster size is too small to cut.
+
+--------------Cluster ID: 557 (Depth: 7)
+--------------Cluster Size: 2
+--------------Number of Edges in Cluster: 1
+--------------Number of Connected Components in Cluster: 1
+--------------Average Edge-Disjoint Paths: 1.0
+--------------Min-Cut Size: 1
+--------------Cluster is well connected.
+
+------------Cluster ID: 557 (Depth: 6)
+------------Cluster Size: 2
+------------Number of Edges in Cluster: 1
+------------Number of Connected Components in Cluster: 1
+------------Average Edge-Disjoint Paths: 1.0
+------------Min-Cut Size: 1
+------------Cluster is well connected.
+Cluster size is too small to cut.
+
+--------Cluster ID: 557 (Depth: 4)
+--------Cluster Size: 2
+--------Number of Edges in Cluster: 1
+--------Number of Connected Components in Cluster: 1
+--------Average Edge-Disjoint Paths: 1.0
+--------Min-Cut Size: 1
+--------Cluster is well connected.
+
+------Cluster ID: 557 (Depth: 3)
+------Cluster Size: 2
+------Number of Edges in Cluster: 1
+------Number of Connected Components in Cluster: 1
+------Average Edge-Disjoint Paths: 1.0
+------Min-Cut Size: 1
+------Cluster is well connected.
+
+----Cluster ID: 557 (Depth: 2)
+----Cluster Size: 78
+----Number of Edges in Cluster: 221
+----Number of Connected Components in Cluster: 1
+----Average Edge-Disjoint Paths: 2.6953046953046953
+----Min-Cut Size: 10
+----Cluster is well connected.
+
+--Cluster ID: 557 (Depth: 1)
+--Cluster Size: 2
+--Number of Edges in Cluster: 1
+--Number of Connected Components in Cluster: 1
+--Average Edge-Disjoint Paths: 1.0
+--Min-Cut Size: 1
+--Cluster is well connected.
+
+Cluster ID: 797 (Depth: 0)
+Cluster Size: 263
+Number of Edges in Cluster: 7
+Number of Connected Components in Cluster: 256
+Average Edge-Disjoint Paths: 0.00023220038893565146
+Min-Cut Size: 0
+Cluster 1 Size: 262
+Cluster 2 Size: 1
+
+--Cluster ID: 797 (Depth: 1)
+--Cluster Size: 262
+--Number of Edges in Cluster: 7
+--Number of Connected Components in Cluster: 255
+--Average Edge-Disjoint Paths: 0.00023397970226082888
+--Min-Cut Size: 0
+--Cluster 1 Size: 261
+--Cluster 2 Size: 1
+
+----Cluster ID: 797 (Depth: 2)
+----Cluster Size: 261
+----Number of Edges in Cluster: 7
+----Number of Connected Components in Cluster: 254
+----Average Edge-Disjoint Paths: 0.0002357795461243737
+----Min-Cut Size: 0
+----Cluster 1 Size: 260
+----Cluster 2 Size: 1
+
+------Cluster ID: 797 (Depth: 3)
+------Cluster Size: 260
+------Number of Edges in Cluster: 7
+------Number of Connected Components in Cluster: 253
+------Average Edge-Disjoint Paths: 0.0002376002376002376
+------Min-Cut Size: 0
+------Cluster 1 Size: 259
+------Cluster 2 Size: 1
