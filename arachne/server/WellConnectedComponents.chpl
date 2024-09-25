@@ -88,25 +88,25 @@ module WellConnectedComponents {
 
       // Function to calculate the degree of a node within the cluster
       proc findAdjNeighinCluster(cluster: borrowed Cluster, elem: int) throws{
-          writeln("////////////////************//calculateDegree begin");
+          //writeln("////////////////************//calculateDegree begin");
 
           var Neighbours: domain(int) = {1..0};
-          writeln("elem = ", elem);
+          //writeln("elem = ", elem);
           // Retrieve in-neighbors
           var inNeigh_elem = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
-          writeln("inNeigh_elem: ", inNeigh_elem);
+          //writeln("inNeigh_elem: ", inNeigh_elem);
           Neighbours += inNeigh_elem;
           
           // Retrieve out-neighbors
           var outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
           Neighbours += outNeigh_elem;
-          writeln("outNeigh_elem: ", outNeigh_elem);
-          writeln("all Neighbours of (",elem," ): ", Neighbours);
+          //writeln("outNeigh_elem: ", outNeigh_elem);
+          //writeln("all Neighbours of (",elem," ): ", Neighbours);
           
 
           // Intersection with cluster to get valid neighbors
           var intersectionDomain = Neighbours & cluster.members;
-          writeln("elem : ",elem, " has degree = ",intersectionDomain.size );
+          //writeln("elem : ",elem, " has degree = ",intersectionDomain.size );
 
           var NeiArr:[0..intersectionDomain.size-1] int;
           var idx = 0;
@@ -128,7 +128,7 @@ module WellConnectedComponents {
           var reader = file.reader();
 
           for line in reader.lines() {
-              writeln("line = ", line);
+              //writeln("line = ", line);
               // Split the line by whitespace or tabs
               var fields = line.split();
               if fields.size >= 2 {
@@ -155,8 +155,8 @@ module WellConnectedComponents {
                       }
                   } else {
                       // Handle the case where the originalNode is not found in nodeMapGraphG1
-                      writeln("Error: Original node ", originalNode, " not found in nodeMapGraphG1.");
-                      writeln("*****************dummy node found");
+                      //writeln("Error: Original node ", originalNode, " not found in nodeMapGraphG1.");
+                      //writeln("*****************dummy node found");
                   }
               }
           }
@@ -182,22 +182,22 @@ module WellConnectedComponents {
 
           // Iterate over the members and collect elements that need to be removed
           for elem in cluster.members {
-            writeln("$$$$$ ENTER calculateDegree");
+            //writeln("$$$$$ ENTER calculateDegree");
               if calculateDegree(cluster.members, elem) < 2 {
-                  writeln("$$$$$ EXIT calculateDegree");
+                  //writeln("$$$$$ EXIT calculateDegree");
                   cluster.members.remove(elem);
-                  writeln("Marked for removal: ", elem);
+                  //writeln("Marked for removal: ", elem);
               }
           }
           cluster.n_member = cluster.members.size;
           if cluster.n_member <2 then cluster.isSingleton = true;
-          writeln("cluster after removeing degree one nodes: ", cluster);
+          //writeln("cluster after removeing degree one nodes: ", cluster);
           //return cluster;  // Return the modified cluster
       }
       
       // function is wrong I should call it by edgeCutSize
       proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
-          writeln("////////////////************isWellConnected begin");
+          //writeln("////////////////************isWellConnected begin");
 
           // Compute the base-10 logarithm of 'numEdges' and take the floor
           var logN = floor(log10(cluster.members.size: real));
@@ -206,9 +206,9 @@ module WellConnectedComponents {
           
           //Well Connected Function
           if edgeCutSize > floorLog10N {
-              writeln("the cluster = ",cluster," is well connected");
+              //writeln("the cluster = ",cluster," is well connected");
               cluster.isWcc = true;
-              writeln("the cluster.isWcc updated = ",cluster.isWcc," is well connected");
+              //writeln("the cluster.isWcc updated = ",cluster.isWcc," is well connected");
               return true;
           }
 
@@ -216,22 +216,20 @@ module WellConnectedComponents {
       }
       // The created edges is not sorted. should be? 
       proc createVieCutGraph(nodes: domain(int)){
-        writeln("////////////////************createVieCutGraph begin");
+        //writeln("////////////////************createVieCutGraph begin");
         var edgeSet = new set((int, int));  // A set to store unique edges as (src, dst) pairs
-        var vertices = new set(int);
-        // writeln("Nodes are: ", nodes);
+        // //writeln("Nodes are: ", nodes);
         for elem in nodes {
             const ref inNeigh_elem = dstRG1[segRG1[elem]..<segRG1[elem + 1]];
             const ref outNeigh_elem = dstNodesG1[segGraphG1[elem]..<segGraphG1[elem + 1]];
             var valid_neis = inNeigh_elem & outNeigh_elem;
-            // writeln("valid neighbors = ", valid_neis);
+            // //writeln("valid neighbors = ", valid_neis);
 
             for neigh in valid_neis {
-              vertices.add(neigh);
               edgeSet.add((elem, neigh));
-              edgeSet.add((neigh, elem));
+              //edgeSet.add((neigh, elem));
             }
-            // writeln("edgeSet- outNeigh added = ", edgeSet);
+            // //writeln("edgeSet- outNeigh added = ", edgeSet);
         }
 
         // Initialize the src and dst arrays based on the size of the edgeSet
@@ -248,31 +246,37 @@ module WellConnectedComponents {
             src_index += 1;
         }
 
+        // Sort the edge list, rename the vertex identifiers, and get the new map.
+        var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
+        var (remappedSrc, remappedDst, mapper) = oneUpper(sortedSrc, sortedDst);
+        // //writeln("remappedSrc = ", remappedSrc);
+        // //writeln("remappedDst = ", remappedDst);
+        // //writeln("     mapper = ", mapper);
 
-        // writeln("src: ", src);
-        // writeln("dst: ", dst);
-        return(src,dst,src.size,vertices.size);
+        // //writeln("src: ", src);
+        // //writeln("dst: ", dst);
+        return(remappedSrc,remappedDst,remappedSrc.size,mapper.size,mapper);
       }
 
       proc callMinCut(nodes: domain(int)): (int, list(clustListArray)) {
-          writeln("////////////////************callMinCut begin");
+          //writeln("////////////////************callMinCut begin");
 
           //bring an int cutSize
           //bring list of uniqu nodes in each new partition
           //should return List or arrys of clusters
-          var (src, dst, m, n) = createVieCutGraph(nodes);
-          writeln("!!!!! We get out of creating the VieCut Graph");
+          var (src, dst, m, n, mapper) = createVieCutGraph(nodes);
+          //writeln("!!!!! We get out of creating the VieCut Graph");
 
-          writeln("src = ", src);
-          writeln("dst = ", dst);
+        //   //writeln("src = ", src);
+        //   //writeln("dst = ", dst);
           writeln("  m = ", m);
           writeln("  n = ", n);
 
           var cut = c_computeMinCut(src, dst, n, m);
-          // supposed *Viecut called* and it returned cluster1, cluster2
-          writeln("!!!!! The returned cut is ", cut);
+          writeln("The returned cut is ", cut);
+          writeln();
 
-          var cluster1 = [0, 4, 5 ];  // First array
+          var cluster1 = [0, 4, 5];  // First array
           var cluster2 = [6, 7, 1, 8, 9, 10, 2];  // Second array
 
           // Create clustListArray instances
@@ -283,14 +287,14 @@ module WellConnectedComponents {
           // Push the instances into the list
           cluslist.pushBack(domVarryArray1);
           cluslist.pushBack(domVarryArray2);
-          writeln("cluslist = ", cluslist);
+          //writeln("cluslist = ", cluslist);
           return(cut, cluslist);
       }
 
 
       // Function to write cluster members to a file
       proc writeClusterToFile(cluster: borrowed Cluster) throws {
-          writeln("////////////////************writeClusterToFile begin");
+          //writeln("////////////////************writeClusterToFile begin");
 
           // cluster ID to ve distinguished
           var filename = "/scratch/users/md724/DataSets/wcc/WCC_Output/cluster_" + cluster.id:string + ".txt";
@@ -307,7 +311,7 @@ module WellConnectedComponents {
           fileWriter.writeln("# cluster depth: " + cluster.depth: string);
           // Write each member to the file, one per line. I am not sure!!!!!
           for member in cluster.members {
-              writeln("member :", member:string);
+              //writeln("member :", member:string);
               fileWriter.writeln(member:string);
           }
           
@@ -315,20 +319,20 @@ module WellConnectedComponents {
           try fileWriter.close();
           try file.close();
           
-          writeln("WCC written to ", filename);
+          //writeln("WCC written to ", filename);
       }
 
 
 
       proc wccHelper(cluster: borrowed Cluster): list(int) throws{
-          writeln("////////////////************wccHelper begin");
+          //writeln("////////////////************wccHelper begin");
 
           // Initialize an empty list to collect well-connected clusters
           var allWCC: list(int);
           
           // Base case: check if a well connected cluster is found
           if cluster.isWcc == true {
-              writeln("WC Cluster found = ", cluster.members);
+              //writeln("WC Cluster found = ", cluster.members);
               // Add the well-connected cluster to the list
               allWCC.pushBack(cluster.id);
               allWCC.pushBack(cluster.n_member);
@@ -358,12 +362,12 @@ module WellConnectedComponents {
 
                   for minCutReturnedArr in clusterList{
 
-                      writeln("minCutReturnedArr = ", minCutReturnedArr);
+                      //writeln("minCutReturnedArr = ", minCutReturnedArr);
                       var subCluster = new owned Cluster(minCutReturnedArr.a);
                       subCluster.depth = currentDpeth + 1;
                       subCluster.id = currentID;
 
-                      writeln("subCluster created = ", subCluster);
+                      //writeln("subCluster created = ", subCluster);
 
                       var newSubClusters: list(int, parSafe=true);
 
@@ -373,7 +377,7 @@ module WellConnectedComponents {
                       
                       // Use a loop to add elements from newMappings to allmappings
                       for findings in newSubClusters do allWCC.pushBack(findings);
-                      writeln("newSubClusters found :", allWCC);
+                      //writeln("newSubClusters found :", allWCC);
                   }
 
               }
@@ -383,8 +387,8 @@ module WellConnectedComponents {
       }
 
       proc wcc(g1: SegGraph): [] int throws {
-          writeln("graph loaded with ", g1.n_vertices," and ", g1.n_edges," edges");
-          writeln("we are lading the clusters....");
+          //writeln("graph loaded with ", g1.n_vertices," and ", g1.n_edges," edges");
+          //writeln("we are lading the clusters....");
           
           var results: list(int, parSafe=true);
 
@@ -393,11 +397,11 @@ module WellConnectedComponents {
 
           // Print each cluster with its mapped nodes
           for key in clusters.keys() {
-              writeln("Cluster ID: ", key);
+              //writeln("Cluster ID: ", key);
               
               var clusterInit = new owned Cluster(clusters[key]);
               clusterInit.id = key;
-              writeln("Cluster created = ", clusterInit);
+              //writeln("Cluster created = ", clusterInit);
               
               //writeClusterToFile(clusterInit);
               //if clusterInit.id == 905 then findAdjNeighinCluster(clusterInit, 415);
@@ -405,7 +409,7 @@ module WellConnectedComponents {
               if !clusterInit.isSingleton && !clusterInit.isWcc {
                   
                   //ClusterKCoreDecomposition(clusterInit.members,2);
-                  writeln("we are here");
+                  //writeln("we are here");
                   var newResults = wccHelper(clusterInit);
                   
                   for mapping in newResults do results.pushBack(mapping);
@@ -414,13 +418,13 @@ module WellConnectedComponents {
           }
           var subClusterArrToReturn: [0..#results.size](int);
           for i in 0..#results.size do subClusterArrToReturn[i] = results(i);
-          writeln ("subClusterArrToReturn: ", subClusterArrToReturn);
+          //writeln ("subClusterArrToReturn: ", subClusterArrToReturn);
           return(subClusterArrToReturn);
 
           //return([0,9,9,9]);
 
       } // end of wcc
-      writeln("clusterArr: ", clusterArr);
+      //writeln("clusterArr: ", clusterArr);
       return clusterArr;
     } // end of runWCC
 } // end of WellConnectedComponents module
