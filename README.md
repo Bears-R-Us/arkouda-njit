@@ -4,8 +4,10 @@ This is an external repository to build functionality for [Arkouda](https://gith
 ## Configuring Prerequisites
 We recommend following the installation instructions provided by the Arkouda development team. Most specifically, follow the [Prerequisites](https://github.com/Bears-R-Us/arkouda?tab=readme-ov-file#prerequisites-toc) section in its entirety, and only the [Dependency Configuration](https://github.com/Bears-R-Us/arkouda/blob/master/pydoc/setup/BUILD.md#building-the-server) section of the build instructions. The installation steps usually involve the following:
 1. Download [Chapel](https://chapel-lang.org/download.html) from the Chapel downloads page. **Use Chapel version 2.1.0.**
-    * Alternatively, you may clone [Chapel](https://github.com/chapel-lang/chapel), navigate to the directory where you cloned it, and run the following commands:
+    * Alternatively, you may clone [Chapel](https://github.com/chapel-lang/chapel) and switch to a given tagged version. The commands for these should look something like:
         ```bash
+        git clone https://github.com/chapel-lang/chapel.git
+        cd chapel
         git fetch --tags origin
         git checkout tags/2.1.0 --force
         ```
@@ -21,8 +23,10 @@ We recommend following the installation instructions provided by the Arkouda dev
     ```
     * **Note:** This installs single locale (shared-memory) Chapel. For multilocale (distributed-memory) Chapel please follow the documentation guide on [Multilocale Chapel Execution](https://chapel-lang.org/docs/usingchapel/multilocale.html#multilocale-chapel-execution). Arachne has its best performance on shared-memory. However, kernels such as breadth-first search and property graph querying have multilocale-optimized versions that require multilocale Chapel to be installed.
 3. Download, **but do not build**, [Arkouda](https://github.com/Bears-R-Us/arkouda). **Use Arkouda version v2024.06.21.** A specified version can be selected for download by clicking on `Releases` in the main GitHub page for [Arkouda](https://github.com/Bears-R-Us/arkouda).
-    * Alternatively, you may clone Arkouda, navigate to the directory where you cloned it, and run the following commands:
+    * Alternatively, you may clone Arkouda and switch to a given tagged version.
         ```bash
+        git clone https://github.com/Bears-R-Us/arkouda.git
+        cd arkouda
         git fetch --tags origin
         git checkout tags/v2024.06.21 --force
         ```
