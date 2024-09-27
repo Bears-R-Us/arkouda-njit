@@ -35,10 +35,9 @@ module WellConnectedComponentsMsg {
       var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
       var g = gEntry.graph;
       var path = FilePath;
-
-      // Execute sequential VF2 subgraph isomorphism.
+      
       var timer:stopwatch;
-      if g.isDirected() {
+      if !g.isDirected() {
           timer.start();
           var isoArray = runWCC(g,st, path);
           timer.stop();
@@ -55,7 +54,7 @@ module WellConnectedComponentsMsg {
           siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
           return new MsgTuple(repMsg, MsgType.NORMAL);
       } else {
-          var errorMsg = notImplementedError(pn, "subgraph isomorphism for undirected graphs");
+          var errorMsg = notImplementedError(pn, "well-connected components for directed graphs");
           siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
           return new MsgTuple(errorMsg, MsgType.ERROR);
       }

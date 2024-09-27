@@ -85,7 +85,7 @@ The server can be started as specified in the [Arkouda documentation](https://gi
 ./arkouda_server # - nl X
 ```
 
-This should output something that looks like below.
+The output should be something that looks like below.
 ```bash
 ********************************************************************************************************
 ********************************************************************************************************

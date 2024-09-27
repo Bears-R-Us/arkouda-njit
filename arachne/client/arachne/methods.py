@@ -410,9 +410,9 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
 
 @typechecked
-def well_connected_components(graph: PropGraph, file_path: str) -> pdarray:
+def well_connected_components(graph: Graph, file_path: str) -> pdarray:
     """
-    WORK IN PROGRESS. This is just the skeletong to call the Chapel back-end functionality.
+    WORK IN PROGRESS. This is just the skeleton to call the Chapel back-end functionality.
 
     Parameters
     ----------
