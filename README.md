@@ -36,18 +36,15 @@ We recommend following the installation instructions provided by the Arkouda dev
         conda env create -f arkouda-env-dev.yml
         ```
 5. [Configure your Arkouda dependencies](https://github.com/Bears-R-Us/arkouda/blob/master/pydoc/setup/BUILD.md#dependency-configuration). This involves creating (or modifying) the `Makefile.paths` within your Arkouda home directory.
-6. Install [VieCut](https://github.com/MinhyukPark/VieCut) and compile the C++ object files required by Arachne by following the commands below. VieCut requires a C++ compiler that supports `c++-20`, such as `clang++11`, and `cmake`. These and other prerequisites should be covered by the prerequisites in items 1-5 above.
+6. Install [constrained-clustering](https://github.com/MinhyukPark/constrained-clustering) and compile the C++ object files required by Arachne by following the commands below. VieCut requires a C++ compiler that supports `c++-20`, such as `clang++11`, and `cmake`. These and other prerequisites should be covered by the prerequisites in items 1-5 above.
     ```bash
     cd /path/to/arkouda-njit/arachne/server/external_libs
-    git clone https://github.com/MinhyukPark/VieCut.git
-    cd VieCut
-    git submodule update --init --recursive
-    mkdir build
-    cd build
-    cmake ..
-    make
-    cd ../../../viecut_helpers/
-    gcc -c -fPIC -I../external_libs/VieCut/lib -I../external_libs/VieCut/extlib/tlx computeMinCut.cpp -o computeMinCut.o
+    git clone https://github.com/MinhyukPark/constrained-clustering.git
+    cd constrained-clustering
+    ./setup.sh
+    ./easy_build_and_compile.sh
+    cd ../../../../arachne/server/viecut_helpers/
+    gcc -c -fPIC -I../external_libs/constrained-clustering/external_libs/VieCut/lib/ -I../external_libs/constrained-clustering/external_libs/VieCut/extlib/tlx/ computeMinCut.cpp -o computeMinCut.o
     ```
 
 ## Building Arachne

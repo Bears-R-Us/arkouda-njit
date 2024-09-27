@@ -1,1 +1,1 @@
-VieCut will be cloned and installed in here.
+constrained-clustering will be cloned and installed in here.

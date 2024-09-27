@@ -1,7 +1,7 @@
 #include "computeMinCut.h"
 #include <algorithms/global_mincut/cactus/cactus_mincut.h>
 
-int cpp_computeMinCut(int64_t src[], int64_t dst[], int64_t n, int64_t m) {
+int cpp_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int64_t n, int64_t m) {
     // std::cout << "We get here 1!" << std::endl;
     int edge_cut_size = -1;
     auto cfg = configuration::getConfig();
@@ -43,26 +43,28 @@ int cpp_computeMinCut(int64_t src[], int64_t dst[], int64_t n, int64_t m) {
     edge_cut_size = cmc.perform_minimum_cut(G);
     // std::cout << "We get here 6!" << std::endl;
 
-    std::vector<int> in_partition;
-    std::vector<int> out_partition;
+    // std::vector<int> in_partition;
+    // std::vector<int> out_partition;
 
     for(int node_id = 0; node_id < n; node_id++) {
         if(G->getNodeInCut(node_id)) {
             // std::cout << node_id << " is in the cut" << std::endl;
-            in_partition.push_back(node_id);
+            // in_partition.push_back(node_id);
+            partition_arr[node_id] = 1;
         } else {
             // std::cout << node_id << " is out the cut" << std::endl;
-            out_partition.push_back(node_id);
+            // out_partition.push_back(node_id);
+            partition_arr[node_id] = 0;
         }
     }
-    std::cout << "size of in_partition = " << in_partition.size() << std::endl;
-    std::cout << "size of out_partition = " << out_partition.size() << std::endl;
+    // std::cout << "size of in_partition = " << in_partition.size() << std::endl;
+    // std::cout << "size of out_partition = " << out_partition.size() << std::endl;
 
     return edge_cut_size;
 }
 
 extern "C" {
-    int c_computeMinCut(int64_t src[], int64_t dst[], int64_t n, int64_t m) {
-        return cpp_computeMinCut(src, dst, n, m);
+    int c_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int64_t n, int64_t m) {
+        return cpp_computeMinCut(partition_arr, src, dst, n, m);
     }
 }
