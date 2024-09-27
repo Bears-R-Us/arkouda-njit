@@ -27,10 +27,10 @@ module WellConnectedComponents {
 
     // C header and object files.
     require "viecut_helpers/computeMinCut.h", 
-            "viecut_helpers/computeMinCut.o", 
-            "./external_libs/VieCut/build/extlib/tlx/tlx/CMakeFiles/tlx.dir/logger.cpp.o";
+            "viecut_helpers/computeMinCut.o",
+            "viecut_helpers/logger.cpp.o";
     
-    extern proc c_computeMinCut(src: [] int, dst: [] int, n: int, m: int): int;
+    extern proc c_computeMinCut(partition_arr: [] int, src: [] int, dst: [] int, n: int, m: int): int;
 
     class Cluster {
       var id: int;              // Cluster identifier.
@@ -272,8 +272,10 @@ module WellConnectedComponents {
           writeln("  m = ", m);
           writeln("  n = ", n);
 
-          var cut = c_computeMinCut(src, dst, n, m);
+          var partitionArr: [{0..<n}] int;
+          var cut = c_computeMinCut(partitionArr,src, dst, n, m);
           writeln("The returned cut is ", cut);
+          writeln("partitionArr = ", partitionArr);
           writeln();
 
           var cluster1 = [0, 4, 5];  // First array
