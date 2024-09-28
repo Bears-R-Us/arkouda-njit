@@ -28,18 +28,20 @@ module WellConnectedComponentsMsg {
       var repMsg, outMsg:string;
 
       // Extract messages sent from Python.
-      var graphEntryName = msgArgs.getValueOf("MainGraphName");
+      var GraphEntryName = msgArgs.getValueOf("GraphName");
       var FilePath = msgArgs.getValueOf("FilePath");
+      var OutputPath = msgArgs.getValueOf("OutputPath");
       
       // Pull out our graph from the symbol table.
-      var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
+      var gEntry: borrowed GraphSymEntry = getGraphSymEntry(GraphEntryName, st); 
       var g = gEntry.graph;
       var path = FilePath;
+      var outputPath = OutputPath;
       
       var timer:stopwatch;
       if !g.isDirected() {
           timer.start();
-          var isoArray = runWCC(g,st, path);
+          var isoArray = runWCC(g, st, path, outputPath);
           timer.stop();
           outMsg = "Well connected components took " + timer.elapsed():string + " sec";
           
