@@ -38,6 +38,7 @@ module WellConnectedComponents {
     var members: set(int);  // Members set.       
     var isWcc: bool;        // Is it a well-connected cluster?
     var isSingleton: bool;  // Is it a singleton cluster?
+    var depth: int;         // Cluster depth;
 
     /* Cluster initializer from array. */
     proc init(members: [] int) {
@@ -47,6 +48,7 @@ module WellConnectedComponents {
       for m in members do this.members.add(m);
       this.isWcc = false;
       if this.n_members <= 1 then this.isSingleton = true;
+      this.depth = 0;
     }        
     
     /* Cluster initializer from list. */
@@ -57,6 +59,18 @@ module WellConnectedComponents {
       this.members += members;
       this.isWcc = false;
       if this.n_members <= 1 then this.isSingleton = true;
+    }
+    /* Method to print all details of the Cluster object. */
+    proc printClusterInfo() {
+      writeln("///////////////////////////////////////");
+      writeln("Cluster ID: ", this.id);
+      writeln("Number of Members: ", this.n_members);
+      writeln("Members: ", members);
+      writeln("Is Well-Connected Cluster (WCC)?: ", this.isWcc);
+      writeln("Is Singleton?: ", this.isSingleton);
+      writeln("Cluster Depth: ", this.depth);
+      writeln("///////////////////////////////////////");
+
     }
   }
 
@@ -88,7 +102,7 @@ module WellConnectedComponents {
     proc readClustersFile(filename: string) throws {
       var clusters = new map(int, set(int));
       var file = open(filename, ioMode.r);
-      var reader = file.reader();
+      var reader = file.reader(locking=false);
 
       for line in reader.lines() {
         var fields = line.split();
@@ -135,6 +149,7 @@ module WellConnectedComponents {
     /* Given a cluster and a cut size, determine if it is well-connected or not. */
     proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
       // QUESTION: Why is the size of cluster members casted to real?
+      // Chapel documentation: log10() works with arguments of type real(64) or real(32).
       var logN = floor(log10(cluster.members.size: real));
       var floorLog10N: int = logN:int;
       
@@ -148,24 +163,49 @@ module WellConnectedComponents {
 
     /* Returns the sorted edge list for a given set of vertices. */
     proc getEdgeList(vertices: set(int)) {
+      writeln("***********getEdgeList*********");
+      writeln("vertices :", vertices);
       var srcList, dstList = new list(int);
+
       for u in vertices {
         const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-        for v in neighbors { srcList.pushBack(u); dstList.pushBack(v); }
+        //writeln("neighbors(",u,") = ", neighbors );
+        // Find intersection
+        for v in vertices {
+          const (found, idx) = binarySearch(neighbors, v);
+          if found {
+             srcList.pushBack(u); 
+             dstList.pushBack(v);
+          }
+        }
+
       }
+      writeln(" srcList: ", srcList);
+      writeln(" dstList: ", dstList);
       var src = srcList.toArray();
       var dst = dstList.toArray();
-
+      //writeln("getEdgeList calculate--- src:", src);
+      //writeln("getEdgeList calculate--- dst:", dst);
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
+      writeln(" sortedSrc: ", sortedSrc);
+      writeln(" sortedDst: ", sortedDst);
       var (deduppedSrc, deduppedDst) = removeMultipleEdges(sortedSrc, sortedDst);
+      writeln(" deduppedSrc: ", deduppedSrc);
+      writeln(" deduppedDst: ", deduppedDst);
       var (remappedSrc, remappedDst, mapper) = oneUpper(deduppedSrc, deduppedDst);
-      
       return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
     }
 
     /* Calls out to an external procedure that runs VieCut. */
     proc callMinCut(vertices: set(int)): (int, list(clustListArray)) {
       var (mapper, n, src, dst, m) = getEdgeList(vertices);
+      writeln("getEdgeList returned : ");
+      writeln("mapper: ", mapper);
+      writeln("n: ", n);
+      writeln("src: ", src);
+      writeln("dst: ", dst);
+      writeln("m: ", m);
+      
       var partitionArr: [{0..<n}] int;
       var cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
@@ -193,6 +233,7 @@ module WellConnectedComponents {
       var fileWriter = file.writer(locking=false);
 
       fileWriter.writeln("# cluster ID: " + cluster.id: string); 
+      fileWriter.writeln("# cluster Depth: " + cluster.depth: string); 
       fileWriter.writeln("# number of members: " + cluster.n_members: string);
       for member in cluster.members do fileWriter.writeln(member:string);
       
@@ -203,15 +244,25 @@ module WellConnectedComponents {
     /* Helper method to run the recursion. */
     proc wccHelper(cluster: borrowed Cluster): list(int) throws{
       var allWCC: list(int);
-      removeDegreeOneVertices(cluster);
+            cluster.printClusterInfo();
 
-      if !cluster.isSingleton && cluster.n_members > 10 {
+      removeDegreeOneVertices(cluster);
+      writeln("/////////wccHelper called for");
+      cluster.printClusterInfo();
+
+      //if !cluster.isSingleton && cluster.n_members > 10 {
+      if !cluster.isSingleton {
         var currentID = cluster.id;
-        var (cutSize, clusterList) = callMinCut(cluster.members);  
+        var currentDepth = cluster.depth;
+        var (cutSize, clusterList) = callMinCut(cluster.members); 
+        writeln(" callMinCut called for ID:", cluster.id," cluster depth: ", cluster.depth, " it returned: ", cutSize );
+
+
         if !isWellConnected(cluster, cutSize) {
           for minCutReturnedArr in clusterList{
             var subCluster = new owned Cluster(minCutReturnedArr.a);
             subCluster.id = currentID;
+            subCluster.depth = currentDepth + 1;
             var newSubClusters: list(int);
 
             // Collect clusters from recursive call.
@@ -220,6 +271,7 @@ module WellConnectedComponents {
           }
         } else {
           allWCC.pushBack(cluster.id);
+          allWCC.pushBack(cluster.depth);
           allWCC.pushBack(cluster.n_members);
           
           // If outputPath was defined, write it out to cluster file.
@@ -238,14 +290,19 @@ module WellConnectedComponents {
 
       for key in clusters.keys() {
         ref clusterToAdd = clusters[key];
+
+        
         var clusterInit = new owned Cluster(clusterToAdd);
         clusterInit.id = key;
-        
+        //clusre members should mapp
+        //writeln("Cluster with id: ", clusterInit.id, " Created. It has :", clusterInit.n_members );
+        //clusterInit.printClusterInfo();
         if !clusterInit.isSingleton && !clusterInit.isWcc {
           var newResults = wccHelper(clusterInit);
           for mapping in newResults do results.pushBack(mapping);
         }
       }
+
       var subClusterArrToReturn: [0..#results.size] int;
       for i in 0..#results.size do subClusterArrToReturn[i] = results(i);
       return(subClusterArrToReturn);
