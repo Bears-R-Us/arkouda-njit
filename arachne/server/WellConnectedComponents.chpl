@@ -134,7 +134,14 @@ module WellConnectedComponents {
       const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
       
       // TODO: Wasting space by using to.Array(). Maybe just make our own intersection procedure?
-      var intersection = neighbors & clusterMembers.toArray();
+      //var intersection = neighbors & clusterMembers.toArray();
+      var intersection: set(int);
+      for v in clusterMembers {
+          const (found, idx) = binarySearch(neighbors, v);
+          if found {
+            intersection.add(v);
+          }
+        } 
       return intersection.size;
     }
 
@@ -162,9 +169,9 @@ module WellConnectedComponents {
     }
 
     /* Returns the sorted edge list for a given set of vertices. */
-    proc getEdgeList(vertices: set(int)) {
-      writeln("***********getEdgeList*********");
-      writeln("vertices :", vertices);
+    proc getEdgeList(vertices: set(int)){
+      //writeln("***********getEdgeList*********");
+      //writeln("vertices :", vertices);
       var srcList, dstList = new list(int);
 
       for u in vertices {
@@ -180,20 +187,19 @@ module WellConnectedComponents {
         }
 
       }
-      writeln(" srcList: ", srcList);
-      writeln(" dstList: ", dstList);
+      //writeln(" srcList: ", srcList);
+      //writeln(" dstList: ", dstList);
       var src = srcList.toArray();
       var dst = dstList.toArray();
-      //writeln("getEdgeList calculate--- src:", src);
-      //writeln("getEdgeList calculate--- dst:", dst);
+
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
-      writeln(" sortedSrc: ", sortedSrc);
-      writeln(" sortedDst: ", sortedDst);
-      var (deduppedSrc, deduppedDst) = removeMultipleEdges(sortedSrc, sortedDst);
-      writeln(" deduppedSrc: ", deduppedSrc);
-      writeln(" deduppedDst: ", deduppedDst);
-      var (remappedSrc, remappedDst, mapper) = oneUpper(deduppedSrc, deduppedDst);
-      return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
+        //writeln(" sortedSrc: ", sortedSrc);
+        //writeln(" sortedDst: ", sortedDst);
+        var (deduppedSrc, deduppedDst) = removeMultipleEdges(sortedSrc, sortedDst);
+        //writeln(" deduppedSrc: ", deduppedSrc);
+        //writeln(" deduppedDst: ", deduppedDst);
+        var (remappedSrc, remappedDst, mapper) = oneUpper(deduppedSrc, deduppedDst);
+        return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
     }
 
     /* Calls out to an external procedure that runs VieCut. */
@@ -202,8 +208,8 @@ module WellConnectedComponents {
       writeln("getEdgeList returned : ");
       writeln("mapper: ", mapper);
       writeln("n: ", n);
-      writeln("src: ", src);
-      writeln("dst: ", dst);
+      //writeln("src: ", src);
+      //writeln("dst: ", dst);
       writeln("m: ", m);
       
       var partitionArr: [{0..<n}] int;
@@ -244,10 +250,10 @@ module WellConnectedComponents {
     /* Helper method to run the recursion. */
     proc wccHelper(cluster: borrowed Cluster): list(int) throws{
       var allWCC: list(int);
-            cluster.printClusterInfo();
+      cluster.printClusterInfo();
 
       removeDegreeOneVertices(cluster);
-      writeln("/////////wccHelper called for");
+      writeln("/////////removeDegreeOneVertices called and");
       cluster.printClusterInfo();
 
       //if !cluster.isSingleton && cluster.n_members > 10 {
@@ -270,6 +276,9 @@ module WellConnectedComponents {
             for findings in newSubClusters do allWCC.pushBack(findings);
           }
         } else {
+          writeln("*******************************************we found WCC");
+                cluster.printClusterInfo();
+
           allWCC.pushBack(cluster.id);
           allWCC.pushBack(cluster.depth);
           allWCC.pushBack(cluster.n_members);
