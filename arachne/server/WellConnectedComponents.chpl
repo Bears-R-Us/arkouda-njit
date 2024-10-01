@@ -74,7 +74,6 @@ module WellConnectedComponents {
       writeln("Is Singleton?: ", this.isSingleton);
       writeln("Cluster Depth: ", this.depth);
       writeln("///////////////////////////////////////");
-
     }
   }
 
@@ -96,11 +95,7 @@ module WellConnectedComponents {
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
     var clusterArrtemp = wcc(g1);
-    // writeln("clusterArrtemp = ", clusterArrtemp);
-    //var clusterArr = nodeMapGraphG1[clusterArrtemp]; // Map vertices back to original values.
     var clusterArr = clusterArrtemp; //cluster id, depth, number of elements
-    writeln("nodeMapGraphG1= ", nodeMapGraphG1);
-    writeln("nodeMapGraphG1.size= ", nodeMapGraphG1.size);
     
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
@@ -139,123 +134,72 @@ module WellConnectedComponents {
     }
 
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
-    proc calculateClusterDegree(clusterMembers, vertex): int throws {
-      const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
-      
-
-      //var intersection = neighbors & clusterMembers.toArray();
-      var intersection: set(int);
-      for v in clusterMembers {
-          const (found, idx) = binarySearch(neighbors, v);
-          if found {
-            intersection.add(v);
-          }
-        } 
-      return intersection.size;
-    }
-    /* Optimized function to calculate the degree of a vertex within a component/cluster/community. */
-    proc optiCalculateClusterDegree(clusterMembers: set(int), vertex: int): int throws {
+    proc calculateClusterDegree(clusterMembers: set(int), vertex: int): int throws {
       const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
       var degree = 0;
       for u in neighbors {
-        if clusterMembers.contains(u) {
-          degree += 1;
-        }
+        if clusterMembers.contains(u) then degree += 1;
       }
       return degree;
     }
 
     /* From a passed cluster, remove all vertices with degree one. */
     proc removeDegreeOneVertices(cluster: borrowed Cluster) throws {
-      var counternew: int =0;
-      var totalDegree: int =0;
+      var totalDegree:int = 0;
       var newMemberSet: set(int);
       for v in cluster.members {
-        //var memberDegree = calculateClusterDegree(cluster.members, v);
-        var memberDegree = optiCalculateClusterDegree(cluster.members, v);
+        var memberDegree = calculateClusterDegree(cluster.members, v);
         if  memberDegree >= 2 {
           newMemberSet.add(v);
-          //counternew +=1;
           totalDegree += memberDegree;
         }
       }
-      //writeln("counternew ", counternew," to add");
       cluster.members = newMemberSet;
       cluster.n_members = cluster.members.size;
-      if cluster.n_members > 0{
-        cluster.averageDegree = totalDegree/cluster.n_members;
-      }
+      if cluster.n_members > 0 then cluster.averageDegree = totalDegree / cluster.n_members;
 
       if cluster.n_members < 2 then cluster.isSingleton = true;
     }
+
     /* Function to perform 2-core decomposition on a given cluster. */
-    
     proc core2Decomposition(cluster: borrowed Cluster) throws{
-      
-      // Initialize degrees within the cluster
-      var clusterMemebrs = cluster.members;
+      // Initialize degrees within the cluster.
+      var clusterMembers = cluster.members;
       var clusterDomain:domain(int, parSafe=true);
-      
-      writeln("clusterDomain: ", clusterDomain);
-      //var memberArr = cluster.members.toArray();
- clusterDomain += clusterMemebrs.toArray();;
-
+      clusterDomain += clusterMembers.toArray();;
       var degrees: [clusterDomain] int = -1;
-      writeln("degrees before", degrees);
-      for v in clusterMemebrs {
-        degrees[v] = optiCalculateClusterDegree(clusterMemebrs, v);
-      }
-      writeln("degrees after", degrees);
+      for v in clusterMembers do degrees[v] = calculateClusterDegree(clusterMembers, v);
 
-      // Initialize queue of nodes with degree less than 2
+      // Initialize queue of nodes with degree less than 2.
       var removeQueue = new list(int);
+      for v in clusterMembers do if degrees[v] < 2 then removeQueue.pushBack(v);
 
-      for v in clusterMemebrs {
-        if degrees[v] < 2 {
-          removeQueue.pushBack(v);
-        }
-      }
-
-      // While the queue is not empty
+      // While the queue is not empty.
       while !removeQueue.isEmpty() {
         var v = removeQueue.popBack();
-
-        // For each neighbor of v within the cluster
         const ref neighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
 
         for u in neighbors {
           if cluster.members.contains(u) && degrees[u] >= 2 {
             degrees[u] -= 1;
-            if degrees[u] < 2 {
-              removeQueue.pushBack(u);
-            }
+            if degrees[u] < 2 then removeQueue.pushBack(u);
           }
         }
 
-        // Mark v as removed
+        // Mark v as removed.
         degrees[v] = -1;
       }
 
-      // Collect nodes with degrees >= 2
+      // Collect nodes with degrees >= 2.
       var core2Members = new set(int);
-
-      for v in cluster.members {
-        if degrees[v] >= 2 {
-          core2Members.add(v);
-        }
-      }
-      writeln("core2Members: ", core2Members);
+      for v in cluster.members do if degrees[v] >= 2 then core2Members.add(v);
       cluster.members = core2Members;
       cluster.n_members = cluster.members.size;
-
       if cluster.n_members < 2 then cluster.isSingleton = true;
-      //return core2Members;
     }
 
     /* Given a cluster and a cut size, determine if it is well-connected or not. */
     proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
-      // QUESTION: Why is the size of cluster members casted to real?
-      // Chapel documentation: log10() works with arguments of type real(64) or real(32).
       var logN = floor(log10(cluster.members.size: real));
       var floorLog10N: int = logN:int;
       
@@ -269,52 +213,31 @@ module WellConnectedComponents {
 
     /* Returns the sorted edge list for a given set of vertices. */
     proc getEdgeList(vertices: set(int)){
-      //writeln("***********getEdgeList*********");
-      //writeln("vertices :", vertices);
       var srcList, dstList = new list(int);
 
       for u in vertices {
         const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-        //writeln("neighbors(",u,") = ", neighbors );
-        // Find intersection
         for v in vertices {
           const (found, idx) = binarySearch(neighbors, v);
           if found {
-             srcList.pushBack(u); 
-             dstList.pushBack(v);
+            srcList.pushBack(u); 
+            dstList.pushBack(v);
           }
         }
-
       }
-      //writeln(" srcList: ", srcList);
-      //writeln(" dstList: ", dstList);
       var src = srcList.toArray();
       var dst = dstList.toArray();
 
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
-        //writeln(" sortedSrc: ", sortedSrc);
-        //writeln(" sortedDst: ", sortedDst);
-        var (deduppedSrc, deduppedDst) = removeMultipleEdges(sortedSrc, sortedDst);
-        //writeln(" deduppedSrc: ", deduppedSrc);
-        //writeln(" deduppedDst: ", deduppedDst);
-        var (remappedSrc, remappedDst, mapper) = oneUpper(deduppedSrc, deduppedDst);
-        return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
+      var (deduppedSrc, deduppedDst) = removeMultipleEdges(sortedSrc, sortedDst);
+      var (remappedSrc, remappedDst, mapper) = oneUpper(deduppedSrc, deduppedDst);
+
+      return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
     }
 
     /* Calls out to an external procedure that runs VieCut. */
     proc callMinCut(vertices: set(int)): (int, list(clustListArray)) {
       var (mapper, n, src, dst, m) = getEdgeList(vertices);
-      writeln("getEdgeList returned : ");
-      writeln("mapper: ", mapper);
-      writeln("n: ", n);
-      //writeln("src: ", src);
-      //writeln("dst: ", dst);
-      writeln("m: ", m);
-      
-      //var AveD = m/n;
-      //writeln("Average Degree: ", AveD);
-      //var density =  m/n*(n-1);
-      //writeln("cluster density before cut: ",density);
       var partitionArr: [{0..<n}] int;
       var cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
@@ -351,44 +274,33 @@ module WellConnectedComponents {
     }
 
     /* Helper method to run the recursion. */
-    proc wccHelper(cluster: borrowed Cluster): list(int) throws{
-      writeln("///////////////////////////wccHelper");
+    proc wccHelper(cluster: borrowed Cluster): list(int) throws {
       var allWCC: list(int);
-      cluster.printClusterInfo();
-      //core2Decomposition(cluster);
+      
+      // TODO: We have an idea to use core-2 decomposition instead of removeDegreeOneVertices.
+      //       However, we are not sure if this is correct, so it is staying commented out for now.
+      // core2Decomposition(cluster);
       removeDegreeOneVertices(cluster);
-      writeln("/////////removeDegreeOneVertices called and");
-      cluster.printClusterInfo();
 
-      //if !cluster.isSingleton && cluster.n_members > 10 {
       if !cluster.isSingleton {
         var currentID = cluster.id;
         var currentDepth = cluster.depth;
         var (cutSize, clusterList) = callMinCut(cluster.members); 
-        writeln(" callMinCut called for ID:", cluster.id," cluster depth: ", cluster.depth, " it returned: ", cutSize );
-
-
+        
         if !isWellConnected(cluster, cutSize) {
-          for minCutReturnedArr in clusterList{
+          for minCutReturnedArr in clusterList {
             var subCluster = new owned Cluster(minCutReturnedArr.a);
             subCluster.id = currentID;
             subCluster.depth = currentDepth + 1;
             var newSubClusters: list(int);
-
-            // Collect clusters from recursive call.
             newSubClusters = wccHelper(subCluster);
             for findings in newSubClusters do allWCC.pushBack(findings);
           }
         } else {
-          writeln("*******************************************we found WCC");
-                cluster.printClusterInfo();
-
           allWCC.pushBack(cluster.id);
           allWCC.pushBack(cluster.depth);
           allWCC.pushBack(cluster.n_members);
-          
-          // If outputPath was defined, write it out to cluster file.
-          if outputPath != "None" then writeClusterToFile(cluster);
+          writeClusterToFile(cluster);
 
           return allWCC;
         }
@@ -401,16 +313,10 @@ module WellConnectedComponents {
       var results: list(int);
       var clusters = readClustersFile(inputcluster_filePath);
 
-      //for key in clusters.keys() {
       for key in clusters.keys() {
         ref clusterToAdd = clusters[key];
-
-        
         var clusterInit = new owned Cluster(clusterToAdd);
         clusterInit.id = key;
-        //clusre members should mapp
-        //writeln("Cluster with id: ", clusterInit.id, " Created. It has :", clusterInit.n_members );
-        //clusterInit.printClusterInfo();
 
         if !clusterInit.isSingleton && !clusterInit.isWcc {
           var newResults = wccHelper(clusterInit);

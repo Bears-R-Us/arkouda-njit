@@ -412,20 +412,39 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 @typechecked
 def well_connected_components(graph: Graph, file_path: str, output_path: str = None) -> pdarray:
     """
-    WORK IN PROGRESS. This is just the skeleton to call the Chapel back-end functionality.
+    Runs a single threaded version of well-connectec components (WCC). Writes the outputted clusters 
+    by default to `arkouda-njit/arachne/output/wcc.text`.
 
     Parameters
     ----------
+    G : Graph
+        The full graph.
+    file_path : str
+        The file containing the clusters each vertex belongs to.
+    output_path : str
+        The output path to where the new clusters are to be written to.
 
     Returns
     -------
+    pdarray
+        Array consisting of 3 * n elements where n is the number of clusters and 3 is the 
+        information for each cluster: (identifier, depth, number of members).
     
     See Also
     --------
+    connected_components
 
     Notes
     -----
+    Work in progress. Currently, the graph file must be processed and read through Python. Future
+    functionality will include building the graph directly from Chapel and full parallelization
+    while processing each cluster through WCC.
     """
+    import os
+    if output_path is None:
+        output_path = os.path.abspath("./output/wcc")
+
+    print("output_path = ", output_path)
     cmd = "wellConnectedComponents"
     args = { "GraphName":graph.name,
              "FilePath": file_path,
