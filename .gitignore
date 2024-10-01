@@ -2,6 +2,10 @@
 arachne/server/external_libs/*
 !arachne/server/external_libs/README.md
 
+# Outputs.
+arachne/output/*
+!arachne/output/README.md
+
 # C++ pbject files.
 *.o
 
