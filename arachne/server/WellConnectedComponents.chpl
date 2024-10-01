@@ -170,7 +170,9 @@ module WellConnectedComponents {
       //writeln("counternew ", counternew," to add");
       cluster.members = newMemberSet;
       cluster.n_members = cluster.members.size;
-      cluster.averageDegree = totalDegree/cluster.n_members;
+      if cluster.n_members > 0{
+        cluster.averageDegree = totalDegree/cluster.n_members;
+      }
 
       if cluster.n_members < 2 then cluster.isSingleton = true;
     }
@@ -233,10 +235,11 @@ module WellConnectedComponents {
       //writeln("src: ", src);
       //writeln("dst: ", dst);
       writeln("m: ", m);
-      var AveD = m/n;
-      writeln("Average Degree: ", AveD);
-      var density =  m/n*(n-1);
-      writeln("cluster density before cut: ",density);
+      
+      //var AveD = m/n;
+      //writeln("Average Degree: ", AveD);
+      //var density =  m/n*(n-1);
+      //writeln("cluster density before cut: ",density);
       var partitionArr: [{0..<n}] int;
       var cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
