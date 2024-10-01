@@ -39,6 +39,7 @@ module WellConnectedComponents {
     var isWcc: bool;        // Is it a well-connected cluster?
     var isSingleton: bool;  // Is it a singleton cluster?
     var depth: int;         // Cluster depth;
+    var averageDegree: real; // Cluster averageDegree;
 
     /* Cluster initializer from array. */
     proc init(members: [] int) {
@@ -49,6 +50,7 @@ module WellConnectedComponents {
       this.isWcc = false;
       if this.n_members <= 1 then this.isSingleton = true;
       this.depth = 0;
+      this.averageDegree = 0.0;
     }        
     
     /* Cluster initializer from list. */
@@ -59,6 +61,8 @@ module WellConnectedComponents {
       this.members += members;
       this.isWcc = false;
       if this.n_members <= 1 then this.isSingleton = true;
+      this.depth = 0;
+      this.averageDegree = 0.0;
     }
     /* Method to print all details of the Cluster object. */
     proc printClusterInfo() {
@@ -93,13 +97,17 @@ module WellConnectedComponents {
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
     var clusterArrtemp = wcc(g1);
     // writeln("clusterArrtemp = ", clusterArrtemp);
-    var clusterArr = nodeMapGraphG1[clusterArrtemp]; // Map vertices back to original values.
-
+    //var clusterArr = nodeMapGraphG1[clusterArrtemp]; // Map vertices back to original values.
+    var clusterArr = clusterArrtemp; //cluster id, depth, number of elements
+    writeln("nodeMapGraphG1= ", nodeMapGraphG1);
+    writeln("nodeMapGraphG1.size= ", nodeMapGraphG1.size);
+    
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
       ID is mapped to all of the vertices with that cluster ID. 
     */
     proc readClustersFile(filename: string) throws {
+      writeln("///////////////////////////readClustersFile");
       var clusters = new map(int, set(int));
       var file = open(filename, ioMode.r);
       var reader = file.reader(locking=false);
@@ -121,6 +129,7 @@ module WellConnectedComponents {
               clusters[clusterID] = s;
             }
           }
+          else writeln("originalNode which is not in graph: ", originalNode);
         }
       }
       reader.close();
@@ -147,9 +156,22 @@ module WellConnectedComponents {
 
     /* From a passed cluster, remove all vertices with degree one. */
     proc removeDegreeOneVertices(cluster: borrowed Cluster) throws {
-      for v in cluster.members do
-        if calculateClusterDegree(cluster.members, v) < 2 then cluster.members.remove(v);
+      var counternew: int =0;
+      var totalDegree: int =0;
+      var newMemberSet: set(int);
+      for v in cluster.members {
+        var memberDegree = calculateClusterDegree(cluster.members, v);
+        if  memberDegree >= 2 {
+          newMemberSet.add(v);
+          //counternew +=1;
+          totalDegree += memberDegree;
+        }
+      }
+      //writeln("counternew ", counternew," to add");
+      cluster.members = newMemberSet;
       cluster.n_members = cluster.members.size;
+      cluster.averageDegree = totalDegree/cluster.n_members;
+
       if cluster.n_members < 2 then cluster.isSingleton = true;
     }
     
@@ -211,7 +233,10 @@ module WellConnectedComponents {
       //writeln("src: ", src);
       //writeln("dst: ", dst);
       writeln("m: ", m);
-      
+      var AveD = m/n;
+      writeln("Average Degree: ", AveD);
+      var density =  m/n*(n-1);
+      writeln("cluster density before cut: ",density);
       var partitionArr: [{0..<n}] int;
       var cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
@@ -297,6 +322,7 @@ module WellConnectedComponents {
       var results: list(int);
       var clusters = readClustersFile(inputcluster_filePath);
 
+      //for key in clusters.keys() {
       for key in clusters.keys() {
         ref clusterToAdd = clusters[key];
 
@@ -306,6 +332,7 @@ module WellConnectedComponents {
         //clusre members should mapp
         //writeln("Cluster with id: ", clusterInit.id, " Created. It has :", clusterInit.n_members );
         //clusterInit.printClusterInfo();
+
         if !clusterInit.isSingleton && !clusterInit.isWcc {
           var newResults = wccHelper(clusterInit);
           for mapping in newResults do results.pushBack(mapping);
