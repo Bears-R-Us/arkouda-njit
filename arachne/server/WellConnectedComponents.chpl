@@ -142,7 +142,7 @@ module WellConnectedComponents {
     proc calculateClusterDegree(clusterMembers, vertex): int throws {
       const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
       
-      // TODO: Wasting space by using to.Array(). Maybe just make our own intersection procedure?
+
       //var intersection = neighbors & clusterMembers.toArray();
       var intersection: set(int);
       for v in clusterMembers {
@@ -153,6 +153,17 @@ module WellConnectedComponents {
         } 
       return intersection.size;
     }
+    /* Optimized function to calculate the degree of a vertex within a component/cluster/community. */
+    proc optiCalculateClusterDegree(clusterMembers: set(int), vertex: int): int throws {
+      const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
+      var degree = 0;
+      for u in neighbors {
+        if clusterMembers.contains(u) {
+          degree += 1;
+        }
+      }
+      return degree;
+    }
 
     /* From a passed cluster, remove all vertices with degree one. */
     proc removeDegreeOneVertices(cluster: borrowed Cluster) throws {
@@ -160,7 +171,8 @@ module WellConnectedComponents {
       var totalDegree: int =0;
       var newMemberSet: set(int);
       for v in cluster.members {
-        var memberDegree = calculateClusterDegree(cluster.members, v);
+        //var memberDegree = calculateClusterDegree(cluster.members, v);
+        var memberDegree = optiCalculateClusterDegree(cluster.members, v);
         if  memberDegree >= 2 {
           newMemberSet.add(v);
           //counternew +=1;
@@ -176,7 +188,70 @@ module WellConnectedComponents {
 
       if cluster.n_members < 2 then cluster.isSingleton = true;
     }
+    /* Function to perform 2-core decomposition on a given cluster. */
     
+    proc core2Decomposition(cluster: borrowed Cluster) throws{
+      
+      // Initialize degrees within the cluster
+      var clusterMemebrs = cluster.members;
+      var clusterDomain:domain(int, parSafe=true);
+      
+      writeln("clusterDomain: ", clusterDomain);
+      //var memberArr = cluster.members.toArray();
+ clusterDomain += clusterMemebrs.toArray();;
+
+      var degrees: [clusterDomain] int = -1;
+      writeln("degrees before", degrees);
+      for v in clusterMemebrs {
+        degrees[v] = optiCalculateClusterDegree(clusterMemebrs, v);
+      }
+      writeln("degrees after", degrees);
+
+      // Initialize queue of nodes with degree less than 2
+      var removeQueue = new list(int);
+
+      for v in clusterMemebrs {
+        if degrees[v] < 2 {
+          removeQueue.pushBack(v);
+        }
+      }
+
+      // While the queue is not empty
+      while !removeQueue.isEmpty() {
+        var v = removeQueue.popBack();
+
+        // For each neighbor of v within the cluster
+        const ref neighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+        for u in neighbors {
+          if cluster.members.contains(u) && degrees[u] >= 2 {
+            degrees[u] -= 1;
+            if degrees[u] < 2 {
+              removeQueue.pushBack(u);
+            }
+          }
+        }
+
+        // Mark v as removed
+        degrees[v] = -1;
+      }
+
+      // Collect nodes with degrees >= 2
+      var core2Members = new set(int);
+
+      for v in cluster.members {
+        if degrees[v] >= 2 {
+          core2Members.add(v);
+        }
+      }
+      writeln("core2Members: ", core2Members);
+      cluster.members = core2Members;
+      cluster.n_members = cluster.members.size;
+
+      if cluster.n_members < 2 then cluster.isSingleton = true;
+      //return core2Members;
+    }
+
     /* Given a cluster and a cut size, determine if it is well-connected or not. */
     proc isWellConnected(cluster: borrowed Cluster, edgeCutSize: int): bool throws {
       // QUESTION: Why is the size of cluster members casted to real?
@@ -277,9 +352,10 @@ module WellConnectedComponents {
 
     /* Helper method to run the recursion. */
     proc wccHelper(cluster: borrowed Cluster): list(int) throws{
+      writeln("///////////////////////////wccHelper");
       var allWCC: list(int);
       cluster.printClusterInfo();
-
+      //core2Decomposition(cluster);
       removeDegreeOneVertices(cluster);
       writeln("/////////removeDegreeOneVertices called and");
       cluster.printClusterInfo();
