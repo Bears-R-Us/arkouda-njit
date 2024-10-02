@@ -2,6 +2,7 @@
 """
 from __future__ import annotations
 from typing import cast, Tuple, Union
+import os
 from typeguard import typechecked
 import arachne as ar
 from arachne.graphclass import Graph
@@ -12,6 +13,7 @@ from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
 
 __all__ = [ "read_matrix_market_file",
+            "read_tsv_file",
             "bfs_layers",
             "subgraph_isomorphism",
             "triangles",
@@ -21,13 +23,15 @@ __all__ = [ "read_matrix_market_file",
             "truss_decomposition",
             "triangle_centrality",
             "connected_components",
-            "diameter"
+            "diameter",
+            "well_connected_components"
            ]
 
 @typechecked
 def read_matrix_market_file(filepath: str,
                             directed = False,
-                            only_edges = False) -> Union[Graph,DiGraph,Tuple]:
+                            only_edges = False,
+                            comment_header = "%") -> Union[Graph,DiGraph,Tuple]:
     """Reads a matrix market file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -38,6 +42,9 @@ def read_matrix_market_file(filepath: str,
     directed : int
         Starting vertex for breadth-first search.
     only_edges : bool
+        If `True` will return only `src` and `dst` arrays instead of a graph.
+    comment_header : str
+        The reader will ignore any files that begin with the comment header.
 
     Returns
     -------
@@ -46,7 +53,66 @@ def read_matrix_market_file(filepath: str,
     """
     cmd = "readMatrixMarketFile"
     args = { "Path": filepath,
-             "Directed": directed }
+             "Directed": directed,
+             "CommentHeader": comment_header }
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    returned_vals = (cast(str, rep_msg).split('+'))
+
+    src = create_pdarray(returned_vals[0])
+    dst = create_pdarray(returned_vals[1])
+
+    if only_edges:
+        return (src,dst)
+
+    wgt = ak.array([-1])
+    weighted = False
+    if returned_vals[2].strip() != "nil":
+        wgt = create_pdarray(returned_vals[2])
+        weighted = True
+
+    if not directed:
+        graph = Graph()
+        if not weighted:
+            graph.add_edges_from(src, dst)
+        else:
+            graph.add_edges_from(src, dst, wgt)
+        return graph
+    else:
+        di_graph = DiGraph()
+        if not weighted:
+            di_graph.add_edges_from(src, dst)
+        else:
+            di_graph.add_edges_from(src, dst, wgt)
+        return di_graph
+
+@typechecked
+def read_tsv_file(  filepath: str,
+                    directed = False,
+                    only_edges = False,
+                    comment_header = "#") -> Union[Graph,DiGraph,Tuple]:
+    """Reads a `.tsv` file and returns the graph specified by the matrix indices. NOTE: the
+    absolute path to the file must be given.
+
+    Parameters
+    ----------
+    filepath : str
+        The graph whose breadth-first search layers we want.
+    directed : int
+        Starting vertex for breadth-first search.
+    only_edges : bool
+        If `True` will return only `src` and `dst` arrays instead of a graph.
+    comment_header : str
+        The reader will ignore any files that begin with the comment header.
+
+    Returns
+    -------
+    Graph | DiGraph
+        The graph specified by the `.tsv` file.
+    """
+    cmd = "readTSVFile"
+    args = { "Path": filepath,
+             "Directed": directed,
+             "CommentHeader": comment_header }
     rep_msg = generic_msg(cmd=cmd, args=args)
     returned_vals = (cast(str, rep_msg).split('+'))
 
@@ -403,6 +469,50 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
              "SubGraphName":subgraph.name,
              "SemanticCheckType": str(semantic_check).lower(),
              "TrackSize": str(size_limit).lower() }
+
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    return create_pdarray(rep_msg)
+
+
+@typechecked
+def well_connected_components(graph: Graph, file_path: str, output_path: str = None) -> pdarray:
+    """
+    Runs a single threaded version of well-connectec components (WCC). Writes the outputted clusters 
+    by default to `arkouda-njit/arachne/output/wcc.text`.
+
+    Parameters
+    ----------
+    G : Graph
+        The full graph.
+    file_path : str
+        The file containing the clusters each vertex belongs to.
+    output_path : str
+        The output path to where the new clusters are to be written to.
+
+    Returns
+    -------
+    pdarray
+        Array consisting of 3*n elements where n is the number of clusters and 3 is the 
+        information for each cluster: (identifier, depth, number of members).
+    
+    See Also
+    --------
+    connected_components
+
+    Notes
+    -----
+    Work in progress. Currently, the graph file must be processed and read through Python. Future
+    functionality will include building the graph directly from Chapel and full parallelization
+    while processing each cluster through WCC.
+    """
+    if output_path is None:
+        output_path = os.path.abspath("./output/wcc")
+
+    cmd = "wellConnectedComponents"
+    args = { "GraphName":graph.name,
+             "FilePath": file_path,
+             "OutputPath": output_path}
+    print("Cluster files written to: ", output_path)
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     return create_pdarray(rep_msg)

@@ -195,6 +195,8 @@ module BuildGraphMsg {
         // Parse the message from Python to extract needed data. 
         var pathS = msgArgs.getValueOf("Path");
         var directedS = msgArgs.getValueOf("Directed");
+        var commentHeader = msgArgs.getValueOf("CommentHeader");
+        commentHeader = commentHeader.strip();
 
         // Converted parsed messages to the needed data types for Chapel operations.
         var path:string = (pathS:string);
@@ -216,9 +218,9 @@ module BuildGraphMsg {
         var line:string;
         var a,b,c:string;
 
-        // Prase through the matrix market file header to get number of rows, columns, and entries.
+        // Parse through the matrix market file header to get number of rows, columns, and entries.
         while (r.readLine(line)) {
-            if (line[0] == "%") then continue;
+            if (line[0] == commentHeader) then continue;
             else {
                 var temp = line.split();
                 a = temp[0];
@@ -252,24 +254,17 @@ module BuildGraphMsg {
         }
         ind += 1;
 
-        // Now, read the rest of the file. The reading will be carried out by the head locale, which
-        // will typically be locale0. Therefore, we will create some aggregators for when locale0
-        // has to write to remote data.
-        var edge_agg = new DstAggregator(int);
+        // Read the rest of the file.
+        // TODO: Use these aggregators for distributed file reading.
+        var src_agg = new DstAggregator(int);
+        var dst_agg = new DstAggregator(int);
         var wgt_agg = new DstAggregator(real);
         while (r.readLine(line)) {
             var temp = line.split();
             if !weighted {
-                // TODO: Aggregators don't work here anymore?
-                // edge_agg.copy(src[ind], temp[0]:int);
-                // edge_agg.copy(dst[ind], temp[1]:int);
                 src[ind] = temp[0]:int;
                 dst[ind] = temp[1]:int;
             } else {
-                // TODO: Aggregators don't work here anymore?
-                // edge_agg.copy(src[ind], temp[0]:int);
-                // edge_agg.copy(dst[ind], temp[1]:int);
-                // wgt_agg.copy(wgt[ind], temp[2]:real);
                 src[ind] = temp[0]:int;
                 dst[ind] = temp[1]:int;
                 wgt[ind] = temp[2]:real;
@@ -298,7 +293,99 @@ module BuildGraphMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readMatrixMarketFileMsg
 
+    /**
+    * Read in a .tsv file to pdarrays to eventually build a graph.
+    *
+    * cmd: operation to perform. 
+    * msgArgs: arugments passed to backend. 
+    * SymTab: symbol table used for storage. 
+    *
+    * returns: message back to Python.
+    */
+    proc readTSVFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        // Parse the message from Python to extract needed data. 
+        var pathS = msgArgs.getValueOf("Path");
+        var directedS = msgArgs.getValueOf("Directed");
+        var commentHeader = msgArgs.getValueOf("CommentHeader");
+        commentHeader = commentHeader.strip();
+
+        // Converted parsed messages to the needed data types for Chapel operations.
+        var path:string = (pathS:string);
+
+        var directed:bool;
+        directedS = directedS.toLower();
+        directed = (directedS:bool);
+
+        // Check to see if the file can be opened correctly. 
+        try { var f = open(path, ioMode.r); f.close(); } 
+        catch { bgmLogger.error(    getModuleName(),
+                                    getRoutineName(),
+                                    getLineNumber(), 
+                                    "Error opening file."); }
+    
+        // Start parsing through the file.
+        var f = open(path, ioMode.r);
+        var r = f.reader(locking=false);
+        var line:string;
+        var count:int = 0;
+
+        // Read the rest of the file.
+        // TODO: How can we make this optimized for disitributed graph loading?
+        var srcList = new list(int);
+        var dstList = new list(int);
+        var wgtList = new list(real);
+        while (r.readLine(line)) {
+            var temp = line.split();
+            for s in temp do s = s.strip();
+            if !temp[0].startsWith(commentHeader) {
+                if temp.size < 3 {
+                    srcList.pushBack(temp[0]:int);
+                    dstList.pushBack(temp[1]:int);
+                } else {
+                    srcList.pushBack(temp[0]:int);
+                    dstList.pushBack(temp[1]:int);
+                    wgtList.pushBack(temp[2]:real);
+                }
+                count += 1;
+            } else {
+                continue;
+            }
+        }
+        var weighted:bool = if wgtList.size > 0 then true else false;
+
+        var src = makeDistArray(count, int);
+        var dst = makeDistArray(count, int);
+        var wgt = makeDistArray(count, real);
+
+        writeln("$$$$$ we get here 1");
+        src = srcList;
+        dst = dstList;
+        if weighted then wgt = wgtList;
+        writeln("$$$$$ we get here 2");
+        
+        // Add the read arrays into the symbol table.
+        var src_name = st.nextName();
+        var src_entry = createSymEntry(src);
+        st.addEntry(src_name, src_entry);
+
+        var dst_name = st.nextName();
+        var dst_entry = createSymEntry(dst);
+        st.addEntry(dst_name, dst_entry);
+
+        var wgt_name = st.nextName();
+        var wgt_entry = createSymEntry(wgt);
+        st.addEntry(wgt_name, wgt_entry);
+
+        // Write the reply message back to Python. 
+        var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
+        if weighted then repMsg += "+ created " + st.attrib(wgt_name);
+        else repMsg += "+ nil";
+        
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    } // end of readMatrixMarketFileMsg
+
     use CommandMap;
     registerFunction("insertComponents", insertComponentsMsg, getModuleName());
     registerFunction("readMatrixMarketFile", readMatrixMarketFileMsg, getModuleName());
+    registerFunction("readTSVFile", readTSVFileMsg, getModuleName());
 }
