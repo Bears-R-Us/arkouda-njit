@@ -276,10 +276,11 @@ module WellConnectedComponents {
     proc wccHelper(cluster: borrowed Cluster): list(int) throws {
       var allWCC: list(int);
       
-      // TODO: We have an idea to use core-2 decomposition instead of removeDegreeOneVertices.
-      //       However, we are not sure if this is correct, so it is staying commented out for now.
-      // core2Decomposition(cluster);
-      removeDegreeOneVertices(cluster);
+      core2Decomposition(cluster);
+      // NOTE: Per our experimentations, getting the 2-core decomposition of the graph is faster
+      //       than removing degree one vertices multiple times. Therefore, we use that instead of
+      //       what is originally outlined in the WCC paper. 
+      // removeDegreeOneVertices(cluster);
 
       if !cluster.isSingleton {
         var currentID = cluster.id;
