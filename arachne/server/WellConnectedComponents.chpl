@@ -274,11 +274,11 @@ module WellConnectedComponents {
 
     /* Helper method to run the recursion. */
     proc wccHelper(cluster: borrowed Cluster): list(int) throws {
-      var allWCC: list(int);
+      var allWCC: list(int, parSafe=true);
       
       core2Decomposition(cluster);
       // NOTE: Per our experimentations, getting the 2-core decomposition of the graph is faster
-      //       than removing degree one vertices multiple times. Therefore, we use that instead of
+      //       than removing degree-one vertices multiple times. Therefore, we use that instead of
       //       what is originally outlined in the WCC paper. 
       // removeDegreeOneVertices(cluster);
 
@@ -310,24 +310,22 @@ module WellConnectedComponents {
 
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
-      var results: list(int);
+      var results: list(int, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
 
-      for key in clusters.keys() {
+      forall key in clusters.keysToArray() with (ref results, ref clusters) {
         ref clusterToAdd = clusters[key];
-        var clusterInit = new owned Cluster(clusterToAdd);
-        clusterInit.id = key;
-
-        if !clusterInit.isSingleton && !clusterInit.isWcc {
+        if clusterToAdd.size > 1 { // The cluster is not a singleton.
+          var clusterInit = new owned Cluster(clusterToAdd);
+          clusterInit.id = key;
           var newResults = wccHelper(clusterInit);
           for mapping in newResults do results.pushBack(mapping);
         }
       }
-
-      var subClusterArrToReturn: [0..#results.size] int;
-      for i in 0..#results.size do subClusterArrToReturn[i] = results(i);
-      return(subClusterArrToReturn);
-    } // end of wcc
+        var subClusterArrToReturn: [0..#results.size] int;
+        for i in 0..#results.size do subClusterArrToReturn[i] = results(i);
+        return subClusterArrToReturn;
+      } // end of wcc
     
     return clusterArr;
   } // end of runWCC
