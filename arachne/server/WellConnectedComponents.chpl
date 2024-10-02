@@ -102,7 +102,6 @@ module WellConnectedComponents {
       ID is mapped to all of the vertices with that cluster ID. 
     */
     proc readClustersFile(filename: string) throws {
-      writeln("///////////////////////////readClustersFile");
       var clusters = new map(int, set(int));
       var file = open(filename, ioMode.r);
       var reader = file.reader(locking=false);
