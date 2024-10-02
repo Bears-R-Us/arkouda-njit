@@ -512,7 +512,7 @@ def well_connected_components(graph: Graph, file_path: str, output_path: str = N
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path}
-    print("Cluster files written to: ", output_path)
-
     rep_msg = generic_msg(cmd=cmd, args=args)
+    print("Cluster files written to: ", output_path)
+    
     return create_pdarray(rep_msg)
