@@ -222,6 +222,9 @@ module WellConnectedComponents {
         var remappedSrc1 = makeDistArray(1, int);
         var remappedDst1 = makeDistArray(1, int);
 
+        // NOTE: THIS DOES NOT WORK BECAUSE makeDistArray returns a default Chapel array instead
+        //       of a block-distributed array when CHPL_COMM is turned off.
+
         writeln("remappedSrc.type = ", remappedSrc.type:string);
         writeln("remappedDst.type = ", remappedDst.type:string);
         writeln("mapper.type = ", mapper.type:string);
