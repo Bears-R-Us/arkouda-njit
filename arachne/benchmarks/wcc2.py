@@ -12,7 +12,7 @@ import pandas as pd
 
 cluster_dict = {}
 
-
+print("reading the network file...")
 # Read the TSV file using pandas
 network_df = pd.read_csv("/scratch/users/md724/DataSets/UIUC/wiki_topcats/wiki_topcats_cleaned.tsv", sep="\t", header=None, names=["src", "dst"])
 network_df['type'] = 'T1'
