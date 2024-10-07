@@ -4,11 +4,11 @@ import scipy as sp
 import networkx as nx
 import matplotlib.pyplot as plt
 import os
+import pandas as pd
 
 # Connect to Arkouda server
-ak.connect("n115", 5555)
+ak.connect("n32", 5555)
 
-import pandas as pd
 
 cluster_dict = {}
 
