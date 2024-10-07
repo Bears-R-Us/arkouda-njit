@@ -4,7 +4,6 @@ module Utils {
   use Sort;
   use ReplicatedDist;
   use Sort;
-  use BlockDist;
   use BitOps;
   use List;
   use CopyAggregation;
@@ -329,10 +328,11 @@ module Utils {
     Pulled from Arkouda, return an array of all values from array a whose index
     corresponds to a true value in array `truth`.
   */
-  proc boolIndexer(a: [?aD] ?t, truth: [aD] bool) {
+  proc boolIndexer(a: [?aD] ?t, truth: [aD] bool) throws {
     var iv: [truth.domain] int = (+ scan truth);
     var pop = iv[iv.size-1];
-    var ret = blockDist.createArray({0..<pop}, t);
+    // var ret = blockDist.createArray({0..<pop}, t);
+    var ret = makeDistArray(pop, t);
 
     forall (i, eai) in zip(a.domain, a) with (var agg = new DstAggregator(t)) do 
       if (truth[i]) then agg.copy(ret[iv[i]-1], eai);
@@ -344,11 +344,13 @@ module Utils {
     Given two arrays `src` and `dst`, it symmetrizes the edge list. In other
     words, it concatenates `dst` to `src` and `src` to `dst`.
   */
-  proc symmetrizeEdgeList(src, dst) {
+  proc symmetrizeEdgeList(src, dst) throws {
     var m = src.size;
 
-    var symmSrc = blockDist.createArray({0..<2*m}, int);
-    var symmDst = blockDist.createArray({0..<2*m}, int);
+    // var symmSrc = blockDist.createArray({0..<2*m}, int);
+    // var symmDst = blockDist.createArray({0..<2*m}, int);
+    var symmSrc = makeDistArray(2*m, int);
+    var symmDst = makeDistArray(2*m, int);
 
     symmSrc[0..<m] = src; symmSrc[m..<2*m] = dst; // TODO: Needs aggregator?
     symmDst[0..<m] = dst; symmDst[m..<2*m] = src; // TODO: Needs aggregator?
@@ -360,17 +362,20 @@ module Utils {
     Pulled from Arkouda. Given an array, `sorted`, generates the unique values
     of the array and the counts of each value, if `needCounts` is set to `true`.
   */
-  proc uniqueFromSorted(sorted: [?aD] ?t, param needCounts = true) {
-    var truth = blockDist.createArray(aD, bool);
+  proc uniqueFromSorted(sorted: [?aD] ?t, param needCounts = true) throws {
+    // var truth = blockDist.createArray(aD, bool);
+    var truth = makeDistArray(aD.size, bool);
     truth[0] = true;
     [(t,s,i) in zip(truth,sorted,aD)] if i > aD.low { t = (sorted[i-1] != s); }
     var allUnique: int = + reduce truth;
 
     if allUnique == aD.size {
-      var u = blockDist.createArray(aD, t);
+      // var u = blockDist.createArray(aD, t);
+      var u = makeDistArray(aD.size, t);
       u = sorted;
       if needCounts {
-        var c = blockDist.createArray(aD, int);
+        // var c = blockDist.createArray(aD, int);
+        var c = makeDistArray(aD.size, int);
         c = 1;
         return (u, c);
       } else {
@@ -381,8 +386,10 @@ module Utils {
     var iv: [truth.domain] int = (+ scan truth);
     var pop = iv[iv.size - 1];
 
-    var segs = blockDist.createArray({0..<pop}, int);
-    var ukeys = blockDist.createArray({0..<pop}, t);
+    // var segs = blockDist.createArray({0..<pop}, int);
+    // var ukeys = blockDist.createArray({0..<pop}, t);
+    var segs = makeDistArray(pop, int);
+    var ukeys = makeDistArray(pop, t);
 
     forall i in truth.domain with (var agg = new DstAggregator(int)){
       if truth[i] == true {
@@ -395,7 +402,8 @@ module Utils {
       with (var agg = new SrcAggregator(t)) do agg.copy(uk, sorted[seg]);
 
     if needCounts {
-      var counts = blockDist.createArray({0..<pop}, int);
+      // var counts = blockDist.createArray({0..<pop}, int);
+      var counts = makeDistArray(pop, int);
       forall i in segs.domain {
         if i < segs.domain.high then counts[i] = segs[i+1] - segs[i];
         else counts[i] = sorted.domain.high+1 - segs[i];
@@ -412,16 +420,14 @@ module Utils {
     newly merged array and then returns new versions `src` and `dst` based off
     the sort.
   */
-  proc sortEdgeList(in src, in dst) {
+  proc sortEdgeList(in src, in dst) throws {
     var (totalDigits,bitWidths,negs) = getNumDigitsNumericArrays(src, dst);
     var m = src.size;
 
     /* Pulled from Arkouda to merge two arrays into one for radix sort. */
-    proc mergeNumericArrays(param numDigits,size,totalDigits,bitWidths,negs) {
-      var merged = blockDist.createArray(
-        {0..<size}, 
-        numDigits*uint(bitsPerDigit)
-      );
+    proc mergeNumericArrays(param numDigits,size,totalDigits,bitWidths,negs) throws {
+      // var merged = blockDist.createArray(
+      var merged = makeDistArray(size, numDigits*uint(bitsPerDigit));
       var curDigit = numDigits - totalDigits;
 
       var nBits = bitWidths[0];
@@ -450,7 +456,7 @@ module Utils {
     }
 
     /* Pulled from Arkouda, runs merge and then sort */
-    proc mergedArgsort(param numDigits) {
+    proc mergedArgsort(param numDigits) throws {
       var merged = mergeNumericArrays(
         numDigits, 
         m, 
@@ -459,8 +465,10 @@ module Utils {
         negs
       );
 
-      var AI = blockDist.createArray(merged.domain, (merged.eltType,int));
-      var iv = blockDist.createArray(merged.domain, int);
+      // var AI = blockDist.createArray(merged.domain, (merged.eltType,int));
+      // var iv = blockDist.createArray(merged.domain, int);
+      var AI = makeDistArray(merged.domain.size, (merged.eltType,int));
+      var iv = makeDistArray(merged.domain.size, int);
 
       AI = [(a, i) in zip(merged, merged.domain)] (a, i);
       Sort.TwoArrayDistributedRadixSort.twoArrayDistributedRadixSort(
@@ -471,7 +479,8 @@ module Utils {
       return iv;
     }
 
-    var iv = blockDist.createArray({0..<m}, int);
+    // var iv = makeDistArray(m, int);
+    var iv = makeDistArray(m, int);
     if totalDigits <=  4 { iv = mergedArgsort( 4); }
     else if totalDigits <=  8 { iv = mergedArgsort( 8); }
     else if totalDigits <= 16 { iv = mergedArgsort(16); }
@@ -485,7 +494,7 @@ module Utils {
     Given two arrays, find instances of where src[i] == dst[i] and removes these
     self-loops.
   */
-  proc removeSelfLoops(src, dst) {
+  proc removeSelfLoops(src, dst) throws {
     var loops = src != dst;
     var noLoopsSrc = boolIndexer(src, loops);
     var noLoopsDst = boolIndexer(dst, loops);
@@ -497,18 +506,19 @@ module Utils {
     Given two arrays, assumed to have been previously sorted by `sortEdgeList`, 
     removes duplicated edges.
   */
-  proc removeMultipleEdges(src: [?sD] int, dst) {
-    var edgesAsTuples = blockDist.createArray(
-      sD, (int,int)
-    );
+  proc removeMultipleEdges(src: [?sD] int, dst) throws {
+    // var edgesAsTuples = blockDist.createArray(sD, (int,int));
+    var edgesAsTuples = makeDistArray(sD.size, (int,int));
 
     forall (e, i) in zip(edgesAsTuples, edgesAsTuples.domain) do
       e = (src[i], dst[i]);
 
     var uniqueEdges = uniqueFromSorted(edgesAsTuples, needCounts = false);
     var eD = uniqueEdges.domain;
-    var noDupsSrc = blockDist.createArray(eD,int);
-    var noDupsDst = blockDist.createArray(eD,int);
+    // var noDupsSrc = blockDist.createArray(eD,int);
+    // var noDupsDst = blockDist.createArray(eD,int);
+    var noDupsSrc = makeDistArray(eD.size,int);
+    var noDupsDst = makeDistArray(eD.size,int);
 
     forall (e,u,v) in zip(uniqueEdges,noDupsSrc,noDupsDst) {
       u = e[0];
@@ -521,9 +531,11 @@ module Utils {
   /*
     Wrapper to return the permutation that will sort the array `arr`.
   */
-  proc argsort(arr) {
-    var AI = blockDist.createArray(arr.domain, (arr.eltType,int));
-    var iv = blockDist.createArray(arr.domain, int);
+  proc argsort(arr) throws {
+    // var AI = blockDist.createArray(arr.domain, (arr.eltType,int));
+    // var iv = blockDist.createArray(arr.domain, int);
+    var AI = makeDistArray(arr.domain.size, (arr.eltType,int));
+    var iv = makeDistArray(arr.domain.size, int);
 
     AI = [(a, i) in zip(arr, arr.domain)] (a, i);
     Sort.TwoArrayDistributedRadixSort.twoArrayDistributedRadixSort(
@@ -538,8 +550,9 @@ module Utils {
     Remaps the values within `src` and `dst` to the range `0..n-1` where `n` is
     the number of vertices in the graph.
   */
-  proc oneUpper(src: [?sD], in dst) {
-    var srcPerm = blockDist.createArray(sD, int);
+  proc oneUpper(src: [?sD], in dst) throws {
+    // var srcPerm = blockDist.createArray(sD, int);
+    var srcPerm = makeDistArray(sD.size, int);
     forall (s,i) in zip(srcPerm, srcPerm.domain) do s=i;
     var (srcUnique, srcCounts) = uniqueFromSorted(src);
     
@@ -550,7 +563,8 @@ module Utils {
     var srcSegments = (+ scan srcCounts) - srcCounts;
     var dstSegments = (+ scan dstCounts) - dstCounts;
 
-    var vals = blockDist.createArray(srcUnique.domain, int);
+    // var vals = blockDist.createArray(srcUnique.domain, int);
+    var vals = makeDistArray(srcUnique.domain.size, int);
     forall (v,i) in zip(vals, vals.domain) do v=i;
 
     var newSrc = broadcast(srcPerm, srcSegments, vals);
@@ -573,14 +587,16 @@ module Utils {
     need to be broadcasted and is typically of the same size as the number of
     unique elements in the array.
    */
-  proc broadcast(perm: [?D] int, segs: [?sD] int, vals: [sD] ?t) {
+  proc broadcast(perm: [?D] int, segs: [?sD] int, vals: [sD] ?t) throws {
     if sD.size == 0 {
       // early out if size 0
-      return blockDist.createArray({0..<D.size}, t);
+      // return blockDist.createArray({0..<D.size}, t);
+      return makeDistArray(D.size, t);
     }
     // The stragegy is to go from the segment domain to the full
     // domain by forming the full derivative and integrating it
-    var keepSegs = blockDist.createArray(sD, bool);
+    // var keepSegs = blockDist.createArray(sD, bool);
+    var keepSegs = makeDistArray(sD.size, bool);
     [(k, s, i) in zip(keepSegs, segs, sD)] if i < sD.high { k = (segs[i+1] != s); }
     keepSegs[sD.high] = true;
 
@@ -588,7 +604,8 @@ module Utils {
 
     if numKeep == sD.size {
       // Compute the sparse derivative (in segment domain) of values
-      var diffs = blockDist.createArray(sD, t);
+      // var diffs = blockDist.createArray(sD, t);
+      var diffs = makeDistArray(sD.size, t);
       forall (i, d, v) in zip(sD, diffs, vals) {
         if i == sD.low {
           d = v;
@@ -597,14 +614,15 @@ module Utils {
         }
       }
       // Convert to the dense derivative (in full domain) of values
-      var expandedVals = blockDist.createArray(D, t);
+      // var expandedVals = blockDist.createArray(D, t);
+      var expandedVals = makeDistArray(D.size, t);
       forall (s, d) in zip(segs, diffs) with (var agg = new DstAggregator(t)) {
         agg.copy(expandedVals[s], d);
       }
       // Integrate to recover full values
       expandedVals = (+ scan expandedVals);
       // Permute to the original array order
-      var permutedVals = blockDist.createArray(D, t);
+      var permutedVals = makeDistArray(D.size, t);
       forall (i, v) in zip(perm, expandedVals) with (var agg = new DstAggregator(t)) {
         agg.copy(permutedVals[i], v);
       }
@@ -624,7 +642,7 @@ module Utils {
         }
       }
       // Compute the sparse derivative (in segment domain) of values
-      var diffs = blockDist.createArray(kD, t);
+      var diffs = makeDistArray(kD.size, t);
       forall (i, d, v) in zip(kD, diffs, compressedVals) {
         if i == sD.low {
           d = v;
@@ -633,14 +651,14 @@ module Utils {
         }
       }
       // Convert to the dense derivative (in full domain) of values
-      var expandedVals = blockDist.createArray(D, t);
+      var expandedVals = makeDistArray(D.size, t);
       forall (s, d) in zip(compressedSegs, diffs) with (var agg = new DstAggregator(t)) {
         agg.copy(expandedVals[s], d);
       }
       // Integrate to recover full values
       expandedVals = (+ scan expandedVals);
       // Permute to the original array order
-      var permutedVals = blockDist.createArray(D, t);
+      var permutedVals = makeDistArray(D.size, t);
       forall (i, v) in zip(perm, expandedVals) with (var agg = new DstAggregator(t)) {
         agg.copy(permutedVals[i], v);
       }
@@ -674,9 +692,9 @@ module Utils {
     var cols = b:int;
     var entries = c:int;
 
-    var src = blockDist.createArray({0..<entries}, int);
-    var dst = blockDist.createArray({0..<entries}, int);
-    var wgt = blockDist.createArray({0..<entries}, real);
+    var src = makeDistArray(entries, int);
+    var dst = makeDistArray(entries, int);
+    var wgt = makeDistArray(entries, real);
 
     // Check to see if there will be three columns, if so the graph will be
     // weighted.
@@ -712,9 +730,9 @@ module Utils {
     return (src, dst); // TODO: make internal graph constructor & return that.
   }
 
-  proc gnp(n, m) {
-    var src = blockDist.createArray({0..<m}, int);
-    var dst = blockDist.createArray({0..<m}, int);
+  proc gnp(n, m) throws {
+    var src = makeDistArray(m, int);
+    var dst = makeDistArray(m, int);
 
     fillRandom(src, 0, n-1);
     fillRandom(dst, 0, n-1);

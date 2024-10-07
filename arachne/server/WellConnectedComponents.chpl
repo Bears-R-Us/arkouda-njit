@@ -42,6 +42,16 @@ module WellConnectedComponents {
     var membersD: domain(1);      // Members domain.
     var membersA: [membersD] int; // Members array.
 
+    /* Default initializer. */
+    proc init() {
+      this.id = -1;
+      this.n_members = 0;
+      this.isWcc = false;
+      this.isSingleton = true;
+      this.depth = 0;
+      this.averageDegree = 0.0;
+    }
+    
     /* Cluster initializer from array. */
     proc init(members: [?D] int, id:int) {
       this.id = id;
@@ -89,9 +99,7 @@ module WellConnectedComponents {
       var newMembersD = {0..<newVertices};
       var newMembersA: [newMembersD] int;
       var idx:int = 0;
-      for v in this.membersA {
-        if v != -1 then { newMembersA[idx] = v; idx += 1; }
-      }
+      for v in this.membersA do if v != -1 then { newMembersA[idx] = v; idx += 1; }
       this.membersD = newMembersD;
       this.membersA = newMembersA;
       this.n_members = newVertices;
@@ -212,53 +220,47 @@ module WellConnectedComponents {
       }
       var src = srcList.toArray();
       var dst = dstList.toArray();
+      // writeln("vertices: ", vertices);
+      // writeln("size of src is: ", src.size);
+      // writeln("size of dst is: ", dst.size);
 
-      // if src.size > 0 && dst.size > 0 {
+      if src.size != 0 && dst.size != 0 {
         var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
         var (deduppedSrc, deduppedDst) = removeMultipleEdges(sortedSrc, sortedDst);
         var (remappedSrc, remappedDst, mapper) = oneUpper(deduppedSrc, deduppedDst);
-
-        var mapper1 = makeDistArray(1, int);
-        var remappedSrc1 = makeDistArray(1, int);
-        var remappedDst1 = makeDistArray(1, int);
-
-        // NOTE: THIS DOES NOT WORK BECAUSE makeDistArray returns a default Chapel array instead
-        //       of a block-distributed array when CHPL_COMM is turned off.
-
-        writeln("remappedSrc.type = ", remappedSrc.type:string);
-        writeln("remappedDst.type = ", remappedDst.type:string);
-        writeln("mapper.type = ", mapper.type:string);
-
-        writeln("remappedSrc1.type = ", remappedSrc1.type:string);
-        writeln("remappedDst1.type = ", remappedDst1.type:string);
-        writeln("mapper1.type = ", mapper1.type:string);
-
         return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
-      // } else {
-      //   var mapper = makeDistArray(1, int);
-      //   var remappedSrc = makeDistArray(1, int);
-      //   var remappedDst = makeDistArray(1, int);
-      //   return (mapper, mapper.size-1, remappedSrc, remappedDst, remappedSrc.size-1);
-      // }
+      } else {
+        var mapper = makeDistArray(0, int);
+        var remappedSrc = makeDistArray(0, int);
+        var remappedDst = makeDistArray(0, int);
+        return (mapper, mapper.size, remappedSrc, remappedDst, remappedSrc.size);
+      }
     }
 
     /* Calls out to an external procedure that runs VieCut. */
     proc callMinCut(vertices: [] int) throws {
+      // writeln("We get into min cut!");
       var (mapper, n, src, dst, m) = getEdgeList(vertices);
-      var partitionArr: [{0..<n}] int;
-      var newSrc: [{0..<m}] int = src;
-      var newDst: [{0..<m}] int = dst;
-      var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
+      // writeln("We get edge list with (|v|,|e|) = ", (n,m));
+      if m > 0 {
+        var partitionArr: [{0..<n}] int;
+        var newSrc: [{0..<m}] int = src;
+        var newDst: [{0..<m}] int = dst;
+        var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
 
-      var cluster1, cluster2 = new list(int);
-      for (v,p) in zip(partitionArr.domain, partitionArr) {
-        if p == 1 then cluster1.pushBack(mapper[v]);
-        else cluster2.pushBack(mapper[v]);
+        var cluster1, cluster2 = new list(int);
+        for (v,p) in zip(partitionArr.domain, partitionArr) {
+          if p == 1 then cluster1.pushBack(mapper[v]);
+          else cluster2.pushBack(mapper[v]);
+        }
+        var inPartition = cluster1.toArray();
+        var outPartition = cluster2.toArray();
+        
+        return (cut, inPartition, outPartition);
+      } else {
+        var inPartition, outPartition = makeDistArray(0, int);
+        return (-1, inPartition, outPartition);
       }
-      var inPartition = cluster1.toArray();
-      var outPartition = cluster2.toArray();
-      
-      return(cut, inPartition, outPartition);
     }
 
 
@@ -325,23 +327,46 @@ module WellConnectedComponents {
       }
       writeln("workQueue size = ", workQueue.size);
       writeln("here.maxTaskPar = ", here.maxTaskPar);
+      writeln();
 
+      var iteration:int = 0;
       while workQueue.size > 0 {
         coforall i in 0..<here.maxTaskPar with (ref workQueue, ref results) {
-          var cluster = workQueue.popBack();
-          writeln("Working on cluster ", cluster.id, ": ");
-          cluster.removeDegreeOneVertices(segGraphG1, dstNodesG1);
-          if !cluster.isSingleton {
-            var (cutSize, inPartition, outPartition) = callMinCut(cluster.membersA);
-            if !cluster.isWellConnected(cutSize) {
-              workQueue.pushBack(new shared Cluster(inPartition, cluster.id));
-              workQueue.pushBack(new shared Cluster(outPartition, cluster.id));
-            } else {
-              writeClusterToFile(cluster);
-              results.pushBack(cluster.id);
+          // var cluster = new shared Cluster();
+          // try {
+          //   cluster = workQueue.popBack();
+          // } catch {
+          //   writeln("workQueue is empty!");
+          // }
+          var cluster = if workQueue.size > 0 then workQueue.popBack() else new shared Cluster();
+          writeln("Working on cluster: ", cluster.id);
+          
+          if cluster.id != -1 {
+            cluster.removeDegreeOneVertices(segGraphG1, dstNodesG1);
+            // writeln("Removed degree one vertices from cluster: ", cluster.id);
+            if !cluster.isSingleton {
+              // writeln("Trying to call mincut for cluster: ", cluster.id);
+              var (cutSize, inPartition, outPartition) = callMinCut(cluster.membersA);
+              // writeln("Called mincut for cluster: ", cluster.id);
+              if cutSize != -1 {
+                if !cluster.isWellConnected(cutSize) {
+                  // writeln("Checked connectedness for cluster: ", cluster.id);
+                  if inPartition.size > 1 then workQueue.pushBack(new shared Cluster(inPartition, cluster.id));
+                  // writeln("Added inPartition to workQueue for cluster: ", cluster.id);
+                  if outPartition.size > 1 then workQueue.pushBack(new shared Cluster(outPartition, cluster.id));
+                  // writeln("Added outPartition to workQueue for cluster: ", cluster.id);
+                } else {
+                  writeClusterToFile(cluster);
+                  results.pushBack(cluster.id);
+                  // writeln("Wrote to out file cluster: ", cluster.id);
+                }
+              }
             }
           }
         }
+        writeln("We get here ", iteration);
+        writeln();
+        iteration += 1;
       }
 
       // forall key in clusters.keysToArray() with (ref results, ref clusters) {
