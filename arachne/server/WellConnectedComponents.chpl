@@ -110,7 +110,9 @@ module WellConnectedComponents {
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
     var clusterArrtemp = wcc(g1);
-    var clusterArr = clusterArrtemp; //cluster id, depth, number of elements
+    writeln("**********************************************************we reached here");
+
+    var clusterArr = clusterArrtemp; //cluster id
     
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
@@ -153,7 +155,7 @@ module WellConnectedComponents {
 
     /* Returns the sorted and deduplicated edge list for a given set of vertices. */
     proc getEdgeList(ref vertices: [] int) throws {
-      writeln("///////////////////////getEdgeList called for: ", vertices.size);
+      //writeln("///////////////////////getEdgeList called for: ", vertices.size);
 
       // Initialize lists to collect edges
       var srcList = new list(int);
@@ -168,7 +170,7 @@ module WellConnectedComponents {
         reverseMapper[idx] = v;
         idx += 1;
       }
-      writeln("getEdgeList-1");
+      //writeln("getEdgeList-1");
       // Collect edges within the cluster
       for u in vertices {
         const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u + 1]];
@@ -179,21 +181,21 @@ module WellConnectedComponents {
           }
         }
       }
-      writeln("getEdgeList-2");
+      //writeln("getEdgeList-2");
 
       // Convert lists to arrays
       var src = srcList.toArray();
       var dst = dstList.toArray();
-      writeln("getEdgeList-2-1");
+      //writeln("getEdgeList-2-1");
 
       // Sort the edges
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
-      writeln("getEdgeList-2-2");
+      //writeln("getEdgeList-2-2");
 
       // Remove duplicate edges
       var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
 
-      writeln("getEdgeList-3");
+      //writeln("getEdgeList-3");
 
   // Create mapper array (original vertex IDs)
   var n = mapper.size;
@@ -203,7 +205,7 @@ for i in reverseMapper.keysToArray() {
   var originalV = reverseMapper[i];
   mapperArray[i] = originalV;
 }
-      writeln("getEdgeList-4");
+      //writeln("getEdgeList-4");
 
       return (uniqueSrc, uniqueDst, mapperArray);
       //return (src, dst, mapperArray);
@@ -221,7 +223,7 @@ for i in reverseMapper.keysToArray() {
     }
     /* Function to sort edge lists based on src and dst nodes */
     proc sortEdgeList(ref src: [] int, ref dst: [] int) {
-      writeln("////////////////sortEdgeList");
+      //writeln("////////////////sortEdgeList");
       //writeln("src.size: ", src.size);
       //writeln("dst.size: ", dst.size);
       // Combine src and dst into a tuple array
@@ -233,7 +235,7 @@ for i in reverseMapper.keysToArray() {
 
         // Sort the edges using the comparator
       sort(edges, comparator=TupleComp);
-writeln("edges.size: ", edges.size);
+//writeln("edges.size: ", edges.size);
       // Extract sorted src and dst arrays
       var sortedSrc: [0..< src.size] int;
       var sortedDst: [0..< dst.size] int;
@@ -273,7 +275,7 @@ writeln("edges.size: ", edges.size);
 
 
     /* Write out the clusters to a file. */
-    proc writeClusterToFile(ref membersA:[] int, id: int, depth: int, cut: int) throws {
+    proc writeClusterToFile(ref membersA:[] int, id: int, depth: int, cut: int, ref mapper:[] int) throws {
         var filename = outputPath + "_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".txt";
         var file = open(filename, ioMode.cw);
         var fileWriter = file.writer(locking=false);
@@ -282,7 +284,8 @@ writeln("edges.size: ", edges.size);
         fileWriter.writeln("# cluster Depth: " + depth: string); 
         fileWriter.writeln("# number of members: " + membersA.size: string);
         fileWriter.writeln("# cutsize: " + cut: string);
-        for member in membersA do fileWriter.writeln(member:string);
+        fileWriter.writeln("# mapper: " + mapper: string);
+        fileWriter.writeln("# members: " + membersA: string);
         
         try fileWriter.close();
         try file.close();
@@ -302,7 +305,7 @@ writeln("edges.size: ", edges.size);
  /* Function to perform 2-core decomposition on a given cluster. */
     proc core2Decomposition(cluster: borrowed Cluster) throws{
       // Initialize degrees within the cluster.
-        writeln("///////////////////////core2Decomposition");
+        //writeln("///////////////////////core2Decomposition");
 
       var toBeRemovedVertices:int = 0;
       //var totalDegree:int = 0;
@@ -337,7 +340,7 @@ writeln("edges.size: ", edges.size);
         }
       //
       
-      writeln("core2Decomposition 2-1");
+      //writeln("core2Decomposition 2-1");
 
         // Mark v as removed.
         degrees[v] = -1;
@@ -364,8 +367,8 @@ writeln("edges.size: ", edges.size);
 
       if cluster.n_members < 2 then cluster.isSingleton = true;
 
-      writeln("2-core decomposition completed for cluster: ", cluster.id);
-      writeln("Remaining members: ", cluster.n_members);
+      //writeln("2-core decomposition completed for cluster: ", cluster.id);
+      //writeln("Remaining members: ", cluster.n_members);
     }
 
 
@@ -375,7 +378,7 @@ writeln("edges.size: ", edges.size);
       var removedVertices:int = 0;
       for v in cluster.membersA {
         var memberDegree = calculateClusterDegree(cluster.membersA, v);
-        if memberDegree == 1 { v = -1; removedVertices += 1; }
+        if memberDegree <= 1 { v = -1; removedVertices += 1; }
         else totalDegree += memberDegree;
       }
       var newVertices = cluster.n_members - removedVertices;
@@ -391,53 +394,10 @@ writeln("edges.size: ", edges.size);
       cluster.n_members = newVertices;
       //if cluster.n_members > 0 then cluster.averageDegree = totalDegree / cluster.n_members;
       if cluster.n_members < 2 then cluster.isSingleton = true;
+      //writeln("removeDegreeOneVertices returned cluster with size:", cluster.n_members);
     }
 
-    /* Helper method to run the recursion. */
-    proc wccHelper(cluster: borrowed Cluster): list(int) throws {
-      var allWCC: list(int, parSafe=true);
-      writeln("////////////////////////////wccHelper");
-      cluster.printClusterInfo();
-      removeDegreeOneVertices(cluster);
-      //core2Decomposition(cluster);
-
-      //writeln("cluster : ",cluster.id, " at depth", cluster.depth," with ", cluster.n_members," passed to core2Decomposition");
-      //cluster.core2Decomposition(segGraphG1, dstNodesG1);
-      //writeln("**cluster : ",cluster.id, " with ", cluster.n_members," received");
-
-      //cluster.printClusterInfo();
-
-      // NOTE: Per our experimentations, getting the 2-core decomposition of the graph is faster
-      //       than removing degree-one vertices multiple times. Therefore, we use that instead of
-      //       what is originally outlined in the WCC paper. 
-
-      if !cluster.isSingleton {
-        //var currentID = cluster.id;
-        var currentDepth = cluster.depth;
-        var (cutSize, clusterList) = callMinCut(cluster.membersA); 
-        writeln("After callMinCut");
-
-        if !cluster.isWellConnected(cutSize) {
-          for minCutReturnedArr in clusterList {
-            var subCluster = new owned Cluster(minCutReturnedArr.a, cluster.id);
-            subCluster.depth = currentDepth + 1;
-            var newSubClusters: list(int, parSafe=true);
-            newSubClusters = wccHelper(subCluster);
-            for findings in newSubClusters do allWCC.pushBack(findings);
-          }
-        } else {
-
-          allWCC.pushBack(cluster.id);
-          allWCC.pushBack(cluster.depth);
-          allWCC.pushBack(cluster.n_members);
-          writeClusterToFile(cluster);
-
-          return allWCC;
-        }
-      }
-      return allWCC;
-    }
-/*    
+ 
 /////////////////////////////////////////////////////// new idea
 proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [] int) throws{
   const n = src.size;
@@ -475,63 +435,71 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
       idex += 1;
     }
   }
-  writeln("newSrc",newSrc );
-  writeln("newDst",newDst );
-  writeln("newMapper",newMapper );
+  //writeln("newSrc",newSrc );
+  //writeln("newDst",newDst );
+  //writeln("newMapper",newMapper );
   //return (newSrc, newDst, newMapper);
 }
 
-proc removeDegreeOneNodes(src: [] int, dst: [] int, mapper: [] int): ([], [], []) {
-  const n = src.size;
-  var degree: [0..n-1] int;
-
-  // Calculating the degree of each node
-  for i in 0..n-1 {
-    degree[src[i]] += 1;
-    degree[dst[i]] += 1;
-  }
-
-  // Finding nodes with degree 1
-  var toRemove: list(int);
-  for i in 0..n-1 {
-    if degree[i] == 1 {
-      toRemove.append(i);
-    }
-  }
-
-  // Calling the function to remove the nodes with degree 1
-  return removeVertices(src, dst, mapper, toRemove);
-}
 /////////////////////////////////////////////////////// end of new idea
-*/
 
-   /* Calls out to an external procedure that runs VieCut. */
-    proc callMinCut(ref vertices: [] int, id: int, depth: int) throws {
-      writeln("///////////////////////callMinCut, received: ",vertices.size," vertices to CUT");
+    proc removeDegreeOneFromPartition(ref partition:[] int) throws{
+      //var totalDegree:int = 0;
+      if partition.size <= 1{
+        var zeroArray:[1..0] int;
+        return zeroArray;
+      }
+      var removedVertices:int = 0;
+      for v in partition {
+            var memberDegree = calculateClusterDegree(partition, v);
+            if memberDegree < 2 {
+              v = -1; 
+              removedVertices += 1; 
+            }
+            //else totalDegree += memberDegree;
+          }
+          var newVertices = partition.size - removedVertices;
+          var newMembersA: [0..<newVertices] int;
+          var idx:int = 0;
+          for v in partition {
+            if v != -1 then { 
+              newMembersA[idx] = v; 
+              idx += 1; 
+            }
+          }
+        return(newMembersA);
+    }
+    /* Helper method to run the recursion. */
+    /* Calls out to an external procedure that runs VieCut. */
+    proc callMinCut(ref vertices: [] int, id: int, depth: int): list(int) throws {
+      //writeln("///////////////////////callMinCut, received: ",vertices.size," vertices to CUT");
       var allWCC: list(int, parSafe=true);
+      
+      // If the vertices array is empty, do nothing and return an empty list
+      if vertices.size == 0 {
+        writeln("We reached to exception point for cluster: ",id, " with size: ",vertices.size," at depth: ", depth  );
+        return allWCC;
+      }
 
       var (src, dst, mapper) = getEdgeList(vertices);
-      writeln("src: ", src, "\ndst: ", dst, "\nmapper: ", mapper);
+      writeln("src: ", src.size, "\ndst: ", dst.size, "\nmapper: ", mapper.size);
       var n = mapper.size;
       var m = src.size;
 
       var partitionArr: [{0..<n}] int;
       var newSrc: [{0..<m}] int = src;
       var newDst: [{0..<m}] int = dst;
-
+      //writeln("We are here 100");
       // Call the external min-cut function
       var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
 
-      // Check Well Connectedness
       var logN = floor(log10(vertices.size: real));
       var floorLog10N: int = logN:int;
       
-      if cut > floorLog10N {
-        writeln("cut: ", cut," > ", " floorLog10N: ",floorLog10N, "n is: ",vertices.size );
-        writeln("we found cluster: ", id, " in depth: ",depth," is well Connected Cluster");
-
-        allWCC.pushBack(id); allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
-        writeClusterToFile(vertices, id, depth, cut);
+      if cut > floorLog10N {// Check Well Connectedness
+        allWCC.pushBack(id); //allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
+        //writeClusterToFile(vertices, id, depth, cut, mapper);
+        return allWCC;
       }
       else{// Cluster is not WellConnected
         
@@ -542,35 +510,36 @@ proc removeDegreeOneNodes(src: [] int, dst: [] int, mapper: [] int): ([], [], []
           else cluster2.pushBack(mapper[v]);
         }
 
-        var inPartition = new clustListArray(cluster1.toArray());
-        var outPartition = new clustListArray(cluster2.toArray());
 
-        var cluslist: list(clustListArray);
-        cluslist.pushBack(inPartition);
-        cluslist.pushBack(outPartition);
-        writeln("inPartition: ", inPartition);
-        writeln("outPartition: ", outPartition);
-        writeln("now we have 2 partition: ",inPartition.a.size, " and ", outPartition.a.size);
+        var newSubClusters: list(int, parSafe=true);
         
-        //removeVertices(src, dst, mapper, inPartition.a);
-        //removeVertices(src, dst, mapper, outPartition.a);
-        //proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [] int){
-
-        forall minCutReturnedArr in cluslist {
-          if minCutReturnedArr.a.size >1 {
-            writeln("recursion happened");
-            callMinCut(minCutReturnedArr.a, id, depth+1);
-            
-          }
+        // The partition size must be greater than 2 for it to be meaningful before passing it to VieCut.
+        if cluster1.size >2 {
+          var inPartitionTemp = cluster1.toArray();
+          var inPartition = removeDegreeOneFromPartition(inPartitionTemp);
+          //writeln("inPartition before removing has: ", cluster1.size," after removing: ", inPartition.size);
+          //writeln("recursion happened for inPartition");
+          newSubClusters = callMinCut(inPartition, id, depth+1);
         }
+        if cluster2.size >2 {
+          var outPartitionTemp = cluster2.toArray();        
+          var outPartition = removeDegreeOneFromPartition(outPartitionTemp);
+          //writeln("outPartition before removing has: ", cluster2.size," after removing: ", outPartition.size);
+          //writeln("recursion happened for outPartition");
+          newSubClusters = callMinCut(outPartition, id, depth+1);
+        }
+        for findings in newSubClusters do allWCC.pushBack(findings);
+
+        //}
       }
+      return allWCC;
     }
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
       //writeln("grah load with: ", g1.n_vertices," and: ", g1.n_edges," edges");
       var results: list(int, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
-      writeln("/// readClustersFile finished");
+      //writeln("/// readClustersFile finished");
       forall key in clusters.keysToArray() with (ref results, ref clusters) {
       //for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key].toArray();;
@@ -578,14 +547,18 @@ proc removeDegreeOneNodes(src: [] int, dst: [] int, mapper: [] int): ([], [], []
           var clusterInit = new owned Cluster(clusterToAdd, key);
 
           clusterInit.id = key;
-          clusterInit.printClusterInfo();
+          //clusterInit.printClusterInfo();
           removeDegreeOneVertices(clusterInit);
+          //clusterInit.printClusterInfo();
 
-          callMinCut(clusterInit.membersA, clusterInit.id, 0); 
-
+          var newResults = callMinCut(clusterInit.membersA, clusterInit.id, 0); 
+          //var newResults:list(int, parSafe=true);
+          for mapping in newResults do results.pushBack(mapping);
         }
       }
-      var subClusterArrToReturn:[0..2] int;
+        var subClusterArrToReturn: [0..#results.size] int;
+        subClusterArrToReturn = results.toArray();
+        //var subClusterArrToReturn: [0..3] int;
         return subClusterArrToReturn;
       } // end of wcc
     
