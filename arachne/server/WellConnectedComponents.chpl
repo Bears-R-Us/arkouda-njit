@@ -53,12 +53,12 @@ module WellConnectedComponents {
     }
     
     /* Cluster initializer from array. */
-    proc init(members: [?D] int, id:int) {
+    proc init(members: [?D] int, id:int, depth:int=0) {
       this.id = id;
       this.n_members = members.size;
       this.isWcc = false;
       if this.n_members <= 1 then this.isSingleton = true;
-      this.depth = 0;
+      this.depth = depth;
       this.averageDegree = 0.0;
       this.membersD = D;
       this.membersA = members;
@@ -167,43 +167,6 @@ module WellConnectedComponents {
       return clusters;
     }
 
-    // /* Function to perform 2-core decomposition on a given cluster. */
-    // proc core2Decomposition(cluster: shared Cluster) throws {
-    //   // Initialize degrees within the cluster.
-    //   var clusterMembers = cluster.members;
-    //   var clusterDomain:domain(int, parSafe=true);
-    //   clusterDomain += clusterMembers.toArray();;
-    //   var degrees: [clusterDomain] int = -1;
-    //   for v in clusterMembers do degrees[v] = calculateClusterDegree(clusterMembers, v);
-
-    //   // Initialize queue of nodes with degree less than 2.
-    //   var removeQueue = new list(int);
-    //   for v in clusterMembers do if degrees[v] < 2 then removeQueue.pushBack(v);
-
-    //   // While the queue is not empty.
-    //   while !removeQueue.isEmpty() {
-    //     var v = removeQueue.popBack();
-    //     const ref neighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-
-    //     for u in neighbors {
-    //       if cluster.members.contains(u) && degrees[u] >= 2 {
-    //         degrees[u] -= 1;
-    //         if degrees[u] < 2 then removeQueue.pushBack(u);
-    //       }
-    //     }
-
-    //     // Mark v as removed.
-    //     degrees[v] = -1;
-    //   }
-
-    //   // Collect nodes with degrees >= 2.
-    //   var core2Members = new set(int);
-    //   for v in cluster.members do if degrees[v] >= 2 then core2Members.add(v);
-    //   cluster.members = core2Members;
-    //   cluster.n_members = cluster.members.size;
-    //   if cluster.n_members < 2 then cluster.isSingleton = true;
-    // }
-
     /* Returns the sorted edge list for a given set of vertices. */
     proc getEdgeList(vertices: [] int) throws {
       var srcList, dstList = new list(int);
@@ -220,9 +183,6 @@ module WellConnectedComponents {
       }
       var src = srcList.toArray();
       var dst = dstList.toArray();
-      // writeln("vertices: ", vertices);
-      // writeln("size of src is: ", src.size);
-      // writeln("size of dst is: ", dst.size);
 
       if src.size != 0 && dst.size != 0 {
         var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
@@ -279,46 +239,17 @@ module WellConnectedComponents {
       try file.close();
     }
 
-    // /* Helper method to run the recursion. */
-    // proc wccHelper(cluster: shared Cluster): list(int) throws {
-    //   var allWCC: list(int, parSafe=true);
-      
-    //   core2Decomposition(cluster);
-    //   // NOTE: Per our experimentations, getting the 2-core decomposition of the graph is faster
-    //   //       than removing degree-one vertices multiple times. Therefore, we use that instead of
-    //   //       what is originally outlined in the WCC paper. 
-    //   // removeDegreeOneVertices(cluster);
-
-    //   if !cluster.isSingleton {
-    //     var currentID = cluster.id;
-    //     var currentDepth = cluster.depth;
-    //     var (cutSize, clusterList) = callMinCut(cluster.members);
-    //     writeln("The size of clusterList is ", clusterList.size);
-        
-    //     if !cluster.isWellConnected(cutSize) {
-    //       for minCutReturnedArr in clusterList {
-    //         var subCluster = new shared Cluster(minCutReturnedArr.a);
-    //         subCluster.id = currentID;
-    //         subCluster.depth = currentDepth + 1;
-    //         var newSubClusters: list(int);
-    //         newSubClusters = wccHelper(subCluster);
-    //         for findings in newSubClusters do allWCC.pushBack(findings);
-    //       }
-    //     } else {
-    //       allWCC.pushBack(cluster.id);
-    //       allWCC.pushBack(cluster.depth);
-    //       allWCC.pushBack(cluster.n_members);
-    //       writeClusterToFile(cluster);
-
-    //       return allWCC;
-    //     }
-    //   }
-    //   return allWCC;
-    // }
+    proc popIfNotEmpty(ref l) {
+      l._enter();
+      var cluster = new shared Cluster();
+      if l._size != 0 then cluster = l._popAtIndex(l._size - 1);
+      l._leave();
+      return cluster;
+    }
 
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
-      var results: list(int, parSafe=true);
+      var results: list(shared Cluster, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
 
       forall key in clusters.keysToArray() with (ref workQueue) {
@@ -332,14 +263,8 @@ module WellConnectedComponents {
       var iteration:int = 0;
       while workQueue.size > 0 {
         coforall i in 0..<here.maxTaskPar with (ref workQueue, ref results) {
-          // var cluster = new shared Cluster();
-          // try {
-          //   cluster = workQueue.popBack();
-          // } catch {
-          //   writeln("workQueue is empty!");
-          // }
-          var cluster = if workQueue.size > 0 then workQueue.popBack() else new shared Cluster();
-          writeln("Working on cluster: ", cluster.id);
+          var cluster = popIfNotEmpty(workQueue);
+          // writeln("Working on cluster: ", cluster.id);
           
           if cluster.id != -1 {
             cluster.removeDegreeOneVertices(segGraphG1, dstNodesG1);
@@ -351,13 +276,13 @@ module WellConnectedComponents {
               if cutSize != -1 {
                 if !cluster.isWellConnected(cutSize) {
                   // writeln("Checked connectedness for cluster: ", cluster.id);
-                  if inPartition.size > 1 then workQueue.pushBack(new shared Cluster(inPartition, cluster.id));
+                  if inPartition.size > 2 then workQueue.pushBack(new shared Cluster(inPartition, cluster.id, cluster.depth+1));
                   // writeln("Added inPartition to workQueue for cluster: ", cluster.id);
-                  if outPartition.size > 1 then workQueue.pushBack(new shared Cluster(outPartition, cluster.id));
+                  if outPartition.size > 2 then workQueue.pushBack(new shared Cluster(outPartition, cluster.id, cluster.depth+1));
                   // writeln("Added outPartition to workQueue for cluster: ", cluster.id);
                 } else {
-                  writeClusterToFile(cluster);
-                  results.pushBack(cluster.id);
+                  // writeClusterToFile(cluster);
+                  results.pushBack(cluster);
                   // writeln("Wrote to out file cluster: ", cluster.id);
                 }
               }
@@ -368,21 +293,13 @@ module WellConnectedComponents {
         writeln();
         iteration += 1;
       }
+      for r in results {
+        writeln("Cluster ID: ", r.id, ", Depth: ", r.depth, ", Members: ", r.membersA.size);
+      }
 
-      // forall key in clusters.keysToArray() with (ref results, ref clusters) {
-      //   ref clusterToAdd = clusters[key];
-      //   if clusterToAdd.size > 1 { // The cluster is not a singleton.
-      //     var clusterInit = new shared Cluster(clusterToAdd);
-      //     clusterInit.id = key;
-      //     var newResults = wccHelper(clusterInit);
-      //     for mapping in newResults do results.pushBack(mapping);
-      //   }
-      //   // writeln("Inits from array called so far: ", initFromArray.read());
-      //   // writeln("Inits from set called so far: ", initFromSet.read());
-      // }
-        var subClusterArrToReturn: [0..<results.size] int;
-        for i in 0..<results.size do subClusterArrToReturn[i] = results(i);
-        return subClusterArrToReturn;
+      var subClusterArrToReturn: [0..<results.size] int;
+      for i in 0..<results.size do subClusterArrToReturn[i] = results[i].id;
+      return subClusterArrToReturn;
       } // end of wcc
     
     return clusterArr;
