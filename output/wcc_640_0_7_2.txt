@@ -1,0 +1,6 @@
+# cluster ID: 640
+# cluster Depth: 0
+# number of members: 7
+# cutsize: 2
+# mapper: 55 317 487 725 767 774 810
+# members: 55 317 487 725 767 774 810

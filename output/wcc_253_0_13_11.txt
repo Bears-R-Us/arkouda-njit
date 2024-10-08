@@ -1,0 +1,6 @@
+# cluster ID: 253
+# cluster Depth: 0
+# number of members: 13
+# cutsize: 11
+# mapper: 99 197 202 225 501 581 692 696 775 786 815 877 882
+# members: 99 197 202 225 501 581 692 696 775 786 815 877 882

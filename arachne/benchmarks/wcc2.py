@@ -7,7 +7,7 @@ import os
 import pandas as pd
 
 # Connect to Arkouda server
-ak.connect("n32", 5555)
+ak.connect("n117", 5555)
 
 
 cluster_dict = {}
@@ -33,26 +33,36 @@ ar_network_graph.add_edges_from(ak.array(network_df["src"]), ak.array(network_df
 filePath = "/scratch/users/md724/DataSets/UIUC/wiki_topcats/S2_wiki_topcats_leiden.0.001_i2_clustering.tsv"
 print("Running Arachne...") 
 clusters = ar.well_connected_components(ar_network_graph, filePath, "/scratch/users/md724/DataSets/UIUC/wccOutPut")
-# Function to extract information
-def extract_cluster_info(cluster_array):
-    cluster_info = []
-    for i in range(0, len(cluster_array), 3):
-        cluster_id = cluster_array[i]
-        depth = cluster_array[i+1]
-        members = cluster_array[i+2]
-        cluster_info.append({
-            'cluster_id': cluster_id,
-            'depth': depth,
-            'members': members
-        })
-    return cluster_info
+# # Function to extract information
+# def extract_cluster_info(cluster_array):
+#     cluster_info = []
+#     for i in range(0, len(cluster_array), 4):
+#         cluster_id = cluster_array[i]
+#         depth = cluster_array[i+1]
+#         members = cluster_array[i+2]
+#         cut = cluster_array[i+3]
+#         cluster_info.append({
+#             'cluster_id': cluster_id,
+#             'depth': depth,
+#             'members': members,
+#             'cut': cut
+#         })
+#     return cluster_info
 
-# Extract information
-info = extract_cluster_info(clusters)
-print("and it returned these WCC Clusters:")
-# Print the extracted information
-for cluster in info:
-    print(f"Cluster ID: {cluster['cluster_id']}, Depth: {cluster['depth']}, Members: {cluster['members']}")
+# # Extract information
+# info = extract_cluster_info(clusters)
+# print("and it returned these WCC Clusters:")
+# # Print the extracted information
+# for cluster in info:
+#     print(f"Cluster ID: {cluster['cluster_id']}, Depth: {cluster['depth']}, Members: {cluster['members']}, Cut: {cluster['cut']}")
 #print("clusters = ", clusters)
-#print("clusters.size = ", clusters.size)
+print("clusters.size = ", clusters.size)
+from collections import Counter
+
+cluster_counts = Counter(clusters)
+
+# Iterate through the counts and print elements with more than 1 occurrence
+for element, count in cluster_counts.items():
+    if count > 1:
+        print(f"Element {element} appears {count} times.")
 ak.shutdown()

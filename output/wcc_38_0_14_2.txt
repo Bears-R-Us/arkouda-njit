@@ -1,0 +1,6 @@
+# cluster ID: 38
+# cluster Depth: 0
+# number of members: 14
+# cutsize: 2
+# mapper: 6 39 58 61 86 117 151 457 488 496 527 646 751 891
+# members: 6 39 58 61 86 117 151 457 488 496 527 646 751 891

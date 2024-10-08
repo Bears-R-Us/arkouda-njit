@@ -4,7 +4,7 @@ import networkx as nx
 import pandas as pd
 
 # Connect to Arkouda server. NOTE: Change hostname to your environment's hostname.
-ak.connect("n115", 5555)
+ak.connect("n117", 5555)
 
 cluster_dict = {}
 
@@ -62,11 +62,32 @@ for cluster_num, nodes in cluster_dict.items():
 # Create an Arachne Graph.
 ar_network_graph = ar.Graph()
 ar_network_graph.add_edges_from(ak.array(network_df["src"]), ak.array(network_df["dst"]))
-
+print("we are here")
 filePath = "/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering.tsv"
 print("Running Arachne") 
-clusters = ar.well_connected_components(ar_network_graph, filePath)
+clusters = ar.well_connected_components(ar_network_graph,filePath, "/scratch/users/md724/DataSets/UIUC/wccOutPut")
+# def extract_cluster_info(cluster_array):
+#     cluster_info = []
+#     for i in range(0, len(cluster_array), 4):
+#         cluster_id = cluster_array[i]
+#         depth = cluster_array[i+1]
+#         members = cluster_array[i+2]
+#         cut = cluster_array[i+3]
+#         cluster_info.append({
+#             'cluster_id': cluster_id,
+#             'depth': depth,
+#             'members': members,
+#             'cut': cut
+#         })
+#     return cluster_info
 
+# # Extract information
+# info = extract_cluster_info(clusters)
+# print("and it returned these WCC Clusters:")
+# # Print the extracted information
+# for cluster in info:
+#     print(f"Cluster ID: {cluster['cluster_id']}, Depth: {cluster['depth']}, Members: {cluster['members']}, Cut: {cluster['cut']}")
+# #print("clusters = ", clusters)
 print("clusters = ", clusters)
 print("clusters.size = ", clusters.size)
 ak.shutdown()

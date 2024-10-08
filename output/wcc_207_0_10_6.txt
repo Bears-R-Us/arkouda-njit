@@ -1,0 +1,6 @@
+# cluster ID: 207
+# cluster Depth: 0
+# number of members: 10
+# cutsize: 6
+# mapper: 217 230 260 267 416 485 537 663 830 894
+# members: 217 230 260 267 416 485 537 663 830 894

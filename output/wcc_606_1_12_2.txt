@@ -1,0 +1,6 @@
+# cluster ID: 606
+# cluster Depth: 1
+# number of members: 12
+# cutsize: 2
+# mapper: 10 20 35 52 89 115 153 307 350 511 532 838
+# members: 10 20 35 52 89 115 153 307 350 511 532 838
