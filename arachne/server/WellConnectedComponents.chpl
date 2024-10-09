@@ -76,7 +76,7 @@ module WellConnectedComponents {
       writeln("///////////////////////////////////////");
       writeln("Cluster ID: ", this.id);
       writeln("Number of Members: ", this.n_members);
-      //writeln("Members: ", membersA);
+      writeln("Members: ", membersA);
       writeln("Is Well-Connected Cluster (WCC)?: ", this.isWcc);
       writeln("Is Singleton?: ", this.isSingleton);
       writeln("Cluster Depth: ", this.depth);
@@ -279,13 +279,18 @@ for i in reverseMapper.keysToArray() {
         var filename = outputPath + "_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".txt";
         var file = open(filename, ioMode.cw);
         var fileWriter = file.writer(locking=false);
-
+        var backedToArachne = mapper[membersA];
+        var backedToOriginal = nodeMapGraphG1[backedToArachne];
+        writeln("memberA: ",membersA);
+        writeln("backedToArachne: ",backedToArachne);
+        writeln("backedToOriginal: ",backedToOriginal);
+        
         fileWriter.writeln("# cluster ID: " + id: string); 
         fileWriter.writeln("# cluster Depth: " + depth: string); 
         fileWriter.writeln("# number of members: " + membersA.size: string);
         fileWriter.writeln("# cutsize: " + cut: string);
-        fileWriter.writeln("# mapper: " + mapper: string);
-        fileWriter.writeln("# members: " + membersA: string);
+        //fileWriter.writeln("# mapper: " + mapper: string);
+        fileWriter.writeln("# members: " + backedToOriginal: string);
         
         try fileWriter.close();
         try file.close();
@@ -472,17 +477,17 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
     /* Helper method to run the recursion. */
     /* Calls out to an external procedure that runs VieCut. */
     proc callMinCut(ref vertices: [] int, id: int, depth: int): list(int) throws {
-      //writeln("///////////////////////callMinCut, received: ",vertices.size," vertices to CUT");
+      writeln("///////////////////////callMinCut, received: ",vertices.size," vertices to CUT");
       var allWCC: list(int, parSafe=true);
       
       // If the vertices array is empty, do nothing and return an empty list
       if vertices.size == 0 {
-        writeln("We reached to exception point for cluster: ",id, " with size: ",vertices.size," at depth: ", depth  );
+        //writeln("We reached to exception point for cluster: ",id, " with size: ",vertices.size," at depth: ", depth  );
         return allWCC;
       }
 
       var (src, dst, mapper) = getEdgeList(vertices);
-      writeln("src: ", src.size, "\ndst: ", dst.size, "\nmapper: ", mapper.size);
+      //writeln("src: ", src.size, "\ndst: ", dst.size, "\nmapper: ", mapper.size);
       var n = mapper.size;
       var m = src.size;
 
@@ -498,7 +503,8 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
       
       if cut > floorLog10N {// Check Well Connectedness
         allWCC.pushBack(id); //allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
-        //writeClusterToFile(vertices, id, depth, cut, mapper);
+        writeClusterToFile(vertices, id, depth, cut, mapper);
+        writeln("for cluster: ",id," in depth: ",depth," with cutsize: ", cut, " we found wcc. it has ",vertices.size," memebr!");
         return allWCC;
       }
       else{// Cluster is not WellConnected
@@ -514,14 +520,14 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
         var newSubClusters: list(int, parSafe=true);
         
         // The partition size must be greater than 2 for it to be meaningful before passing it to VieCut.
-        if cluster1.size >2 {
+        if cluster1.size >1 {
           var inPartitionTemp = cluster1.toArray();
           var inPartition = removeDegreeOneFromPartition(inPartitionTemp);
           //writeln("inPartition before removing has: ", cluster1.size," after removing: ", inPartition.size);
           //writeln("recursion happened for inPartition");
           newSubClusters = callMinCut(inPartition, id, depth+1);
         }
-        if cluster2.size >2 {
+        if cluster2.size >1 {
           var outPartitionTemp = cluster2.toArray();        
           var outPartition = removeDegreeOneFromPartition(outPartitionTemp);
           //writeln("outPartition before removing has: ", cluster2.size," after removing: ", outPartition.size);
@@ -543,11 +549,11 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
       forall key in clusters.keysToArray() with (ref results, ref clusters) {
       //for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key].toArray();;
-        if clusterToAdd.size > 1 { // The cluster is not a singleton.
+        if clusterToAdd.size > 1 && key == 580{ // The cluster is not a singleton.
           var clusterInit = new owned Cluster(clusterToAdd, key);
 
           clusterInit.id = key;
-          //clusterInit.printClusterInfo();
+          clusterInit.printClusterInfo();
           removeDegreeOneVertices(clusterInit);
           //clusterInit.printClusterInfo();
 
