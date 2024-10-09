@@ -59,7 +59,7 @@ clusters = ar.well_connected_components(ar_network_graph, filePath, "/scratch/us
 print("clusters.size = ", clusters.size)
 from collections import Counter
 
-cluster_counts = Counter(clusters)
+cluster_counts = Counter(clusters.to_ndarray())
 
 # Iterate through the counts and print elements with more than 1 occurrence
 for element, count in cluster_counts.items():
