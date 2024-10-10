@@ -279,18 +279,17 @@ for i in reverseMapper.keysToArray() {
         var filename = outputPath + "_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".txt";
         var file = open(filename, ioMode.cw);
         var fileWriter = file.writer(locking=false);
-        var backedToArachne = mapper[membersA];
-        var backedToOriginal = nodeMapGraphG1[backedToArachne];
-        writeln("memberA: ",membersA);
-        writeln("backedToArachne: ",backedToArachne);
-        writeln("backedToOriginal: ",backedToOriginal);
+        
+        var mappedArr = nodeMapGraphG1[membersA];
+        writeln("Arachne indecies: ",membersA);
+        writeln("mappedArr: ",mappedArr);
         
         fileWriter.writeln("# cluster ID: " + id: string); 
         fileWriter.writeln("# cluster Depth: " + depth: string); 
         fileWriter.writeln("# number of members: " + membersA.size: string);
         fileWriter.writeln("# cutsize: " + cut: string);
         //fileWriter.writeln("# mapper: " + mapper: string);
-        fileWriter.writeln("# members: " + backedToOriginal: string);
+        fileWriter.writeln("# members: " + mappedArr: string);
         
         try fileWriter.close();
         try file.close();
@@ -308,37 +307,35 @@ for i in reverseMapper.keysToArray() {
     }
 
  /* Function to perform 2-core decomposition on a given cluster. */
-    proc core2Decomposition(cluster: borrowed Cluster) throws{
+    proc core2Decomposition(ref vertices:[]) throws{
       // Initialize degrees within the cluster.
-        //writeln("///////////////////////core2Decomposition");
+      writeln("///////////////////////core2Decomposition called for\n","vertices: ",vertices);
 
-      var toBeRemovedVertices:int = 0;
+      //var toBeRemovedVertices:int = 0;
       //var totalDegree:int = 0;
 
-      var degrees: [cluster.membersD] int = -1;
-      //writeln("degrees: ", degrees);
+      var degrees: [0..#vertices.size] int = -1;
+      writeln("before while degrees: ", degrees);
 
-      // Step 1: Calculate initial degrees for each vertex in the cluster
-      forall v in cluster.membersA with (ref degrees){
-        degrees[v] = calculateClusterDegree(cluster.membersA, v);
-      }
-      //writeln("degrees: ", degrees);
+      // Step 1: Calculate initial degrees for each vertex in the cluster and // Step 2: Initialize a queue for nodes with degree < 2
 
-      // Step 2: Initialize a queue for nodes with degree < 2
       var removeQueue = new list(int, parSafe=true);
-      forall v in cluster.membersA with (ref removeQueue){
+      for v in vertices {//with (ref degrees, ref removeQueue){
+        degrees[v] = calculateClusterDegree(vertices, v);
         if degrees[v] < 2 {
           removeQueue.pushBack(v);
         }
       }
+      writeln("removeQueue: ", removeQueue);
       // While the queue is not empty.
       while removeQueue.size != 0 {
         var v = removeQueue.popBack();
         const ref neighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
 
         //for u in neighbors {
-        for u in cluster.membersA {
-          if binarySearch(neighbors, u)[0] &&  degrees[u] >= 2 {
+        for u in vertices {
+          //if binarySearch(neighbors, u)[0] &&  degrees[u] >= 2 {
+          if neighbors.find(u) != -1 && degrees[u] >= 2 {
             degrees[u] -= 1;
             if degrees[u] < 2 then removeQueue.pushBack(u);
           }
@@ -349,36 +346,30 @@ for i in reverseMapper.keysToArray() {
 
         // Mark v as removed.
         degrees[v] = -1;
+      writeln("degrees[",v,"]: ", degrees);
+
       }
+            writeln("**************after while degrees: ", degrees);
+
       // Step 4: Collect nodes with degrees >= 2 and update cluster
       var newMembersList = new list(int);
-      var totalDegree = 0;
-      for v in cluster.membersA {
+      //var totalDegree = 0;
+      for v in vertices {
         if degrees[v] >= 2 {
           newMembersList.pushBack(v);
-          totalDegree += degrees[v];
+          //totalDegree += degrees[v];
         }
       }
 
       // Step 5: Update cluster properties
-      var newVertices = newMembersList.size;
-      var newMembersD = {0..<newVertices};
-      var newMembersA: [newMembersD] int = newMembersList.toArray();
-
-      cluster.membersD = newMembersD;
-      cluster.membersA = newMembersA;
-      cluster.n_members = newVertices;
-
-
-      if cluster.n_members < 2 then cluster.isSingleton = true;
-
+      var newMembersA = newMembersList.toArray();
       //writeln("2-core decomposition completed for cluster: ", cluster.id);
-      //writeln("Remaining members: ", cluster.n_members);
+      writeln("Remaining members: ", newMembersA);
     }
 
 
     /* From a passed cluster, remove all vertices with degree one. */
-    proc removeDegreeOneVertices(cluster: borrowed Cluster) throws {
+    proc removeDegreeOneVerticesFromCluster(cluster: borrowed Cluster) throws {
       var totalDegree:int = 0;
       var removedVertices:int = 0;
       for v in cluster.membersA {
@@ -399,54 +390,10 @@ for i in reverseMapper.keysToArray() {
       cluster.n_members = newVertices;
       //if cluster.n_members > 0 then cluster.averageDegree = totalDegree / cluster.n_members;
       if cluster.n_members < 2 then cluster.isSingleton = true;
-      //writeln("removeDegreeOneVertices returned cluster with size:", cluster.n_members);
+      //writeln("removeDegreeOneVerticesFromCluster returned cluster with size:", cluster.n_members);
     }
 
- 
-/////////////////////////////////////////////////////// new idea
-proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [] int) throws{
-  const n = src.size;
-  var toRemove: set(int,parSafe=true);
 
-
-
-  var degrees: [removedVertices.domain] int = -1;
-      
-  forall v in removedVertices with (ref degrees){
-    degrees[v] = calculateClusterDegree(removedVertices, v);
-    }
-  
-  var removedEdgesCount: int = + reduce degrees;
-  var newDomain: domain(1) = 0..< n - (removedEdgesCount * 2);
-  var newSrc, newDst: [newDomain] int;
-  
-  var nweMapperDomain = 0..(mapper.size - removedVertices.size);
-  var newMapper:[nweMapperDomain] int;
-
-  var idex: int = 0;
-  for elem in mapper{
-    if removedVertices.find(elem) != -1{
-      newMapper[idex] = elem;
-      idex += 1;
-    }
-  }
-
-  idex = 0;
-  // Removing edges connected to the nodes in 'vertices'
-  for i in src.domain {
-    if newMapper.find(src[i]) != -1 && newMapper.find(dst[i]) != -1 {
-      newSrc[idex] = src[i];
-      newDst[idex] = dst[i];
-      idex += 1;
-    }
-  }
-  //writeln("newSrc",newSrc );
-  //writeln("newDst",newDst );
-  //writeln("newMapper",newMapper );
-  //return (newSrc, newDst, newMapper);
-}
-
-/////////////////////////////////////////////////////// end of new idea
 
     proc removeDegreeOneFromPartition(ref partition:[] int) throws{
       //var totalDegree:int = 0;
@@ -519,7 +466,7 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
 
         var newSubClusters: list(int, parSafe=true);
         
-        // The partition size must be greater than 2 for it to be meaningful before passing it to VieCut.
+        // The partition size must be greater than 1 for it to be meaningful before passing it to VieCut.
         if cluster1.size >1 {
           var inPartitionTemp = cluster1.toArray();
           var inPartition = removeDegreeOneFromPartition(inPartitionTemp);
@@ -549,16 +496,18 @@ proc removeVertices(src: [] int, dst: [] int, mapper: [] int, removedVertices: [
       forall key in clusters.keysToArray() with (ref results, ref clusters) {
       //for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key].toArray();;
-        if clusterToAdd.size > 1 && key == 580{ // The cluster is not a singleton.
+        if clusterToAdd.size > 1 { // The cluster is not a singleton.
           var clusterInit = new owned Cluster(clusterToAdd, key);
 
           clusterInit.id = key;
           clusterInit.printClusterInfo();
-          removeDegreeOneVertices(clusterInit);
+          removeDegreeOneVerticesFromCluster(clusterInit);
+          //writeln("****************Compare**************** ");
+          //core2Decomposition(clusterInit.membersA);
           //clusterInit.printClusterInfo();
 
           var newResults = callMinCut(clusterInit.membersA, clusterInit.id, 0); 
-          //var newResults:list(int, parSafe=true);
+          var newResults:list(int, parSafe=true);
           for mapping in newResults do results.pushBack(mapping);
         }
       }
