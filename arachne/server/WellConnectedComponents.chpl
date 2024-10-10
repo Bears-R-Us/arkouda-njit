@@ -53,7 +53,7 @@ module WellConnectedComponents {
     }
     
     /* Cluster initializer from array. */
-    proc init(members: [?D] int, id:int, depth:int=0) {
+    proc init(in members: [?D] int, id:int, depth:int=0) {
       this.id = id;
       this.n_members = members.size;
       this.isWcc = false;
@@ -62,7 +62,6 @@ module WellConnectedComponents {
       this.averageDegree = 0.0;
       this.membersD = D;
       this.membersA = members;
-      // sort(this.membersA);
     }
 
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
@@ -119,13 +118,13 @@ module WellConnectedComponents {
 
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
                inputcluster_filePath: string, outputPath: string):[] int throws {
-    ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
-    ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
-    ref segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+    var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+    var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
+    var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
     
     var workStack = new list(shared Cluster, parSafe=true);
-    var results: list(shared Cluster, parSafe=true);
+    var results: list(int, parSafe=true);
     var clusterArrtemp = wcc(g1);
     
     var clusterArr = clusterArrtemp; //cluster id, depth, number of elements
@@ -200,13 +199,11 @@ module WellConnectedComponents {
       var (mapper, n, src, dst, m) = getEdgeList(cluster.membersA);                    
       if m > 0 {
         var partitionArr: [{0..<n}] int;
-        var newSrc: [{0..<m}] int = src;
-        var newDst: [{0..<m}] int = dst;
-        var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
+        var cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
         if isWellConnected(cut, n) {
           cluster.isWcc = true;
-          results.pushBack(cluster);
+          results.pushBack(cluster.id);
         }
         else {
           var cluster1, cluster2 = new list(int);
@@ -278,7 +275,7 @@ module WellConnectedComponents {
       // }
 
       var subClusterArrToReturn: [0..<results.size] int;
-      for i in 0..<results.size do subClusterArrToReturn[i] = results[i].id;
+      for i in 0..<results.size do subClusterArrToReturn[i] = results[i]; // results[i].id;
       return subClusterArrToReturn;
     } // end of wcc
     
