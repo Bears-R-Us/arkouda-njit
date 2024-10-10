@@ -31,17 +31,19 @@ module WellConnectedComponentsMsg {
       var GraphEntryName = msgArgs.getValueOf("GraphName");
       var FilePath = msgArgs.getValueOf("FilePath");
       var OutputPath = msgArgs.getValueOf("OutputPath");
+      var OutputType = msgArgs.getValueOf("OutputType");
       
       // Pull out our graph from the symbol table.
       var gEntry: borrowed GraphSymEntry = getGraphSymEntry(GraphEntryName, st); 
       var g = gEntry.graph;
       var path = FilePath;
       var outputPath = OutputPath;
+      var outputType = OutputType;
       
       var timer:stopwatch;
       if !g.isDirected() {
           timer.start();
-          var isoArray = runWCC(g, st, path, outputPath);
+          var isoArray = runWCC(g, st, path, outputPath, outputType);
           timer.stop();
           outMsg = "Well connected components took " + timer.elapsed():string + " sec";
           

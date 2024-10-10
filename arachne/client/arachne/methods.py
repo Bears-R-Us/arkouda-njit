@@ -475,7 +475,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
 
 @typechecked
-def well_connected_components(graph: Graph, file_path: str, output_path: str = None) -> pdarray:
+def well_connected_components(graph: Graph, file_path: str,
+                              output_path: str = None, output_type:str = "post") -> pdarray:
     """
     Runs a single threaded version of well-connectec components (WCC). Writes the outputted clusters 
     by default to `arkouda-njit/arachne/output/wcc.text`.
@@ -488,6 +489,10 @@ def well_connected_components(graph: Graph, file_path: str, output_path: str = N
         The file containing the clusters each vertex belongs to.
     output_path : str
         The output path to where the new clusters are to be written to.
+    output_type : str
+        If "post" then output is written at the end of WCC. If "during" then output is written as
+        soon as a cluster is considered well-connected. If "debug" then output is written verbosely
+        as soon as a cluster is considered well-connected.
 
     Returns
     -------
@@ -504,15 +509,21 @@ def well_connected_components(graph: Graph, file_path: str, output_path: str = N
     Work in progress. Currently, the graph file must be processed and read through Python. Future
     functionality will include building the graph directly from Chapel and full parallelization
     while processing each cluster through WCC.
+
+    Raises
+    ------
+    FileExistsError
     """
-    if output_path is None:
-        output_path = os.path.abspath("./output/wcc")
+    if output_type == "during":
+        if os.path.isfile(output_path):
+            raise FileExistsError(f"The file '{output_path}' already exists.")
 
     cmd = "wellConnectedComponents"
     args = { "GraphName":graph.name,
              "FilePath": file_path,
-             "OutputPath": output_path}
+             "OutputPath": output_path,
+             "OutputType": output_type}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
-    
+
     return create_pdarray(rep_msg)

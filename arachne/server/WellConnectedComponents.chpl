@@ -104,11 +104,16 @@ module WellConnectedComponents {
   }
 
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
-               inputcluster_filePath: string, outputPath: string):[] int throws {
+               inputcluster_filePath: string, outputPath: string, outputType: string) throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
+    
+    var finalVertices = new list(int, parSafe=true);
+    var finalClusters = new list(int, parSafe=true);
+    var globalId:atomic int = 0;
+
     var clusterArrtemp = wcc(g1);
     writeln("**********************************************************we reached here");
 
@@ -306,6 +311,28 @@ for i in reverseMapper.keysToArray() {
       return degree;
     }
 
+  /* If given two lists with all vertices and cluster information, writes them out to file. */
+  proc writeClustersToFile() throws {
+    var outfile = open(outputPath, ioMode.cw);
+    var writer = outfile.writer(locking=false);
+
+    for (v,c) in zip(finalVertices, finalClusters) do writer.writeln(v, " ", c);
+
+    writer.close();
+    outfile.close();
+  }
+
+  /* If given only vertices belonging to one cluster, writes them out to file. */
+  proc writeClustersToFile(ref vertices:[] int, cluster:int) throws {
+    var outfile = open(outputPath, ioMode.a);
+    var writer = outfile.writer(locking=true);
+
+    for v in vertices do writer.writeln(v, " ", cluster);
+
+    writer.close();
+    outfile.close();
+  }
+
  /* Function to perform 2-core decomposition on a given cluster. */
     proc core2Decomposition(ref vertices:[]) throws{
       // Initialize degrees within the cluster.
@@ -450,8 +477,14 @@ for i in reverseMapper.keysToArray() {
       
       if cut > floorLog10N {// Check Well Connectedness
         allWCC.pushBack(id); //allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
-        writeClusterToFile(vertices, id, depth, cut, mapper);
-        writeln("for cluster: ",id," in depth: ",depth," with cutsize: ", cut, " we found wcc. it has ",vertices.size," memebr!");
+        var currentId = globalId.fetchAdd(1);
+        if outputType == "debug" then writeClusterToFile(vertices, id, depth, cut, mapper);
+        else if outputType == "during" then writeClustersToFile(vertices, currentId);
+        for v in vertices {
+          finalVertices.pushBack(v);
+          finalClusters.pushBack(currentId);
+        }
+        // writeln("for cluster: ",id," in depth: ",depth," with cutsize: ", cut, " we found wcc. it has ",vertices.size," memebr!");
         return allWCC;
       }
       else{// Cluster is not WellConnected
@@ -507,12 +540,15 @@ for i in reverseMapper.keysToArray() {
           //clusterInit.printClusterInfo();
 
           var newResults = callMinCut(clusterInit.membersA, clusterInit.id, 0); 
-          var newResults:list(int, parSafe=true);
+          // var newResults:list(int, parSafe=true);
           for mapping in newResults do results.pushBack(mapping);
         }
       }
         var subClusterArrToReturn: [0..#results.size] int;
         subClusterArrToReturn = results.toArray();
+
+        if outputType == "post" then writeClustersToFile();
+
         //var subClusterArrToReturn: [0..3] int;
         return subClusterArrToReturn;
       } // end of wcc
