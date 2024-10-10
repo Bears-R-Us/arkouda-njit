@@ -62,20 +62,7 @@ module WellConnectedComponents {
       this.averageDegree = 0.0;
       this.membersD = D;
       this.membersA = members;
-      sort(this.membersA);
-    }
-
-    /* Given a cluster and a cut size, determine if it is well-connected or not. */
-    proc isWellConnected(edgeCutSize: int): bool throws {
-      var logN = floor(log10(this.n_members: real));
-      var floorLog10N: int = logN:int;
-      
-      if edgeCutSize > floorLog10N {
-        this.isWcc = true;
-        return true;
-      }
-
-      return false;
+      // sort(this.membersA);
     }
 
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
@@ -120,14 +107,25 @@ module WellConnectedComponents {
     }
   }
 
+    /* Given a mincut value and cluster size, returns if the cluster is well-connected or not. */
+  proc isWellConnected(cut: int, n:int): bool throws {
+    var logN = floor(log10(n:real));
+    var floorLog10N:int = logN:int;
+    
+    if cut > floorLog10N then return true;
+    return false;
+  }
+
+
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
                inputcluster_filePath: string, outputPath: string):[] int throws {
-    var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
-    var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
-    var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
+    ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
+    ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
+    ref segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
     
-    var workQueue = new list(shared Cluster, parSafe=true);
+    var workStack = new list(shared Cluster, parSafe=true);
+    var results: list(shared Cluster, parSafe=true);
     var clusterArrtemp = wcc(g1);
     
     var clusterArr = clusterArrtemp; //cluster id, depth, number of elements
@@ -168,7 +166,7 @@ module WellConnectedComponents {
     }
 
     /* Returns the sorted edge list for a given set of vertices. */
-    proc getEdgeList(vertices: [] int) throws {
+    proc getEdgeList(ref vertices: [] int) throws {
       var srcList, dstList = new list(int);
 
       for u in vertices {
@@ -198,31 +196,34 @@ module WellConnectedComponents {
     }
 
     /* Calls out to an external procedure that runs VieCut. */
-    proc callMinCut(vertices: [] int) throws {
-      // writeln("We get into min cut!");
-      var (mapper, n, src, dst, m) = getEdgeList(vertices);
-      // writeln("We get edge list with (|v|,|e|) = ", (n,m));
+    proc callMinCut(cluster: shared Cluster) throws {       
+      var (mapper, n, src, dst, m) = getEdgeList(cluster.membersA);                    
       if m > 0 {
         var partitionArr: [{0..<n}] int;
         var newSrc: [{0..<m}] int = src;
         var newDst: [{0..<m}] int = dst;
         var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
 
-        var cluster1, cluster2 = new list(int);
-        for (v,p) in zip(partitionArr.domain, partitionArr) {
-          if p == 1 then cluster1.pushBack(mapper[v]);
-          else cluster2.pushBack(mapper[v]);
+        if isWellConnected(cut, n) {
+          cluster.isWcc = true;
+          results.pushBack(cluster);
         }
-        var inPartition = cluster1.toArray();
-        var outPartition = cluster2.toArray();
-        
-        return (cut, inPartition, outPartition);
-      } else {
-        var inPartition, outPartition = makeDistArray(0, int);
-        return (-1, inPartition, outPartition);
+        else {
+          var cluster1, cluster2 = new list(int);
+          for (v,p) in zip(partitionArr.domain, partitionArr) {
+            if p == 1 then cluster1.pushBack(mapper[v]);
+            else cluster2.pushBack(mapper[v]);
+          }
+          var inPartition = cluster1.toArray();
+          var outPartition = cluster2.toArray();
+
+          if inPartition.size > 1 then 
+            workStack.pushBack(new shared Cluster(inPartition, cluster.id, cluster.depth+1));
+          if outPartition.size > 1 then 
+            workStack.pushBack(new shared Cluster(outPartition, cluster.id, cluster.depth+1));
+        }
       }
     }
-
 
     /* Write out the clusters to a file. */
     proc writeClusterToFile(cluster: shared Cluster) throws {
@@ -249,58 +250,37 @@ module WellConnectedComponents {
 
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
-      var results: list(shared Cluster, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
 
-      forall key in clusters.keysToArray() with (ref workQueue) {
+      forall key in clusters.keysToArray() with (ref workStack) {
         var cluster = clusters[key].toArray();
-        workQueue.pushBack(new shared Cluster(cluster, key));
+        sort(cluster);
+        workStack.pushBack(new shared Cluster(cluster, key));
       }
-      writeln("workQueue size = ", workQueue.size);
+      writeln("workStack size = ", workStack.size);
       writeln("here.maxTaskPar = ", here.maxTaskPar);
       writeln();
 
       var iteration:int = 0;
-      while workQueue.size > 0 {
-        coforall i in 0..<here.maxTaskPar with (ref workQueue, ref results) {
-          var cluster = popIfNotEmpty(workQueue);
-          // writeln("Working on cluster: ", cluster.id);
-          
+      while workStack.size > 0 {
+        coforall i in 0..<here.maxTaskPar with (ref workStack, ref results) {
+          var cluster = popIfNotEmpty(workStack);
           if cluster.id != -1 {
             cluster.removeDegreeOneVertices(segGraphG1, dstNodesG1);
-            // writeln("Removed degree one vertices from cluster: ", cluster.id);
-            if !cluster.isSingleton {
-              // writeln("Trying to call mincut for cluster: ", cluster.id);
-              var (cutSize, inPartition, outPartition) = callMinCut(cluster.membersA);
-              // writeln("Called mincut for cluster: ", cluster.id);
-              if cutSize != -1 {
-                if !cluster.isWellConnected(cutSize) {
-                  // writeln("Checked connectedness for cluster: ", cluster.id);
-                  if inPartition.size > 2 then workQueue.pushBack(new shared Cluster(inPartition, cluster.id, cluster.depth+1));
-                  // writeln("Added inPartition to workQueue for cluster: ", cluster.id);
-                  if outPartition.size > 2 then workQueue.pushBack(new shared Cluster(outPartition, cluster.id, cluster.depth+1));
-                  // writeln("Added outPartition to workQueue for cluster: ", cluster.id);
-                } else {
-                  // writeClusterToFile(cluster);
-                  results.pushBack(cluster);
-                  // writeln("Wrote to out file cluster: ", cluster.id);
-                }
-              }
-            }
+            if !cluster.isSingleton then callMinCut(cluster);
           }
         }
-        writeln("We get here ", iteration);
-        writeln();
         iteration += 1;
       }
-      for r in results {
-        writeln("Cluster ID: ", r.id, ", Depth: ", r.depth, ", Members: ", r.membersA.size);
-      }
+      writeln("Number of iterations = ", iteration);
+      // for r in results {
+      //   writeln("Cluster ID: ", r.id, ", Depth: ", r.depth, ", Members: ", r.membersA.size);
+      // }
 
       var subClusterArrToReturn: [0..<results.size] int;
       for i in 0..<results.size do subClusterArrToReturn[i] = results[i].id;
       return subClusterArrToReturn;
-      } // end of wcc
+    } // end of wcc
     
     return clusterArr;
   } // end of runWCC
