@@ -32,6 +32,30 @@ module WellConnectedComponents {
   
   extern proc c_computeMinCut(partition_arr: [] int, src: [] int, dst: [] int, n: int, m: int): int;
 
+  /* Modified version of the standard set module intersection method to only return the size of
+     the intersection. */
+  proc setIntersectionSize(const ref a: set(?t, ?), const ref b: set(t, ?)) {
+    // Internal way to force processor atomic instead of network atomic in multilocale mode.
+    var size:chpl__processorAtomicType(int) = 0;
+
+    /* Iterate over the smaller set */
+    if a.size <= b.size {
+      if a.parSafe && b.parSafe {
+        forall x in a do if b.contains(x) then size.add(1);
+      } else {
+        for x in a do if b.contains(x) then size.add(1);
+        }
+    } else {
+      if a.parSafe && b.parSafe {
+        forall x in b do if a.contains(x) then size.add(1);
+      } else {
+        for x in b do if a.contains(x) then size.add(1);
+      }
+    }
+
+    return size.read();
+  }
+  
   class Cluster {
     var id: int;                  // Cluster identifier.
     var n_members: int;           // Cluster size.       
@@ -68,9 +92,6 @@ module WellConnectedComponents {
       return false;
     }
 
-
-
- 
     /* Method to print all details of the Cluster object. */
     proc printClusterInfo() {
       writeln("///////////////////////////////////////");
@@ -83,9 +104,8 @@ module WellConnectedComponents {
       writeln("Cluster membersA size: ", this.membersA.size);
       writeln("///////////////////////////////////////");
     }
+
     proc createSubgraphFromCluster(ref seg: [] int, ref dst: [] int) throws {
-
-
     }
   }
 
@@ -109,6 +129,7 @@ module WellConnectedComponents {
     var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
+    var neighborsSetGraphG1 = toSymEntry(g1.getComp("NEIGHBORS_SET_SDI"), set(int)).a;
     
     var finalVertices = new list(int, parSafe=true);
     var finalClusters = new list(int, parSafe=true);
@@ -303,12 +324,19 @@ for i in reverseMapper.keysToArray() {
     proc calculateClusterDegree(ref membersA:[] int, vertex: int): int throws {
       //writeln("///////////////////////calculateClusterDegree called for vertex: ",vertex);
       //this.printClusterInfo();
-      const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
-      var degree = 0;
-      for u in neighbors do if binarySearch(membersA, u)[0] then degree += 1;
+      // const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
+      // var degree = 0;
+      // for u in neighbors do if binarySearch(membersA, u)[0] then degree += 1;
       //writeln("///////////////////////calculateClusterDegree ended -> ",degree);
+      const ref neighbors = neighborsSetGraphG1[vertex];
+      writeln("$$$$$ neighbors = ", neighbors);
 
-      return degree;
+      // TODO: This needs to be removed after we refactor the code to make membersA expected to be
+      //       a set instead of an array.
+      var members = new set(int);
+      for u in membersA do members.add(u);
+     
+      return setIntersectionSize(neighbors,members);
     }
 
   /* If given two lists with all vertices and cluster information, writes them out to file. */
