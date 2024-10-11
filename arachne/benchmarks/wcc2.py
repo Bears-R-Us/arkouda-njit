@@ -7,7 +7,7 @@ import os
 import pandas as pd
 
 # Connect to Arkouda server
-ak.connect("n117", 5555)
+ak.connect("n119", 5555)
 
 
 cluster_dict = {}
