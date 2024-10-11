@@ -21,7 +21,7 @@ module WellConnectedComponentsMsg {
   // Server message logger. 
   private config const logLevel = ServerConfig.logLevel;
   private config const logChannel = ServerConfig.logChannel;
-  const siLogger = new Logger(logLevel, logChannel);
+  const wccLogger = new Logger(logLevel, logChannel);
 
   proc wellConnectedComponentsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
       param pn = Reflection.getRoutineName();
@@ -39,6 +39,10 @@ module WellConnectedComponentsMsg {
       var path = FilePath;
       var outputPath = OutputPath;
       var outputType = OutputType;
+
+      // Generate neighbors as sets for graph.
+      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
+      g.generateNeighborsAsSet(st);
       
       var timer:stopwatch;
       if !g.isDirected() {
@@ -54,12 +58,12 @@ module WellConnectedComponentsMsg {
           st.addEntry(IsoDistArrayName, IsoDistArrayEntry);
           repMsg = 'created ' + st.attrib(IsoDistArrayName);
 
-          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+          wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
           return new MsgTuple(repMsg, MsgType.NORMAL);
       } else {
           var errorMsg = notImplementedError(pn, "well-connected components for directed graphs");
-          siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+          wccLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
           return new MsgTuple(errorMsg, MsgType.ERROR);
       }
   } // end of wellConnectedComponentsMsg
