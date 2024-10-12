@@ -62,7 +62,7 @@ for cluster_num, nodes in cluster_dict.items():
 
 
 # Create an Arachne graph from a test network file.
-ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering.tsv"))
+ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network.tsv"))
 
 # Execute wcc with the absolute path to the generate and the create network file.
 filePath = os.path.abspath("/scratch/users/md724/DataSets/wcc/test_clustering.tsv")

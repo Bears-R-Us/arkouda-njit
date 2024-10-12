@@ -315,19 +315,31 @@ module WellConnectedComponents {
         fileWriter.writeln("# number of members: " + membersA.size: string);
         fileWriter.writeln("# cutsize: " + cut: string);
         //fileWriter.writeln("# mapper: " + mapper: string);
-        //fileWriter.writeln("# members: " + mappedArr: string);
+        fileWriter.writeln("# members: " + mappedArr: string);
         
         try fileWriter.close();
         try file.close();
     }
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
-    proc calculateClusterDegree(ref members: set(int), vertex: int): int throws {
+    proc calculateClusterDegree(ref members: set(int), vertex: int) throws {
       writeln("///////////////////////calculateClusterDegree called for vertex: ",vertex);
 
-      writeln("members: ", members);
-      const ref neighbors = neighborsSetGraphG1[vertex];
-      writeln("$$$$$ neighbors = ", neighbors);
-      return setIntersectionSize(neighbors,members);
+      // writeln("members: ", members);
+      // const ref neighbors = neighborsSetGraphG1[vertex];
+      // writeln("$$$$$ neighbors = ", neighbors);
+      // return setIntersectionSize(neighbors,members);
+      const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
+      
+      var neighborsSet: set(int);
+      // Insert array elements into the set
+      for elem in neighbors {
+        neighborsSet.add(elem);  
+      }
+      
+      var intersection: set(int);
+      intersection = neighborsSet & members;
+      writeln("///////////////////////calculateClusterDegree ended -> ",intersection.size);
+      return intersection.size;
     }
 
     /* If given two lists with all vertices and cluster information, writes them out to file. */
@@ -409,7 +421,7 @@ module WellConnectedComponents {
           finalVertices.pushBack(v);
           finalClusters.pushBack(currentId);
         }
-        // writeln("for cluster: ",id," in depth: ",depth," with cutsize: ", cut, " we found wcc. it has ",vertices.size," memebr!");
+        writeln("for cluster: ",id," in depth: ",depth," with cutsize: ", cut, " we found wcc. it has ",vertices.size," memebr!");
         return allWCC;
       }
       else{// Cluster is not WellConnected
@@ -511,20 +523,22 @@ module WellConnectedComponents {
       //forall key in clusters.keysToArray() with (ref results, ref clusters) {
       for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key];
-        writeln("cluster ID: ", key);
-        var clusterSetInit1 = removeDegOne(clusterToAdd);
-        writeln("clusterSetInit *removeDegOne: ", clusterSetInit1.size);
+        
+        // writeln("clusterToAdd: ", clusterToAdd);
+        // writeln("cluster ID: ", key);
+        // var clusterSetInit1 = removeDegOne(clusterToAdd);
+        // writeln("clusterSetInit *removeDegOne: ", clusterSetInit1.size);
         
         //var clusterSetInit = new set(int, parSafe=true);
         //clusterSetInit = clusterC2D (clusterToAdd);
         //writeln("clusterSetInit *clusterC2D: ", clusterSetInit.size);
 
-        if clusterSetInit1.size > 1 && key == 253{ // The cluster is not a singleton.
+        if clusterToAdd.size > 1 { // The cluster is not a singleton.
           
-          writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*-clusterSetInit1: ", key);
+          writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*-clusterToAdd: ", key);
           //clusterInit.printClusterInfo();
 
-          var newResults = callMinCut(clusterSetInit1, key, 0); 
+          var newResults = callMinCut(clusterToAdd, key, 0); 
           //var newResults:list(int, parSafe=true);
           for mapping in newResults do results.pushBack(mapping);
         }
