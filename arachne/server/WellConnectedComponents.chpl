@@ -55,73 +55,6 @@ module WellConnectedComponents {
     writeln("size.read(): ", size.read());
     return size.read();
   }
-  
-  // class Cluster {
-  //   var id: int;                  // Cluster identifier.
-  //   var n_members: int;           // Cluster size.       
-  //   var isWcc: bool;              // Is it a well-connected cluster?
-  //   var isSingleton: bool;        // Is it a singleton cluster?
-  //   var depth: int;               // Cluster depth;
-  //   var averageDegree: real;      // Cluster averageDegree;
-  //   var membersD: domain(1);      // Members domain.
-  //   var membersA: [membersD] int; // Members array.
-
-  //   /* Cluster initializer from array. */
-  //   proc init(members: [?D] int, id:int) {
-  //     this.id = id;
-  //     this.n_members = members.size;
-  //     this.isWcc = false;
-  //     if this.n_members <= 1 then this.isSingleton = true;
-  //     this.depth = 0;
-  //     //this.averageDegree = 0.0;
-  //     this.membersD = D;
-  //     this.membersA = members;
-  //     sort(this.membersA);
-  //   }
-
-  //   /* Given a cluster and a cut size, determine if it is well-connected or not. */
-  //   proc isWellConnected(edgeCutSize: int): bool throws {
-  //     var logN = floor(log10(this.n_members: real));
-  //     var floorLog10N: int = logN:int;
-      
-  //     if edgeCutSize > floorLog10N {
-  //       this.isWcc = true;
-  //       return true;
-  //     }
-
-  //     return false;
-  //   }
-
-  //   /* Method to print all details of the Cluster object. */
-  //   proc printClusterInfo() {
-  //     writeln("///////////////////////////////////////");
-  //     writeln("Cluster ID: ", this.id);
-  //     writeln("Number of Members: ", this.n_members);
-  //     writeln("Members: ", membersA);
-  //     writeln("Is Well-Connected Cluster (WCC)?: ", this.isWcc);
-  //     writeln("Is Singleton?: ", this.isSingleton);
-  //     writeln("Cluster Depth: ", this.depth);
-  //     writeln("Cluster membersA size: ", this.membersA.size);
-  //     writeln("///////////////////////////////////////");
-  //   }
-
-  //   proc createSubgraphFromCluster(ref seg: [] int, ref dst: [] int) throws {
-  //   }
-  // }
-
-  
-  
-
-  // /* Define a record to encapsulate an array with its own domain. */
-  // record clustListArray {
-  //   var d: domain(1);
-  //   var a: [d] int;
-
-  //   proc init(data: [] int) {
-  //     this.d = data.domain;
-  //     this.a = data;
-  //   }
-  // }
 
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
                inputcluster_filePath: string, outputPath: string, outputType: string) throws {
@@ -322,14 +255,12 @@ module WellConnectedComponents {
     }
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
     proc calculateClusterDegree(ref members: set(int), vertex: int) throws {
-      writeln("///////////////////////calculateClusterDegree called for vertex: ",vertex);
 
-      // writeln("members: ", members);
-      // const ref neighbors = neighborsSetGraphG1[vertex];
-      // writeln("$$$$$ neighbors = ", neighbors);
-      // return setIntersectionSize(neighbors,members);
+      // const ref neighbors1 = neighborsSetGraphG1[vertex];
+      // var newWay = setIntersectionSize(neighbors1,members);
+      // writeln("calculateClusterDegree NEW (",vertex,") -> ",newWay);
+
       const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
-      
       var neighborsSet: set(int);
       // Insert array elements into the set
       for elem in neighbors {
@@ -338,7 +269,9 @@ module WellConnectedComponents {
       
       var intersection: set(int);
       intersection = neighborsSet & members;
-      writeln("///////////////////////calculateClusterDegree ended -> ",intersection.size);
+      writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
+
+      //assert(intersection.size == newWay, "Error: The degrees are not equal!");
       return intersection.size;
     }
 
@@ -365,7 +298,7 @@ module WellConnectedComponents {
     }
 
     proc removeDegOne(ref partition:set(int)): set(int) throws{
-      //writeln("///////////////////////removeDegOne called for: ",partition.size);
+      writeln("///////////////////////removeDegOne called for: ",partition.size);
       //writeln("partition: ", partition);
       if partition.size <= 1{
         var zeroset = new set(int);
@@ -380,8 +313,8 @@ module WellConnectedComponents {
           partitionToPass.remove(v);
         }
       }
-      writeln("partitionToPass.size: ",partitionToPass.size );
-      writeln("partitionToPass: ",partitionToPass );
+      writeln("removeDegOne called for: ",partition.size, " and it returned: ",partitionToPass.size );
+      //writeln("partitionToPass: ",partitionToPass );
       return(partitionToPass);
     }
     /* Helper method to run the recursion. */
@@ -516,18 +449,19 @@ module WellConnectedComponents {
     }
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
-      //writeln("grah load with: ", g1.n_vertices," and: ", g1.n_edges," edges");
+      
+      writeln("Graph loaded. It has: ",g1.n_vertices," vertices and ",g1.n_edges, ".");
+      
       var results: list(int, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
-      //writeln("/// readClustersFile finished");
+      writeln("reading Clusters' File finished.");
       //forall key in clusters.keysToArray() with (ref results, ref clusters) {
       for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key];
+        writeln("Cluster ", key, ": ", clusterToAdd.size," vertices.");
         
-        // writeln("clusterToAdd: ", clusterToAdd);
-        // writeln("cluster ID: ", key);
-        // var clusterSetInit1 = removeDegOne(clusterToAdd);
-        // writeln("clusterSetInit *removeDegOne: ", clusterSetInit1.size);
+        var clusterSetInit1 = removeDegOne(clusterToAdd);
+        writeln("clusterSetInit *removeDegOne: ", clusterSetInit1.size);
         
         //var clusterSetInit = new set(int, parSafe=true);
         //clusterSetInit = clusterC2D (clusterToAdd);
@@ -535,7 +469,7 @@ module WellConnectedComponents {
 
         if clusterToAdd.size > 1 { // The cluster is not a singleton.
           
-          writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*-clusterToAdd: ", key);
+          writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*");
           //clusterInit.printClusterInfo();
 
           var newResults = callMinCut(clusterToAdd, key, 0); 
