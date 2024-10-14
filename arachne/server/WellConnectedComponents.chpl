@@ -114,8 +114,6 @@ module WellConnectedComponents {
 
     /* Returns the sorted and deduplicated edge list for a given set of vertices. */
     proc getEdgeList(ref vertices: set(int)) throws {
-      //writeln("///////////////////////getEdgeList called for: ", vertices.size);
-
       // Initialize lists to collect edges
       var srcList = new list(int);
       var dstList = new list(int);
@@ -129,7 +127,6 @@ module WellConnectedComponents {
         reverseMapper[idx] = v;
         idx += 1;
       }
-      //writeln("getEdgeList-1");
       // Collect edges within the cluster
       for u in vertices {
         const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u + 1]];
@@ -140,21 +137,15 @@ module WellConnectedComponents {
           }
         }
       }
-      //writeln("getEdgeList-2");
-
       // Convert lists to arrays
       var src = srcList.toArray();
       var dst = dstList.toArray();
-      //writeln("getEdgeList-2-1");
 
       // Sort the edges
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
-      //writeln("getEdgeList-2-2");
 
       // Remove duplicate edges
       var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
-
-      //writeln("getEdgeList-3");
 
       // Create mapper array (original vertex IDs)
       var n = mapper.size;
@@ -164,10 +155,8 @@ module WellConnectedComponents {
         var originalV = reverseMapper[i];
         mapperArray[i] = originalV;
       }
-      //writeln("getEdgeList-4");
 
       return (uniqueSrc, uniqueDst, mapperArray);
-      //return (src, dst, mapperArray);
     }
 
 
@@ -182,9 +171,6 @@ module WellConnectedComponents {
     }
     /* Function to sort edge lists based on src and dst nodes */
     proc sortEdgeList(ref src: [] int, ref dst: [] int) {
-      //writeln("////////////////sortEdgeList");
-      //writeln("src.size: ", src.size);
-      //writeln("dst.size: ", dst.size);
       // Combine src and dst into a tuple array
       var edges: [0..<src.size] (int, int);
       for i in 0..<src.size do
@@ -194,7 +180,6 @@ module WellConnectedComponents {
 
         // Sort the edges using the comparator
       sort(edges, comparator=TupleComp);
-//writeln("edges.size: ", edges.size);
       // Extract sorted src and dst arrays
       var sortedSrc: [0..< src.size] int;
       var sortedDst: [0..< dst.size] int;
@@ -240,8 +225,8 @@ module WellConnectedComponents {
         var fileWriter = file.writer(locking=false);
         
         var mappedArr = nodeMapGraphG1[membersA.toArray()];
-        writeln("Arachne indecies: ",membersA);
-        writeln("mappedArr: ",mappedArr);
+        //writeln("Arachne indecies: ",membersA);
+        //writeln("mappedArr: ",mappedArr);
         
         fileWriter.writeln("# cluster ID: " + id: string); 
         fileWriter.writeln("# cluster Depth: " + depth: string); 
@@ -269,7 +254,7 @@ module WellConnectedComponents {
       
       var intersection: set(int);
       intersection = neighborsSet & members;
-      writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
+      //writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
 
       //assert(intersection.size == newWay, "Error: The degrees are not equal!");
       return intersection.size;
@@ -298,8 +283,6 @@ module WellConnectedComponents {
     }
 
     proc removeDegOne(ref partition:set(int)): set(int) throws{
-      writeln("///////////////////////removeDegOne called for: ",partition.size);
-      //writeln("partition: ", partition);
       if partition.size <= 1{
         var zeroset = new set(int);
         return zeroset;
@@ -313,32 +296,28 @@ module WellConnectedComponents {
           partitionToPass.remove(v);
         }
       }
-      writeln("removeDegOne called for: ",partition.size, " and it returned: ",partitionToPass.size );
+      //writeln("removeDegOne called for: ",partition.size, " and it returned: ",partitionToPass.size );
       //writeln("partitionToPass: ",partitionToPass );
       return(partitionToPass);
     }
     /* Helper method to run the recursion. */
     /* Calls out to an external procedure that runs VieCut. */
     proc callMinCut(ref vertices: set(int), id: int, depth: int): list(int) throws {
-      writeln("///////////////////////callMinCut, received: ",vertices.size," vertices to CUT");
+      //writeln("///////////////////////callMinCut, received: ",vertices.size," vertices to CUT");
       var allWCC: list(int, parSafe=true);
       
       // If the vertices array is empty, do nothing and return an empty list
-      //if vertices.size == 0 {
       if vertices.size < 2 {
-        //writeln("We reached to exception point for cluster: ",id, " with size: ",vertices.size," at depth: ", depth  );
         return allWCC;
       }
 
       var (src, dst, mapper) = getEdgeList(vertices);
-      //writeln("src: ", src.size, "\ndst: ", dst.size, "\nmapper: ", mapper.size);
       var n = mapper.size;
       var m = src.size;
 
       var partitionArr: [{0..<n}] int;
       var newSrc: [{0..<m}] int = src;
       var newDst: [{0..<m}] int = dst;
-      //writeln("We are here 100");
       // Call the external min-cut function
       var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
 
@@ -369,24 +348,17 @@ module WellConnectedComponents {
 
         var newSubClusters: list(int, parSafe=true);
         
-        // The partition size must be greater than 1 for it to be meaningful before passing it to VieCut.
+        // The partition size must be greater than 1, to be meaningful passing it to VieCut.
         if cluster1.size >1 {
           var inPartition = removeDegOne(cluster1);
-          //var inPartition = clusterC2D(cluster1);
-          //writeln("inPartition before removing has: ", cluster1.size," after removing: ", inPartition.size);
-          //writeln("recursion happened for inPartition");
           newSubClusters = callMinCut(inPartition, id, depth+1);
         }
         if cluster2.size >1 {
           var outPartition = removeDegOne(cluster2);
-          //var outPartition = clusterC2D(cluster2);
-          //writeln("outPartition before removing has: ", cluster2.size," after removing: ", outPartition.size);
-          //writeln("recursion happened for outPartition");
           newSubClusters = callMinCut(outPartition, id, depth+1);
         }
+        
         for findings in newSubClusters do allWCC.pushBack(findings);
-
-        //}
       }
       return allWCC;
     }
@@ -447,6 +419,8 @@ module WellConnectedComponents {
       writeln("core2Decomposition returned cluster with size:",newMembers);
       return newMembers;
     }
+
+
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
       
@@ -455,34 +429,37 @@ module WellConnectedComponents {
       var results: list(int, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
       writeln("reading Clusters' File finished.");
-      //forall key in clusters.keysToArray() with (ref results, ref clusters) {
-      for key in clusters.keysToArray() {
+      writeln("clusters.keysToArray(): ", clusters.keysToArray());
+      writeln("clusters.keysToArray().domain: ", clusters.keysToArray().domain);
+      
+      forall key in clusters.keysToArray() with (ref results, ref clusters) {
+      //for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key];
         writeln("Cluster ", key, ": ", clusterToAdd.size," vertices.");
         
-        var clusterSetInit1 = removeDegOne(clusterToAdd);
-        writeln("clusterSetInit *removeDegOne: ", clusterSetInit1.size);
-        
-        //var clusterSetInit = new set(int, parSafe=true);
-        //clusterSetInit = clusterC2D (clusterToAdd);
-        //writeln("clusterSetInit *clusterC2D: ", clusterSetInit.size);
+        /*
+        TO OLIVER: I changed my mind and commented this because there is a chance that at the first step we find
+        a well connected cluster. PLEASE check the Min's code and MY STATEMENT on slack.
+        //var clusterSetInit1 = removeDegOne(clusterToAdd);
+        //writeln("clusterSetInit First *removeDegOne: ", clusterSetInit1.size);
+        */
 
         if clusterToAdd.size > 1 { // The cluster is not a singleton.
           
-          writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*");
-          //clusterInit.printClusterInfo();
-
-          var newResults = callMinCut(clusterToAdd, key, 0); 
-          //var newResults:list(int, parSafe=true);
+          //writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*");
+          //To Oliver: I did it because of the warnings!
+          var newResults:list(int, parSafe=true);
+          newResults = callMinCut(clusterToAdd, key, 0); 
           for mapping in newResults do results.pushBack(mapping);
         }
       }
         var subClusterArrToReturn: [0..#results.size] int;
         subClusterArrToReturn = results.toArray();
-
+        
+        //To Oliver: I know it is expensive but I did it for my tests. We don't need it. Do we?
+        sort(subClusterArrToReturn);
         if outputType == "post" then writeClustersToFile();
 
-        //var subClusterArrToReturn: [0..3] int;
         return subClusterArrToReturn;
       } // end of wcc
     
