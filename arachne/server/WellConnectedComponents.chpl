@@ -52,7 +52,7 @@ module WellConnectedComponents {
         for x in b do if a.contains(x) then size.add(1);
       }
     }
-    writeln("size.read(): ", size.read());
+    //writeln("size.read(): ", size.read());
     return size.read();
   }
 
@@ -71,7 +71,7 @@ module WellConnectedComponents {
     var clusterArrtemp = wcc(g1);
     writeln("**********************************************************we reached here");
 
-    var clusterArr = clusterArrtemp; //cluster id
+    const ref  clusterArr = clusterArrtemp; //cluster id
     
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
@@ -241,23 +241,24 @@ module WellConnectedComponents {
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
     proc calculateClusterDegree(ref members: set(int), vertex: int) throws {
 
-      // const ref neighbors1 = neighborsSetGraphG1[vertex];
-      // var newWay = setIntersectionSize(neighbors1,members);
+      const ref neighbors1 = neighborsSetGraphG1[vertex];
+      var newWay = setIntersectionSize(neighbors1,members);
       // writeln("calculateClusterDegree NEW (",vertex,") -> ",newWay);
 
-      const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
-      var neighborsSet: set(int);
-      // Insert array elements into the set
-      for elem in neighbors {
-        neighborsSet.add(elem);  
-      }
+      // const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
+      // var neighborsSet: set(int);
+      // // Insert array elements into the set
+      // for elem in neighbors {
+      //   neighborsSet.add(elem);  
+      // }
       
-      var intersection: set(int);
-      intersection = neighborsSet & members;
-      //writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
+      // var intersection: set(int);
+      // intersection = neighborsSet & members;
+      // writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
 
       //assert(intersection.size == newWay, "Error: The degrees are not equal!");
-      return intersection.size;
+      //return intersection.size;
+      return newWay;
     }
 
     /* If given two lists with all vertices and cluster information, writes them out to file. */
@@ -362,7 +363,8 @@ module WellConnectedComponents {
       }
       return allWCC;
     }
-
+    // TO OLIVER:
+    /* Core 2 Decomposition. For some reasons that you know we didn't use it!*/
     proc clusterC2D(ref clusterNodes: set(int)): set(int) throws{
       // Create a copy of the input set to work with. Oliver is it a ref or copy?
       var coreMembers = clusterNodes;
@@ -429,8 +431,8 @@ module WellConnectedComponents {
       var results: list(int, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
       writeln("reading Clusters' File finished.");
-      writeln("clusters.keysToArray(): ", clusters.keysToArray());
-      writeln("clusters.keysToArray().domain: ", clusters.keysToArray().domain);
+      //writeln("clusters.keysToArray(): ", clusters.keysToArray());
+      //writeln("clusters.keysToArray().domain: ", clusters.keysToArray().domain);
       
       forall key in clusters.keysToArray() with (ref results, ref clusters) {
       //for key in clusters.keysToArray() {

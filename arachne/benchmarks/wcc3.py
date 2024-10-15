@@ -7,7 +7,7 @@ import os
 import pandas as pd
 
 # Connect to Arkouda server
-ak.connect("n118", 5555)
+ak.connect("n115", 5555)
 
 
 #cluster_dict = {}
@@ -18,8 +18,11 @@ print("Graph generated!")
 
 # Execute wcc with the absolute path to the generate and the create network file.
 filePath = os.path.abspath("/scratch/users/md724/DataSets/UIUC/oc_integer/S2_oc_leiden.0.001_i2_clustering.tsv")
-clusters = ar.well_connected_components(ar_network_graph, filePath, "/scratch/users/md724/DataSets/UIUC/wccOutPut")
+outputPath = os.path.abspath("/scratch/users/md724/DataSets/wcc/WCC_Output")
+
+clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "debug")
 print("Number of clusters processed = ", clusters.size)
 
-
+print("clusters = ", clusters)
+print("clusters.size = ", clusters.size)
 ak.shutdown()
