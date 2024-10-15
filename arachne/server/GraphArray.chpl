@@ -142,15 +142,11 @@ module GraphArray {
             const ref seg = toSymEntry(getComp("SEGMENTS_SDI"), int).a;
             var neighborsSet = makeDistArray(seg.size-1, set(int));
 
-            var last = seg.domain.last;
-            forall u in seg.domain by 2 align 0 {
-                if u+1 <= last {
-                    var start = seg[u];
-                    var end = seg[u+1]-1;
-                    const ref neighbors = dst[start..end];
-                    for v in neighbors do neighborsSet[u].add(v);
-                    // writeln("Neighbors size of ", u, " are ", neighbors.size, " vs. neighbors set ", neighborsSet[u].size);
-                }
+            forall u in 0..seg.size-2 {
+                var start = seg[u];
+                var end = seg[u+1]-1;
+                const ref neighbors = dst[start..end];
+                for v in neighbors do neighborsSet[u].add(v);
             }
             withComp(createSymEntry(neighborsSet):GenSymEntry, "NEIGHBORS_SET_SDI");
         }
