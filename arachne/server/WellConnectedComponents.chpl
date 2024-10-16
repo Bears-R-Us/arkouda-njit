@@ -270,7 +270,7 @@ module WellConnectedComponents {
     }
     /* If given two lists with all vertices and cluster information, writes them out to file. */
     proc writeClustersToFile() throws {
-      var filename = outputPath + "/cluster_"+".during";
+      var filename = outputPath + "/cluster_"+".post";
       var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=false);
 
@@ -282,7 +282,7 @@ module WellConnectedComponents {
 
     /* If given only vertices belonging to one cluster, writes them out to file. */
     proc writeClustersToFile(ref vertices: set(int), cluster:int) throws {
-      var filename = outputPath + "/cluster_"+".post";
+      var filename = outputPath + "/cluster_"+".during";
       var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=true);
 
