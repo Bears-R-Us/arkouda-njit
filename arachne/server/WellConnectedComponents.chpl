@@ -115,8 +115,8 @@ module WellConnectedComponents {
     /* Returns the sorted and deduplicated edge list for a given set of vertices. */
     proc getEdgeList(ref vertices: set(int)) throws {
       // Initialize lists to collect edges
-      var srcList = new list(int);
-      var dstList = new list(int);
+      var srcList = new list(int, parSafe=true);
+      var dstList = new list(int, parSafe=true);
 
       // Map to assign new indices to vertices (mapper)
       var mapper = new map(int, int);
@@ -136,7 +136,17 @@ module WellConnectedComponents {
             dstList.pushBack(mapper[v]);
           }
         }
-      }
+      }      
+      // // Collect edges within the cluster
+      // forall u in vertices with (ref srcList, ref dstList) {
+      //   const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u + 1]];
+      //   forall v in neighbors with (ref srcList, ref dstList){
+      //     if mapper.contains(v) {
+      //       srcList.pushBack(mapper[u]);
+      //       dstList.pushBack(mapper[v]);
+      //     }
+      //   }
+      // }
       // Convert lists to arrays
       var src = srcList.toArray();
       var dst = dstList.toArray();
@@ -218,26 +228,7 @@ module WellConnectedComponents {
 
 
 
-    /* Write out the clusters to a file. */
-    proc writeClusterToFile(ref membersA:set(int), id: int, depth: int, cut: int, ref mapper:[] int) throws {
-        var filename = outputPath + "_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".txt";
-        var file = open(filename, ioMode.cw);
-        var fileWriter = file.writer(locking=false);
-        
-        var mappedArr = nodeMapGraphG1[membersA.toArray()];
-        //writeln("Arachne indecies: ",membersA);
-        //writeln("mappedArr: ",mappedArr);
-        
-        fileWriter.writeln("# cluster ID: " + id: string); 
-        fileWriter.writeln("# cluster Depth: " + depth: string); 
-        fileWriter.writeln("# number of members: " + membersA.size: string);
-        fileWriter.writeln("# cutsize: " + cut: string);
-        //fileWriter.writeln("# mapper: " + mapper: string);
-        fileWriter.writeln("# members: " + mappedArr: string);
-        
-        try fileWriter.close();
-        try file.close();
-    }
+
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
     proc calculateClusterDegree(ref members: set(int), vertex: int) throws {
 
@@ -260,13 +251,30 @@ module WellConnectedComponents {
       //return intersection.size;
       return newWay;
     }
+    /* Write out the clusters to a file. */
+    //proc writeClustersToFile(ref membersA:set(int), id: int, depth: int, cut: int, ref mapper:[] int) throws {
+    proc writeClustersToFile(ref membersA:set(int), id: int, depth: int, cut: int) throws {
+        var filename = outputPath + "/cluster_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".debugging";
+        var file = open(filename, ioMode.cw);
+        var fileWriter = file.writer(locking=false);
+        var mappedArr = nodeMapGraphG1[membersA.toArray()];
 
+        fileWriter.writeln("# cluster ID: " + id: string); 
+        fileWriter.writeln("# cluster Depth: " + depth: string); 
+        fileWriter.writeln("# number of members: " + membersA.size: string);
+        fileWriter.writeln("# cutsize: " + cut: string);
+        fileWriter.writeln("# members: " + mappedArr: string);
+        
+        try fileWriter.close();
+        try file.close();
+    }
     /* If given two lists with all vertices and cluster information, writes them out to file. */
     proc writeClustersToFile() throws {
-      var outfile = open(outputPath, ioMode.cw);
+      var filename = outputPath + "/cluster_"+".during";
+      var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=false);
 
-      for (v,c) in zip(finalVertices, finalClusters) do writer.writeln(v, " ", c);
+      for (v,c) in zip(finalVertices, finalClusters) do writer.writeln(nodeMapGraphG1[v], " ", c);
 
       writer.close();
       outfile.close();
@@ -274,10 +282,11 @@ module WellConnectedComponents {
 
     /* If given only vertices belonging to one cluster, writes them out to file. */
     proc writeClustersToFile(ref vertices: set(int), cluster:int) throws {
-      var outfile = open(outputPath, ioMode.a);
+      var filename = outputPath + "/cluster_"+".post";
+      var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=true);
 
-      for v in vertices do writer.writeln(v, " ", cluster);
+      for v in vertices do writer.writeln(nodeMapGraphG1[v], " ", cluster);
 
       writer.close();
       outfile.close();
@@ -328,7 +337,7 @@ module WellConnectedComponents {
       if cut > floorLog10N {// Check Well Connectedness
         allWCC.pushBack(id); //allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
         var currentId = globalId.fetchAdd(1);
-        if outputType == "debug" then writeClusterToFile(vertices, id, depth, cut, mapper);
+        if outputType == "debug" then writeClustersToFile(vertices, id, depth, cut);
         else if outputType == "during" then writeClustersToFile(vertices, currentId);
         for v in vertices {
           finalVertices.pushBack(v);

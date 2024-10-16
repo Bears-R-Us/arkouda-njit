@@ -66,8 +66,8 @@ ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/arkoud
 
 # Execute wcc with the absolute path to the generate and the create network file.
 filePath = os.path.abspath("/scratch/users/md724/DataSets/wcc/test_clustering.tsv")
-outputPath = os.path.abspath("/scratch/users/md724/DataSets/wcc/WCC_Output")
-clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "debug")
+outputPath = os.path.abspath("/scratch/users/md724/DataSets/wcc/")
+clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "debugging")
 print("Number of clusters processed = ", clusters.size)
 
 print("clusters = ", clusters)
