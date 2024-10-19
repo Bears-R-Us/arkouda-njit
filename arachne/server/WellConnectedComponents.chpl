@@ -57,7 +57,7 @@ module WellConnectedComponents {
   }
 
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
-               inputcluster_filePath: string, outputPath: string, outputType: string) throws {
+               inputcluster_filePath: string, outputPath: string, outputType: string, functionType: string) throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
@@ -67,10 +67,14 @@ module WellConnectedComponents {
     var finalVertices = new list(int, parSafe=true);
     var finalClusters = new list(int, parSafe=true);
     var globalId:atomic int = 0;
+    var functionTypePassed = if functionType != "none" then functionType:int else 10;
+    
+    writeln("functionType:", functionType);
+    writeln("functionTypePassed:", functionTypePassed);
 
     var clusterArrtemp = wcc(g1);
     writeln("**********************************************************we reached here");
-
+    //writeln("functionTypePassed:", functionTypePassed);
     const ref  clusterArr = clusterArrtemp; //cluster id
     
     /*
@@ -306,8 +310,6 @@ module WellConnectedComponents {
           partitionToPass.remove(v);
         }
       }
-      //writeln("removeDegOne called for: ",partition.size, " and it returned: ",partitionToPass.size );
-      //writeln("partitionToPass: ",partitionToPass );
       return(partitionToPass);
     }
     /* Helper method to run the recursion. */
@@ -324,17 +326,52 @@ module WellConnectedComponents {
       var (src, dst, mapper) = getEdgeList(vertices);
       var n = mapper.size;
       var m = src.size;
-
+      // writeln("$$$$ n: ", n);
+      // writeln("$$$$ m: ", m);
+      // if m < 1 {
+      //   return allWCC;
+      // }
       var partitionArr: [{0..<n}] int;
       var newSrc: [{0..<m}] int = src;
       var newDst: [{0..<m}] int = dst;
       // Call the external min-cut function
       var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
-
-      var logN = floor(log10(vertices.size: real));
-      var floorLog10N: int = logN:int;
+      //writeln("cutSize = ", cut);
+      var functionCriteria: int = 0;
       
-      if cut > floorLog10N {// Check Well Connectedness
+      if functionTypePassed == 1 {
+        writeln("floor(0.01 * (vertices.size)): ", floor(0.01 * (vertices.size))," cutSize = ", cut);
+        var funcret = floor(0.01 * (vertices.size));
+        functionCriteria = funcret:int;
+      } 
+
+      if functionTypePassed == 5 {
+        writeln("floor(sqrt(vertices.size:real)/5): ",floor(sqrt(vertices.size:real)/5)," cutSize = ", cut);
+
+        var funcret = floor(sqrt(vertices.size:real)/5);
+        functionCriteria = funcret:int;
+      } 
+
+      if functionTypePassed == 10 {
+        writeln("floor(log10(vertices.size: real): ", floor(log10(vertices.size: real))," cutSize = ", cut);
+
+        var logN = floor(log10(vertices.size: real));
+        functionCriteria = logN:int;
+      }      
+      
+      if functionTypePassed == 2 {
+        writeln("floor(log2(vertices.size: real)): ", floor(log2(vertices.size: real)), " cutSize = ", cut);
+
+        var logN = floor(log2(vertices.size: real));
+        functionCriteria = logN:int;
+      }
+
+      // writeln("functionCriteria:", functionCriteria);
+
+      // var logN = floor(log10(vertices.size: real));
+      // var floorLog10N: int = logN:int;
+      
+      if cut > functionCriteria {// Check Well Connectedness
         allWCC.pushBack(id); //allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
         var currentId = globalId.fetchAdd(1);
         if outputType == "debug" then writeClustersToFile(vertices, id, depth, cut);

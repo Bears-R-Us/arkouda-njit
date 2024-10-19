@@ -32,6 +32,7 @@ module WellConnectedComponentsMsg {
       var FilePath = msgArgs.getValueOf("FilePath");
       var OutputPath = msgArgs.getValueOf("OutputPath");
       var OutputType = msgArgs.getValueOf("OutputType");
+      var FunctionType = msgArgs.getValueOf("FunctionType");
       
       // Pull out our graph from the symbol table.
       var gEntry: borrowed GraphSymEntry = getGraphSymEntry(GraphEntryName, st); 
@@ -39,6 +40,7 @@ module WellConnectedComponentsMsg {
       var path = FilePath;
       var outputPath = OutputPath;
       var outputType = OutputType;
+      var functionType = FunctionType;
 
       // Generate neighbors as sets for graph.
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
@@ -47,7 +49,7 @@ module WellConnectedComponentsMsg {
       var timer:stopwatch;
       if !g.isDirected() {
           timer.start();
-          var isoArray = runWCC(g, st, path, outputPath, outputType);
+          var isoArray = runWCC(g, st, path, outputPath, outputType, functionType);
           timer.stop();
           outMsg = "Well connected components took " + timer.elapsed():string + " sec";
           

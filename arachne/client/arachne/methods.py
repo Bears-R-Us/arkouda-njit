@@ -476,7 +476,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
 @typechecked
 def well_connected_components(graph: Graph, file_path: str,
-                              output_path: str = None, output_type:str = "post") -> pdarray:
+                              output_path: str = None, output_type:str = "post", func_type:int = None) -> pdarray:
     """
     Runs a single threaded version of well-connectec components (WCC). Writes the outputted clusters 
     by default to `arkouda-njit/arachne/output/wcc.text`.
@@ -522,7 +522,8 @@ def well_connected_components(graph: Graph, file_path: str,
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,
-             "OutputType": output_type}
+             "OutputType": output_type,
+             "FunctionType":func_type}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 

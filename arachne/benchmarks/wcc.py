@@ -62,12 +62,12 @@ for cluster_num, nodes in cluster_dict.items():
 
 
 # Create an Arachne graph from a test network file.
-ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network.tsv"))
+ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/DataSets/wcc/test_network.tsv"))
 
 # Execute wcc with the absolute path to the generate and the create network file.
 filePath = os.path.abspath("/scratch/users/md724/DataSets/wcc/test_clustering.tsv")
 outputPath = os.path.abspath("/scratch/users/md724/DataSets/wcc")
-clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "during")
+clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "post", 2)
 print("Number of clusters processed = ", clusters.size)
 
 print("clusters = ", clusters)
