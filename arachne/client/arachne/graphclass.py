@@ -347,7 +347,7 @@ class Graph:
         start_i_reversed = ak.find(new_vertex_range, src_reversed)
 
         # 4. Extract vertex and edge number information.
-        # TODO: commenting out, how do we deal with different vertex and edge counts per data 
+        # TODO: commenting out, how do we deal with different vertex and edge counts per data
         #       structure?
         # self.n_vertices = int(vmap.size)
         # self.n_edges = int(src.size)

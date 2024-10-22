@@ -16,6 +16,7 @@ module WellConnectedComponents {
   // Arachne modules.
   use GraphArray;
   use Utils;
+  use ConnectedComponents;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -26,7 +27,7 @@ module WellConnectedComponents {
   use SegmentedString;
 
   // C header and object files.
-  require "viecut_helpers/computeMinCut.h", 
+  require "viecut_helpers/computeMinCut.h",
           "viecut_helpers/computeMinCut.o",
           "viecut_helpers/logger.cpp.o";
   
@@ -52,7 +53,7 @@ module WellConnectedComponents {
         for x in b do if a.contains(x) then size.add(1);
       }
     }
-    //writeln("size.read(): ", size.read());
+    
     return size.read();
   }
 
@@ -127,6 +128,7 @@ module WellConnectedComponents {
         reverseMapper[idx] = v;
         idx += 1;
       }
+
       // Collect edges within the cluster
       for u in vertices {
         const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u + 1]];
@@ -137,16 +139,7 @@ module WellConnectedComponents {
           }
         }
       }      
-      // // Collect edges within the cluster
-      // forall u in vertices with (ref srcList, ref dstList) {
-      //   const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u + 1]];
-      //   forall v in neighbors with (ref srcList, ref dstList){
-      //     if mapper.contains(v) {
-      //       srcList.pushBack(mapper[u]);
-      //       dstList.pushBack(mapper[v]);
-      //     }
-      //   }
-      // }
+
       // Convert lists to arrays
       var src = srcList.toArray();
       var dst = dstList.toArray();
@@ -159,7 +152,7 @@ module WellConnectedComponents {
 
       // Create mapper array (original vertex IDs)
       var n = mapper.size;
-      var mapperArray:[0..n - 1] int;
+      var mapperArray:[{0..<n}] int;
 
       for i in reverseMapper.keysToArray() {
         var originalV = reverseMapper[i];
@@ -231,30 +224,15 @@ module WellConnectedComponents {
 
     /* Function to calculate the degree of a vertex within a component/cluster/community. */
     proc calculateClusterDegree(ref members: set(int), vertex: int) throws {
-
       const ref neighbors1 = neighborsSetGraphG1[vertex];
       var newWay = setIntersectionSize(neighbors1,members);
-      // writeln("calculateClusterDegree NEW (",vertex,") -> ",newWay);
 
-      // const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
-      // var neighborsSet: set(int);
-      // // Insert array elements into the set
-      // for elem in neighbors {
-      //   neighborsSet.add(elem);  
-      // }
-      
-      // var intersection: set(int);
-      // intersection = neighborsSet & members;
-      // writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
-
-      //assert(intersection.size == newWay, "Error: The degrees are not equal!");
-      //return intersection.size;
       return newWay;
     }
     /* Write out the clusters to a file. */
     //proc writeClustersToFile(ref membersA:set(int), id: int, depth: int, cut: int, ref mapper:[] int) throws {
     proc writeClustersToFile(ref membersA:set(int), id: int, depth: int, cut: int) throws {
-        var filename = outputPath + "/cluster_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".debugging";
+        var filename = outputPath + "_" + id:string + "_" + depth:string + "_" + membersA.size:string + "_" + cut:string + ".txt";
         var file = open(filename, ioMode.cw);
         var fileWriter = file.writer(locking=false);
         var mappedArr = nodeMapGraphG1[membersA.toArray()];
@@ -270,7 +248,7 @@ module WellConnectedComponents {
     }
     /* If given two lists with all vertices and cluster information, writes them out to file. */
     proc writeClustersToFile() throws {
-      var filename = outputPath + "/cluster_"+".post";
+      var filename = outputPath;
       var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=false);
 
@@ -282,7 +260,7 @@ module WellConnectedComponents {
 
     /* If given only vertices belonging to one cluster, writes them out to file. */
     proc writeClustersToFile(ref vertices: set(int), cluster:int) throws {
-      var filename = outputPath + "/cluster_"+".during";
+      var filename = outputPath;
       var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=true);
 
@@ -328,7 +306,6 @@ module WellConnectedComponents {
       var partitionArr: [{0..<n}] int;
       var newSrc: [{0..<m}] int = src;
       var newDst: [{0..<m}] int = dst;
-      // Call the external min-cut function
       var cut = c_computeMinCut(partitionArr, newSrc, newDst, n, m);
 
       var logN = floor(log10(vertices.size: real));
@@ -434,45 +411,78 @@ module WellConnectedComponents {
 
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
-      
-      writeln("Graph loaded. It has: ",g1.n_vertices," vertices and ",g1.n_edges, ".");
+      writeln("Graph loaded. It has: ", g1.n_vertices," vertices and ", g1.n_edges, " edges.");
       
       var results: list(int, parSafe=true);
-      var clusters = readClustersFile(inputcluster_filePath);
+      var originalClusters = readClustersFile(inputcluster_filePath);
       writeln("reading Clusters' File finished.");
-      //writeln("clusters.keysToArray(): ", clusters.keysToArray());
-      //writeln("clusters.keysToArray().domain: ", clusters.keysToArray().domain);
-      
-      forall key in clusters.keysToArray() with (ref results, ref clusters) {
-      //for key in clusters.keysToArray() {
-        ref clusterToAdd = clusters[key];
-        writeln("Cluster ", key, ": ", clusterToAdd.size," vertices.");
-        
-        /*
-        TO OLIVER: I changed my mind and commented this because there is a chance that at the first step we find
-        a well connected cluster. PLEASE check the Min's code and MY STATEMENT on slack.
-        //var clusterSetInit1 = removeDegOne(clusterToAdd);
-        //writeln("clusterSetInit First *removeDegOne: ", clusterSetInit1.size);
-        */
 
-        if clusterToAdd.size > 1 { // The cluster is not a singleton.
+
+
+      var newClusterIds: chpl__processorAtomicType(int) = 0;
+      var newClusters = new map(int, set(int));
+      
+      // Sequential for now since connected components is highly parallel.
+      for key in originalClusters.keysToArray() {
+        var (src, dst, mapper) = getEdgeList(originalClusters[key]);
+        // writeln("Checking original cluster ", key, " for multiple connected components.");
+        if src.size > 0 { // if no edges were generated, then do not process this component.
+          // Generate edges with 0-based vertex indices for connected components.
+          var (arachneSrc, arachneDst, arachneMapper) = oneUpper(src, dst);
+
+          // Generate the segments for the newly generated cluster graph.
+          var (srcUnique, srcCounts) = uniqueFromSorted(arachneSrc);
+          var srcCumulativeCounts = + scan srcCounts;
+          var segments = makeDistArray(srcCounts.size + 1, int);
+          segments[0] = 0;
+          segments[1..] = srcCumulativeCounts;
+
+          // Call connected components and decide if multiple connected components exist or not.
+          var components = connectedComponents(arachneSrc, arachneDst, srcCounts.size);
+          var multipleComponents:bool = false;
+          for c in components do if c != 0 { multipleComponents = true; break; }
           
-          //writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*");
-          //To Oliver: I did it because of the warnings!
+          // Add each vertex in each connected component to its own cluster, or just add the whole
+          // cluster if it is composed of only one connected component.
+          // writeln("multipleComponents = ", multipleComponents);
+          if multipleComponents {
+            var tempMap = new map(int, set(int));
+            for (c,v) in zip(components,components.domain) {
+              if tempMap.contains(c) then tempMap[c].add(arachneMapper[v]);
+              else {
+                var s = new set(int);
+                s.add(arachneMapper[v]);
+                tempMap[c] = s;
+              }
+            }
+            for c in tempMap.keys() do newClusters[newClusterIds.fetchAdd(1)] = tempMap[c];
+            writeln("Original cluster ", key, " was split up into ", tempMap.size, " clusters.");
+          } else newClusters[newClusterIds.fetchAdd(1)] = originalClusters[key];
+        }
+      }
+      writeln("New number of clusters is ", newClusters.size);
+      writeln();
+      writeln();
+      writeln();
+
+      for key in newClusters.keysToArray() {
+      // forall key in newClusters.keysToArray() with (ref results, ref newClusters) {
+        ref clusterToAdd = newClusters[key];
+        writeln("Cluster ", key, ": ", clusterToAdd.size," vertices.");
+        if clusterToAdd.size > 1 { // The cluster is not a singleton.
           var newResults:list(int, parSafe=true);
           newResults = callMinCut(clusterToAdd, key, 0); 
           for mapping in newResults do results.pushBack(mapping);
         }
+        writeln();
       }
-        var subClusterArrToReturn: [0..#results.size] int;
-        subClusterArrToReturn = results.toArray();
-        
-        //To Oliver: I know it is expensive but I did it for my tests. We don't need it. Do we?
-        sort(subClusterArrToReturn);
-        if outputType == "post" then writeClustersToFile();
+      var subClusterArrToReturn: [0..#results.size] int;
+      subClusterArrToReturn = results.toArray();
 
-        return subClusterArrToReturn;
-      } // end of wcc
+      if outputType == "post" then writeClustersToFile();
+
+      return subClusterArrToReturn;
+    } // end of wcc
     
     return clusterArr;
   } // end of runWCC
