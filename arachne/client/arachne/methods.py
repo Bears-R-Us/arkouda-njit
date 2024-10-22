@@ -1,7 +1,7 @@
 """Contains all current Arachne functionality. Includes building methods and algorithmic kernels.
 """
 from __future__ import annotations
-from typing import cast, Tuple, Union
+from typing import cast, Tuple, Union, Literal
 import os
 from typeguard import typechecked
 import arachne as ar
@@ -476,7 +476,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
 @typechecked
 def well_connected_components(graph: Graph, file_path: str,
-                              output_path: str = None, output_type:str = "post") -> pdarray:
+                              output_type: Literal["post", "during", "debug"] = "post",
+                              output_path: str = None) -> pdarray:
     """
     Runs a single threaded version of well-connectec components (WCC). Writes the outputted clusters 
     by default to `arkouda-njit/arachne/output/wcc.text`.
@@ -488,11 +489,13 @@ def well_connected_components(graph: Graph, file_path: str,
     file_path : str
         The file containing the clusters each vertex belongs to.
     output_path : str
-        The output path to where the new clusters are to be written to.
+        The output path to where the new clusters are to be written to. NOTE: Must be the absolute
+        path to the file.
     output_type : str
         If "post" then output is written at the end of WCC. If "during" then output is written as
         soon as a cluster is considered well-connected. If "debug" then output is written verbosely
-        as soon as a cluster is considered well-connected.
+        as soon as a cluster is considered well-connected. Further, "debug" assumes a general name
+        for files to be given without extensions: ".tsv", ".csv", etc.
 
     Returns
     -------
@@ -506,17 +509,25 @@ def well_connected_components(graph: Graph, file_path: str,
 
     Notes
     -----
-    Work in progress. Currently, the graph file must be processed and read through Python. Future
-    functionality will include building the graph directly from Chapel and full parallelization
-    while processing each cluster through WCC.
+    Work in progress
 
     Raises
     ------
     FileExistsError
     """
-    if output_type == "during":
-        if os.path.isfile(output_path):
+    if output_type == "during" and output_path is not None:
+        if os.path.isfile(output_path) and output_path is not None:
             raise FileExistsError(f"The file '{output_path}' already exists.")
+
+    if output_path is None:
+        if output_type == "during":
+            output_path = os.path.abspath(".") + "/output/generated_cluster_during.tsv"
+        elif output_type == "post":
+            output_path = os.path.abspath(".") + "/output/generated_cluster_post.tsv"
+        elif output_type == "debug":
+            output_path = os.path.abspath(".") + "/output/generated_cluster_debug"
+        else:
+            raise ValueError(f"The output type {output_type} is not recognized.")
 
     cmd = "wellConnectedComponents"
     args = { "GraphName":graph.name,

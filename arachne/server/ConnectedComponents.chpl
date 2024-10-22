@@ -18,19 +18,19 @@ module ConnectedComponents {
   use ServerConfig;
   use AryUtil;
 
-  // Fast label propagation algorithm for finding connected components.
+  /* Given a `SegGraph` object, compute the connected components of the graph. */
   proc connectedComponents(graph: SegGraph) throws {
-    var src = toSymEntry(graph.getComp("SRC_RDI"),int).a;
-    var dst = toSymEntry(graph.getComp("DST_RDI"),int).a;
-    var srcR = toSymEntry(graph.getComp("SRC_R_RDI"),int).a;
-    var dstR = toSymEntry(graph.getComp("DST_R_RDI"),int).a;
-    var start_i = toSymEntry(graph.getComp("START_IDX_RDI"),int).a;
-    var start_iR = toSymEntry(graph.getComp("START_IDX_R_RDI"),int).a;
-    var nei = toSymEntry(graph.getComp("NEIGHBOR_RDI"),int).a;
-    var neiR = toSymEntry(graph.getComp("NEIGHBOR_R_RDI"),int).a;
-    var Ne = graph.n_edges;
+    var src = if graph.isReversed() then toSymEntry(graph.getComp("SRC_RDI"),int).a
+              else toSymEntry(graph.getComp("SRC_SDI"),int).a;
+    var dst = if graph.isReversed() then toSymEntry(graph.getComp("DST_RDI"),int).a
+              else toSymEntry(graph.getComp("DST_SDI"),int).a;
     var Nv = graph.n_vertices;
 
+    return connectedComponents(src, dst, Nv);
+  }
+  
+  /* Given source and destination arrays, compute the connected components of the graph. */
+  proc connectedComponents(src: [?Ds] int, dst: [?Dd] int, Nv: int) throws {
     var f = makeDistArray(Nv, int); 
     var af = makeDistArray(Nv, atomic int); 
     var converged:bool = false;
