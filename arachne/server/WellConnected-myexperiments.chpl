@@ -127,6 +127,320 @@ var original_node_ids:[0..34] int = 1..33;
     writeln("/////////////////////runLeiden Ended//////////////////////////////////");
 ///////////////////////////////////////Leiden//////////////////////////////////////////////////////////
 
+/*
+    // ----- Parameters -----
+    var randomSeed = 42;                       // Seed for reproducibility
+    var rng = new randStream(randomSeed);      // Random number generator
+    var resolution = 1.0;                      // Resolution parameter for Modularity or CPM
+    var partitionType = "Modularity";          // Partition type ("Modularity", "CPM", or "RBConfiguration")
+
+    // Edge weights (assuming unweighted graph; all weights are 1.0)
+    var weights: [0..g1.n_edges-1] real = 1.0;
+
+    // Adjacency list and corresponding edge weights for each vertex
+    var adjList: [0..g1.n_vertices-1] list(int);         // Adjacency list
+    var adjWeights: [0..g1.n_vertices-1] list(real);     // Edge weights in adjacency list
+
+    // Modularity-related metrics
+    var communityInternalWeight: [0..g1.n_vertices-1] real;  // Sum of weights of edges inside the community
+    var communityTotalWeight: [0..g1.n_vertices-1] real;     // Total weight of edges connected to the community
+    var nodeWeightedDegree: [0..g1.n_vertices-1] real;               // Weighted degree of each node
+
+    // Union-Find structure for community refinement
+    var parent: [0..g1.n_vertices-1] int;                    // Parent array for Union-Find
+
+// ----- Part 1: Build Adjacency List -----
+
+// Build adjacency list from src[], dst[], and weights[] arrays AND Initialize the adjacency list and adjacency weights
+
+// ----- Part 2: Modularity Optimization -----
+
+    // Initialize modularity-related metrics
+    proc initializeModularity(community: [] int) {
+      // Reset arrays to zero
+      communityInternalWeight = 0.0;
+      communityTotalWeight = 0.0;
+      nodeWeightedDegree = 0.0;
+
+      var totalEdgeWeight = 0.0;
+
+      // Compute node degrees and total edge weight
+      forall vertex in 0..g1.n_vertices-1 {
+        var deg = 0.0;
+        const ref neighbors = neighborsSetGraphG1[vertex];
+
+        for elem in neighbors { //Edge Weights for Node
+          deg += getEdgeSrcDstWeight(vertex, elem);
+        }
+        nodeWeightedDegree[i] = deg;
+        totalEdgeWeight += deg;
+      }
+      totalEdgeWeight /= 2.0;  // Each edge is counted twice in undirected graphs
+
+      // Compute community metrics
+      for node in 0..g1.n_vertices-1 {
+        var comm = community[node];
+        communityTotalWeight[comm] += nodeWeightedDegree[node];
+
+        var idx = 0;
+        for neighbor in adjList[node] {
+          var weight = adjWeights[node][idx];
+          if community[neighbor] == comm {
+            communityInternalWeight[comm] += weight;
+          }
+          idx += 1;
+        }
+      }
+
+  // Since each internal edge is counted twice, divide by 2
+  forall comm in 0..numVertices-1 {
+    communityInternalWeight[comm] /= 2.0;
+  }
+}
+
+// Calculate the delta modularity (or other quality function) for moving a node to a new community
+proc deltaQuality(node: int, currentCommunity: int, newCommunity: int, community: [] int, adjList: [] list(int), adjWeights: [] list(real), totalEdgeWeight: real): real {
+  var nodeDeg = nodeDegree[node];
+
+  // Compute k_i_in: sum of weights from node to the new community
+  var k_i_in = 0.0;
+  var idx = 0;
+  for neighbor in adjList[node] {
+    if community[neighbor] == newCommunity {
+      k_i_in += adjWeights[node][idx];
+    }
+    idx += 1;
+  }
+
+  // Modularity quality function calculation
+  if partitionType == "Modularity" {
+    var sumTotC = communityTotalWeight[newCommunity];
+    var deltaQ = (k_i_in - (nodeDeg * sumTotC) / (2.0 * totalEdgeWeight)) * (1.0 / totalEdgeWeight);
+    return deltaQ;
+  } else {
+    halt("Partition type not implemented.");
+  }
+}
+
+// Update community and node metrics after a node move
+proc updateCommunityMetrics(node: int, currentCommunity: int, newCommunity: int, community: [] int, adjList: [] list(int), adjWeights: [] list(real)) {
+  var nodeDeg = nodeDegree[node];
+
+  // Update the total weight for both communities
+  communityTotalWeight[currentCommunity] -= nodeDeg;
+  communityTotalWeight[newCommunity] += nodeDeg;
+
+  // Update internal weights for both communities
+  var idx = 0;
+  for neighbor in adjList[node] {
+    var weight = adjWeights[node][idx];
+    if community[neighbor] == currentCommunity {
+      communityInternalWeight[currentCommunity] -= weight;
+    }
+    if community[neighbor] == newCommunity {
+      communityInternalWeight[newCommunity] += weight;
+    }
+    idx += 1;
+  }
+}
+
+// Perform modularity (or quality function) optimization by moving nodes between communities
+proc optimizeModularity(community: [] int, adjList: [] list(int), adjWeights: [] list(real), rng: RandStream, totalEdgeWeight: real) {
+  var improvement = true;
+
+  // Create a list of node indices to shuffle
+  var nodes: [0..numVertices-1] int = [i in 0..numVertices-1] i;
+
+  // Iterate until no improvement is found
+  while improvement {
+    improvement = false;
+
+    // Shuffle the node indices to randomize traversal
+    rng.shuffle(nodes);
+
+    // Loop over all shuffled nodes
+    forall node in nodes {
+      var currentCommunity = community[node];
+      var bestCommunity = currentCommunity;
+      var bestGain = 0.0;
+
+      // Identify neighboring communities
+      var neighboringCommunities = new set(int);
+      var idx = 0;
+      for neighbor in adjList[node] {
+        neighboringCommunities.add(community[neighbor]);
+        idx += 1;
+      }
+
+      // Try moving the node to each neighboring community
+      for newCommunity in neighboringCommunities {
+        if newCommunity == currentCommunity then continue;
+
+        var gain = deltaQuality(node, currentCommunity, newCommunity, community, adjList, adjWeights, totalEdgeWeight);
+        if gain > bestGain {
+          bestGain = gain;
+          bestCommunity = newCommunity;
+        }
+      }
+
+      // Move the node to the best community if it improves modularity
+      if bestCommunity != currentCommunity {
+        updateCommunityMetrics(node, currentCommunity, bestCommunity, community, adjList, adjWeights);
+        community[node] = bestCommunity;
+        improvement = true;
+      }
+    }
+  }
+}
+
+// ----- Part 3: Community Refinement (Union-Find) -----
+
+// Union-Find 'find' operation with path compression
+proc find(x: int): int {
+  if parent[x] != x then
+    parent[x] = find(parent[x]);  // Path compression
+  return parent[x];
+}
+
+// Union operation to merge two communities
+proc union(x: int, y: int) {
+  var rootX = find(x);
+  var rootY = find(y);
+  if rootX != rootY then
+    parent[rootX] = rootY;
+}
+
+// Initialize the Union-Find structure
+proc initializeUnionFind() {
+  forall i in 0..numVertices-1 {
+    parent[i] = i;
+  }
+}
+
+// Refine communities using Union-Find to ensure connectivity
+proc refineCommunities(community: [] int, adjList: [] list(int)) {
+  initializeUnionFind();
+
+  // Merge nodes in the same community
+  forall node in 0..numVertices-1 {
+    var nodeComm = community[node];
+    for neighbor in adjList[node] {
+      if community[neighbor] == nodeComm {
+        union(node, neighbor);
+      }
+    }
+  }
+
+  // Reassign nodes based on the Union-Find parent
+  forall node in 0..numVertices-1 {
+    community[node] = find(node);
+  }
+}
+
+// ----- Part 4: Community Aggregation -----
+
+// Aggregate nodes into super-nodes after refinement
+proc aggregateCommunities(community: [] int, src: [] int, dst: [] int, weights: [] real): (list(int), list(int), list(real)) {
+  var newSrc = new list(int);
+  var newDst = new list(int);
+  var newWeights = new list(real);
+
+  // Map to store aggregated edge weights between communities
+  var edgeMap = new associative dom((int, int));
+
+  for i in 0..src.size-1 {
+    var srcComm = community[src[i]];
+    var dstComm = community[dst[i]];
+    var weight = weights[i];
+
+    // Edge between communities (could be self-loop)
+    var edge = (srcComm, dstComm);
+
+    // Aggregate weights of parallel edges
+    if edgeMap.member(edge) {
+      edgeMap[edge] += weight;
+    } else {
+      edgeMap.add(edge, weight);
+    }
+  }
+
+  // Build new src, dst, and weights arrays from the edge map
+  for (edge, weight) in edgeMap {
+    newSrc.append(edge(0));
+    newDst.append(edge(1));
+    newWeights.append(weight);
+  }
+
+  return (newSrc, newDst, newWeights);
+}
+    // Assuming weights are provided; if not, default to 1 for unweighted graphs
+    proc getEdgeIndexWeight(edgeIndex: int): real {
+      // If the graph is unweighted, return 1.0 for all edges
+      return 1.0;
+    }    
+    
+    proc getEdgeSrcDstWeight(src: int, dst: int): real {
+      // If the graph is unweighted, return 1.0 for all edges
+      return 1.0;
+    }
+// ----- Part 5: Leiden Algorithm Iteration -----
+
+    // Full Leiden algorithm combining all steps
+    proc leidenAlgorithm( weights: [] real, numIterations: int, resolution: real, partitionType: string, randomSeed: int) {
+      
+      // Initialize random number generator
+      var rng = new RandStream(randomSeed);
+
+      // Compute total edge weight
+      var totalEdgeWeight = 0.0;
+      for edgeIndex in 0..g1.n_edges {
+        totalEdgeWeight += getEdgeIndexWeight(edgeIndex);
+      }
+
+      for iteration in 1..numIterations {
+        writeln("Iteration: ", iteration);
+
+        // Step 1: Initialize each node to its own community
+        var community: [0..g1.n_vertices-1] int = 0..g1.n_vertices;
+
+        // Step 2: Initialize modularity metrics
+        initializeModularity(community);
+
+        // Step 3: Perform modularity optimization
+        optimizeModularity(community, adjList, adjWeights, rng, totalEdgeWeight);
+
+        // Step 4: Refine communities to ensure connectivity
+        refineCommunities(community, adjList);
+
+        // Step 5: Aggregate communities into super-nodes
+        var (newSrc, newDst, newWeights) = aggregateCommunities(community, src, dst, weights);
+
+        // Step 6: Check for convergence (termination condition)
+        if newSrc.size == src.size && newDst.size == dst.size {
+          writeln("No further improvement. Algorithm has converged.");
+          break;
+        }
+
+    // Update src, dst, and weights for the next iteration
+    src = newSrc;
+    dst = newDst;
+    weights = newWeights;
+
+    // Update numVertices and numEdges based on new communities
+    numVertices = community.unique().size;
+    numEdges = src.size;
+
+    // Rebuild adjacency list for the new graph
+    adjList = [0..numVertices-1] list(int);
+    adjWeights = [0..numVertices-1] list(real);
+    buildAdjList(src, dst, weights, adjList, adjWeights);
+  }
+}
+
+// Example of running the Leiden algorithm with custom parameters
+leidenAlgorithm(src, dst, weights, numIterations=10, resolution=1.0, partitionType="Modularity", randomSeed=42);
+*/
+
 ///////////////////////////////////////End of Leiden///////////////////////////////////////////////////
     var clusterArrtemp = wcc(g1);
     writeln("**********************************************************we reached here");

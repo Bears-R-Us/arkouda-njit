@@ -5,7 +5,7 @@ import pandas as pd
 import os
 
 # Connect to Arkouda server. NOTE: Change hostname to your environment's hostname.
-ak.connect("n115", 5555)
+ak.connect("n32", 5555)
 
 cluster_dict = {}
 
@@ -67,7 +67,7 @@ ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/DataSe
 # Execute wcc with the absolute path to the generate and the create network file.
 filePath = os.path.abspath("/scratch/users/md724/DataSets/wcc/test_clustering.tsv")
 outputPath = os.path.abspath("/scratch/users/md724/DataSets/wcc")
-clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "post", 2)
+clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "during", 10)
 print("Number of clusters processed = ", clusters.size)
 
 print("clusters = ", clusters)
