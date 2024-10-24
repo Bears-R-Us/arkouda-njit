@@ -11,7 +11,7 @@ int cpp_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int
 
     std::shared_ptr<mutable_graph> G = std::make_shared<mutable_graph>();
     G->start_construction(n);
-    for(int i = 0; i < n; i ++) {
+    for(int i = 0; i < n; i++) {
         NodeID current_node = G->new_node();
         G->setPartitionIndex(current_node, 0);
     }
