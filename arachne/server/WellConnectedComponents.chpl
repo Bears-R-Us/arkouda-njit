@@ -29,20 +29,8 @@ module WellConnectedComponents {
   require "viecut_helpers/computeMinCut.h", 
           "viecut_helpers/computeMinCut.o",
           "viecut_helpers/logger.cpp.o";
-          // "leiden_helpers/runLeiden.h",
-          // "leiden_helpers/runLeiden.o";
   
   extern proc c_computeMinCut(partition_arr: [] int, src: [] int, dst: [] int, n: int, m: int): int;
-  //  extern proc c_runLeiden(partition_arr: [] int,
-  //                    src:[] int,
-  //                    dst: []int,
-  //                    n: int,
-  //                    m: int,
-  //                    partitionType: c_ptrConst(c_char),
-  //                    resolution: real,
-  //                    randomSeed: int,
-  //                    iterations: int,
-  //                    const original_node_ids: []int);
 
   /* Modified version of the standard set module intersection method to only return the size of
      the intersection. */
@@ -81,55 +69,8 @@ module WellConnectedComponents {
     var globalId:atomic int = 0;
     var functionTypePassed = if functionType != "none" then functionType:int else 10;
     
-    writeln("functionType:", functionType);
-    writeln("functionTypePassed:", functionTypePassed);
-
-    writeln("/////////////////////runLeiden Called//////////////////////////////////");
-    const src1: [0..77] int = [
-    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // Edges involving node 1
-    2, 2, 2, 2,                         // Edges involving node 2
-    3, 3, 3, 3,                         // Edges involving node 3
-    4, 4, 4, 4,                             // Edges involving node 4
-    5, 5, 5,                             // Edges involving node 5
-    6, 6, 6,                             // Edges involving node 6
-    7, 7,                             // Edges involving node 7
-    9, 9, 9, 9,                            // Edges involving node 9
-    10, 10, 10,                          // Edges involving node 10
-    11, 11, 11,                              // Edges involving node 11
-    12, 12,                              // Edges involving node 12
-    13,                               // Edges involving node 13
-    15,                               // Edges involving node 15
-    16, 17, 17, 18, 19,                      // Edges involving nodes 16-19
-    21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, // Edges involving node 21
-    22, 22, 22, 22,                      // Edges involving node 22
-    23, 23, 23,                          // Edges involving node 23
-    24, 24,                              // Edges involving node 24
-    25,                                  // Edge involving node 25
-    26, 26, 26, 26, 26, 26       // Remaining edges
-];
-
-    const dst1: [0..77] int=  [
-    2, 3, 4, 5, 6, 7, 8, 11, 12, 13, 17, // Edges involving node 1
-    3, 4, 8,                                // Edges involving node 2
-    14, 4, 8,                                // Edges involving node 3
-    10, 14, 8,                                   // Edges involving node 4
-    10, 12, 14,
-    8, 11, 17,8,11,17,8,17,11,12,13,17,
-12,13,17,12,13,17,13,17,17,18,18,18,19,19,20,22,23,24,25,26,27,28,29,30,
-31,32,33,23,24,25,26,24,25,26,25,26,26,27,28,29,30,31,34
-
-];
-var partition_arr:[0..34] int = -1;
-var original_node_ids:[0..34] int = 1..33;
-
-    //c_runLeiden(partition_arr, src1, dst1, 34, 78, "Modularity", 0.001, 42, 100, original_node_ids);
-    writeln("partition_arr: ", partition_arr);
-    writeln("/////////////////////runLeiden Ended//////////////////////////////////");
-///////////////////////////////////////Leiden//////////////////////////////////////////////////////////
-
-///////////////////////////////////////End of Leiden///////////////////////////////////////////////////
     var clusterArrtemp = wcc(g1);
-    writeln("**********************************************************we reached here");
+    //writeln("**********************************************************we reached here");
     //writeln("functionTypePassed:", functionTypePassed);
     const ref  clusterArr = clusterArrtemp; //cluster id
     
@@ -148,9 +89,9 @@ var original_node_ids:[0..34] int = 1..33;
           var originalNode = fields(0): int;
           var clusterID = fields(1): int;
           const (found, idx) = binarySearch(nodeMapGraphG1, originalNode);
-          if clusterID == 38{
-            writeln("originalNode(",originalNode,")", "mapped to:",idx );
-          }
+          // if clusterID == 557{
+          //   // writeln("originalNode(",originalNode,")", "mapped to:",idx );
+          // }
           if found {
             var mappedNode = idx;
             if clusters.contains(clusterID) {
@@ -166,7 +107,7 @@ var original_node_ids:[0..34] int = 1..33;
       }
       reader.close();
       file.close();
-      writeln("Number of clusters found: ", clusters.size);
+      // writeln("Number of clusters found: ", clusters.size);
       
       return clusters;
     }
@@ -296,21 +237,6 @@ var original_node_ids:[0..34] int = 1..33;
 
       const ref neighbors1 = neighborsSetGraphG1[vertex];
       var newWay = setIntersectionSize(neighbors1,members);
-      // writeln("calculateClusterDegree NEW (",vertex,") -> ",newWay);
-
-      // const ref neighbors = dstNodesG1[segGraphG1[vertex]..<segGraphG1[vertex+1]];
-      // var neighborsSet: set(int);
-      // // Insert array elements into the set
-      // for elem in neighbors {
-      //   neighborsSet.add(elem);  
-      // }
-      
-      // var intersection: set(int);
-      // intersection = neighborsSet & members;
-      // writeln("calculateClusterDegree for (",vertex,") -> ",intersection.size);
-
-      //assert(intersection.size == newWay, "Error: The degrees are not equal!");
-      //return intersection.size;
       return newWay;
     }
     /* Write out the clusters to a file. */
@@ -359,11 +285,9 @@ var original_node_ids:[0..34] int = 1..33;
         var zeroset = new set(int);
         return zeroset;
       }
-      //var keepedVertices:set(int, parSafe = true);
       var partitionToPass = partition;
       for v in partition {
         var memberDegree = calculateClusterDegree(partition, v);
-        //writeln("Degree ",v," = ", memberDegree);
         if memberDegree < 2 {
           partitionToPass.remove(v);
         }
@@ -377,63 +301,42 @@ var original_node_ids:[0..34] int = 1..33;
       var allWCC: list(int, parSafe=true);
       
       // If the vertices array is empty, do nothing and return an empty list
-      if vertices.size < 2 {
+      //TO OLIVER: I think it should be changed to 11 too
+      //if vertices.size < 2 {
+      if vertices.size < 1 {
         return allWCC;
       }
-
+      //Viecut intializing
       var (src, dst, mapper) = getEdgeList(vertices);
       var n = mapper.size;
       var m = src.size;
-      writeln("getEdgeList returned:");
-      writeln("$$$$ n: ", n);
-      writeln("$$$$ m: ", m);
-      writeln("$$$$ src: ", src);
-      writeln("$$$$ dst: ", dst);
-      writeln("$$$$ mapper: ", mapper);
-      // if m < 1 {
-      //   return allWCC;
-      // }
       var partitionArr: [{0..<n}] int;
-      // Oliver why a new array? It should be reason for that. I removed it.
-      // var newSrc: [{0..<m}] int = src;
-      // var newDst: [{0..<m}] int = dst;
+
       // Call the external min-cut function
       var cut = c_computeMinCut(partitionArr, src, dst, n, m);
-      //writeln("cutSize = ", cut);
+
       var functionCriteria: int = 0;
       
       if functionTypePassed == 1 {
-        writeln("floor(0.01 * (vertices.size)): ", floor(0.01 * (vertices.size))," cutSize = ", cut);
         var funcret = floor(0.01 * (vertices.size));
         functionCriteria = funcret:int;
       } 
 
       if functionTypePassed == 5 {
-        writeln("floor(sqrt(vertices.size:real)/5): ",floor(sqrt(vertices.size:real)/5)," cutSize = ", cut);
-
         var funcret = floor(sqrt(vertices.size:real)/5);
         functionCriteria = funcret:int;
       } 
 
       if functionTypePassed == 10 {
-        writeln("floor(log10(vertices.size: real): ", floor(log10(vertices.size: real))," cutSize = ", cut);
-
         var logN = floor(log10(vertices.size: real));
         functionCriteria = logN:int;
       }      
       
       if functionTypePassed == 2 {
-        writeln("floor(log2(vertices.size: real)): ", floor(log2(vertices.size: real)), " cutSize = ", cut);
-
         var logN = floor(log2(vertices.size: real));
         functionCriteria = logN:int;
       }
 
-      // writeln("functionCriteria:", functionCriteria);
-
-      // var logN = floor(log10(vertices.size: real));
-      // var floorLog10N: int = logN:int;
-      
       if cut > functionCriteria {// Check Well Connectedness
         allWCC.pushBack(id); //allWCC.pushBack(depth); allWCC.pushBack(vertices.size); allWCC.pushBack(cut);
         var currentId = globalId.fetchAdd(1);
@@ -443,27 +346,20 @@ var original_node_ids:[0..34] int = 1..33;
           finalVertices.pushBack(v);
           finalClusters.pushBack(currentId);
         }
-        
-        writeln("for cluster: ",id," in depth: ",depth," with cutsize: ", cut, " we found wcc with ",vertices.size," memebr!");
-        writeln("finalVertices: ", finalVertices);
-        writeln("finalClusters: ", finalClusters);
         return allWCC;
       }
       else{// Cluster is not WellConnected
         
-        // Separate vertices into two partitions
         var cluster1, cluster2 = new set(int);
         for (v,p) in zip(partitionArr.domain, partitionArr) {
           if p == 1 then cluster1.add(mapper[v]);
           else cluster2.add(mapper[v]);
         }
 
-        writeln("cluster1: ", cluster1);
-        writeln("cluster2: ", cluster2);
         var newSubClusters: list(int, parSafe=true);
         
         // The partition size must be greater than 1, to be meaningful passing it to VieCut.
-        //--------> The partition size must be greater than 11, George SAID ON SLACK.
+        //--------> TO OLIVER: The partition size must be greater than 11, George SAID ON SLACK.
         if cluster1.size >1 {
           var inPartition = removeDegOne(cluster1);
           newSubClusters = callMinCut(inPartition, id, depth+1);
@@ -477,66 +373,7 @@ var original_node_ids:[0..34] int = 1..33;
       }
       return allWCC;
     }
-    // TO OLIVER:
-    /* Core 2 Decomposition. For some reasons that you know we didn't use it!*/
-    proc clusterC2D(ref clusterNodes: set(int)): set(int) throws{
-      // Create a copy of the input set to work with. Oliver is it a ref or copy?
-      var coreMembers = clusterNodes;
-      var coreDomain: domain(int, parSafe=true);
-      
-      for elem in coreMembers {
-        coreDomain.add(elem);
-      }
-
-      // Map from vertex id to its degree within the cluster
-      var degrees: [coreDomain] atomic int;
-
-      // List of nodes with degree less than 2 to be removed
-      var nodesToRemove = new list(int);
-
-      // Initialize degrees and nodesToRemove
-      forall vertex in coreMembers with (ref degrees, ref nodesToRemove, ref coreMembers) {
-        degrees[vertex].write(calculateClusterDegree(coreMembers, vertex));
-        if degrees[vertex].read() < 2 {
-          nodesToRemove.pushBack(vertex);
-        }
-      }
-      writeln("degrees: ", degrees);
-      writeln("degrees.domain: ", degrees.domain);
-      writeln("before while nodesToRemove: ", nodesToRemove);
-      // Iteratively remove nodes with degree less than 2
-      while !nodesToRemove.isEmpty() {
-        // Collect node to be processed in this iteration
-        var currentNodesToRemove = nodesToRemove.popBack();
-        const ref neighbors = dstNodesG1[segGraphG1[currentNodesToRemove]..<segGraphG1[currentNodesToRemove+1]];
-        writeln("currentNodesToRemove: ", currentNodesToRemove);
-        writeln("it's neighbours: ", neighbors);
-
-        for u in clusterNodes {
-          if neighbors.find(u) != -1 && degrees[u].read() >= 2 {
-            // update degrees
-            degrees[u].sub(1);
-            if degrees[u].read() < 2 then nodesToRemove.pushBack(u);
-          }
-        }
-        // Mark currentNodesToRemove as removed.
-        writeln("currentNodesToRemove checked: ", currentNodesToRemove);
-        degrees[currentNodesToRemove].write(-1);
-      }
-
-      // Step 4: Collect nodes with degrees >= 2 and update cluster
-      var newMembers = new set(int);
-      for v in degrees.domain {
-        if degrees[v].read() >= 2 {
-          newMembers.add(v);
-        }
-      }
-      writeln("core2Decomposition returned cluster with size:",newMembers.size);
-      writeln("core2Decomposition returned cluster with size:",newMembers);
-      return newMembers;
-    }
-
-
+ 
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
       
@@ -545,22 +382,15 @@ var original_node_ids:[0..34] int = 1..33;
       var results: list(int, parSafe=true);
       var clusters = readClustersFile(inputcluster_filePath);
       writeln("reading Clusters' File finished.");
-      //writeln("clusters.keysToArray(): ", clusters.keysToArray());
-      //writeln("clusters.keysToArray().domain: ", clusters.keysToArray().domain);
-      
       forall key in clusters.keysToArray() with (ref results, ref clusters) {
-      //for key in clusters.keysToArray() {
         ref clusterToAdd = clusters[key];
-        writeln("Cluster ", key, ": ", clusterToAdd.size," vertices.");
-        
         /*
         TO OLIVER: I changed my mind and commented this because there is a chance that at the first step we find
         a well connected cluster. PLEASE check the Min's code and MY STATEMENT on slack.
         //var clusterSetInit1 = removeDegOne(clusterToAdd);
-        //writeln("clusterSetInit First *removeDegOne: ", clusterSetInit1.size);
         */
-
-        if clusterToAdd.size > 1 && key== 38{ // The cluster is not a singleton.
+          //based on George
+        if clusterToAdd.size > 1{ // The cluster is not a singleton.
           
           writeln("*-*-*-*-*-*-*-*-*-*-*-*-*-*");
           writeln("selected Cluster is:", key, " members are:",clusterToAdd );

@@ -127,19 +127,18 @@ var original_node_ids:[0..34] int = 1..33;
     writeln("/////////////////////runLeiden Ended//////////////////////////////////");
 ///////////////////////////////////////Leiden//////////////////////////////////////////////////////////
 
-/*
+
     // ----- Parameters -----
     var randomSeed = 42;                       // Seed for reproducibility
-    var rng = new randStream(randomSeed);      // Random number generator
+    var rng = new randStream(int, randomSeed);      // Random number generator   //int or real?
     var resolution = 1.0;                      // Resolution parameter for Modularity or CPM
     var partitionType = "Modularity";          // Partition type ("Modularity", "CPM", or "RBConfiguration")
 
+    // ----- Part 1: Graph loaded in Arachne it is undirected and unweighted/weighted -----
+    // Oliver TO Ask how I can have access to edges' weights
+    //For now I assumed this 
     // Edge weights (assuming unweighted graph; all weights are 1.0)
     var weights: [0..g1.n_edges-1] real = 1.0;
-
-    // Adjacency list and corresponding edge weights for each vertex
-    var adjList: [0..g1.n_vertices-1] list(int);         // Adjacency list
-    var adjWeights: [0..g1.n_vertices-1] list(real);     // Edge weights in adjacency list
 
     // Modularity-related metrics
     var communityInternalWeight: [0..g1.n_vertices-1] real;  // Sum of weights of edges inside the community
@@ -149,11 +148,7 @@ var original_node_ids:[0..34] int = 1..33;
     // Union-Find structure for community refinement
     var parent: [0..g1.n_vertices-1] int;                    // Parent array for Union-Find
 
-// ----- Part 1: Build Adjacency List -----
-
-// Build adjacency list from src[], dst[], and weights[] arrays AND Initialize the adjacency list and adjacency weights
-
-// ----- Part 2: Modularity Optimization -----
+    // ----- Part 2: Modularity Optimization -----
 
     // Initialize modularity-related metrics
     proc initializeModularity(community: [] int) {
@@ -183,20 +178,21 @@ var original_node_ids:[0..34] int = 1..33;
         communityTotalWeight[comm] += nodeWeightedDegree[node];
 
         var idx = 0;
-        for neighbor in adjList[node] {
-          var weight = adjWeights[node][idx];
-          if community[neighbor] == comm {
+        const ref neighbors = neighborsSetGraphG1[vertex];
+        for nei in neighbors {
+          var weight = getEdgeSrcDstWeight(node,idx);
+          if community[nei] == comm {
             communityInternalWeight[comm] += weight;
           }
           idx += 1;
         }
       }
-
-  // Since each internal edge is counted twice, divide by 2
-  forall comm in 0..numVertices-1 {
-    communityInternalWeight[comm] /= 2.0;
-  }
-}
+      // I think we can make it faster in Arachne
+      // Since each internal edge is counted twice, divide by 2
+      forall comm in 0..numVertices-1 {
+        communityInternalWeight[comm] /= 2.0;
+      }
+    }
 
 // Calculate the delta modularity (or other quality function) for moving a node to a new community
 proc deltaQuality(node: int, currentCommunity: int, newCommunity: int, community: [] int, adjList: [] list(int), adjWeights: [] list(real), totalEdgeWeight: real): real {
@@ -318,7 +314,7 @@ proc initializeUnionFind() {
 }
 
 // Refine communities using Union-Find to ensure connectivity
-proc refineCommunities(community: [] int, adjList: [] list(int)) {
+proc refineCommunities(community: [] int)) {
   initializeUnionFind();
 
   // Merge nodes in the same community
@@ -373,6 +369,7 @@ proc aggregateCommunities(community: [] int, src: [] int, dst: [] int, weights: 
 
   return (newSrc, newDst, newWeights);
 }
+
     // Assuming weights are provided; if not, default to 1 for unweighted graphs
     proc getEdgeIndexWeight(edgeIndex: int): real {
       // If the graph is unweighted, return 1.0 for all edges
@@ -431,6 +428,7 @@ proc aggregateCommunities(community: [] int, src: [] int, dst: [] int, weights: 
     numEdges = src.size;
 
     // Rebuild adjacency list for the new graph
+    // You changed your mind don't continue on any AdjList you should use Arachne
     adjList = [0..numVertices-1] list(int);
     adjWeights = [0..numVertices-1] list(real);
     buildAdjList(src, dst, weights, adjList, adjWeights);
@@ -439,7 +437,7 @@ proc aggregateCommunities(community: [] int, src: [] int, dst: [] int, weights: 
 
 // Example of running the Leiden algorithm with custom parameters
 leidenAlgorithm(src, dst, weights, numIterations=10, resolution=1.0, partitionType="Modularity", randomSeed=42);
-*/
+
 
 ///////////////////////////////////////End of Leiden///////////////////////////////////////////////////
     var clusterArrtemp = wcc(g1);

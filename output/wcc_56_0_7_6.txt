@@ -1,6 +1,0 @@
-# cluster ID: 56
-# cluster Depth: 0
-# number of members: 7
-# cutsize: 6
-# mapper: 221 240 274 452 562 633 871
-# members: 221 240 274 452 562 633 871
