@@ -3,6 +3,7 @@
 from __future__ import annotations
 from typing import cast, Tuple, Union, Literal
 import os
+from pathlib import Path
 from typeguard import typechecked
 import arachne as ar
 from arachne.graphclass import Graph
@@ -475,33 +476,60 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
 
 @typechecked
-def well_connected_components(graph: Graph, file_path: str,
+def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,
+                              output_filename: str = None,
                               output_type: Literal["post", "during", "debug"] = "post",
-                              output_path: str = None) -> pdarray:
+                              connectedness_criterion: Literal["log10", "log2",
+                                                               "sqrt", "mult"] = "log10",
+                              connectedness_criterion_mult_value: float = None,
+                              pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
     """
-    Runs a single threaded version of well-connectec components (WCC). Writes the outputted clusters 
-    by default to `arkouda-njit/arachne/output/wcc.text`.
+    Executes parallel well-connected components on a given graph and cluster information. Each 
+    induced cluster subgraph is checked for multiple connected components. If it is composed of more
+    than one connected component, each is assigned to a new cluster identifier. Each of these 
+    clusters is then checked against a metric (`connectedness_criterion`) to consider if it is 
+    well-connected or not. If it is not well-connected, the minimum cut is calculated via VieCut and 
+    the cluster is partitioned. Then, the process is repeated until all the clusters are deemed 
+    to be well-connected.
 
     Parameters
     ----------
-    G : Graph
+    graph : Graph
         The full graph.
     file_path : str
-        The file containing the clusters each vertex belongs to.
-    output_path : str
-        The output path to where the new clusters are to be written to. NOTE: Must be the absolute
-        path to the file.
+        The file containing the clusters each vertex belongs to. NOTE: Must be the absolute path
+        to the file.
+    output_folder_path : str
+        The output folder path to where the new clusters are to be written to. NOTE: Must be the 
+        absolute path to the folder.
+    output_filename : str
+        If not specified, the default output filename will be extrapolated from the name of the
+        file specified by `file_path`. If the name of the input file is `foo.tsv` and the 
+        `output_type` is `post` then the output filename will be `foo_wcc_output_post.tsv`.
     output_type : str
         If "post" then output is written at the end of WCC. If "during" then output is written as
-        soon as a cluster is considered well-connected. If "debug" then output is written verbosely
-        as soon as a cluster is considered well-connected. Further, "debug" assumes a general name
-        for files to be given without extensions: ".tsv", ".csv", etc.
+        soon as a cluster is considered well-connected. If "debug" then verbose output is written
+        as soon as a cluster is considered well-connected.
+    connectedness_criterion : str
+        Specifies the function criterion that should be met for a cluster to be considered
+        well-connected. The default is `log10` where if the number of vertices is `n` and the
+        minimum cut is `cut` then the inequality `cut > log10(n)` must be true. The other options
+        are "log2", "sqrt", and "mult". If "mult" is specified, then 
+        `connectedness_criterion_mult_value` must also be specified.
+    connectedness_criterion_mult_value : real
+        If "mult" is specified as the criterion for `connectedness_criterion`, then the value of
+        this must be some nonnegative `int` or `float`.
+    pre_filter_min_size : int
+        The minimum size of each cluster prior to establishing if the connectedness criterion is
+        met or not. Defaults to 10.
+    post_filter_min_size : int
+        The minimum size of each cluster after the connectedness criterion is established to be
+        unsatisfactory and the cluster is partitioned.
 
     Returns
     -------
-    pdarray
-        Array consisting of 3*n elements where n is the number of clusters and 3 is the 
-        information for each cluster: (identifier, depth, number of members).
+    int
+        The number of clusters that are found to be well-connected.
     
     See Also
     --------
@@ -513,28 +541,57 @@ def well_connected_components(graph: Graph, file_path: str,
 
     Raises
     ------
-    FileExistsError
+    TypeError, ValueError, RuntimeError, FileExistsError
     """
-    if output_type == "during" and output_path is not None:
-        if os.path.isfile(output_path) and output_path is not None:
-            raise FileExistsError(f"The file '{output_path}' already exists.")
+    default_name_used = False
+    if output_filename is None:
+        try:
+            default_name_used = True
+            output_filename = Path(file_path).stem
+        except TypeError:
+            print("Error: `file_path` is not a valid path.")
 
-    if output_path is None:
+    if connectedness_criterion == "mult" and connectedness_criterion_mult_value is None:
+        raise ValueError(("Connectedness criterion is `mult` and requires a valid "
+                          "`connectedness_criterion_mult_value`."))
+
+    if output_folder_path[-1] != "/":
+        output_folder_path = output_folder_path + "/"
+
+    output_path = ""
+    if default_name_used:
         if output_type == "during":
-            output_path = os.path.abspath(".") + "/output/generated_cluster_during.tsv"
+            output_path = output_folder_path + output_filename + "_wcc_output_during.tsv"
         elif output_type == "post":
-            output_path = os.path.abspath(".") + "/output/generated_cluster_post.tsv"
+            output_path = output_folder_path + output_filename + "_wcc_output_post.tsv"
         elif output_type == "debug":
-            output_path = os.path.abspath(".") + "/output/generated_cluster_debug"
+            output_path = output_folder_path + output_filename + "_wcc_output_debug"
         else:
             raise ValueError(f"The output type {output_type} is not recognized.")
+    else:
+        output_path = output_folder_path + output_filename
+
+    if os.path.exists(output_path) and output_type == "during":
+        raise FileExistsError(f"File {output_filename} already exists.")
+
+    # Explicit value needed for Chapel FCF.
+    connectedness_criterion_mult_value = 0.0
 
     cmd = "wellConnectedComponents"
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,
-             "OutputType": output_type}
+             "OutputType": output_type,
+             "ConnectednessCriterion": connectedness_criterion,
+             "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
+             "PreFilterMinSize": pre_filter_min_size,
+             "PostFilterMinSize": post_filter_min_size,}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 
-    return create_pdarray(rep_msg)
+    # TODO: For now returns the number of clusters. In future will return two arrays, one to store
+    #       the vertices in all the clusters and the other to store the information to segment this
+    #       array to extract what vertices belong to one cluster. For example, indexing this array
+    #       in Chapel, to get the vertices for cluster c would look like this:
+    #            clusters[seg[c]..<seg[c+1]]
+    return int(rep_msg)
