@@ -374,6 +374,44 @@ module WellConnectedComponents {
       return allWCC;
     }
  
+
+    /* Function to calculate the conductance of a cluster */
+    proc calculateConductance(ref cluster: set(int)) throws {
+      var outEdge: int = 0;
+      var volumeCluster: int = 0;
+      var volumeComplement: int = 0;
+
+      // Compute volume of cluster (sum of degrees of nodes in the cluster)
+      // Compute volume of the complement (sum of degrees of nodes not in the cluster)
+      // Compute cut size: number of edges crossing from cluster to outside
+
+      for v in 0..<g1.n_vertices {
+        const ref neighbors = neighborsSetGraphG1[v];
+        if !cluster.contain(v){
+          var diff = neighbors - cluster;
+          volumeComplement += diff.size;
+        }
+        else{
+          var degree = calculateClusterDegree(cluster, v)
+          volumeCluster += degree;
+          var outEdge = neighbors - cluster;
+          cutSize += outEdge;
+        }
+      }
+
+
+      // Compute conductance
+      var denom = min(volumeCluster, volumeComplement);
+      var conductance: real;
+
+      if denom > 0 then
+        conductance = cutSize / denom;
+      else
+        conductance = 0.0;
+
+      return conductance;
+    }
+
     /* Kick off well-connected components. */
     proc wcc(g1: SegGraph): [] int throws {
       
