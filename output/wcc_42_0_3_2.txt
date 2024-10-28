@@ -1,6 +1,0 @@
-# cluster ID: 42
-# cluster Depth: 0
-# number of members: 3
-# cutsize: 2
-# mapper: 281 381 817
-# members: 281 381 817

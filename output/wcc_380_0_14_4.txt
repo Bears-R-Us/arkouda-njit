@@ -1,6 +1,0 @@
-# cluster ID: 380
-# cluster Depth: 0
-# number of members: 14
-# cutsize: 4
-# mapper: 79 131 161 204 335 400 443 561 568 667 708 711 829 851
-# members: 79 131 161 204 335 400 443 561 568 667 708 711 829 851
