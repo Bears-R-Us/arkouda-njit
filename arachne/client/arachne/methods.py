@@ -484,8 +484,8 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
                               connectedness_criterion_mult_value: float = None,
                               pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
     """
-    Executes parallel well-connected components on a given graph and cluster information. Each 
-    induced cluster subgraph is checked for multiple connected components. If it is composed of more
+    Executes parallel well-connected components on a given graph and its clustering. Each induced
+    cluster subgraph is checked for multiple connected components. If it is composed of more
     than one connected component, each is assigned to a new cluster identifier. Each of these 
     clusters is then checked against a metric (`connectedness_criterion`) to consider if it is 
     well-connected or not. If it is not well-connected, the minimum cut is calculated via VieCut and 
@@ -495,7 +495,7 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     Parameters
     ----------
     graph : Graph
-        The full graph.
+        The input graph.
     file_path : str
         The file containing the clusters each vertex belongs to. NOTE: Must be the absolute path
         to the file.
@@ -509,7 +509,9 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     output_type : str
         If "post" then output is written at the end of WCC. If "during" then output is written as
         soon as a cluster is considered well-connected. If "debug" then verbose output is written
-        as soon as a cluster is considered well-connected.
+        as soon as a cluster is considered well-connected. NOTE: The "debug" mode is intended to be
+        used ONLY with small graphs and clusters. If used with large graphs and clusters, then the
+        verbose output is going to clog the whole output folder.
     connectedness_criterion : str
         Specifies the function criterion that should be met for a cluster to be considered
         well-connected. The default is `log10` where if the number of vertices is `n` and the
@@ -521,10 +523,12 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
         this must be some nonnegative `int` or `float`.
     pre_filter_min_size : int
         The minimum size of each cluster prior to establishing if the connectedness criterion is
-        met or not. Defaults to 10.
+        met or not. The cluster sizes kept are any strictly greater than `pre_filter_min_size`. 
+        Defaults to 10.
     post_filter_min_size : int
         The minimum size of each cluster after the connectedness criterion is established to be
-        unsatisfactory and the cluster is partitioned.
+        unsatisfactory and the cluster is partitioned. The cluster sizes kept are strictly greater
+        than `post_filter_min_size`. Defaults to 10.
 
     Returns
     -------
@@ -585,7 +589,7 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
-             "PostFilterMinSize": post_filter_min_size,}
+             "PostFilterMinSize": post_filter_min_size}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 

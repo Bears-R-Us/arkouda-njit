@@ -351,6 +351,9 @@ module WellConnectedComponents {
       // NOTE: Sequential for now since connected components is highly parallel. We need to discuss
       //       the tradeoff if it is more important to run connected components on the original
       //       clusters in parallel or run connected components in parallel.
+      //
+      // NOTE: This is probably noy even needed here. We could add a pre-filtering step to run this
+      //       during graph construction or as a totally separate process instead of here.
       for key in originalClusters.keysToArray() {
         var (src, dst, mapper) = getEdgeList(originalClusters[key]);
         if src.size > 0 { // If no edges were generated, then do not process this component.
@@ -363,7 +366,7 @@ module WellConnectedComponents {
           // cluster if it is composed of only one connected component.
           if multipleComponents {
             var tempMap = new map(int, set(int));
-            for (c,v) in zip(components,components.domain) {
+            for (c,v) in zip(components,components.domain) { // NOTE: Could be parallel.
               if tempMap.contains(c) then tempMap[c].add(mapper[v]);
               else {
                 var s = new set(int);
@@ -371,7 +374,7 @@ module WellConnectedComponents {
                 tempMap[c] = s;
               }
             }
-            for c in tempMap.keys() {
+            for c in tempMap.keys() { // NOTE: Could be parallel.
               var newId = newClusterIds.fetchAdd(1);
               if tempMap[c].size > preFilterMinSize {
                 newClusters[newId] = tempMap[c];
