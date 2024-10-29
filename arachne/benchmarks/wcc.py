@@ -2,6 +2,7 @@ import arkouda as ak
 import arachne as ar
 import networkx as nx
 import pandas as pd
+import os
 
 # Connect to Arkouda server. NOTE: Change hostname to your environment's hostname.
 ak.connect("n115", 5555)
@@ -9,7 +10,7 @@ ak.connect("n115", 5555)
 cluster_dict = {}
 
 # Read the file and populate the dictionary
-with open('../data/wcc/test_clustering.tsv', 'r') as file:
+with open('/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering.tsv', 'r') as file:
     for line in file:
         # Remove any leading/trailing whitespace
         line = line.strip()
@@ -27,7 +28,7 @@ with open('../data/wcc/test_clustering.tsv', 'r') as file:
             cluster_dict[cluster_num] = [node]
 
 # Read the TSV file using pandas
-network_df = pd.read_csv("../data/wcc/test_network.tsv", sep="\t", header=None, names=["src", "dst"])
+network_df = pd.read_csv("/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network.tsv", sep="\t", header=None, names=["src", "dst"])
 network_df['type'] = 'T1'
 
 # Create an undirected graph from the data
@@ -59,13 +60,15 @@ for cluster_num, nodes in cluster_dict.items():
 
     print(f"In Cluster {cluster_num}: {low_degree_count} < Degree 2. Actual Cluster {cluster_num} size: {size_difference}")
 
-# Create an Arachne Graph.
-ar_network_graph = ar.Graph()
-ar_network_graph.add_edges_from(ak.array(network_df["src"]), ak.array(network_df["dst"]))
 
-filePath = os.path.abspath("../data/wcc/clustering.tsv")
-print("Running Arachne") 
-clusters = ar.well_connected_components(ar_network_graph, filePath)
+# Create an Arachne graph from a test network file.
+ar_network_graph = ar.read_tsv_file(os.path.abspath("/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network.tsv"))
+
+# Execute wcc with the absolute path to the generate and the create network file.
+filePath = os.path.abspath("/scratch/users/md724/DataSets/wcc/test_clustering.tsv")
+outputPath = os.path.abspath("/scratch/users/md724/DataSets/wcc")
+clusters = ar.well_connected_components(ar_network_graph, filePath, outputPath, "during")
+print("Number of clusters processed = ", clusters.size)
 
 print("clusters = ", clusters)
 print("clusters.size = ", clusters.size)
