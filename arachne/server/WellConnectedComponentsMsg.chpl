@@ -21,45 +21,47 @@ module WellConnectedComponentsMsg {
   // Server message logger. 
   private config const logLevel = ServerConfig.logLevel;
   private config const logChannel = ServerConfig.logChannel;
-  const siLogger = new Logger(logLevel, logChannel);
+  const wccLogger = new Logger(logLevel, logChannel);
 
   proc wellConnectedComponentsMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
-      param pn = Reflection.getRoutineName();
-      var repMsg, outMsg:string;
+		param pn = Reflection.getRoutineName();
+		var repMsg, outMsg:string;
 
-      // Extract messages sent from Python.
-      var GraphEntryName = msgArgs.getValueOf("GraphName");
-      var FilePath = msgArgs.getValueOf("FilePath");
-      var OutputPath = msgArgs.getValueOf("OutputPath");
-      
-      // Pull out our graph from the symbol table.
-      var gEntry: borrowed GraphSymEntry = getGraphSymEntry(GraphEntryName, st); 
-      var g = gEntry.graph;
-      var path = FilePath;
-      var outputPath = OutputPath;
-      
-      var timer:stopwatch;
-      if !g.isDirected() {
-          timer.start();
-          var isoArray = runWCC(g, st, path, outputPath);
-          timer.stop();
-          outMsg = "Well connected components took " + timer.elapsed():string + " sec";
-          
-          var isoDistArray = makeDistArray(isoArray.size, int);
-          isoDistArray = isoArray;
-          var IsoDistArrayName = st.nextName();
-          var IsoDistArrayEntry = new shared SymEntry(isoDistArray);
-          st.addEntry(IsoDistArrayName, IsoDistArrayEntry);
-          repMsg = 'created ' + st.attrib(IsoDistArrayName);
+		// Extract messages sent from Python.
+		var GraphEntryName = msgArgs.getValueOf("GraphName");
+		var filePath = msgArgs.getValueOf("FilePath");
+		var outputPath = msgArgs.getValueOf("OutputPath");
+		var outputType = msgArgs.getValueOf("OutputType");
+		var connectednessCriterion = msgArgs.getValueOf("ConnectednessCriterion");
+		var connectednessCriterionMultValue = msgArgs.getValueOf("ConnectednessCriterionMultValue"):real;
+		var preFilterMinSize = msgArgs.getValueOf("PreFilterMinSize"):int;
+		var postFilterMinSize = msgArgs.getValueOf("PostFilterMinSize"):int;
 
-          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
-          return new MsgTuple(repMsg, MsgType.NORMAL);
-      } else {
-          var errorMsg = notImplementedError(pn, "well-connected components for directed graphs");
-          siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-          return new MsgTuple(errorMsg, MsgType.ERROR);
-      }
+		
+		// Pull out our graph from the symbol table.
+		var gEntry: borrowed GraphSymEntry = getGraphSymEntry(GraphEntryName, st); 
+		var g = gEntry.graph;
+
+		// Generate neighbors as sets for graph.
+		wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
+		g.generateNeighborsAsSet(st);
+		
+		var timer:stopwatch;
+		if !g.isDirected() {
+			timer.start();
+			var numClusters = runWCC(g, st, filePath, outputPath, outputType, 
+													     connectednessCriterion, connectednessCriterionMultValue, 
+													     preFilterMinSize, postFilterMinSize);
+			timer.stop();
+			outMsg = "Well connected components took " + timer.elapsed():string + " sec";
+			wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+			return new MsgTuple(numClusters:string, MsgType.NORMAL);
+		} else {
+			var errorMsg = notImplementedError(pn, "well-connected components for directed graphs");
+			wccLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+			return new MsgTuple(errorMsg, MsgType.ERROR);
+		}
   } // end of wellConnectedComponentsMsg
 
   use CommandMap;

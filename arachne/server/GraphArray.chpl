@@ -1,12 +1,14 @@
 module GraphArray {
     // Chapel modules.
     use Map;
+    use Set;
     use Reflection;
     use Utils;
     use ReplicatedDist;
     
     // Arkouda modules.
     use Logging;
+    use AryUtil;
     use MultiTypeSymEntry;
     use MultiTypeSymbolTable;
     use SegmentedString;
@@ -21,6 +23,7 @@ module GraphArray {
         SRC_SDI,            // int array with source vertices for each edge
         DST_SDI,            // int array with destination vertices for each edge
         SEGMENTS_SDI,       // int array segmenting neighborhoods in DST_SDI
+        NEIGHBORS_SET_SDI,  // helper set for WCC -- array of sets for each vertex i
         SRC_R_SDI,          // int array with source vertices for each edge, swapped with DST_SDI
         DST_R_SDI,          // int array with destination vertices for each edge, swapped with SRC_SDI
         SEGMENTS_R_SDI,     // int array segmenting neighborhoods in DST_R_SDI
@@ -131,6 +134,21 @@ module GraphArray {
             attributes.extend(properties);
 
             return attributes;
+        }
+
+        proc ref generateNeighborsAsSet(st: borrowed SymTab) throws {
+            const ref src = toSymEntry(getComp("SRC_SDI"), int).a;
+            const ref dst = toSymEntry(getComp("DST_SDI"), int).a;
+            const ref seg = toSymEntry(getComp("SEGMENTS_SDI"), int).a;
+            var neighborsSet = makeDistArray(seg.size-1, set(int));
+
+            forall u in 0..seg.size-2 {
+                var start = seg[u];
+                var end = seg[u+1]-1;
+                const ref neighbors = dst[start..end];
+                for v in neighbors do neighborsSet[u].add(v);
+            }
+            withComp(createSymEntry(neighborsSet):GenSymEntry, "NEIGHBORS_SET_SDI");
         }
     }
 
