@@ -85,7 +85,21 @@ module WellConnectedComponents {
                             else if connectednessCriterion == "sqrt" then sqrtCriterion
                             else if connectednessCriterion == "mult" then multCriterion
                             else log10Criterion;
-    
+      writeln("/************* graph info**************/");
+      var totalVolume: int = 0;  // To store the total degree sum of the graph
+      var graphMinDegree: int = g1.n_vertices;
+      for v in 0..<g1.n_vertices{
+        var degree = neighborsSetGraphG1[v].size;
+        totalVolume += degree;
+        graphMinDegree = if degree < graphMinDegree then degree else graphMinDegree;
+      }
+      var meanDegreeGraph :real = totalVolume / g1.n_vertices: real;
+
+      writeln("graph totalVolume: ", totalVolume);
+      writeln("graph MinDegree: ", graphMinDegree);
+
+      writeln("meanDegreeGraph: ", meanDegreeGraph);
+      writeln();
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
       ID is mapped to all of the vertices with that cluster ID. 
@@ -271,6 +285,8 @@ module WellConnectedComponents {
 
     /* Given a specific partition, removes vertices with degree one, and returns a new set. */
     proc removeDegreeOne(ref partition:set(int)): set(int) throws{
+      writeln("*****************removeDegreeOne called***********************");
+
       if partition.size <= 1 {
         var zeroset = new set(int);
         return zeroset;
@@ -283,9 +299,260 @@ module WellConnectedComponents {
       return reducedPartition;
     }
 
+    /* K-core decomposition function optimized for shared memory
+
+      This function computes the k-core decomposition of a cluster of nodes
+      up to a specified maximum k (k_max). The k-core of a graph is a maximal
+      subgraph in which each vertex has degree at least k.
+
+      Parameters:
+        clusterNodes: set(int) - the set of nodes in the cluster
+        k_max: int - the maximum k value up to which to compute the k-core decomposition
+
+      Returns:
+        cores: array[int] of int - an array mapping each node to its core number
+        cluster
+    */
+ proc kCoreDecomposition(ref clusterNodes: set(int), k_max: int) throws {
+    writeln("/////////////////////////kCoreDecomposition///////////////////////");
+    var clusterArr = clusterNodes.toArray();
+    var coreKDomain: domain(int) = clusterArr;
+    var degrees: [coreKDomain] int = 0;
+    var cores: [coreKDomain] int = 0; // Initialize cores to 0
+
+    // Initialize degrees
+    writeln("Initializing degrees and cores...");
+    for i in coreKDomain {
+        degrees[i] = calculateClusterDegree(clusterNodes, i);
+    }
+    writeln("Initial degrees: ", degrees);
+    writeln("Initial cores  : ", cores);
+
+    // Initialize bins based on degree values
+    var bins: [1..k_max] list(int);  // Bins for each degree from 1 to k_max
+    var processed: set(int);  // Track nodes that have already been assigned a core
+
+    for i in coreKDomain {
+        const deg = degrees[i];
+        if deg >= k_max then bins[k_max].pushBack(i);  // If degree >= k_max, put it in max bin
+        else if deg > 0 then bins[deg].pushBack(i);    // Place in corresponding bin if degree > 0
+    }
+    writeln("Initial bins: ", bins);
+
+    var k = 1;
+    // Process bins iteratively
+    while k <= k_max {
+        writeln("\nIteration k = ", k);
+        while !bins[k].isEmpty() {
+            var v = bins[k].popBack();  // Remove a node with degree <= k
+            if v in processed {
+                continue;  // Skip if the node has already been processed
+            }
+            cores[v] = k;  // Assign core value to v
+            processed.add(v);  // Mark the node as processed
+            writeln("Processing[", v, "] in bins[", k, "]");
+
+            // Process neighbors of v
+            const ref neighbors = neighborsSetGraphG1[v];
+            var adjacent = clusterNodes & neighbors;  // Filter neighbors within the cluster
+            for u in adjacent {
+                if cores[u] == 0 && u !in processed {  // Only update degrees if core not yet assigned
+                    const oldDeg = degrees[u];
+                    degrees[u] -= 1;  // Decrease degree
+                    const newDeg = max(degrees[u], 1);  // Ensure non-negative
+
+                    // Move u from old degree bin to new degree bin if needed
+                    if oldDeg <= k_max then bins[oldDeg].remove(u);
+                    if newDeg >= k_max {
+                        bins[k_max].pushBack(u);
+                    } else if !bins[newDeg].contains(u) {
+                        bins[newDeg].pushBack(u);
+                    }
+
+                    writeln("Updated degree of neighbor ", u, " to ", degrees[u]);
+                    writeln(" bins are: ", bins);
+                }
+            }
+        }
+        writeln("End of iteration k = ", k, ", bins are: ", bins);
+
+        k += 1;
+    }
+
+    // Collect nodes with cores >= k_max for output
+    var outSet: set(int);
+    for elem in coreKDomain {
+        if cores[elem] >= k_max then outSet.add(elem);  
+    }
+    writeln("outSet: ", outSet);
+    writeln("/////////////////////////kCoreDecomposition ENDED!///////////////////////");
+
+    return outSet;
+} // end of kCoreDecomposition
+
+
+    //   var clusterArr = clusterNodes.toArray();
+    //   var coreKDomain: domain(int) = clusterArr;
+    //   var degrees: [coreKDomain] int = 0;
+    //   var cores: [coreKDomain] int = 0; // Initialize cores to 0
+
+    //   // Initialize degrees and cores
+    //   writeln("Initializing degrees and cores...");
+    //   for i in coreKDomain {
+    //     degrees[i] = calculateClusterDegree(clusterNodes, i);
+    //   }
+    //   writeln("clusterArr     : ", clusterArr);
+    //   writeln("Initial degrees: ", degrees);
+    //   writeln("Initial cores  : ", cores);
+
+    //   // Create a list for vertices to process
+    //   var vertexList = new list(int);
+
+    //   // Initialize the list with all vertices in the cluster
+    //   writeln("Initializing vertex list...");
+    //   for i in 0..<clusterNodes.size {
+    //     vertexList.pushBack(clusterArr[i]);
+    //   }
+    //   writeln("Initial vertex list: ", vertexList);
+    //   var k = 1;
+
+    //   // Boolean array to track if a node has been added to nextList
+    //   //var maxVertexID = clusterArr.reduce((a, b) => max(a, b));
+    //   //var inNextList: [0..maxVertexID] bool = false; // Initialize to false
+
+    //   // Loop until the vertex list is empty or k exceeds k_max
+    //   while !vertexList.isEmpty() && k < k_max {
+
+    //     writeln("\nProcessing k = ", k);
+    //     var nextList = new list(int);
+
+    //     // Process vertices sequentially to avoid race conditions
+    //     while !vertexList.isEmpty() {
+    //       var v = vertexList.popBack();
+
+    //       // **Check if the node has already been assigned a core**
+    //       if cores[v] == 0 {
+    //         writeln("Processing vertex v = ", v, " with degree ", degrees[v]);
+
+    //         if degrees[v] <= k {
+    //           // Assign core number k to vertex v
+    //           //cores[v] = k;
+    //           cores[v] = degrees[v];
+    //           writeln("Assigned core[", v, "] = ", k);
+
+    //           // Decrease the degree of neighbors in the cluster
+    //           const ref neighbors = neighborsSetGraphG1[v];
+    //           var adjacent = clusterNodes & neighbors;
+    //           writeln("Neighbors of ", v, ": ", adjacent);
+
+    //           for u in adjacent {
+    //             // **Only decrease the degree if the neighbor hasn't been assigned a core**
+    //             if cores[u] == 0 {
+    //               degrees[u] -= 1;  // Update degrees of neighbor u
+    //               writeln("Decreased degree of neighbor ", u, " to ", degrees[u]);
+
+    //               if degrees[u] <= k {
+    //                 // **Avoid adding duplicates to nextList**
+    //                 if !nextList.contains(u) {
+    //                   nextList.pushBack(u);
+    //                   writeln("Added neighbor ", u, " to nextList");
+    //                 }
+    //               }
+    //             }
+    //           }
+    //         } else {
+    //           // Keep vertex v in the list to be processed in the next iteration
+    //           nextList.pushBack(v);
+    //           writeln("Vertex ", v, " degree ", degrees[v], " > ", k, ", added back to nextList");
+    //         }
+    //       } else {
+    //         // Node v has already been assigned a core
+    //         writeln("Vertex ", v, " has already been assigned core ", cores[v], ", skipping");
+    //       }
+    //     }
+
+    //     // Swap lists for the next iteration
+    //     vertexList = nextList;
+    //     writeln("End of iteration k = ", k);
+    //     writeln("Next vertex list: ", vertexList);
+    //     writeln("\nFinal cores: ", cores);
+    //     k += 1;
+    //     writeln("k became = ",k);
+
+    //   }
+
+    //   writeln("\nFinal cores: ", cores);
+    //   var outSet: set(int);
+    //   for elem in coreKDomain{
+    //     if cores[elem] >= k_max then outSet.add(elem);  
+    //   }
+    //   writeln("outSet: ", outSet);
+    //   writeln("/////////////////////////kCoreDecomposition ENDED!///////////////////////");
+
+    //   return outSet;
+    // } // end of kCoreDecomposition
+
+        
+
+    /* Function to calculate the conductance of a cluster */
+    proc calculateConductance(ref cluster: set(int)) throws {
+      var cutSizePrevios: int = totalVolume;
+      var SumOutEdges: int = 0;
+      var volumeCluster: int = 0;
+      var volumeComplement: int = 0;
+      var minDegreeCluster: int = g1.n_edges;  // 
+
+      // Iterate through all vertices to calculate volumes, cutSize, and total graph volume
+      for v in cluster {
+        var neighbors = neighborsSetGraphG1[v];
+        volumeCluster += neighbors.size;
+        var outEdge = neighbors - cluster;
+        //writeln("outEdge: ", outEdge);
+        SumOutEdges += outEdge.size;
+        cutSizePrevios = if outEdge.size < cutSizePrevios &&  outEdge.size > 0 then outEdge.size else cutSizePrevios;
+        minDegreeCluster = if neighbors.size < minDegreeCluster then neighbors.size else minDegreeCluster;
+      }
+
+      volumeComplement = totalVolume - volumeCluster;
+
+      writeln("*****************calculateConductance called***********************");
+
+
+      // Calculate mean degrees for cluster and overall graph
+      var meanDegreeCluster = volumeCluster / cluster.size: real;
+
+
+      // Compute conductance
+      var denom = min(volumeCluster, volumeComplement);
+      var conductance: real;
+
+      if denom > 0 then
+        conductance = SumOutEdges / denom: real;
+      else
+        conductance = 0.0;
+      var output: [0..4] real;
+      output[0] = conductance;
+      output[1] = SumOutEdges;
+      output[2] = minDegreeCluster;
+      output[3] = meanDegreeCluster;
+      //output[0] = conductance;
+      writeln("conductance: ", conductance);
+      // writeln("volumeCluster: ", volumeCluster);
+      // writeln("volumeComplement: ", volumeComplement);
+      // Output intermediate calculations for verification
+      writeln("Estimated Previos cutsize greater than: ", cutSizePrevios);
+      // writeln("Cluster SumOutEdges : ", SumOutEdges);
+      // writeln("Cluster mean degree: ", meanDegreeCluster);
+      writeln("Cluster minimum degree: ", minDegreeCluster);
+      return output;
+    }
+  
+
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
        well-connected or not, and if not calls itself on the new generated partitions. */
     proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
+      writeln("*****************wccRecursiveChecker called***********************");
+
       var (src, dst, mapper) = getEdgeList(vertices);
 
       // If the generated edge list is empty, then return.
@@ -296,10 +563,14 @@ module WellConnectedComponents {
 
       var partitionArr: [{0..<n}] int;
       var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+      writeln("cluster ",id, " passed to Viecut and cut_size is: ", cut);
 
       var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
       if cut > criterionValue { // Cluster is well-connected.
         var currentId = globalId.fetchAdd(1);
+      writeln("$$$$$$clster ",id,"with currentId " ,currentId,"at depth ", depth," with cut", cut, " is well Connected.");
+      writeln("memebers are: ", vertices);
+
         if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
         else if outputType == "during" then writeClustersToFile(vertices, currentId);
         for v in vertices {
@@ -324,11 +595,37 @@ module WellConnectedComponents {
         
         // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
         if cluster1.size > postFilterMinSize {
-          var inPartition = removeDegreeOne(cluster1);
+          writeln("//////before clusterC2D///////// ");
+        writeln("cluster1(",id,")"," with size: ", cluster1.size, " created!"," members: ", cluster1);
+        calculateConductance(cluster1);
+        
+        var inPartition = kCoreDecomposition(cluster1, 2);
+
+          //var inPartition = removeDegreeOne(cluster1);
+          //var inPartition = clusterC2D(cluster1);
+         writeln("//////After clusterC2D///////// ");
+
+        writeln("cluster1(",id,")"," with size: ", inPartition.size);
+        calculateConductance(inPartition);
+
+
+
           wccRecursiveChecker(inPartition, id, depth+1);
         }
         if cluster2.size > postFilterMinSize {
-          var outPartition = removeDegreeOne(cluster2);
+          writeln("//////before clusterC2D///////// ");
+        writeln("cluster2(",id,")"," with size: ", cluster2.size, " created!"," members: ", cluster2);
+        calculateConductance(cluster2);
+        var outPartition = kCoreDecomposition(cluster2, 2);
+
+          //var outPartition = removeDegreeOne(cluster2);
+          //var outPartition = clusterC2D(cluster2);
+                    //kCoreDecomposition(cluster2);
+
+                   writeln("//////After clusterC2D///////// ");
+
+        writeln("cluster2(",id,")"," with size: ", outPartition.size);
+        calculateConductance(outPartition);
           wccRecursiveChecker(outPartition, id, depth+1);
         }
       }
@@ -354,6 +651,10 @@ module WellConnectedComponents {
       //
       // NOTE: This is probably noy even needed here. We could add a pre-filtering step to run this
       //       during graph construction or as a totally separate process instead of here.
+      
+      // for key in originalClusters.keysToArray() {
+      //   writeln("key: ",key,"originalClusters.size: ", originalClusters.size," cluster memebers: ", originalClusters);
+      // }
       for key in originalClusters.keysToArray() {
         var (src, dst, mapper) = getEdgeList(originalClusters[key]);
         if src.size > 0 { // If no edges were generated, then do not process this component.
@@ -398,13 +699,16 @@ module WellConnectedComponents {
       outMsg = "Splitting up clusters yielded " + newClusters.size:string + " new clusters.";
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-      forall key in newClusters.keysToArray() with (ref newClusters) {
+      //forall key in newClusters.keysToArray() with (ref newClusters) {
+      for key in newClusters.keysToArray() {
         ref clusterToAdd = newClusters[key];
         if logLevel == LogLevel.DEBUG {
           var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
                     + newClusterIdToOriginalClusterId[key]:string + ".";
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
+        writeln("-*-*-*-*-*-*-*-*-*-*at the beginning for cluster(",key,")"," and has ", clusterToAdd);
+        calculateConductance(clusterToAdd);
         wccRecursiveChecker(clusterToAdd, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
