@@ -298,201 +298,146 @@ module WellConnectedComponents {
       }
       return reducedPartition;
     }
+    /*
+    An O(m) Algorithm for Cores Decomposition of Networks
+    Vladimir Batagelj and Matjaz Zaversnik, 2003.
+    https://arxiv.org/abs/cs.DS/0310049
+    
+    // Currently, k_max is passed as a parameter but not utilized within the function.
+ */
 
-    /* K-core decomposition function optimized for shared memory
 
-      This function computes the k-core decomposition of a cluster of nodes
-      up to a specified maximum k (k_max). The k-core of a graph is a maximal
-      subgraph in which each vertex has degree at least k.
+    // Define the kCoreDecomposition function
+    proc kCoreDecomposition(ref clusterNodes: set(int), k_max: int) : set(int) throws {
+        writeln("/////////////////////////kCoreDecomposition///////////////////////");
+        writeln("clusterNodes: ", clusterNodes);
+        // writeln("k_max: ", k_max);
 
-      Parameters:
-        clusterNodes: set(int) - the set of nodes in the cluster
-        k_max: int - the maximum k value up to which to compute the k-core decomposition
+        // Domain and degree initialization
+        const coreKDomain: domain(int) = clusterNodes.toArray();
+        var degrees: [coreKDomain] int = 0;  // Degree of each node
+        var cores: [coreKDomain] int = 0;    // Core number of each node
+        var maxDegree = 0;
 
-      Returns:
-        cores: array[int] of int - an array mapping each node to its core number
-        cluster
-    */
- proc kCoreDecomposition(ref clusterNodes: set(int), k_max: int) throws {
-    writeln("/////////////////////////kCoreDecomposition///////////////////////");
-    var clusterArr = clusterNodes.toArray();
-    var coreKDomain: domain(int) = clusterArr;
-    var degrees: [coreKDomain] int = 0;
-    var cores: [coreKDomain] int = 0; // Initialize cores to 0
+        // Step 1: Calculate degrees and determine max degree
+        // writeln("\nStep 1: Calculating degrees for each node...");
+        for v in coreKDomain {
+            degrees[v] = calculateClusterDegree(clusterNodes, v);
+            if degrees[v] > maxDegree then maxDegree = degrees[v];
+        }
+        // writeln("Degrees of nodes: ", degrees);
+        // writeln("Max degree: ", maxDegree);
 
-    // Initialize degrees
-    writeln("Initializing degrees and cores...");
-    for i in coreKDomain {
-        degrees[i] = calculateClusterDegree(clusterNodes, i);
-    }
-    writeln("Initial degrees: ", degrees);
-    writeln("Initial cores  : ", cores);
+        // Step 2: Initialize bins and fill bins based on degrees
+        // writeln("\nStep 2: Initializing bins based on degrees...");
+        var bins: [0..maxDegree] list(int);
 
-    // Initialize bins based on degree values
-    var bins: [1..k_max] list(int);  // Bins for each degree from 1 to k_max
-    var processed: set(int);  // Track nodes that have already been assigned a core
+        for v in coreKDomain {
+            bins[degrees[v]].pushBack(v);  // Place each node in the appropriate bin based on its degree
+        }
+        // writeln("Initial bins: ", bins);
 
-    for i in coreKDomain {
-        const deg = degrees[i];
-        if deg >= k_max then bins[k_max].pushBack(i);  // If degree >= k_max, put it in max bin
-        else if deg > 0 then bins[deg].pushBack(i);    // Place in corresponding bin if degree > 0
-    }
-    writeln("Initial bins: ", bins);
+        // Step 3: Set up degree counters and cumulative start positions in bin array
+        // writeln("\nStep 3: Setting up degree counters and bin start positions...");
+        var degreeCount: [0..maxDegree] int = 0;
 
-    var k = 1;
-    // Process bins iteratively
-    while k <= k_max {
-        writeln("\nIteration k = ", k);
-        while !bins[k].isEmpty() {
-            var v = bins[k].popBack();  // Remove a node with degree <= k
-            if v in processed {
-                continue;  // Skip if the node has already been processed
+        // Count the number of vertices with each degree
+        for d in 0..maxDegree {
+            degreeCount[d] = bins[d].size;
+        }
+        // writeln("degreeCount: ", degreeCount);
+
+        // Calculate cumulative starting positions for each degree in vert
+        var binStart: [0..maxDegree] int = 1;  // Initialize all to 1
+        for d in 1..maxDegree {
+            binStart[d] = binStart[d-1] + degreeCount[d-1];
+        }
+        // writeln("Bin start positions: ", binStart);
+
+        // Step 4: Initialize vert and pos arrays and populate with vertices ordered by degree
+        // writeln("\nStep 4: Initializing vert and pos arrays...");
+        // Extend vert array to n +1 to prevent out-of-bounds access
+        var vert: [1..clusterNodes.size +1] int;  // 1..9 in your case
+        var pos: [coreKDomain] int;
+
+        // Populate vert and pos arrays
+        for d in 0..maxDegree {
+            for v in bins[d] {
+                pos[v] = binStart[d];         // Store position of vertex v
+                vert[binStart[d]] = v;        // Place vertex v in vert array at the start position
+                binStart[d] += 1;             // Increment start position for the next vertex of the same degree
             }
-            cores[v] = k;  // Assign core value to v
-            processed.add(v);  // Mark the node as processed
-            writeln("Processing[", v, "] in bins[", k, "]");
+        }
+        // writeln("Initial vert array (vertices ordered by degree): ", vert);
+        // writeln("Initial pos array (positions of vertices in vert): ", pos);
 
-            // Process neighbors of v
+        // Step 4.1: Restore bin start positions to original
+        //writeln("\nStep 4.1: Restoring bin start positions...");
+        for d in 0..maxDegree {
+            binStart[d] = binStart[d] - degreeCount[d];
+        }
+        // writeln("Restored bin start positions: ", binStart);
+
+        // Step 5: Core decomposition process
+        // writeln("\nStep 5: Starting core decomposition process...");
+        for i in 1..clusterNodes.size {
+            const v = vert[i];
+            cores[v] = degrees[v];  // Assign core number based on degree
+            // writeln("Processing vertex ", v, " with initial core value: ", cores[v]);
+
+            // Update degrees of neighbors with higher degree
             const ref neighbors = neighborsSetGraphG1[v];
-            var adjacent = clusterNodes & neighbors;  // Filter neighbors within the cluster
-            for u in adjacent {
-                if cores[u] == 0 && u !in processed {  // Only update degrees if core not yet assigned
-                    const oldDeg = degrees[u];
-                    degrees[u] -= 1;  // Decrease degree
-                    const newDeg = max(degrees[u], 1);  // Ensure non-negative
+            for u in neighbors {
+                if clusterNodes.contains(u) && degrees[u] > degrees[v] {
+                    const du = degrees[u];
+                    const pu = pos[u];
+                    const pw = binStart[du];
+                    const w = vert[pw];
 
-                    // Move u from old degree bin to new degree bin if needed
-                    if oldDeg <= k_max then bins[oldDeg].remove(u);
-                    if newDeg >= k_max {
-                        bins[k_max].pushBack(u);
-                    } else if !bins[newDeg].contains(u) {
-                        bins[newDeg].pushBack(u);
+                    // **Added Bounds Check: Ensure pw and pu are within valid range**
+                    if (pw < 1 || pw > clusterNodes.size +1) {
+                        // writeln("Error: 'pw' (", pw, ") is out of bounds for 'vert' array.");
+                        continue;  // Skip this neighbor if index is out of bounds
+                    }
+                    if (pu < 1 || pu > clusterNodes.size +1) {
+                        // writeln("Error: 'pu' (", pu, ") is out of bounds for 'vert' array.");
+                        continue;  // Skip this neighbor if index is out of bounds
                     }
 
-                    writeln("Updated degree of neighbor ", u, " to ", degrees[u]);
-                    writeln(" bins are: ", bins);
+                    // Swap u and w in vert and update positions
+                    if u != w {
+                        pos[u] = pw;
+                        vert[pu] = w;
+                        pos[w] = pu;
+                        vert[pw] = u;
+                        // writeln("Swapped vertices ", u, " and ", w, " in vert array.");
+                    }
+
+                    // Increment start position in bin and decrease degree of u
+                    binStart[du] += 1;
+                    degrees[u] -= 1;
+
+                    // writeln("Updated degree of neighbor ", u, " to ", degrees[u]);
+                    // writeln("Updated pos[" , u, "] = ", pos[u], ", vert[" , pw, "] = ", u);
                 }
             }
         }
-        writeln("End of iteration k = ", k, ", bins are: ", bins);
 
-        k += 1;
-    }
+        //writeln("\nFinal cores: ", cores);
 
-    // Collect nodes with cores >= k_max for output
-    var outSet: set(int);
-    for elem in coreKDomain {
-        if cores[elem] >= k_max then outSet.add(elem);  
-    }
-    writeln("outSet: ", outSet);
-    writeln("/////////////////////////kCoreDecomposition ENDED!///////////////////////");
+        // Step 6: Populate coresSet with core numbers
+        var coresSet: set(int);
+        //writeln("cores: ",cores);
+        //writeln("cores domain: ",cores.domain);
+        for v in coreKDomain {
+            if cores[v] >= k_max then coresSet.add(v);
+        }
+        writeln("coresSet: ", coresSet);
+        writeln("/////////////////////////kCoreDecomposition ENDED!///////////////////////");
 
-    return outSet;
-} // end of kCoreDecomposition
+        return coresSet;
+    } // end of kCoreDecomposition
 
-
-    //   var clusterArr = clusterNodes.toArray();
-    //   var coreKDomain: domain(int) = clusterArr;
-    //   var degrees: [coreKDomain] int = 0;
-    //   var cores: [coreKDomain] int = 0; // Initialize cores to 0
-
-    //   // Initialize degrees and cores
-    //   writeln("Initializing degrees and cores...");
-    //   for i in coreKDomain {
-    //     degrees[i] = calculateClusterDegree(clusterNodes, i);
-    //   }
-    //   writeln("clusterArr     : ", clusterArr);
-    //   writeln("Initial degrees: ", degrees);
-    //   writeln("Initial cores  : ", cores);
-
-    //   // Create a list for vertices to process
-    //   var vertexList = new list(int);
-
-    //   // Initialize the list with all vertices in the cluster
-    //   writeln("Initializing vertex list...");
-    //   for i in 0..<clusterNodes.size {
-    //     vertexList.pushBack(clusterArr[i]);
-    //   }
-    //   writeln("Initial vertex list: ", vertexList);
-    //   var k = 1;
-
-    //   // Boolean array to track if a node has been added to nextList
-    //   //var maxVertexID = clusterArr.reduce((a, b) => max(a, b));
-    //   //var inNextList: [0..maxVertexID] bool = false; // Initialize to false
-
-    //   // Loop until the vertex list is empty or k exceeds k_max
-    //   while !vertexList.isEmpty() && k < k_max {
-
-    //     writeln("\nProcessing k = ", k);
-    //     var nextList = new list(int);
-
-    //     // Process vertices sequentially to avoid race conditions
-    //     while !vertexList.isEmpty() {
-    //       var v = vertexList.popBack();
-
-    //       // **Check if the node has already been assigned a core**
-    //       if cores[v] == 0 {
-    //         writeln("Processing vertex v = ", v, " with degree ", degrees[v]);
-
-    //         if degrees[v] <= k {
-    //           // Assign core number k to vertex v
-    //           //cores[v] = k;
-    //           cores[v] = degrees[v];
-    //           writeln("Assigned core[", v, "] = ", k);
-
-    //           // Decrease the degree of neighbors in the cluster
-    //           const ref neighbors = neighborsSetGraphG1[v];
-    //           var adjacent = clusterNodes & neighbors;
-    //           writeln("Neighbors of ", v, ": ", adjacent);
-
-    //           for u in adjacent {
-    //             // **Only decrease the degree if the neighbor hasn't been assigned a core**
-    //             if cores[u] == 0 {
-    //               degrees[u] -= 1;  // Update degrees of neighbor u
-    //               writeln("Decreased degree of neighbor ", u, " to ", degrees[u]);
-
-    //               if degrees[u] <= k {
-    //                 // **Avoid adding duplicates to nextList**
-    //                 if !nextList.contains(u) {
-    //                   nextList.pushBack(u);
-    //                   writeln("Added neighbor ", u, " to nextList");
-    //                 }
-    //               }
-    //             }
-    //           }
-    //         } else {
-    //           // Keep vertex v in the list to be processed in the next iteration
-    //           nextList.pushBack(v);
-    //           writeln("Vertex ", v, " degree ", degrees[v], " > ", k, ", added back to nextList");
-    //         }
-    //       } else {
-    //         // Node v has already been assigned a core
-    //         writeln("Vertex ", v, " has already been assigned core ", cores[v], ", skipping");
-    //       }
-    //     }
-
-    //     // Swap lists for the next iteration
-    //     vertexList = nextList;
-    //     writeln("End of iteration k = ", k);
-    //     writeln("Next vertex list: ", vertexList);
-    //     writeln("\nFinal cores: ", cores);
-    //     k += 1;
-    //     writeln("k became = ",k);
-
-    //   }
-
-    //   writeln("\nFinal cores: ", cores);
-    //   var outSet: set(int);
-    //   for elem in coreKDomain{
-    //     if cores[elem] >= k_max then outSet.add(elem);  
-    //   }
-    //   writeln("outSet: ", outSet);
-    //   writeln("/////////////////////////kCoreDecomposition ENDED!///////////////////////");
-
-    //   return outSet;
-    // } // end of kCoreDecomposition
-
-        
 
     /* Function to calculate the conductance of a cluster */
     proc calculateConductance(ref cluster: set(int)) throws {
@@ -501,6 +446,7 @@ module WellConnectedComponents {
       var volumeCluster: int = 0;
       var volumeComplement: int = 0;
       var minDegreeCluster: int = g1.n_edges;  // 
+      var maxCutSizePrevios = 0;       // Initialize with a low value for max comparison
 
       // Iterate through all vertices to calculate volumes, cutSize, and total graph volume
       for v in cluster {
@@ -509,13 +455,20 @@ module WellConnectedComponents {
         var outEdge = neighbors - cluster;
         //writeln("outEdge: ", outEdge);
         SumOutEdges += outEdge.size;
+
+        // Update minimum outEdge size
         cutSizePrevios = if outEdge.size < cutSizePrevios &&  outEdge.size > 0 then outEdge.size else cutSizePrevios;
+
+        // Update maximum outEdge size
+        maxCutSizePrevios = if outEdge.size > maxCutSizePrevios then outEdge.size else maxCutSizePrevios;
+
+        // Update minimum degree in cluster
         minDegreeCluster = if neighbors.size < minDegreeCluster then neighbors.size else minDegreeCluster;
       }
 
       volumeComplement = totalVolume - volumeCluster;
 
-      writeln("*****************calculateConductance called***********************");
+      //writeln("*****************calculateConductance called***********************");
 
 
       // Calculate mean degrees for cluster and overall graph
@@ -537,13 +490,19 @@ module WellConnectedComponents {
       output[3] = meanDegreeCluster;
       //output[0] = conductance;
       writeln("conductance: ", conductance);
+      if conductance == 0 then writeln("This cluster seems to be made on some outliers nodes!!"); 
+
       // writeln("volumeCluster: ", volumeCluster);
       // writeln("volumeComplement: ", volumeComplement);
       // Output intermediate calculations for verification
-      writeln("Estimated Previos cutsize greater than: ", cutSizePrevios);
+      writeln(cutSizePrevios, " <= Est. of Previos cutsize ");
       // writeln("Cluster SumOutEdges : ", SumOutEdges);
-      // writeln("Cluster mean degree: ", meanDegreeCluster);
-      writeln("Cluster minimum degree: ", minDegreeCluster);
+      writeln("Based on Mader's theorem for sure we have a ",((meanDegreeCluster+2)/2):int,"-edge-connected subgraph. (a lower bound)" );
+      writeln("Based on Lemma. 1 <= MinCut <= ", minDegreeCluster);
+      // Calculate lower and upper bounds of lambda2
+      var lambda2_lower = (conductance * conductance) / 2;
+      var lambda2_upper = 2 * conductance;
+      writeln("Based on Cheeger's Inequalit: ",lambda2_lower," <= lambda2 <= ", lambda2_upper);
       return output;
     }
   
@@ -552,7 +511,8 @@ module WellConnectedComponents {
        well-connected or not, and if not calls itself on the new generated partitions. */
     proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
       writeln("*****************wccRecursiveChecker called***********************");
-
+      writeln("****** Let's check the cluster METRICS: \n");
+      calculateConductance(vertices);
       var (src, dst, mapper) = getEdgeList(vertices);
 
       // If the generated edge list is empty, then return.
@@ -568,8 +528,7 @@ module WellConnectedComponents {
       var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
       if cut > criterionValue { // Cluster is well-connected.
         var currentId = globalId.fetchAdd(1);
-      writeln("$$$$$$clster ",id,"with currentId " ,currentId,"at depth ", depth," with cut", cut, " is well Connected.");
-      writeln("memebers are: ", vertices);
+      writeln("$$$$$$ cluster ",id," with currentId " ,currentId," at depth ", depth," with cut ", cut, " is well Connected. ", "memebers are: ", vertices);
 
         if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
         else if outputType == "during" then writeClustersToFile(vertices, currentId);
@@ -595,15 +554,15 @@ module WellConnectedComponents {
         
         // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
         if cluster1.size > postFilterMinSize {
-          writeln("//////before clusterC2D///////// ");
+        //writeln("//////before clusterC2D///////// ");
         writeln("cluster1(",id,")"," with size: ", cluster1.size, " created!"," members: ", cluster1);
         calculateConductance(cluster1);
         
-        var inPartition = kCoreDecomposition(cluster1, 2);
+        //var inPartition = cluster1;
+        //var inPartition = kCoreDecomposition(cluster1, 2);
 
-          //var inPartition = removeDegreeOne(cluster1);
+        var inPartition = removeDegreeOne(cluster1);
           //var inPartition = clusterC2D(cluster1);
-         writeln("//////After clusterC2D///////// ");
 
         writeln("cluster1(",id,")"," with size: ", inPartition.size);
         calculateConductance(inPartition);
@@ -613,16 +572,13 @@ module WellConnectedComponents {
           wccRecursiveChecker(inPartition, id, depth+1);
         }
         if cluster2.size > postFilterMinSize {
-          writeln("//////before clusterC2D///////// ");
         writeln("cluster2(",id,")"," with size: ", cluster2.size, " created!"," members: ", cluster2);
         calculateConductance(cluster2);
-        var outPartition = kCoreDecomposition(cluster2, 2);
+        //var outPartition =cluster2;
+        //var outPartition = kCoreDecomposition(cluster2, 2);
 
-          //var outPartition = removeDegreeOne(cluster2);
+        var outPartition = removeDegreeOne(cluster2);
           //var outPartition = clusterC2D(cluster2);
-                    //kCoreDecomposition(cluster2);
-
-                   writeln("//////After clusterC2D///////// ");
 
         writeln("cluster2(",id,")"," with size: ", outPartition.size);
         calculateConductance(outPartition);
@@ -708,7 +664,7 @@ module WellConnectedComponents {
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         writeln("-*-*-*-*-*-*-*-*-*-*at the beginning for cluster(",key,")"," and has ", clusterToAdd);
-        calculateConductance(clusterToAdd);
+        //calculateConductance(clusterToAdd);
         wccRecursiveChecker(clusterToAdd, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
