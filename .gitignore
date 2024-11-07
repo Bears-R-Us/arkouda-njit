@@ -147,3 +147,5 @@ GraphServerModules.cfg.*
 
 #.arkouda
 .arkouda
+
+.idea/
