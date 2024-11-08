@@ -45,6 +45,8 @@ module SubgraphIsomorphismMsg {
     var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
     var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
     var sizeLimit = msgArgs.getValueOf("TrackSize");
+    var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
+    var algorithmType = msgArgs.getValueOf("AlgorithmType");
      
     // Pull out our graph from the symbol table.
     var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
@@ -57,28 +59,68 @@ module SubgraphIsomorphismMsg {
     // Execute sequential VF2 subgraph isomorphism.
     var timer:stopwatch;
     if g.isDirected() {
-      timer.start();
-      var isoArray = runVF2PS(g,h,semanticCheckType,sizeLimit,st);
-      timer.stop();
-      outMsg = "VF2PS subgraph isomorphism took " + timer.elapsed():string + " sec";
+      if algorithmType != "ps" && algorithmType != "si" {
+        var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
+        siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+        return new MsgTuple(errorMsg, MsgType.ERROR);
+      }
 
       timer.start();
-      var isoArray2 = runVF2SI(g,h,semanticCheckType,sizeLimit,st);
+      var isos = runVF2(g,h,semanticCheckType,sizeLimit,algorithmType,returnIsosAs,st);
       timer.stop();
-      outMsg = "VF2SI subgraph isomorphism took " + timer.elapsed():string + " sec";
+      outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
-      writeln("isoArray  = ", isoArray);
-      writeln("isoArray2 = ", isoArray2);
-      
-      var isoDistArray = makeDistArray(isoArray.size, int);
-      isoDistArray = isoArray;
-      var IsoDistArrayName = st.nextName();
-      var IsoDistArrayEntry = createSymEntry(isoDistArray);
-      st.addEntry(IsoDistArrayName, IsoDistArrayEntry);
-      repMsg = 'created ' + st.attrib(IsoDistArrayName);
+      if returnIsosAs == "vertices" {
+        var isosAsVerticesName = st.nextName();
+        var isosAsVerticesEntry = createSymEntry(isos[0]);
+        st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
+        
+        var isosAsVerticesMapperName = st.nextName();
+        var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
+        st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
+        
+        repMsg = "created " + st.attrib(isosAsVerticesName)
+               + "+ created " + st.attrib(isosAsVerticesMapperName);
+      } else if returnIsosAs == "edges" {
+        var isosAsEdgesSrcName = st.nextName();
+        var isosAsEdgesSrcEntry = createSymEntry(isos[0]);
+        st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
 
+        var isosAsEdgesDstName = st.nextName();
+        var isosAsEdgesDstEntry = createSymEntry(isos[1]);
+        st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
+        
+        repMsg = "created " + st.attrib(isosAsEdgesSrcName) 
+               + "+ created " + st.attrib(isosAsEdgesDstName);
+      } else if returnIsosAs == "complete" {
+        var isosAsVerticesName = st.nextName();
+        var isosAsVerticesEntry = createSymEntry(isos[0]);
+        st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
+        
+        var isosAsVerticesMapperName = st.nextName();
+        var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
+        st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
+        
+        var isosAsEdgesSrcName = st.nextName();
+        var isosAsEdgesSrcEntry = createSymEntry(isos[2]);
+        st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
+
+        var isosAsEdgesDstName = st.nextName();
+        var isosAsEdgesDstEntry = createSymEntry(isos[3]);
+        st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
+        
+        repMsg = "created " + st.attrib(isosAsVerticesName)
+               + "+ created " + st.attrib(isosAsVerticesMapperName)
+               + "+ created " + st.attrib(isosAsEdgesSrcName)
+               + "+ created " + st.attrib(isosAsEdgesDstName);
+      } else {
+        var errorMsg = notImplementedError(pn, "return_isos_as type");
+        siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+        return new MsgTuple(errorMsg, MsgType.ERROR);
+      }
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+
       return new MsgTuple(repMsg, MsgType.NORMAL);
     } else {
       var errorMsg = notImplementedError(pn, "subgraph isomorphism for undirected graphs");
