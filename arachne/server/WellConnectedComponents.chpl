@@ -427,17 +427,25 @@ module WellConnectedComponents {
 
         // Step 6: Populate coresSet with core numbers
         var coresSet: set(int);
+        var peripherySet: set(int);
         //writeln("cores: ",cores);
         //writeln("cores domain: ",cores.domain);
         for v in coreKDomain {
-            if cores[v] >= k_max then coresSet.add(v);
+            if cores[v] >= k_max{
+              coresSet.add(v);
+            }else{
+              peripherySet.add(v);
+            }
         }
         writeln("coresSet: ", coresSet);
+        writeln("peripherySet: ", peripherySet);
         writeln("/////////////////////////kCoreDecomposition ENDED!///////////////////////");
-
+        //Find Edges Connecting Periphery to Core
+        // writeln("Edges connecting periphery to core:");
+        // for edge in connectingEdges {
+        //     writeln("Edge between Node ", edge(0), " and Node ", edge(1));
         return coresSet;
     } // end of kCoreDecomposition
-
 
     /* Function to calculate the conductance of a cluster */
     proc calculateConductance(ref cluster: set(int)) throws {
@@ -451,6 +459,9 @@ module WellConnectedComponents {
       // Iterate through all vertices to calculate volumes, cutSize, and total graph volume
       for v in cluster {
         var neighbors = neighborsSetGraphG1[v];
+        if v== 37 || v == 38 {
+          writeln("neighbors ",v," are: ", neighbors);
+        }
         volumeCluster += neighbors.size;
         var outEdge = neighbors - cluster;
         //writeln("outEdge: ", outEdge);
@@ -490,22 +501,103 @@ module WellConnectedComponents {
       output[3] = meanDegreeCluster;
       //output[0] = conductance;
       writeln("conductance: ", conductance);
-      if conductance == 0 then writeln("This cluster seems to be made on some outliers nodes!!"); 
+      if conductance == 0 then writeln("This cluster seems to be far from other clusters (outlier cluster)!!"); 
 
       // writeln("volumeCluster: ", volumeCluster);
       // writeln("volumeComplement: ", volumeComplement);
       // Output intermediate calculations for verification
       writeln(cutSizePrevios, " <= Est. of Previos cutsize ");
       // writeln("Cluster SumOutEdges : ", SumOutEdges);
+      writeln("Cluster Mean degree: ",meanDegreeCluster );
       writeln("Based on Mader's theorem for sure we have a ",((meanDegreeCluster+2)/2):int,"-edge-connected subgraph. (a lower bound)" );
-      writeln("Based on Lemma. 1 <= MinCut <= ", minDegreeCluster);
+      writeln("Based on Iequlaity. MinCut <= ", minDegreeCluster);
       // Calculate lower and upper bounds of lambda2
       var lambda2_lower = (conductance * conductance) / 2;
       var lambda2_upper = 2 * conductance;
-      writeln("Based on Cheeger's Inequalit: ",lambda2_lower," <= lambda2 <= ", lambda2_upper);
+      writeln("Based on Cheeger's Inequalit: ",lambda2_lower," <= λ2 <= ", lambda2_upper);
+      writeln("λ2 Midpoint Approximation: ",(lambda2_lower + lambda2_upper)/2 );
+      writeln("My metric: ",2 * conductance/(lambda2_lower + lambda2_upper) );
+      //alpha*lambda2_lower + (1-alpha)* lambda2_upper
+
+ 
+      writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*");
+      writeln("λ2 == 0    --> Cluster is disconnected!");
+      writeln("λ2 near 0  --> Cluster is weakly connected.");
+      writeln("0 < λ2 < 1 --> Cluster is reasonably well-connected structure, with some potential for partitioning.");
+      writeln("λ2 >= 1    --> Cluster has strong connectivity and robustness");
+      writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*\n");
+
       return output;
+    }// end of calculateConductance
+
+    /* Define the threshold for small subclusters */
+    const threshold = 10;
+
+    /* DFS function implementing Tarjan's Algorithm on the cluster */
+    proc DFS(u: int, parent: int, ref members: set(int),
+            ref disc: [?D1] int, ref low: [?D2] int,
+            ref subtree_size: [?D3] int, ref bridges: list((int, int)),
+            ref time: int, const total_nodes: int) {
+        time += 1;
+        disc[u] = time;
+        low[u] = time;
+        subtree_size[u] = 1;                       // Initialize subtree size
+
+        // Access neighbors within the cluster
+        var neig = neighborsSetGraphG1[u];
+        var neighbors = members & neig;
+
+        for v in neighbors {
+            if v == parent {
+                continue;                           // Skip the parent node
+            }
+            if disc[v] == -1 {
+                DFS(v, u, members, disc, low, subtree_size, bridges, time, total_nodes);
+                low[u] = min(low[u], low[v]);
+                subtree_size[u] += subtree_size[v];  // Update subtree size
+
+                // Check for bridge
+                if low[v] > disc[u] {
+                    // Edge (u, v) is a bridge
+                    var component_size_v = subtree_size[v];
+                    var component_size_u = total_nodes - subtree_size[v];
+
+                    // Check if one component is a small subcluster
+                    if component_size_v <= threshold || component_size_u <= threshold {
+                      writeln("(",u," ,",v,") added. component_size_u: ", component_size_u, " component_size_v: ", component_size_v);
+                        bridges.pushBack((u, v));
+                    }
+                }
+            } else {
+                low[u] = min(low[u], disc[v]);
+            }
+        }
     }
-  
+
+    /* Function to find bridges and small subclusters in the cluster */
+    proc findBridgesInCluster(ref members: set(int)) {
+        const total_nodes = members.size;  // Declare total_nodes here
+        const memberDomain: domain(int) = members.toArray();
+        var disc: [memberDomain] int = -1;
+        var low : [memberDomain] int = -1;
+        var subtree_size: [memberDomain] int = 0;
+        var bridges: list((int, int));
+        var time = 0;
+
+        // Call DFS for each unvisited vertex in the cluster
+        for u in members {
+            if disc[u] == -1 {
+                DFS(u, -1, members, disc, low, subtree_size, bridges, time, total_nodes);
+            }
+        }
+
+        // Output the result or return bridges if needed
+        // writeln("Edges connecting small subclusters to the core cluster:");
+        // for edge in bridges {
+        //     writeln("Bridge between Node ", edge(0), " and Node ", edge(1));
+        // }
+    }
+
 
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
        well-connected or not, and if not calls itself on the new generated partitions. */
@@ -558,10 +650,10 @@ module WellConnectedComponents {
         writeln("cluster1(",id,")"," with size: ", cluster1.size, " created!"," members: ", cluster1);
         calculateConductance(cluster1);
         
-        //var inPartition = cluster1;
+        var inPartition = cluster1;
         //var inPartition = kCoreDecomposition(cluster1, 2);
 
-        var inPartition = removeDegreeOne(cluster1);
+        //var inPartition = removeDegreeOne(cluster1);
           //var inPartition = clusterC2D(cluster1);
 
         writeln("cluster1(",id,")"," with size: ", inPartition.size);
@@ -574,10 +666,10 @@ module WellConnectedComponents {
         if cluster2.size > postFilterMinSize {
         writeln("cluster2(",id,")"," with size: ", cluster2.size, " created!"," members: ", cluster2);
         calculateConductance(cluster2);
-        //var outPartition =cluster2;
+        var outPartition =cluster2;
         //var outPartition = kCoreDecomposition(cluster2, 2);
 
-        var outPartition = removeDegreeOne(cluster2);
+        //var outPartition = removeDegreeOne(cluster2);
           //var outPartition = clusterC2D(cluster2);
 
         writeln("cluster2(",id,")"," with size: ", outPartition.size);
@@ -664,8 +756,9 @@ module WellConnectedComponents {
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         writeln("-*-*-*-*-*-*-*-*-*-*at the beginning for cluster(",key,")"," and has ", clusterToAdd);
-        //calculateConductance(clusterToAdd);
-        wccRecursiveChecker(clusterToAdd, key, 0);
+        calculateConductance(clusterToAdd);
+        findBridgesInCluster(clusterToAdd);
+        //wccRecursiveChecker(clusterToAdd, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
       
