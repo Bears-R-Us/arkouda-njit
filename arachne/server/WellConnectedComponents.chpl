@@ -434,7 +434,7 @@ module WellConnectedComponents {
             if cores[v] >= k_max{
               coresSet.add(v);
             }else{
-              peripherySet.add(v);
+              peripherySet.add(v);/////////////////I added but I should check correctness!!!!!!!!!!
             }
         }
         writeln("coresSet: ", coresSet);
@@ -522,37 +522,923 @@ module WellConnectedComponents {
  
       writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*");
       writeln("λ2 == 0    --> Cluster is disconnected!");
-      writeln("λ2 near 0  --> Cluster is weakly connected.");
-      writeln("0 < λ2 < 1 --> Cluster is reasonably well-connected structure, with some potential for partitioning.");
+      writeln("λ2 near 0  --> Cluster is weakly connected, and for sure there is 2 subcluster in it.");
+      writeln("0 << λ2 < 1 --> Cluster is reasonably well-connected structure, with some potential for partitioning.");
       writeln("λ2 >= 1    --> Cluster has strong connectivity and robustness");
       writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*\n");
 
       return output;
     }// end of calculateConductance
+    ////////////////////////////////////////////// find all mincut  ///////////////////////////
+    /* Helper function to merge vertices */
+    proc mergeVertices(v1: int, v2: int, ref adjCopy: map(int, set(int)), ref mergeMap: map(int, set(int))) {
+        writeln("\nMerging vertex ", v2, " into ", v1);
+        
+        // Update merge tracking
+        mergeMap[v1] |= mergeMap[v2];
+        mergeMap.remove(v2);
+        
+        // Remove self references
+        adjCopy[v1].remove(v1);
+        adjCopy[v1].remove(v2);
+        
+        // Merge adjacency lists
+        for u in adjCopy[v2] {
+            if u != v1 {  // Avoid self-loops
+                adjCopy[v1].add(u);
+                adjCopy[u].remove(v2);
+                adjCopy[u].add(v1);
+            }
+        }
+        
+        // Remove merged vertex
+        adjCopy.remove(v2);
+    }
+    /* Calculate cut weight between two sets */
+    proc calculateCutWeight(cutSet: set(int), ref adjCopy: map(int, set(int)), ref adj: map(int, set(int)), 
+                          ref mergeMap: map(int, set(int))): (int, set((int, int))) {
+        var cutWeight = 0;
+        var cutEdges = new set((int, int));
+        
+        // For each vertex in the cut set
+        for v in cutSet {
+            // For each adjacent vertex
+            for u in adjCopy[v] {
+                if !cutSet.contains(u) {
+                    // Count original edges between merged components
+                    for orig_v in mergeMap[v] {
+                        for orig_u in mergeMap[u] {
+                            if adj[orig_v].contains(orig_u) {
+                                cutEdges.add((min(orig_v, orig_u), max(orig_v, orig_u)));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        cutWeight = cutEdges.size;
+        return (cutWeight, cutEdges);
+    }
 
-    /* Define the threshold for small subclusters */
-    const threshold = 10;
+
+    /* Stoer-Wagner algorithm to find the global minimum cut */
+    proc stoerWagnerMinCut(ref members: set(int), ref adj: map(int, set(int))): (int, set(int), set((int, int))) throws {
+
+        var minCutValue = max(int);
+        var minCutSet = new set(int);
+        var minCutEdges = new set((int, int));
+
+        // Deep copy the adjacency lists to avoid modifying the original graph
+        var adjCopy = new map(int, set(int));
+        for v in adj.keys() {
+            adjCopy[v] = new set(int);
+            adjCopy[v] = adj[v];
+        }
+
+        // Keep track of merged vertices
+        var mergeMap = new map(int, set(int)); // maps vertex -> set of vertices merged into it
+        for v in members {
+            mergeMap[v] = new set(int);
+            mergeMap[v].add(v);
+        }
+
+        // Working set of vertices
+        var vertices = new set(int);
+        vertices = members;
+
+        writeln("Starting Stoer-Wagner with vertices: ", vertices);
+        writeln("Initial adjacency lists:");
+        for v in adjCopy.keys() {
+            writeln(v, " -> ", adjCopy[v]);
+        }
+        // Continue while more than one vertex remains
+        while vertices.size > 1 {
+            // Set of vertices included in the current phase
+            // Track vertices in set A and their connectivity weights
+            var inA = new set(int);
+            var weights = new map(int, int); // Maps vertex -> total weight of edges to set A
+            
+            // Select first vertex arbitrarily (set in Chapel has no function for this so I wrote my own way)
+            var first = -1;
+            for v in vertices {
+                first = v;
+                break;
+            }
+
+            var prev = -1;  // Second to last vertex added
+            var last = first;  // Last vertex added
+            
+            inA.add(first);
+            writeln("\nNew phase starting with first vertex: ", first);
+
+            // Initialize weights for all vertices not in A
+            for v in vertices {
+                if v != first {
+                    weights[v] = 0;
+                    if adjCopy[first].contains(v) {
+                        weights[v] = 1; // Initialize with weight 1 for connected vertices
+                    }
+                }
+            }
+            writeln("Initial weights: ", weights);
+
+            // Main phase loop - add vertices until all are in A
+            while inA.size < vertices.size {
+                // Find vertex not in A with maximum connectivity to A
+                var maxWeight = -1;
+                var maxVertex = -1;
+
+                for v in vertices {
+                    if !inA.contains(v) && weights[v] > maxWeight {
+                        maxWeight = weights[v];
+                        maxVertex = v;
+                    }
+                }
+                if maxVertex == -1 {
+                    writeln("Warning: No more connected vertices found");
+                    break;
+                }
+
+                // Update tracking variables
+                prev = last;
+                last = maxVertex;
+                inA.add(maxVertex);
+
+                writeln("Added vertex ", maxVertex, " with weight ", maxWeight);
+                
+                // Update weights for remaining vertices
+                for v in vertices {
+                    if !inA.contains(v) {
+                        if adjCopy[maxVertex].contains(v) {
+                            weights[v] += 1; // Add weight 1 for each new edge
+                        }
+                    }
+                }
+                writeln("Updated weights: ", weights);
+            }
+
+            // Calculate CUT weight (sum of edges from last vertex to all others)
+            var cutSet = new set(int);
+            for v in vertices {
+                if v != last {
+                    cutSet.add(v);
+                }
+            }
+
+
+            // Count edges crossing the cut in original graph
+            var cutWeight = 0;
+            var currentCutEdges = new set((int, int));
+            var lastVertices = mergeMap[last];
+            var cutSetVertices = new set(int);
+            for v in cutSet {
+                cutSetVertices |= mergeMap[v];
+            }
+
+            // Check edges between original vertices
+            for v in cutSetVertices {
+                for u in lastVertices {
+                    if adj[v].contains(u) {
+                        cutWeight += 1;
+                        currentCutEdges.add((min(v,u), max(v,u)));
+                    }
+                }
+            }
+
+          writeln("\nPhase complete. \nCut weight: ", cutWeight, ", previous min: ", minCutValue, "Cut set: ", cutSet);
+          // Update minimum cut if this is better
+            if cutWeight < minCutValue {
+                minCutValue = cutWeight;
+                minCutSet.clear();
+                minCutSet |= cutSetVertices;
+                minCutEdges = currentCutEdges;
+
+                writeln("\nNew minimum cut found!");
+                writeln("Cut value: ", minCutValue);
+                writeln("Cut set: ", minCutSet);
+                writeln("Cut edges: ", minCutEdges);
+            }
+
+            // Merge the last two vertices (last into prev)
+            if prev != -1 && last != -1 && prev != last {
+                writeln("\nMerging vertex ", last, " into ", prev);
+                writeln("Before merge adjacency lists:");
+                for v in adjCopy.keys() {
+                    writeln(v, " -> ", adjCopy[v]);
+                }
+                
+                // Update merge tracking
+                mergeMap[prev] |= mergeMap[last];
+                mergeMap.remove(last);
+                
+                // Remove self-loops
+                adjCopy[prev].remove(prev);
+                adjCopy[prev].remove(last);
+                
+                // Merge adjacency lists
+                for v in adjCopy[last] {
+                    if v != prev {
+                        adjCopy[prev].add(v);
+                        adjCopy[v].remove(last);
+                        adjCopy[v].add(prev);
+                    }
+                }
+                
+                // Remove merged vertex
+                adjCopy.remove(last);
+                vertices.remove(last);
+
+                writeln("\nAfter merge:");
+                writeln("Vertices remaining: ", vertices);
+                writeln("Updated adjacency lists:");
+                for v in adjCopy.keys() {
+                    writeln(v, " -> ", adjCopy[v]);
+                }
+                writeln("Merge map:", mergeMap);
+            }
+        }
+
+        writeln("\nFinal result:");
+        writeln("Minimum cut value: ", minCutValue);
+        writeln("Cut set: ", minCutSet);
+        writeln("Cut edges: ", minCutEdges);
+
+        return (minCutValue, minCutSet, minCutEdges);
+    }// end of stoerWagnerMinCut
+
+    /* Helper proc to print a graph */
+    proc printGraph(ref vertices: set(int), ref adj: map(int, set(int))) throws{
+        writeln("Graph:");
+        writeln("Vertices: ", vertices);
+        writeln("Edges:");
+        for v in vertices {
+            for u in adj[v] {
+                if v < u {  // Print each edge only once
+                    writeln(v, " -- ", u);
+                }
+            }
+        }
+    }// end of printGraph
+
+
+    /* Test function */
+    /* Test cases for the Stoer-Wagner minimum cut algorithm */
+    proc testStoerWagner() throws {
+        writeln("\n=== Running Stoer-Wagner Algorithm Tests ===\n");
+
+        // Test 1: Simple square graph (original test)
+        {
+            writeln("Test 1: Simple square graph with diagonal");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 4);
+            addEdge(4, 1);
+            addEdge(2, 4);
+            
+            writeln("\nInput graph:");
+            printGraph(members, adj);
+            
+            var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+            
+            writeln("\nResults:");
+            writeln("Expected min cut: 2");
+            writeln("Actual min cut: ", minCutValue);
+            writeln("Cut set: ", minCutSet);
+            writeln("Cut edges: ", minCutEdges);
+            assert(minCutValue == 2, "Test 1 failed: incorrect min cut value");
+        }
+
+        // Test 2: Triangle graph (no cut should be 2)
+        {
+            writeln("\nTest 2: Triangle graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..3 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 1);
+            
+            writeln("\nInput graph:");
+            printGraph(members, adj);
+            
+            var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+            
+            writeln("\nResults:");
+            writeln("Expected min cut: 2");
+            writeln("Actual min cut: ", minCutValue);
+            writeln("Cut set: ", minCutSet);
+            writeln("Cut edges: ", minCutEdges);
+            assert(minCutValue == 2, "Test 2 failed: incorrect min cut value");
+        }
+
+        // Test 3: Path graph (should have min cut 1)
+        {
+            writeln("\nTest 3: Path graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 4);
+            
+            writeln("\nInput graph:");
+            printGraph(members, adj);
+            
+            var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+            
+            writeln("\nResults:");
+            writeln("Expected min cut: 1");
+            writeln("Actual min cut: ", minCutValue);
+            writeln("Cut set: ", minCutSet);
+            writeln("Cut edges: ", minCutEdges);
+            assert(minCutValue == 1, "Test 3 failed: incorrect min cut value");
+        }
+
+        // Test 4: Butterfly graph (should have min cut 2)
+        {
+            writeln("\nTest 4: Butterfly graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..5 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Center vertex is 1
+            addEdge(1, 2);
+            addEdge(1, 3);
+            addEdge(1, 4);
+            addEdge(1, 5);
+            addEdge(2, 3);
+            addEdge(4, 5);
+            
+            writeln("\nInput graph:");
+            printGraph(members, adj);
+            
+            var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+            
+            writeln("\nResults:");
+            writeln("Expected min cut: 2");
+            writeln("Actual min cut: ", minCutValue);
+            writeln("Cut set: ", minCutSet);
+            writeln("Cut edges: ", minCutEdges);
+            assert(minCutValue == 2, "Test 4 failed: incorrect min cut value");
+        }
+
+        // Test 5: Complete graph with 4 vertices (should have min cut 3)
+        {
+            writeln("\nTest 5: Complete graph K4");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Add all possible edges
+            for i in 1..4 {
+                for j in i+1..4 {
+                    addEdge(i, j);
+                }
+            }
+            
+            writeln("\nInput graph:");
+            printGraph(members, adj);
+            
+            var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+            
+            writeln("\nResults:");
+            writeln("Expected min cut: 3");
+            writeln("Actual min cut: ", minCutValue);
+            writeln("Cut set: ", minCutSet);
+            writeln("Cut edges: ", minCutEdges);
+            assert(minCutValue == 3, "Test 5 failed: incorrect min cut value");
+        }
+
+        // Test 6: Disconnected graph (should have min cut 0)
+        {
+            writeln("\nTest 6: Disconnected graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Two disconnected edges
+            addEdge(1, 2);
+            addEdge(3, 4);
+            
+            writeln("\nInput graph:");
+            printGraph(members, adj);
+            
+            var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+            
+            writeln("\nResults:");
+            writeln("Expected min cut: 0");
+            writeln("Actual min cut: ", minCutValue);
+            writeln("Cut set: ", minCutSet);
+            writeln("Cut edges: ", minCutEdges);
+            assert(minCutValue == 0, "Test 6 failed: incorrect min cut value");
+        }
+
+        writeln("\n=== All tests completed ===\n");
+    }
+
+
+
+
+
+    /* Recursive function to find all minimum cuts */
+    proc findAllMinCutsRecursive(
+        ref members: set(int), 
+        ref adj: map(int, set(int)),
+        globalMinValue: int
+    ): list((set(int), set((int,int)))) throws {
+        var minCuts: list((set(int), set((int,int)))) = new list((set(int), set((int,int))));
+        
+        writeln("\nExploring subgraph with vertices: ", members);
+        
+        if members.size <= 1 then return minCuts;
+
+        // Find min cut in current subgraph
+        var (minCutValue, minCutSet, minCutEdges) = stoerWagnerMinCut(members, adj);
+        
+        writeln("Found cut of value ", minCutValue, " in current subgraph");
+        writeln("Cut set: ", minCutSet);
+        writeln("Cut edges: ", minCutEdges);
+
+        // If this is a minimum cut, store it
+        if minCutValue == globalMinValue {
+            minCuts.pushBack((minCutSet, minCutEdges));
+            writeln("Added to minimum cuts list");
+        }
+
+        // Split graph into two components based on the cut
+        var setB = members - minCutSet;
+        
+        // Create adjacency lists for the two subgraphs
+        var adjA = new map(int, set(int));
+        var adjB = new map(int, set(int));
+        
+        // Build subgraph A
+        for v in minCutSet {
+            adjA[v] = new set(int);
+            for u in adj[v] {
+                if minCutSet.contains(u) {
+                    adjA[v].add(u);
+                }
+            }
+        }
+        
+        // Build subgraph B
+        for v in setB {
+            adjB[v] = new set(int);
+            for u in adj[v] {
+                if setB.contains(u) {
+                    adjB[v].add(u);
+                }
+            }
+        }
+        
+        // Recursively find min cuts in both subgraphs
+        writeln("\nRecursing on subgraph A: ", minCutSet);
+        var cutsA = findAllMinCutsRecursive(minCutSet, adjA, globalMinValue);
+        minCuts.pushBack(cutsA);
+        
+        writeln("\nRecursing on subgraph B: ", setB);
+        var cutsB = findAllMinCutsRecursive(setB, adjB, globalMinValue);
+        minCuts.pushBack(cutsB);
+
+        return minCuts;
+    }
+
+    /* Main function to find all minimum cuts */
+    proc findAllMinCuts(
+        ref members: set(int), 
+        ref adj: map(int, set(int))
+    ): (int, list((set(int), set((int,int))))) throws {
+        // First find the global minimum cut value
+        var (globalMinValue, _, _) = stoerWagnerMinCut(members, adj);
+        writeln("\nGlobal minimum cut value: ", globalMinValue);
+        
+        // Get all minimum cuts through recursive process
+        var allMinCuts = findAllMinCutsRecursive(members, adj, globalMinValue);
+        
+        writeln("\nAll minimum cuts found (", allMinCuts.size, " total):");
+        for (cutSet, cutEdges) in allMinCuts {
+            writeln("Cut set: ", cutSet);
+            writeln("Cut edges: ", cutEdges);
+            writeln("---");
+        }
+
+        return (globalMinValue, allMinCuts);
+    }
+
+    /* Comprehensive test suite for minimum cut algorithms */
+    proc runAllTests() throws {
+        writeln("\n=== Running Comprehensive Tests ===\n");
+
+        // Test 1: Simple square with diagonal
+        {
+            writeln("Test 1: Square with diagonal (Original test case)");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 4);
+            addEdge(4, 1);
+            addEdge(2, 4);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 2");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 2: Triangle graph
+        {
+            writeln("\n\nTest 2: Triangle graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..3 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 1);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 2");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 3: Path graph
+        {
+            writeln("\n\nTest 3: Path graph (should have min cut 1)");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 4);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 1");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 4: Complete graph K4
+        {
+            writeln("\n\nTest 4: Complete graph K4 (should have min cut 3)");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Add all possible edges
+            for i in 1..4 {
+                for j in i+1..4 {
+                    addEdge(i, j);
+                }
+            }
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 3");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 5: Butterfly graph
+        {
+            writeln("\n\nTest 5: Butterfly graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..5 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Center vertex is 1
+            addEdge(1, 2);
+            addEdge(1, 3);
+            addEdge(1, 4);
+            addEdge(1, 5);
+            addEdge(2, 3);
+            addEdge(4, 5);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 2");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 6: Disconnected graph
+        {
+            writeln("\n\nTest 6: Disconnected graph (should have min cut 0)");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..4 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Two disconnected components
+            addEdge(1, 2);
+            addEdge(3, 4);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 0");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 7: Star graph
+        {
+            writeln("\n\nTest 7: Star graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..5 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            // Center is vertex 1
+            addEdge(1, 2);
+            addEdge(1, 3);
+            addEdge(1, 4);
+            addEdge(1, 5);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 1");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        // Test 8: Cycle graph
+        {
+            writeln("\n\nTest 8: Cycle graph");
+            var members = new set(int);
+            var adj = new map(int, set(int));
+            
+            for i in 1..5 {
+                members.add(i);
+                adj[i] = new set(int);
+            }
+            
+            proc addEdge(u: int, v: int) {
+                adj[u].add(v);
+                adj[v].add(u);
+            }
+            
+            addEdge(1, 2);
+            addEdge(2, 3);
+            addEdge(3, 4);
+            addEdge(4, 5);
+            addEdge(5, 1);
+            
+            writeln("\nGraph structure:");
+            printGraph(members, adj);
+            
+            var (minValue, allCuts) = findAllMinCuts(members, adj);
+            writeln("\nExpected min cut: 2");
+            writeln("Found min cut: ", minValue);
+            writeln("Number of min cuts found: ", allCuts.size);
+        }
+
+        writeln("\n=== Test Suite Completed ===");
+    }
+
+/* Use minimum cuts to find subclusters in a cluster */
+proc findClusters(
+    ref members: set(int), 
+    ref adj: map(int, set(int)),
+    threshold: int
+) throws {
+    var clusters: list(set(int)) = new list(set(int));
+    var toProcess: list((set(int), map(int, set(int)))) = new list((set(int), map(int, set(int))));
+    
+    // Start with the whole graph
+    toProcess.pushBack((members, adj));
+    
+    while toProcess.size > 0 {
+        var (currentMembers, currentAdj) = toProcess.pop();
+        
+        if currentMembers.size <= 1 {
+            if currentMembers.size == 1 {
+                clusters.pushBack(currentMembers);
+            }
+            continue;
+        }
+        
+        var (cutValue, cutSet, cutEdges) = stoerWagnerMinCut(currentMembers, currentAdj);
+        
+        // If cut value is above threshold, this is a cluster
+        if cutValue > threshold {
+            clusters.pushBack(currentMembers);
+            continue;
+        }
+        
+        // Otherwise, split into two subgraphs and continue processing
+        var setB = currentMembers - cutSet;
+        
+        // Create subgraphs
+        var adjA = new map(int, set(int));
+        var adjB = new map(int, set(int));
+        
+        // Build adjacency lists for subgraphs
+        for v in cutSet {
+            adjA[v] = new set(int);
+            for u in currentAdj[v] {
+                if cutSet.contains(u) {
+                    adjA[v].add(u);
+                }
+            }
+        }
+        
+        for v in setB {
+            adjB[v] = new set(int);
+            for u in currentAdj[v] {
+                if setB.contains(u) {
+                    adjB[v].add(u);
+                }
+            }
+        }
+        
+        toProcess.pushBack((cutSet, adjA));
+        toProcess.pushBack((setB, adjB));
+    }
+    
+    writeln("\nFound ", clusters.size, " clusters:");
+    for cluster in clusters {
+        writeln("Cluster: ", cluster);
+    }
+}
+    ///////////////////////////////////////findBridgesInCluster////////////////////////////////////////////////////////
+
+    // /* Define the threshold for small subclusters */
+    // const threshold = 10;
 
     /* DFS function implementing Tarjan's Algorithm on the cluster */
-    proc DFS(u: int, parent: int, ref members: set(int),
+    //The time complexity of implementation is O(N + E), where:
+
+    // N is the number of vertices (nodes) in the cluster.
+    // E is the number of edges within the cluster.
+    proc DFS(u: int, parentNode: int, ref members: set(int),
             ref disc: [?D1] int, ref low: [?D2] int,
             ref subtree_size: [?D3] int, ref bridges: list((int, int)),
-            ref time: int, const total_nodes: int) {
+            ref time: int, const total_nodes: int, const threshold:int,
+            ref min_diff: int, ref best_bridge: (int, int, int, int),
+            ref parent: [?D4] int) {
+
         time += 1;
         disc[u] = time;
         low[u] = time;
         subtree_size[u] = 1;                       // Initialize subtree size
+        parent[u] = parentNode;                    // Record the parent node
 
         // Access neighbors within the cluster
         var neig = neighborsSetGraphG1[u];
-        var neighbors = members & neig;
+        var neighbors = members & neig; //neighbors are in cluster
 
         for v in neighbors {
-            if v == parent {
+            if v == parentNode {
                 continue;                           // Skip the parent node
             }
             if disc[v] == -1 {
-                DFS(v, u, members, disc, low, subtree_size, bridges, time, total_nodes);
+                //DFS(v, u, members, disc, low, subtree_size, bridges, time, total_nodes);
+                DFS(v, u, members, disc, low, subtree_size, bridges, time, total_nodes, threshold, min_diff, best_bridge, parent);
+
                 low[u] = min(low[u], low[v]);
                 subtree_size[u] += subtree_size[v];  // Update subtree size
 
@@ -562,9 +1448,17 @@ module WellConnectedComponents {
                     var component_size_v = subtree_size[v];
                     var component_size_u = total_nodes - subtree_size[v];
 
+                    // Compute the absolute difference
+                    var diff = abs(component_size_u - component_size_v);
+
+                    // Update min_diff and best_bridge if this bridge gives a smaller difference
+                    if diff < min_diff {
+                        min_diff = diff;
+                        best_bridge = (u, v, component_size_u, component_size_v);
+                    }
                     // Check if one component is a small subcluster
                     if component_size_v <= threshold || component_size_u <= threshold {
-                      writeln("(",u," ,",v,") added. component_size_u: ", component_size_u, " component_size_v: ", component_size_v);
+                      //writeln("(",u," ,",v,") added. component_size_u: ", component_size_u, " component_size_v: ", component_size_v);
                         bridges.pushBack((u, v));
                     }
                 }
@@ -574,6 +1468,24 @@ module WellConnectedComponents {
         }
     }
 
+    /* Function to collect nodes in a component after removing the bridge */
+    proc collectComponent(u: int, ref members: set(int), ref component: set(int), 
+                             const excludeNode: int, ref visited: [?D1] bool) {
+        component.add(u);
+        visited[u] = true;
+        var neig = neighborsSetGraphG1[u];
+        var neighbors = members & neig;
+
+        for v in neighbors {
+            if v == excludeNode {
+                continue; // Skip the bridge edge
+            }
+            if !visited[v] {
+                collectComponent(v, members, component, excludeNode, visited);
+            }
+        }
+    }// end of collectComponent
+
     /* Function to find bridges and small subclusters in the cluster */
     proc findBridgesInCluster(ref members: set(int)) {
         const total_nodes = members.size;  // Declare total_nodes here
@@ -582,22 +1494,46 @@ module WellConnectedComponents {
         var low : [memberDomain] int = -1;
         var subtree_size: [memberDomain] int = 0;
         var bridges: list((int, int));
+        var parent: [memberDomain] int = -1; // Array to store parent of each node
         var time = 0;
+        const threshold = members.size;  // find a way to set the threshold. square root of m?
+
+        // Variables to keep track of the minimum difference and the best bridge
+        var min_diff = total_nodes;
+        var best_bridge: (int, int, int, int) = (-1, -1, -1, -1); // (u, v, component_size_u, component_size_v)
 
         // Call DFS for each unvisited vertex in the cluster
         for u in members {
             if disc[u] == -1 {
-                DFS(u, -1, members, disc, low, subtree_size, bridges, time, total_nodes);
+                //DFS(u, -1, members, disc, low, subtree_size, bridges, time, total_nodes, threshold = 10);
+                DFS(u, -1, members, disc, low, subtree_size, bridges, time, total_nodes, threshold, min_diff, best_bridge, parent);
+
             }
         }
 
-        // Output the result or return bridges if needed
-        // writeln("Edges connecting small subclusters to the core cluster:");
-        // for edge in bridges {
-        //     writeln("Bridge between Node ", edge(0), " and Node ", edge(1));
-        // }
-    }
+        // Output the bridge with the minimum difference
+        if best_bridge(0) != -1 {
+            writeln("\nThe best bridge in this cluster is between ", best_bridge(0), " and ", best_bridge(1));
+            writeln("Component sizes are ", best_bridge(2), " and ", best_bridge(3));
+            //writeln("Minimum size difference is ", min_diff);
+                    
+            // Collect nodes in the component containing best_bridge(1)
+            var component_v = new set(int);
+            var visited: [memberDomain] bool = false;
 
+            collectComponent(best_bridge(1), members, component_v, best_bridge(0), visited);
+
+            // The other component is the remaining nodes
+            var component_u = members - component_v;
+
+            writeln("Nodes in component containing ", best_bridge(1), ": ", component_v);
+            writeln("Nodes in component containing ", best_bridge(0), ": ", component_u);
+
+        } else {
+            writeln("\nNo bridges found.");
+        }
+    }
+///////////////////////////////////////////////////////////////////////////////////////////////
 
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
        well-connected or not, and if not calls itself on the new generated partitions. */
@@ -758,6 +1694,9 @@ module WellConnectedComponents {
         writeln("-*-*-*-*-*-*-*-*-*-*at the beginning for cluster(",key,")"," and has ", clusterToAdd);
         calculateConductance(clusterToAdd);
         findBridgesInCluster(clusterToAdd);
+        //findAllMinCutsInCluster(clusterToAdd);
+        //testStoerWagner();
+        runAllTests();
         //wccRecursiveChecker(clusterToAdd, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
