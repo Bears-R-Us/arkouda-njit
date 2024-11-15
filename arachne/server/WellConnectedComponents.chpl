@@ -730,6 +730,216 @@ module WellConnectedComponents {
         return (minCutValue, minCutSet, minCutEdges);
     }
 /////////////////////////////////////////Nagamochi-Ibaraki Algorithm//////////////////////////
+/* Graph representation using optimized data structures for shared memory */
+record Graph {
+    var numVertices: int;
+    var vertexDomain: domain(1);
+    var edgeDomain: domain(2*int);  // Stores edges as (v1,v2) where v1 < v2
+    var adjList: [vertexDomain] list(int);  // Adjacency lists using Chapel lists
+    var degree: [vertexDomain] int;         // Track degree of each vertex
+
+    /* Initialize a graph with n vertices */
+    proc init(n: int) {
+        this.numVertices = n;
+        this.vertexDomain = {1..n};
+        // Note: edgeDomain starts empty and grows as edges are added
+    }
+
+    /* Add an undirected edge between vertices v1 and v2 */
+    proc addEdge(v1: int, v2: int) {
+        if v1 == v2 then return;  // No self-loops
+        
+        // Ensure v1 < v2 for consistent edge representation
+        var (minV, maxV) = if v1 < v2 then (v1, v2) else (v2, v1);
+        
+        // Add to edge domain if not already present
+        if !edgeDomain.contains((minV, maxV)) {
+            edgeDomain += (minV, maxV);
+            adjList[minV].append(maxV);
+            adjList[maxV].append(minV);
+            degree[minV] += 1;
+            degree[maxV] += 1;
+        }
+    }
+
+    /* Check if edge exists between vertices v1 and v2 */
+    proc hasEdge(v1: int, v2: int): bool {
+        var (minV, maxV) = if v1 < v2 then (v1, v2) else (v2, v1);
+        return edgeDomain.contains((minV, maxV));
+    }
+
+    /* Get all neighbors of a vertex */
+    proc neighbors(v: int): list(int) {
+        return adjList[v];
+    }
+
+    /* Get number of edges */
+    proc numEdges(): int {
+        return edgeDomain.size;
+    }
+
+    /* Print graph statistics */
+    proc printStats() {
+        writeln("Graph Statistics:");
+        writeln("  Vertices: ", numVertices);
+        writeln("  Edges: ", numEdges());
+        writeln("  Maximum degree: ", max reduce degree);
+        writeln("  Average degree: ", (+ reduce degree):real / numVertices:real);
+    }
+}
+/* Cut representation for storing minimum cuts with ratio information */
+record Cut {
+    var vertices: domain(1);    // Vertices in the cut set
+    var edges: domain(2*int);   // Cut edges
+    var value: int;             // Cut value
+    var ratio: real;            // Ratio of smaller part to total vertices
+    var totalVertices: int;     // Total number of vertices in graph
+
+    /* Initialize an empty cut */
+    proc init(numVertices: int) {
+        this.value = 0;
+        this.ratio = 0.0;
+        this.totalVertices = numVertices;
+    }
+
+    /* Add a vertex to the cut set */
+    proc addVertex(v: int) {
+        vertices += v;
+        updateRatio();
+    }
+
+    /* Add an edge to the cut */
+    proc addEdge(v1: int, v2: int) {
+        var (minV, maxV) = if v1 < v2 then (v1, v2) else (v2, v1);
+        edges += (minV, maxV);
+        value += 1;  // For unweighted graphs
+    }
+
+    /* Update ratio after changes to vertex set */
+    proc updateRatio() {
+        var setSize = vertices.size;
+        var complementSize = totalVertices - setSize;
+        // Ratio is always the size of smaller set / total vertices
+        ratio = min(setSize:real / totalVertices:real, 
+                   complementSize:real / totalVertices:real);
+    }
+
+    /* Check if vertex is in cut set */
+    proc contains(v: int): bool {
+        return vertices.contains(v);
+    }
+
+    /* Get difference from target ratio */
+    proc getRatioDifference(targetRatio: real): real {
+        return abs(ratio - targetRatio);
+    }
+
+    /* Get the complement of current cut set */
+    proc getComplement(): domain(1) {
+        var complement: domain(1) = {1..totalVertices};
+        for v in vertices do
+            complement -= v;
+        return complement;
+    }
+
+    /* Print cut information */
+    proc printInfo() {
+        writeln("Cut Information:");
+        writeln("  Vertices in cut: ", vertices);
+        writeln("  Complement: ", getComplement());
+        writeln("  Cut value: ", value);
+        writeln("  Cut ratio: ", ratio);
+        writeln("  Cut edges: ", edges);
+    }
+}
+
+/* Container for storing multiple cuts with ratio considerations */
+record CutSet {
+    var cuts: list(Cut);
+    var minCutValue: int = max(int);
+    var targetRatio: real = -1.0;  // -1.0 means no target ratio
+    var bestRatioDiff: real = max(real);
+
+    /* Initialize cut set with optional target ratio */
+    proc init(ratio: real = -1.0) {
+        this.targetRatio = ratio;
+    }
+
+    /* Add a new cut considering both value and ratio */
+    proc addCut(newCut: Cut) {
+        if targetRatio < 0.0 {
+            // No target ratio, just consider cut value
+            if newCut.value < minCutValue {
+                minCutValue = newCut.value;
+                cuts.clear();
+                cuts.append(newCut);
+            } else if newCut.value == minCutValue {
+                cuts.append(newCut);
+            }
+        } else {
+            // Consider both cut value and ratio
+            var ratioDiff = newCut.getRatioDifference(targetRatio);
+            
+            if newCut.value < minCutValue {
+                // New minimum cut value, reset everything
+                minCutValue = newCut.value;
+                bestRatioDiff = ratioDiff;
+                cuts.clear();
+                cuts.append(newCut);
+            } else if newCut.value == minCutValue {
+                if abs(ratioDiff - bestRatioDiff) < 1e-10 {
+                    // Same cut value and ratio, add to list
+                    cuts.append(newCut);
+                } else if ratioDiff < bestRatioDiff {
+                    // Better ratio for same cut value
+                    bestRatioDiff = ratioDiff;
+                    cuts.clear();
+                    cuts.append(newCut);
+                }
+            }
+        }
+    }
+
+    /* Get the cuts closest to target ratio */
+    proc getBestRatioCuts(): list(Cut) {
+        if targetRatio < 0.0 || cuts.size <= 1 then
+            return cuts;
+
+        var bestCuts: list(Cut);
+        var bestDiff = max(real);
+
+        // Find best ratio among existing cuts
+        for cut in cuts {
+            var diff = cut.getRatioDifference(targetRatio);
+            if diff < bestDiff {
+                bestDiff = diff;
+                bestCuts.clear();
+                bestCuts.append(cut);
+            } else if abs(diff - bestDiff) < 1e-10 {
+                bestCuts.append(cut);
+            }
+        }
+
+        return bestCuts;
+    }
+
+    /* Get number of minimum cuts found */
+    proc size(): int {
+        return cuts.size;
+    }
+
+    /* Print all cuts with their ratios */
+    proc printCuts() {
+        writeln("Found ", cuts.size, " minimum cuts with value ", minCutValue);
+        if targetRatio >= 0.0 then
+            writeln("Target ratio: ", targetRatio, ", Best achieved difference: ", bestRatioDiff);
+        
+        for cut in cuts {
+            cut.printInfo();
+            writeln("---");
+        }
+    }
+}
 /* Performs maximum adjacency search to find an ordering of vertices.
    Takes a graph represented by vertices and adjacency lists, and a starting vertex.
    Returns a tuple containing:
@@ -748,46 +958,42 @@ module WellConnectedComponents {
    - startVertex: the vertex to start the search from
 */
 proc scanningPhase(
-    ref vertices: set(int),
-    ref adj: map(int, set(int)),
-    ref weights: map((int, int), int),
+    const ref graph: Graph,    // Now using Graph record
     startVertex: int
-): (list(int), map(int, int)) throws {
+): (list(int), [graph.vertexDomain] int) throws {
     writeln("\n=== Starting scanning phase from vertex ", startVertex, " ===");
     
     var ordering = new list(int);
-    var inS = new set(int);
-    var d = new map(int, int);  // attachment numbers
-    var parent = new map(int, int);
-
-    // Initialize attachment numbers
-    for v in vertices do d[v] = 0;
+    var inS: [graph.vertexDomain] bool = false;     // Using array instead of set
+    var d: [graph.vertexDomain] int = 0;            // Using array instead of map
+    var parent: [graph.vertexDomain] int = -1;      // Using array instead of map
     
     // Add start vertex
-    inS.add(startVertex);
-    ordering.pushBack(startVertex);
-    parent[startVertex] = -1;
+    inS[startVertex] = true;
+    ordering.append(startVertex);
     
     writeln("Initial attachment numbers for neighbors of ", startVertex, ":");
-    for neighbor in adj[startVertex] {
-        var edge = if startVertex < neighbor then (startVertex, neighbor) else (neighbor, startVertex);
-        d[neighbor] = weights[edge];
+    for neighbor in graph.neighbors(startVertex) {
+        // In unweighted graph, all attachments start at 1
+        d[neighbor] = 1;
         writeln("  d[", neighbor, "] = ", d[neighbor]);
     }
 
-    while inS.size < vertices.size {
+    while ordering.size < graph.numVertices {
         var maxVertex = -1;
         var maxD = -1;
-        for v in vertices {
-            if !inS.contains(v) && d[v] > maxD {
+        
+        // Find vertex not in S with maximum attachment number
+        for v in graph.vertexDomain {
+            if !inS[v] && d[v] > maxD {
                 maxVertex = v;
                 maxD = d[v];
             }
         }
         
         if maxVertex == -1 {
-            for v in vertices {
-                if !inS.contains(v) {
+            for v in graph.vertexDomain {
+                if !inS[v] {
                     maxVertex = v;
                     break;
                 }
@@ -796,13 +1002,14 @@ proc scanningPhase(
         
         writeln("Selected vertex ", maxVertex, " with attachment number ", d[maxVertex]);
 
+        // Find parent with maximum weight connection
         var maxNeighbor = -1;
         var maxWeight = -1;
-        for neighbor in adj[maxVertex] {
-            if inS.contains(neighbor) {
-                var edge = if maxVertex < neighbor then (maxVertex, neighbor) else (neighbor, maxVertex);
-                if weights[edge] > maxWeight {
-                    maxWeight = weights[edge];
+        for neighbor in graph.neighbors(maxVertex) {
+            if inS[neighbor] {
+                // In unweighted graph, all weights are 1
+                if maxNeighbor == -1 || d[neighbor] > maxWeight {
+                    maxWeight = d[neighbor];
                     maxNeighbor = neighbor;
                 }
             }
@@ -810,15 +1017,14 @@ proc scanningPhase(
         parent[maxVertex] = maxNeighbor;
         writeln("Parent of ", maxVertex, " is ", maxNeighbor);
 
-        inS.add(maxVertex);
-        ordering.pushBack(maxVertex);
+        inS[maxVertex] = true;
+        ordering.append(maxVertex);
 
         writeln("Updating attachment numbers:");
-        for neighbor in adj[maxVertex] {
-            if !inS.contains(neighbor) {
-                var edge = if maxVertex < neighbor then (maxVertex, neighbor) else (neighbor, maxVertex);
+        for neighbor in graph.neighbors(maxVertex) {
+            if !inS[neighbor] {
                 var oldD = d[neighbor];
-                d[neighbor] += weights[edge];
+                d[neighbor] += 1;  // Unweighted graph
                 writeln("  d[", neighbor, "] updated from ", oldD, " to ", d[neighbor]);
             }
         }
@@ -827,6 +1033,7 @@ proc scanningPhase(
     writeln("Final ordering: ", ordering);
     return (ordering, parent);
 }
+
 /* Builds a k-edge-connected certificate of the input graph.
    This is a sparse subgraph that preserves all cuts up to size k.
    
@@ -845,72 +1052,39 @@ proc scanningPhase(
    - Tuple containing the certificate's adjacency lists and edge weights
 */
 proc buildCertificate(
-    ref vertices: set(int),
-    ref adj: map(int, set(int)),
-    ref weights: map((int, int), int),
+    const ref graph: Graph,
     k: int
-): (map(int, set(int)), map((int, int), int)) throws {
+): Graph throws {
     writeln("\n=== Building certificate with k = ", k, " ===");
     
-    var newAdj = new map(int, set(int));
-    var newWeights = new map((int, int), int);
-
-    for v in vertices {
-        newAdj[v] = new set(int);
-    }
-
-    var startVertices = vertices.toArray();
-    var numVertices = vertices.size;
+    var certGraph = new Graph(graph.numVertices);
     
     writeln("Performing ", k, " scanning phases");
     
     for i in 1..k {
-        var startVertex = startVertices[(i - 1) % numVertices];
+        var startVertex = ((i - 1) % graph.numVertices) + 1;
         writeln("\nPhase ", i, " starting from vertex ", startVertex);
         
-        var (ordering, parent) = scanningPhase(vertices, adj, weights, startVertex);
+        var (ordering, parent) = scanningPhase(graph, startVertex);
 
-        for (child, par) in zip(parent.keys(), parent.values()) {
-            if par != -1 {
-                newAdj[child].add(par);
-                newAdj[par].add(child);
-                var edge = if child < par then (child, par) else (par, child);
-                newWeights[edge] = weights[edge];
-                writeln("Added edge ", child, " -- ", par, " to certificate");
+        // Add forest edges to certificate
+        for v in graph.vertexDomain {
+            if parent[v] != -1 {
+                certGraph.addEdge(v, parent[v]);
+                writeln("Added edge ", v, " -- ", parent[v], " to certificate");
             }
         }
     }
 
     writeln("\nCertificate construction complete");
     writeln("Certificate edges:");
-    for v in newAdj.keys() {
-        writeln(v, " -> ", newAdj[v]);
+    for v in certGraph.vertexDomain {
+        writeln(v, " -> ", certGraph.neighbors(v));
     }
 
-    return (newAdj, newWeights);
+    return certGraph;
 }
-// Helper function to get canonical representation of a cut
-proc getCanonicalKey(cutSet: set(int), vertices: set(int)): string {
-    // Get complement set
-    var complement = new set(int);
-    for v in vertices do
-        if !cutSet.contains(v) then complement.add(v);
-    
-    // Convert both sets to sorted arrays
-    var cutArray = cutSet.toArray();
-    var compArray = complement.toArray();
-    sort(cutArray);
-    sort(compArray);
-    
-    // Create strings for both possibilities
-    var key1 = "";
-    var key2 = "";
-    for v in cutArray do key1 += v:string + ",";
-    for v in compArray do key2 += v:string + ",";
-    
-    // Use lexicographically smaller key
-    return if key1 <= key2 then key1 else key2;
-}
+
 /* Finds all minimum cuts in an undirected graph using the Nagamochi-Ibaraki algorithm.
    Optionally finds balanced minimum cuts if a balance ratio is provided.
    
@@ -931,130 +1105,67 @@ proc getCanonicalKey(cutSet: set(int), vertices: set(int)): string {
      2. List of minimum cuts (each cut is a tuple of cut set and cut edges)
 */
 proc findAllMinCutsNI(
-    ref vertices: set(int),
-    ref adj: map(int, set(int)),
-    balanceRatio: real = -1.0  // Optional parameter, -1.0 means no ratio filtering
-): (int, list((set(int), set((int, int))))) throws {
+    const ref graph: Graph,
+    balanceRatio: real = -1.0
+): (int, CutSet) throws {
     writeln("\n=== Starting Nagamochi-Ibaraki algorithm ===");
     if balanceRatio > 0.0 then
         writeln("Target balance ratio: ", balanceRatio);
     
-    // Initialize weights
-    var weights = new map((int, int), int);
-    for v in vertices {
-        for u in adj[v] {
-            if v < u {
-                weights[(v, u)] = 1;
-            }
-        }
-    }
-
+    var cutSet = new CutSet(balanceRatio);
     var globalMinValue = max(int);
-    // Modified to store tuple of (cutSet, cutEdges, ratio)
-    var allCuts = new list((set(int), set((int, int)), real));
     
     writeln("\nFinding minimum cuts:");
-    for startVertex in vertices {
-        var (ordering, _) = scanningPhase(vertices, adj, weights, startVertex);
+    for startVertex in graph.vertexDomain {
+        var (ordering, _) = scanningPhase(graph, startVertex);
         writeln("\nProcessing ordering: ", ordering);
         
-        var S = new set(int);
+        // Process all prefixes
+        var currentCut = new Cut(graph.numVertices);
+        
         for idx in 0..(ordering.size - 2) {
             var v = ordering[idx];
-            S.add(v);
+            currentCut.addVertex(v);
             
-            // Calculate cut value and edges
-            var cutWeight = 0;
+            // Calculate cut edges
             var cutEdges = new set((int, int));
-            for u in S {
-                for neighbor in adj[u] {
-                    if !S.contains(neighbor) {
+            var cutWeight = 0;
+            for u in currentCut.vertices {
+                for neighbor in graph.neighbors(u) {
+                    if !currentCut.contains(neighbor) {
                         var edge = if u < neighbor then (u, neighbor) else (neighbor, u);
                         if !cutEdges.contains(edge) {
                             cutEdges.add(edge);
-                            cutWeight += weights[edge];
+                            cutWeight += 1;  // Unweighted graph
                         }
                     }
                 }
             }
             
-            // Calculate ratio during cut finding
-            var setSize = S.size: real;
-            var totalSize = vertices.size: real;
-            var actualRatio = min(setSize/totalSize, (totalSize-setSize)/totalSize);
+            // Create new cut with the calculated values
+            var newCut = new Cut(graph.numVertices);
+            for v in currentCut.vertices do newCut.addVertex(v);
+            for e in cutEdges do newCut.addEdge(e[1], e[2]);
             
-            writeln("Cut value for set ", S, " is ", cutWeight, " (ratio: ", actualRatio, ")");
+            writeln("Cut value for set ", newCut.vertices, " is ", cutWeight,
+                   " (ratio: ", newCut.ratio, ")");
 
+            // Update cuts based on minimum value and ratio
             if cutWeight <= globalMinValue {
                 if cutWeight < globalMinValue {
                     writeln("New minimum cut value found: ", cutWeight);
-                    globalMinValue = cutWeight;
-                    allCuts.clear();
+                    globalMinValue = newCut.value;
+                    cutSet = new CutSet(balanceRatio);
                 }
-                // Store the ratio with the cut
-                allCuts.pushBack((S, cutEdges, actualRatio));
-                writeln("Added cut: ", S, " with edges ", cutEdges);
-                
-                // Add complement with its ratio
-                var complement = new set(int);
-                for v in vertices do
-                    if !S.contains(v) then complement.add(v);
-                
-                if S != complement {
-                    allCuts.pushBack((complement, cutEdges, actualRatio));
-                    writeln("Added complement cut: ", complement, " with edges ", cutEdges);
-                }
+                cutSet.addCut(newCut);
+                writeln("Added cut: ", newCut.vertices, " with edges ", newCut.edges);
             }
         }
     }
 
     writeln("\nGlobal minimum cut value: ", globalMinValue);
-
-    // If balance ratio is specified, filter cuts
-    if balanceRatio > 0.0 {
-        writeln("\nFiltering cuts based on balance ratio ", balanceRatio);
-        var bestBalanceScore = max(real);
-        var balancedCuts = new list((set(int), set((int, int))));
-
-        // First pass: find best balance score
-        for (cutSet, cutEdges, ratio) in allCuts {
-            var balanceScore = abs(ratio - balanceRatio);
-            bestBalanceScore = min(bestBalanceScore, balanceScore);
-        }
-
-        // Second pass: keep cuts with best balance
-        for (cutSet, cutEdges, ratio) in allCuts {
-            var balanceScore = abs(ratio - balanceRatio);
-            if abs(balanceScore - bestBalanceScore) < 1e-10 {
-                balancedCuts.pushBack((cutSet, cutEdges));
-                writeln("Selected balanced cut: ", cutSet, " (ratio: ", ratio, ")");
-            }
-        }
-
-        writeln("\nFound ", balancedCuts.size, " balanced minimum cuts:");
-        for (cutSet, cutEdges) in balancedCuts {
-            writeln("Cut set: ", cutSet);
-            writeln("Cut edges: ", cutEdges);
-            writeln("---");
-        }
-        
-        return (globalMinValue, balancedCuts);
-    }
-
-    // If no ratio specified, return all cuts
-    var regularCuts = new list((set(int), set((int, int))));
-    for (cutSet, cutEdges, _) in allCuts {
-        regularCuts.pushBack((cutSet, cutEdges));
-    }
-
-    writeln("\nFound ", regularCuts.size, " minimum cuts:");
-    for (cutSet, cutEdges) in regularCuts {
-        writeln("Cut set: ", cutSet);
-        writeln("Cut edges: ", cutEdges);
-        writeln("---");
-    }
-
-    return (globalMinValue, regularCuts);
+    
+    return (globalMinValue, cutSet);
 }
 /* Comprehensive test suite for the Nagamochi-Ibaraki algorithm implementation.
    Tests various graph types and algorithm features.
