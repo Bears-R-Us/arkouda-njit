@@ -2921,651 +2921,7 @@ proc evaluateClustering(ref clusters: [] set(int)) throws {
         return (minCutValue, minCutSet, minCutEdges);
     }
     /////////////////////////////////////////Nagamochi-Ibaraki Algorithm//////////////////////////
-    /* Performs maximum adjacency search to find an ordering of vertices.
-      Takes a graph represented by vertices and adjacency lists, and a starting vertex.
-      Returns a tuple containing:
-      1. The vertex ordering (important for finding minimum cuts)
-      2. A parent map showing how vertices are connected in the resulting forest
-      
-      Key operations:
-      - Computes and maintains attachment numbers for vertices
-      - Selects vertices based on maximum attachment numbers
-      - Builds a forest structure through parent relationships
-      
-      Parameters:
-      - vertices: set of all vertices in the graph
-      - adj: map of adjacency lists for each vertex
-      - weights: map of edge weights (tuple of vertices -> weight)
-      - startVertex: the vertex to start the search from
-    */
-    proc scanningPhase(
-        ref vertices: set(int),
-        //ref adj: map(int, set(int)),
-        ref weights: map((int, int), int),
-        startVertex: int
-    ): (list(int), map(int, int)) throws {
-        writeln("\n=== Starting scanning phase from vertex ", startVertex, " ===");
-        
-        var ordering = new list(int);
-        var inS = new set(int);
-        var d = new map(int, int);  // attachment numbers
-        var parent = new map(int, int);
 
-        // Initialize attachment numbers
-        for v in vertices do d[v] = 0;
-        
-        // Add start vertex
-        inS.add(startVertex);
-        ordering.pushBack(startVertex);
-        parent[startVertex] = -1;
-        
-        writeln("Initial attachment numbers for neighbors of ", startVertex, ":");
-        var neighs_startVertex = neighborsSetGraphG1[startVertex] & vertices;
-        //for neighbor in adj[startVertex] {
-        for neighbor in neighs_startVertex {
-            var edge = if startVertex < neighbor then (startVertex, neighbor) else (neighbor, startVertex);
-            d[neighbor] = weights[edge];
-            writeln("  d[", neighbor, "] = ", d[neighbor]);
-        }
-
-        while inS.size < vertices.size {
-            var maxVertex = -1;
-            var maxD = -1;
-            for v in vertices {
-                if !inS.contains(v) && d[v] > maxD {
-                    maxVertex = v;
-                    maxD = d[v];
-                }
-            }
-            
-            if maxVertex == -1 {
-                for v in vertices {
-                    if !inS.contains(v) {
-                        maxVertex = v;
-                        break;
-                    }
-                }
-            }
-            
-            writeln("Selected vertex ", maxVertex, " with attachment number ", d[maxVertex]);
-
-            var maxNeighbor = -1;
-            var maxWeight = -1;
-            var neighs_maxVertex = neighborsSetGraphG1[maxVertex] & vertices;
-            
-            //for neighbor in adj[maxVertex] {
-            for neighbor in neighs_maxVertex {
-                if inS.contains(neighbor) {
-                    var edge = if maxVertex < neighbor then (maxVertex, neighbor) else (neighbor, maxVertex);
-                    if weights[edge] > maxWeight {
-                        maxWeight = weights[edge];
-                        maxNeighbor = neighbor;
-                    }
-                }
-            }
-            parent[maxVertex] = maxNeighbor;
-            writeln("Parent of ", maxVertex, " is ", maxNeighbor);
-
-            inS.add(maxVertex);
-            ordering.pushBack(maxVertex);
-
-            writeln("Updating attachment numbers:");
-            //for neighbor in adj[maxVertex] {
-            for neighbor in neighs_maxVertex {
-                if !inS.contains(neighbor) {
-                    var edge = if maxVertex < neighbor then (maxVertex, neighbor) else (neighbor, maxVertex);
-                    var oldD = d[neighbor];
-                    d[neighbor] += weights[edge];
-                    writeln("  d[", neighbor, "] updated from ", oldD, " to ", d[neighbor]);
-                }
-            }
-        }
-
-        writeln("Final ordering: ", ordering);
-        return (ordering, parent);
-    }
-    /* Builds a k-edge-connected certificate of the input graph.
-      This is a sparse subgraph that preserves all cuts up to size k.
-      
-      Key operations:
-      - Performs k scanning phases from different start vertices
-      - Combines the resulting forests into a certificate
-      - Preserves minimum cuts while potentially reducing graph density
-      
-      Parameters:
-      - vertices: set of all vertices in the graph
-      - adj: map of adjacency lists for each vertex
-      - weights: map of edge weights
-      - k: connectivity parameter (usually set to the minimum cut value)
-      
-      Returns:
-      - Tuple containing the certificate's adjacency lists and edge weights
-    */
-    proc buildCertificate(
-        ref vertices: set(int),
-        ref adj: map(int, set(int)),
-        ref weights: map((int, int), int),
-        k: int
-    ): (map(int, set(int)), map((int, int), int)) throws {
-        writeln("\n=== Building certificate with k = ", k, " ===");
-        
-        var newAdj = new map(int, set(int));
-        var newWeights = new map((int, int), int);
-
-        for v in vertices {
-            newAdj[v] = new set(int);
-        }
-
-        var startVertices = vertices.toArray();
-        var numVertices = vertices.size;
-        
-        writeln("Performing ", k, " scanning phases");
-        
-        for i in 1..k {
-            var startVertex = startVertices[(i - 1) % numVertices];
-            writeln("\nPhase ", i, " starting from vertex ", startVertex);
-            
-            var (ordering, parent) = scanningPhase(vertices, adj, weights, startVertex);
-
-            for (child, par) in zip(parent.keys(), parent.values()) {
-                if par != -1 {
-                    newAdj[child].add(par);
-                    newAdj[par].add(child);
-                    var edge = if child < par then (child, par) else (par, child);
-                    newWeights[edge] = weights[edge];
-                    writeln("Added edge ", child, " -- ", par, " to certificate");
-                }
-            }
-        }
-
-        writeln("\nCertificate construction complete");
-        writeln("Certificate edges:");
-        for v in newAdj.keys() {
-            writeln(v, " -> ", newAdj[v]);
-        }
-
-        return (newAdj, newWeights);
-    }
-
-    /* Finds all minimum cuts in an undirected graph using the Nagamochi-Ibaraki algorithm.
-      Optionally finds balanced minimum cuts if a balance ratio is provided.
-      
-      Key operations:
-      - Performs scanning phases from each vertex
-      - Identifies all minimum cuts and their cut edges
-      - If balance ratio provided, filters cuts based on partition sizes
-      - Handles complementary cuts appropriately
-      
-      Parameters:
-      - vertices: set of all vertices in the graph
-      - adj: map of adjacency lists for each vertex
-      - balanceRatio: (optional) desired ratio between partition sizes (0 to 1)
-      
-      Returns:
-      - Tuple containing:
-        1. Global minimum cut value
-        2. List of minimum cuts (each cut is a tuple of cut set and cut edges)
-    */
-    proc findAllMinCutsNI(
-        ref vertices: set(int),
-        //ref adj: map(int, set(int)),
-        balanceRatio: real = -1.0  // Optional parameter, -1.0 means no ratio filtering
-    ): (int, list((set(int), set((int, int))))) throws {
-        writeln("\n======================= Starting Nagamochi-Ibaraki algorithm =============================");
-        if balanceRatio > 0.0 then
-            writeln("Target balance ratio: ", balanceRatio);
-        
-        // Initialize weights
-        var weights = new map((int, int), int);
-        for v in vertices {
-            var neighs = neighborsSetGraphG1[v] & vertices;
-            for u in neighs {
-                if v < u {
-                    weights[(v, u)] = 1;
-                }
-            }
-        }
-
-        var globalMinValue = max(int);
-        // Modified to store tuple of (cutSet, cutEdges, ratio)
-        var allCuts = new list((set(int), set((int, int)), real));
-        
-        writeln("\nFinding minimum cuts:");
-        for startVertex in vertices {
-            var (ordering, _) = scanningPhase(vertices, weights, startVertex);
-            writeln("\nProcessing ordering: ", ordering);
-            
-            var S = new set(int);
-            for idx in 0..(ordering.size - 2) {
-                var v = ordering[idx];
-                S.add(v);
-                
-                // Calculate cut value and edges
-                var cutWeight = 0;
-                var cutEdges = new set((int, int));
-                for u in S {
-                    var neighbors_u = neighborsSetGraphG1[u] & vertices;
-                    for neighbor in neighbors_u {
-                        if !S.contains(neighbor) {
-                            var edge = if u < neighbor then (u, neighbor) else (neighbor, u);
-                            if !cutEdges.contains(edge) {
-                                cutEdges.add(edge);
-                                cutWeight += weights[edge];
-                            }
-                        }
-                    }
-                }
-                
-                // Calculate ratio during cut finding
-                var setSize = S.size: real;
-                var totalSize = vertices.size: real;
-                var actualRatio = min(setSize/totalSize, (totalSize-setSize)/totalSize);
-                
-                writeln("Cut value for set ", S, " is ", cutWeight, " (ratio: ", actualRatio, ")");
-
-                if cutWeight <= globalMinValue {
-                    if cutWeight < globalMinValue {
-                        writeln("New minimum cut value found: ", cutWeight);
-                        globalMinValue = cutWeight;
-                        allCuts.clear();
-                    }
-                    // Store the ratio with the cut
-                    allCuts.pushBack((S, cutEdges, actualRatio));
-                    writeln("Added cut: ", S, " with edges ", cutEdges);
-                    
-                    // Add complement with its ratio
-                    var complement = new set(int);
-                    for v in vertices do
-                        if !S.contains(v) then complement.add(v);
-                    
-                    if S != complement {
-                        allCuts.pushBack((complement, cutEdges, actualRatio));
-                        writeln("Added complement cut: ", complement, " with edges ", cutEdges);
-                    }
-                }
-            }
-        }
-
-        writeln("\nGlobal minimum cut value: ", globalMinValue);
-
-        // If balance ratio is specified, filter cuts
-        if balanceRatio > 0.0 {
-            writeln("\nFiltering cuts based on balance ratio ", balanceRatio);
-            var bestBalanceScore = max(real);
-            var balancedCuts = new list((set(int), set((int, int))));
-
-            // First pass: find best balance score
-            for (cutSet, cutEdges, ratio) in allCuts {
-                var balanceScore = abs(ratio - balanceRatio);
-                bestBalanceScore = min(bestBalanceScore, balanceScore);
-            }
-
-            // Second pass: keep cuts with best balance
-            for (cutSet, cutEdges, ratio) in allCuts {
-                var balanceScore = abs(ratio - balanceRatio);
-                if abs(balanceScore - bestBalanceScore) < 1e-10 {
-                    balancedCuts.pushBack((cutSet, cutEdges));
-                    writeln("Selected balanced cut: ", cutSet, " (ratio: ", ratio, ")");
-                }
-            }
-
-            writeln("\nFound ", balancedCuts.size, " balanced minimum cuts:");
-            for (cutSet, cutEdges) in balancedCuts {
-                writeln("Cut set: ", cutSet);
-                writeln("Cut edges: ", cutEdges);
-                writeln("---");
-            }
-            
-            return (globalMinValue, balancedCuts);
-        }
-
-        // If no ratio specified, return all cuts
-        var regularCuts = new list((set(int), set((int, int))));
-        for (cutSet, cutEdges, _) in allCuts {
-            regularCuts.pushBack((cutSet, cutEdges));
-        }
-
-        writeln("\nFound ", regularCuts.size, " minimum cuts:");
-        for (cutSet, cutEdges) in regularCuts {
-            writeln("Cut set: ", cutSet);
-            writeln("Cut edges: ", cutEdges);
-            writeln("---");
-        }
-
-        return (globalMinValue, regularCuts);
-    }
-    /* Comprehensive test suite for the Nagamochi-Ibaraki algorithm implementation.
-      Tests various graph types and algorithm features.
-    */
-    proc testNagamochiIbaraki() throws {
-        writeln("===================== Testing Nagamochi-Ibaraki Algorithm =====================\n");
-
-        // Test 1: Simple cycle graph (4 vertices)
-        {
-            writeln("===========Test 1: Simple cycle graph (4 vertices)");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..4 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Add edges for cycle: 1-2-3-4-1
-            adj[1].add(2); adj[2].add(1);
-            adj[2].add(3); adj[3].add(2);
-            adj[3].add(4); adj[4].add(3);
-            adj[4].add(1); adj[1].add(4);
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            // Test without ratio
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            writeln("\nResults for cycle graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 2");
-
-            // Test with different ratios
-            //var ratios = [0.5, 0.25, 0.75];
-            var ratios = [0.5];
-            for ratio in ratios {
-                writeln("\nTesting cycle graph with balance ratio: ", ratio);
-                var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, ratio);
-            }
-        }
-
-        // Test 2: Path graph (4 vertices)
-        {
-            writeln("===========Test 2: Path graph (4 vertices)");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..4 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Add edges for path: 1-2-3-4
-            adj[1].add(2); adj[2].add(1);
-            adj[2].add(3); adj[3].add(2);
-            adj[3].add(4); adj[4].add(3);
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            
-            writeln("\nResults for path graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 1\n");
-        }
-
-        // Test 3: Complete graph (4 vertices)
-        {
-            writeln("===========Test 3: Complete graph (4 vertices)");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..4 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Add all possible edges
-            for i in 1..4 {
-                for j in i+1..4 {
-                    adj[i].add(j);
-                    adj[j].add(i);
-                }
-            }
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            
-            writeln("\nResults for complete graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 3\n");
-        }
-
-        // Test 4: Star graph (center vertex 1, 4 vertices total)
-        {
-            writeln("===========Test 4: Star graph (4 vertices)");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..4 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Add edges from center (vertex 1) to all others
-            for i in 2..4 {
-                adj[1].add(i);
-                adj[i].add(1);
-            }
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            
-            writeln("\nResults for star graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 1\n");
-        }
-
-        // Test 5: Disconnected graph (two components)
-        {
-            writeln("===========Test 5: Disconnected graph (4 vertices, two components)");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..4 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Add edges: 1-2 and 3-4 (two separate components)
-            adj[1].add(2); adj[2].add(1);
-            adj[3].add(4); adj[4].add(3);
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            
-            writeln("\nResults for disconnected graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 0\n");
-        }
-    // Test 6: Bridge graph (new test)
-        {
-            writeln("\nTest 6: Bridge graph");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..6 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Add edges to create two triangles connected by a bridge
-            // Triangle 1: 1-2-3-1
-            adj[1].add(2); adj[2].add(1);
-            adj[2].add(3); adj[3].add(2);
-            adj[3].add(1); adj[1].add(3);
-            
-            // Triangle 2: 4-5-6-4
-            adj[4].add(5); adj[5].add(4);
-            adj[5].add(6); adj[6].add(5);
-            adj[6].add(4); adj[4].add(6);
-            
-            // Bridge: 3-4
-            adj[3].add(4); adj[4].add(3);
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            // Test without ratio
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            writeln("\nResults for bridge graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 1");  // Bridge should give min cut of 1
-
-            // Test with balanced ratio
-            var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, 0.5);
-            writeln("\nResults for bridge graph with balanced cuts (ratio 0.5):");
-            writeln("Minimum cut value: ", balancedMinCutValue);
-        }
-
-        // Test 7: Multiple bridges graph (new test)
-        {
-            writeln("\nTest 7: Multiple bridges graph");
-            
-            var vertices = new set(int);
-            var adj = new map(int, set(int));
-            
-            // Add vertices
-            for i in 1..8 do vertices.add(i);
-            
-            // Initialize adjacency lists
-            for v in vertices do adj[v] = new set(int);
-            
-            // Create a graph with multiple bridges
-            // Component 1: 1-2
-            adj[1].add(2); adj[2].add(1);
-            
-            // Bridge 1: 2-3
-            adj[2].add(3); adj[3].add(2);
-            
-            // Component 2: 3-4-5
-            adj[3].add(4); adj[4].add(3);
-            adj[4].add(5); adj[5].add(4);
-            
-            // Bridge 2: 5-6
-            adj[5].add(6); adj[6].add(5);
-            
-            // Component 3: 6-7-8
-            adj[6].add(7); adj[7].add(6);
-            adj[7].add(8); adj[8].add(7);
-
-            writeln("Original graph:");
-            writeln("Graph:");
-            writeln("Vertices: ", vertices);
-            writeln("Edges:");
-            var printed = new set((int, int));
-            for v in vertices {
-                for u in adj[v] {
-                    var edge = if v < u then (v, u) else (u, v);
-                    if !printed.contains(edge) {
-                        writeln(v, " -- ", u);
-                        printed.add(edge);
-                    }
-                }
-            }
-
-            // Test without ratio
-            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-            writeln("\nResults for multiple bridges graph:");
-            writeln("Minimum cut value: ", minCutValue);
-            writeln("Expected value: 1");  // Bridges should give min cut of 1
-
-            // Test with different ratios
-            //var ratios = [0.5, 0.33, 0.66];
-            var ratios = [0.5];
-            for ratio in ratios {
-                writeln("\nTesting multiple bridges graph with balance ratio: ", ratio);
-                var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, ratio);
-            }
-        }
-    }
 
 /* Nagamochi-Ibaraki Algorithm 
     // Phase 1: Forest Decomposition (same as original)
@@ -4020,59 +3376,80 @@ record VertexMapping {
         writeln("New mapping for ", mergedVertex, ": ", mergedOriginals);
     }
 }
-/* Verify if a cut is valid and minimal */
-proc validateCut(ref vertices: set(int), ref cutSide: set(int), ref neighbors: map(int, set(int)), ref minCutValue: int): bool throws{
+proc findCutComponent(startVertex: int, neighbors: map(int, set(int)), vertices: set(int)): list(set(int)) throws {
+    writeln("\n=== Finding Cut Components ===");
+    writeln("Start vertex: ", startVertex);
+    writeln("All vertices: ", vertices);
+    
+    var cutComponents: list(set(int));
+    var startNeighbors = neighbors[startVertex] & vertices;
+    
+    // Try combinations with each neighbor
+    for n in startNeighbors {
+        var cutSide: set(int);
+        cutSide.add(startVertex);
+        cutSide.add(n);
+        
+        // Only add if it makes a valid potential cut
+        var otherVertices = vertices - cutSide;
+        var isConnected = areVerticesConnected(otherVertices, neighbors);
+        if isConnected {
+            writeln("Found potential cut: ", cutSide);
+            cutComponents.pushBack(cutSide);
+        }
+    }
+    
+    return cutComponents;
+}
+
+// Helper to check if vertices form a connected component
+proc areVerticesConnected(vertices: set(int), neighbors: map(int, set(int))): bool throws{
+    if vertices.size <= 1 then return true;
+    
+    var visited: set(int);
+    var toVisit: list(int);
+    
+    // Start with first vertex
+    var start = vertices.toArray()[0];
+    visited.add(start);
+    toVisit.pushBack(start);
+    
+    while toVisit.size > 0 {
+        var current = toVisit.popBack();
+        for n in neighbors[current] & vertices {
+            if !visited.contains(n) {
+                visited.add(n);
+                toVisit.pushBack(n);
+            }
+        }
+    }
+    
+    return visited.size == vertices.size;
+}
+
+proc validateCut(ref vertices: set(int), ref cutSide: set(int), ref neighbors: map(int, set(int)), ref minCutValue: int): bool throws {
+    writeln("\n=== Validating Cut ===");
+    writeln("Cut side: ", cutSide);
+    writeln("Other side: ", vertices - cutSide);
+    
     if cutSide.size == 0 || cutSide.size == vertices.size {
         writeln("Invalid cut: empty or full set");
         return false;
     }
     
-    // Count crossing edges
+    // Count crossing edges properly
     var crossingEdges = 0;
     for v in cutSide {
-        for n in neighbors[v] {
-            if !cutSide.contains(n) {
-                crossingEdges += 1;
-            }
-        }
+        var outsideNeighbors = neighbors[v] & (vertices - cutSide);
+        writeln("Vertex ", v, " connects to outside vertices: ", outsideNeighbors);
+        crossingEdges += outsideNeighbors.size;
     }
     
-    writeln("Cut validation - size: ", cutSide.size, " crossing edges: ", crossingEdges);
-    // A cut is valid if its crossing edges match the minimum cut value
-    if crossingEdges == minCutValue then return true;
-    return false;
+    writeln("Total crossing edges: ", crossingEdges);
+    
+    return crossingEdges == minCutValue;
 }
-/* Helper function to find one side of a cut */
-proc findCutComponent(startVertex: int, neighbors: map(int, set(int)), vertices: set(int)): set(int) throws{
-    var cutSide: set(int);
-    var queue = new list(int);
-    var degree = neighbors[startVertex].size;
-    
-    cutSide.add(startVertex);
-    queue.pushBack(startVertex);
-    
-    // Only add vertices that have the same or smaller degree
-    // This ensures we get just one side of the cut
-    while !queue.isEmpty() {
-        var current = queue.popBack();
-        for n in neighbors[current] & vertices {
-            if !cutSide.contains(n) && neighbors[n].size <= degree {
-                cutSide.add(n);
-                queue.pushBack(n);
-            }
-        }
-    }
-    
-    writeln("Found cut side starting from vertex ", startVertex, ": ", cutSide);
-    // If we got more than half the vertices, take the smaller side
-    if cutSide.size > vertices.size/2 {
-        var otherSide = vertices - cutSide;
-        writeln("Taking smaller side instead: ", otherSide);
-        return otherSide;
-    }
-    return cutSide;
-}
-/* Modified contraction phase to track all cuts */
+/* Modified contraction phase to track all cuts without duplicate checking */
 proc findAllMinCutsContraction(ref vertices: set(int)) throws {
     writeln("\n=== Starting All MinCuts Contraction Phase ===");
     
@@ -4101,7 +3478,6 @@ proc findAllMinCutsContraction(ref vertices: set(int)) throws {
         writeln("\n--- Processing graph with ", currentVertices.size, " vertices ---");
         writeln("Current vertices: ", currentVertices);
         
-        // Get forest decomposition
         var forests = FOREST(currentVertices);
         
         // Find minimum degree vertices
@@ -4110,58 +3486,45 @@ proc findAllMinCutsContraction(ref vertices: set(int)) throws {
             writeln("\nProcessing vertex ", v, " with degree ", degree);
             
             if degree == minCutValue || degree < minCutValue {
-                // Track if this is a new minimum
-                var isNewMin = degree < minCutValue;
-                if isNewMin {
+                if degree < minCutValue {
                     writeln("Found new minimum cut (degree < minCutValue)");
                     minCutValue = degree;
-                    allCuts.clear();  // Clear old cuts with higher values
+                    allCuts.clear();  // Only clear for new minimum
                 } else {
                     writeln("Found equal minimum cut (degree == minCutValue)");
                 }
 
-                // Find cut component (one side of the cut)
-                var cutComponent = findCutComponent(v, workingNeighbors, currentVertices);
-                var originalVertices: set(int);
+                // Find all possible cut components
+                var cutComponents = findCutComponent(v, workingNeighbors, currentVertices);
+                writeln("\nProcessing ", cutComponents.size, " cut components");
                 
-                writeln("\nDEBUG - Before processing cut:");
-                writeln("Current minCutValue: ", minCutValue);
-                writeln("Current vertex: ", v);
-                writeln("Cut component size: ", cutComponent.size);
-                writeln("Cut component: ", cutComponent);
-                writeln("VertexMapping contents: ");
-                for key in vertexMapping.contractedToOriginal.keysToArray() {
-                    writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-                }
+                // Process each cut component
+                for cutComponent in cutComponents {
+                    var originalVertices: set(int);
+                    
+                    writeln("\nDEBUG - Processing cut component:");
+                    writeln("Current vertex: ", v);
+                    writeln("Cut component: ", cutComponent);
 
-                // Map contracted vertices back to original vertices
-                for contractedVertex in cutComponent {
-                    if vertexMapping.contractedToOriginal.contains(contractedVertex) {
-                        originalVertices |= vertexMapping.contractedToOriginal[contractedVertex];
-                    } else {
-                        writeln("WARNING: Contracted vertex ", contractedVertex, " not found in mapping!");
-                    }
-                }
-
-                // Validate the cut
-                if validateCut(vertices, originalVertices, workingNeighbors, minCutValue) {
-                    // Check for duplicates
-                    var isDuplicate = false;
-                    for cut in allCuts {
-                        if cut.vertices == originalVertices || 
-                           cut.vertices == (vertices - originalVertices) {
-                            isDuplicate = true;
-                            writeln("Found duplicate cut - skipping");
-                            break;
+                    // Map contracted vertices back to original vertices
+                    for contractedVertex in cutComponent {
+                        if vertexMapping.contractedToOriginal.contains(contractedVertex) {
+                            originalVertices |= vertexMapping.contractedToOriginal[contractedVertex];
+                            writeln("Added original vertices for ", contractedVertex, ": ", 
+                                  vertexMapping.contractedToOriginal[contractedVertex]);
+                        } else {
+                            writeln("WARNING: Contracted vertex ", contractedVertex, " not found in mapping!");
                         }
                     }
-                    
-                    if !isDuplicate {
+                    writeln("Final original vertices: ", originalVertices);
+
+                    // If cut is valid, add it (no duplicate checking)
+                    if validateCut(vertices, originalVertices, workingNeighbors, minCutValue) {
                         allCuts.pushBack(new Cut(originalVertices, degree));
-                        writeln("Found new unique cut: ", allCuts[allCuts.size-1]);
+                        writeln("Added cut: ", allCuts[allCuts.size-1]);
+                    } else {
+                        writeln("Cut validation failed - skipping");
                     }
-                } else {
-                    writeln("Cut validation failed - skipping");
                 }
             }
         }
@@ -4183,25 +3546,14 @@ proc findAllMinCutsContraction(ref vertices: set(int)) throws {
         // Perform contraction
         var mergedVertex = min(edgeToContract.u, edgeToContract.v);
         writeln("Will merge into vertex: ", mergedVertex);
-        writeln("VertexMapping before contraction:");
-        for key in vertexMapping.contractedToOriginal.keysToArray() {
-            writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-        }
-
         currentVertices = contractEdge(currentVertices, edgeToContract, workingNeighbors);
         vertexMapping.mergeVertices(edgeToContract.u, edgeToContract.v, mergedVertex);
-
-        writeln("VertexMapping after contraction:");
-        for key in vertexMapping.contractedToOriginal.keysToArray() {
-            writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-        }
         writeln("Current vertices after contraction: ", currentVertices);
     }
     
     writeln("\n////////////////// findAllMinCutsContraction //////////////////");
     writeln("Final Results:");
-    writeln("Minimum cut value: ", minCutValue);
-    writeln("Number of unique cuts found: ", allCuts.size);
+    writeln("Number of cuts found: ", allCuts.size);
     writeln("All cuts: ", allCuts);
 
     return (minCutValue, allCuts);
