@@ -446,6 +446,2200 @@ module WellConnectedComponents {
         //     writeln("Edge between Node ", edge(0), " and Node ", edge(1));
         return coresSet;
     } // end of kCoreDecomposition
+    ///////////////////////////////////cluster metrics /////////////////////////////////////////
+/* Enhanced Record definitions for storing metrics */
+record connectivityMetrics {
+    // Basic connectivity
+    var minDegree: int;
+    var maxDegree: int;
+    var avgDegree: real;
+    var totalInternalEdges: int;
+    var edgeConnectivityLowerBound: int;
+    
+    // Advanced connectivity
+    var degreeVariance: real;      // Measure of degree distribution spread
+    var degreeSkewness: real;      // Asymmetry of degree distribution
+    var assortativity: real;       // Correlation of adjacent vertex degrees
+    var effectiveDiameter: real;   // Distance within which 90% of pairs fall
+    var avgBetweenness: real;      // Average betweenness centrality
+    var maxBetweenness: real;      // Maximum betweenness centrality
+}
+
+record densityMetrics {
+    // Basic density
+    var density: real;
+    var sparsity: real;
+    var internalEdges: int;
+    var maxPossibleEdges: int;
+    
+    // Advanced density
+    var triangleCount: int;               // Number of triangles in cluster
+    var globalClusteringCoeff: real;      // Ratio of triangles to connected triples
+    var avgLocalClusteringCoeff: real;    // Average of local clustering coefficients
+    var edgeDensityDistribution: real;    // Distribution of edge density across cluster
+    var localDensityVariance: real;       // Variance in local neighborhood densities
+    var densityCorrelation: real;         // Correlation of densities of adjacent vertices
+}
+
+record spectralMetrics {
+    // Basic spectral
+    var lambda2Lower: real;
+    var lambda2Upper: real;
+    var lambda2Estimate: real;
+    
+    // Advanced spectral
+    var normalizedLambda2Lower: real;    // Bounds for normalized Laplacian
+    var normalizedLambda2Upper: real;
+    var spectralRadius: real;            // Largest eigenvalue
+    var energyRadius: real;              // Spectral energy (sum of absolute eigenvalues)
+    var spectralVariance: real;          // Variance of eigenvalues
+
+    var spectralGap: real;              // Gap between λ2 and λ3
+    var communityStrength: real;        // Derived from gap
+    var partitionResistance: real;      // Resistance to splitting
+    var mixingTime: int;                // Information spread rate
+    var subcommunityLikelihood: real;   // Probability of sub-communities
+}
+
+
+/* Enhanced core metrics record with advanced features */
+record coreMetrics {
+    // Basic core metrics 
+    var coreNumber: int;
+    var coreDensity: real;
+    var coreSize: int;
+    
+    var maxCoreSize: int;                // Size of maximum k-core
+
+    // Core-Periphery Structure
+    var corePeripheryScore: real;
+    var coreStrength: real;         // Measure of core dominance
+    var peripherySize: int;         // Size of periphery
+    
+    // Shell Decomposition
+    var shellDecomposition: [0..10] int;  // Distribution of vertices in shells
+    var shellDensities: [0..10] real;     // Density of each shell
+    var shellConnectivity: [0..10] real;  // Connectivity between shells
+    
+    // Hierarchical Structure
+    var coreHierarchyDepth: int;          // Number of non-empty shells
+    var coreDegreeCorrelation: real;      // Correlation between core numbers and degrees
+    var hierarchyBalance: real;           // Balance of shell sizes
+    
+    // Core Stability
+    var coreStability: real;              // Resistance to vertex removal
+    var corePersistence: [0..10] real;    // Core membership persistence
+    var coreOverlap: [0..10] real;        // Overlap between consecutive cores
+    
+    // Core Quality
+    var coreCohesion: real;               // Internal connectivity of core
+    var coreSeparation: real;             // Separation from periphery
+    var coreCompactness: real;            // Density relative to size
+}
+
+/* Main record to hold all metrics */
+record clusterMetricsRecord {
+    var connectivity: connectivityMetrics;
+    var density: densityMetrics;
+    var spectral: spectralMetrics;
+    var core: coreMetrics;
+    //var flow: flowMetrics;
+    //var robustness: robustnessMetrics;
+    var conductanceData:[0..2] real;  
+}
+    /* Main analysis function */
+    proc analyzeCluster(ref cluster: set(int)) throws {
+      var metrics = new clusterMetricsRecord();
+        
+      // Handle empty or singleton clusters
+      if cluster.size <= 1 {
+        metrics = initializeEmptyMetrics();
+        printClusterAnalysis(metrics, cluster.size);
+        return metrics;
+      }
+        
+      // Basic Metrics
+      metrics.connectivity = calculateBasicConnectivity(cluster);
+      metrics.density = calculateInternalDensity(cluster);
+      metrics.conductanceData = calculateConductance(cluster)[0];
+      writeln("we are here after calculateConductance");  
+      // Advanced Connectivity Metrics
+      var advConnectivity = calculateAdvancedConnectivity(cluster);
+      writeln("we are here after calculateAdvancedConnectivity");  
+      writeln(advConnectivity);
+
+      metrics.connectivity.degreeVariance = advConnectivity.degreeVariance;
+      metrics.connectivity.degreeSkewness = advConnectivity.degreeSkewness;
+      metrics.connectivity.assortativity = advConnectivity.assortativity;
+      metrics.connectivity.effectiveDiameter = advConnectivity.effectiveDiameter;
+    
+    // // Advanced Density Metrics
+    var advDensity = calculateAdvancedDensity(cluster);
+    writeln("we are here after calculateAdvancedDensity");  
+
+    // metrics.density.triangleCount = advDensity[1]: int;
+    // metrics.density.globalClusteringCoeff = advDensity[2];
+    // metrics.density.avgLocalClusteringCoeff = advDensity[3];
+    
+    // // Spectral Metrics
+    calculateSpectralBounds(metrics.conductanceData);
+
+    
+    // // Core Structure
+    calculateCoreNumbers(cluster);
+    // var advCore = calculateAdvancedCore(cluster);
+    // metrics.core.corePeripheryScore = advCore[1];
+    // metrics.core.coreDegreeCorrelation = advCore[2];
+    
+    // Print comprehensive analysis
+    //printClusterAnalysis(metrics, cluster.size);
+    
+    return metrics;
+}
+/* Initialize empty metrics with proper default values */
+proc initializeEmptyMetrics() {
+    var metrics = new clusterMetricsRecord();
+    
+    // Initialize connectivityMetrics
+    metrics.connectivity.minDegree = 0;
+    metrics.connectivity.maxDegree = 0;
+    metrics.connectivity.avgDegree = 0.0;
+    metrics.connectivity.totalInternalEdges = 0;
+    metrics.connectivity.edgeConnectivityLowerBound = 0;
+    metrics.connectivity.degreeVariance = 0.0;
+    metrics.connectivity.degreeSkewness = 0.0;
+    metrics.connectivity.assortativity = 0.0;
+    metrics.connectivity.effectiveDiameter = 0.0;
+    metrics.connectivity.avgBetweenness = 0.0;
+    metrics.connectivity.maxBetweenness = 0.0;
+    
+    // Initialize densityMetrics
+    metrics.density.density = 0.0;
+    metrics.density.sparsity = 1.0;
+    metrics.density.internalEdges = 0;
+    metrics.density.maxPossibleEdges = 0;
+    metrics.density.triangleCount = 0;
+    metrics.density.globalClusteringCoeff = 0.0;
+    metrics.density.avgLocalClusteringCoeff = 0.0;
+    metrics.density.edgeDensityDistribution = 0.0;
+    metrics.density.localDensityVariance = 0.0;
+    metrics.density.densityCorrelation = 0.0;
+    
+    
+    return metrics;
+}
+/* Basic statistics calculation - foundation for other metrics */
+proc calculateBasicStats(ref cluster: set(int)) throws {
+    const SAMPLE_THRESHOLD = 10000; // To Oliver: Threshold for sampling in large clusters. most of the time it is ok for clstring purposes. 
+    // I didn't use it I put it here for Oliver, we can pass it to all functions that need to sampling!!!!!!!!!!
+    // Create a record to hold basic statistics
+    record BasicStats {
+        var n_vertices: int;            // Number of vertices
+        var n_edges: int;               // Number of edges
+        const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+        var degrees: [clusterDomain] int;     // Degree sequence
+        var avg_degree: real;           // Average degree
+        var degree_second_moment: real; // Second moment of degree distribution
+        var degree_sum: int;            // Sum of degrees
+        var max_degree: int;            // Maximum degree
+        var min_degree: int;            // Minimum degree
+    }
+    
+    var stats = new BasicStats();
+    stats.n_vertices = cluster.size;
+
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var tempDegrees: [clusterDomain] int;     // Degree sequence
+    // First calculate degrees
+    forall v in cluster with(ref tempDegrees) {
+        var neighbors = neighborsSetGraphG1[v];
+        tempDegrees[v] = (neighbors & cluster).size;
+    }
+    
+    stats.degrees = tempDegrees;
+    // Then calculate statistics from degrees
+    stats.degree_sum = + reduce stats.degrees;
+    stats.max_degree = max reduce stats.degrees;
+    stats.min_degree = min reduce stats.degrees;
+    
+    // Calculate second moment
+    var second_moment = 0.0;
+    forall degree in stats.degrees with (+ reduce second_moment) {
+        second_moment += (degree * degree): real;
+    }
+    stats.degree_second_moment = second_moment;
+    
+    // Calculate remaining statistics
+    stats.n_edges = stats.degree_sum / 2;
+    stats.avg_degree = stats.degree_sum: real / stats.n_vertices: real;
+    
+    return stats;
+}
+/* Helper function for efficient sampling in large graphs with multiple strategies */
+/*
+// For large graphs, recommended sample size is O(log2(n)) where n is cluster size
+var sampleSize = max(2, ceil(log2(cluster.size) * 10): int);
+var sampledVertices = sampleVerticesForBetweenness(cluster, sampleSize);
+var (avgBetweenness, maxBetweenness) = calculateBetweennessCentrality(cluster, sampledVertices);
+*/
+/* Helper function for optimized sampling specifically for betweenness centrality */
+proc sampleVertices(ref cluster: set(int), sampleSize: int) {
+    if cluster.isEmpty() {
+        // writeln("Warning: Empty cluster provided");
+        return cluster;
+    }
+    
+    var effectiveSampleSize = min(sampleSize, cluster.size);
+    if effectiveSampleSize <= 0 {
+        writeln("Warning: Invalid sample size requested");
+        return cluster;
+    }
+    
+    var sampledVertices: set(int);
+    var clusterArray = cluster.toArray();
+    
+    if clusterArray.size == 0 {
+        // writeln("Warning: Failed to convert cluster to array");
+        return cluster;
+    }
+    
+    // writeln("Debug: Initial cluster size=", cluster.size, " sampleSize=", effectiveSampleSize);
+    
+    var seed = 42;
+    var rng = new randomStream(real, seed);
+    
+    var weights: [clusterArray.domain] real;
+    var maxDegree = 0;
+    
+    // First pass: find max degree and calculate initial weights
+    for i in clusterArray.domain {
+        var vertex = clusterArray[i];
+        if !neighborsSetGraphG1.domain.contains(vertex) {
+            // writeln("Warning: Vertex ", vertex, " not found in graph");
+            continue;
+        }
+        var degree = neighborsSetGraphG1[vertex].size;
+        maxDegree = max(maxDegree, degree);
+        weights[i] = degree: real;
+    }
+    
+    // writeln("Debug: Max degree found: ", maxDegree);
+    
+    if maxDegree == 0 {
+        // writeln("Warning: All vertices have degree 0");
+        return cluster;
+    }
+
+    // This adjusts the weights using sqrt to balance between high and low degree vertices
+    var totalWeight = 0.0;
+    for i in weights.domain {
+        weights[i] = sqrt(weights[i] / maxDegree: real);
+/*
+        To Oliver:
+        Remove the sqrt to favor high-degree vertices more strongly
+        Use weights[i] = (degree: real) ** 0.25 to reduce the bias towards high-degree vertices
+        Use uniform weights (weights[i] = 1.0) for completely random sampling
+*/
+        totalWeight += weights[i];
+    }
+    
+    // writeln("Debug: Total weight before normalization: ", totalWeight);
+    
+    if totalWeight <= 0.0 {
+        // writeln("Warning: Invalid total weight");
+        return cluster;
+    }
+    
+    for i in weights.domain {
+        weights[i] /= totalWeight;
+    }
+    
+    var available = cluster;
+    var iterCount = 0;
+    const maxIterations = cluster.size * 2;
+    
+    // writeln("Debug: Starting vertex selection loop. Target size=", effectiveSampleSize);
+    
+    while (sampledVertices.size < effectiveSampleSize && 
+           available.size > 0 && 
+           iterCount < maxIterations) {
+        
+        var r = rng.getNext();
+        var cumSum = 0.0;
+        var vertexSelected = false;
+        
+        // writeln("Debug: iteration ", iterCount, 
+        //         " sampledSize=", sampledVertices.size,
+        //         " targetSize=", effectiveSampleSize,
+        //         " available=", available.size,
+        //         " random=", r);
+        
+        for i in clusterArray.domain {
+            var vertex = clusterArray[i];
+            if available.contains(vertex) {
+                cumSum += weights[i];
+                // writeln("Debug:   considering vertex ", vertex, " cumSum=", cumSum);
+                if r <= cumSum {
+                    sampledVertices.add(vertex);
+                    available.remove(vertex);
+                    vertexSelected = true;
+                    // writeln("Debug:   selected vertex ", vertex);
+                    break;
+                }
+            }
+        }
+        
+        // Always increment the counter
+        iterCount += 1;
+        
+        // Force selection if we're getting stuck
+        if !vertexSelected && iterCount > maxIterations / 2 {
+            for vertex in available {
+                sampledVertices.add(vertex);
+                available.remove(vertex);
+                // writeln("Debug: force selected vertex ", vertex);
+                break;
+            }
+        }
+    }
+    
+    // writeln("Debug: Finished main selection loop. Selected=", sampledVertices.size);
+    
+    // Handle remaining vertices if needed
+    if sampledVertices.size < effectiveSampleSize && available.size > 0 {
+        var remainingCount = min(effectiveSampleSize - sampledVertices.size, available.size);
+        var remainingVertices: [0..#remainingCount] (int, int);
+        var idx = 0;
+        
+        // writeln("Debug: Handling remaining vertices. Need ", remainingCount, " more");
+        
+        for vertex in available {
+            if idx >= remainingCount then break;
+            if neighborsSetGraphG1.domain.contains(vertex) {
+                remainingVertices[idx] = (vertex, neighborsSetGraphG1[vertex].size);
+                idx += 1;
+            }
+        }
+        
+        if idx > 0 {
+            sort(remainingVertices[0..#idx], comparator=new ReverseComparator());
+            
+            for i in 0..#idx {
+                var (vertex, _) = remainingVertices[i];
+                sampledVertices.add(vertex);
+                // writeln("Debug: Added remaining vertex ", vertex);
+                if sampledVertices.size >= effectiveSampleSize then break;
+            }
+        }
+    }
+    
+    // writeln("Betweenness Sampling Statistics:");
+    // writeln("  Final sample size: ", sampledVertices.size);
+/*
+To Oliver: Do Not remove it as long as we are testing the codes!
+Everything after this is just my analysis/reporting code that checks how well our 
+sampling performed. 
+It doesn't modify the sampled vertices at all - 
+it just calculates statistics to tell us about the quality of our sample.
+
+
+
+    if sampledVertices.size > 0 {
+        writeln("Debug: Starting degree statistics calculation");
+        var sampleDegrees: [0..sampledVertices.size-1] int;
+        var validDegrees = 0;
+        var totalSampleDegree = 0;
+        var totalClusterDegree = 0;
+        var validClusterVertices = 0;
+        
+        writeln("Debug: Calculating sample degrees");
+        var vertexList = sampledVertices.toArray();  // Convert set to array for indexing
+        for i in 0..#sampledVertices.size {
+            var vertex = vertexList[i];
+            if neighborsSetGraphG1.domain.contains(vertex) {
+                sampleDegrees[i] = neighborsSetGraphG1[vertex].size;
+                totalSampleDegree += sampleDegrees[i];
+                validDegrees += 1;
+                writeln("Debug: Processed vertex ", vertex, " with degree ", sampleDegrees[i]);
+            }
+        }
+        
+        writeln("Debug: Calculating cluster degrees");
+        for vertex in cluster {
+            if neighborsSetGraphG1.domain.contains(vertex) {
+                totalClusterDegree += neighborsSetGraphG1[vertex].size;
+                validClusterVertices += 1;
+            }
+        }
+        
+        if validDegrees > 0 && validClusterVertices > 0 {
+            var avgSampleDegree = totalSampleDegree: real / validDegrees: real;
+            var avgClusterDegree = totalClusterDegree: real / validClusterVertices: real;
+            
+            writeln("  Degree Statistics:");
+            writeln("    Sample average degree: ", avgSampleDegree);
+            writeln("    Cluster average degree: ", avgClusterDegree);
+            writeln("    Degree representation ratio: ", 
+                  if avgClusterDegree != 0.0 then avgSampleDegree/avgClusterDegree else 0.0);
+        } else {
+            writeln("  Warning: Unable to calculate degree statistics - insufficient valid vertices");
+        }
+    }
+*/
+    return sampledVertices;
+}
+
+ /* Helper function for betweenness centrality calculation with sampling 
+Betweenness Centrality Formula:
+
+BC(v) = ∑(s≠v≠t) [σst(v) / σst]
+
+Where:
+- σst is the total number of shortest paths from node s to node t
+- σst(v) is the number of those paths that pass through vertex v
+
+This measures how often a vertex v lies on shortest paths between other vertices,
+indicating its importance as a bridge between different parts of the graph.
+The algorithm is "Brandes' Algorithm" for betweenness centrality:
+Reference: Brandes, U. (2001). "A faster algorithm for betweenness centrality." 
+Journal of Mathematical Sociology, 25(2):163-177.
+*/
+
+//proc calculateBetweennessCentrality(ref nodes: set(int), sampledVertices) throws {
+
+        proc calculateBetweennessCentrality(ref nodes: set(int), ref sampledVertices: set(int)) {
+            const nodesDomain:domain(int) = nodes.toArray();
+            var betweenness: [nodesDomain] real = 0.0;
+
+            // // Sample k nodes if k is less than total nodes
+            // var processNodes: set(int);
+            //     processNodes = sampledVertices;
+            if sampledVertices.size == 0 || nodes.size == 0{
+                return (0.0, 0.0);
+            }
+
+            // Process each node //To Oliver: here is the best place to make it parallel. I think we should remove the singleSourceShortestPathBasic!!
+
+            for s in sampledVertices {
+                debug("\nProcessing source node: ", s);
+                var (S, P, sigma, _) = singleSourceShortestPathBasic(s, nodes);
+                accumulateBasic(betweenness, S, P, sigma, s);
+            }
+
+            // Rescale the betweenness values
+            rescale(betweenness, nodes.size, sampledVertices.size);
+
+            // Calculate average and maximum betweenness
+            for idx in betweenness.domain do writeln("for ", idx,": betweenness is: ",betweenness[idx] );
+            var maxBetweenness: real = 0.0;
+            var avgBetweenness: real = 0.0;
+
+            maxBetweenness = max reduce betweenness;
+            avgBetweenness = + reduce betweenness / nodes.size;
+            writeln("maxBetweenness: ", maxBetweenness);
+            writeln("avgBetweenness: ", avgBetweenness);
+            
+            return (avgBetweenness, maxBetweenness);
+        }
+
+        const DEBUG = false;  // Global debug flag
+
+        // Helper function to print debug messages
+        proc debug(msg...) {
+            if DEBUG {
+                writeln("DEBUG: ", (...msg));
+            }
+        }
+
+        // Helper function for single source shortest path using BFS
+        proc singleSourceShortestPathBasic(s: int, nodes: set(int)) {
+            debug("Starting _singleSourceShortestPathBasic for source node ", s);
+
+            const nodesDomain:domain(int) = nodes.toArray();
+            var S: list(int);
+            var P: [nodesDomain] list(int);
+            var sigma: [nodesDomain] real = 0.0;
+            var D: [nodesDomain] int = -1;  // Use -1 as infinity
+
+            sigma[s] = 1.0;
+            D[s] = 0;
+            var Q: list(int);
+            Q.pushBack(s);
+            var front = 0;  // Initialize front index for the queue
+
+            // debug("Initial state:");
+            // debug("  Source node: ", s);
+            // debug("  Initial Q: ", Q);
+
+            while front < Q.size {
+                var v = Q[front];
+                front += 1;  // Move front index forward
+                S.pushBack(v);
+                var Dv = D[v];
+                var sigmav = sigma[v];
+
+                // debug("Processing node ", v);
+                // debug("  Current distance (Dv): ", Dv);
+                // debug("  Current sigma (sigmav): ", sigmav);
+
+                var neighborInCluster = neighborsSetGraphG1[v] & nodes;
+                for w in neighborInCluster {
+                    debug("    Examining neighbor ", w);
+                    // First time seeing w
+                    if D[w] == -1 {
+                        debug("      First time seeing node ", w);
+                        Q.pushBack(w);
+                        D[w] = Dv + 1;
+                        debug("      Updated distance D[", w, "] = ", D[w]);
+                    }
+                    // If this is a shortest path, count paths
+                    if D[w] == Dv + 1 {
+                        debug("      Found shortest path to ", w, " through ", v);
+                        sigma[w] += sigmav;
+                        P[w].pushBack(v);
+                        debug("      Updated sigma[", w, "] = ", sigma[w]);
+                        debug("      Updated predecessors P[", w, "] = ", P[w]);
+                    }
+                }
+                debug("  Current Q: ", Q);
+            }
+
+            // debug("Finished _singleSourceShortestPathBasic");
+            // debug("Final S: ", S);
+            // debug("Final sigma: ", sigma);
+            return (S, P, sigma, D);
+        }
+
+
+        // Helper function for accumulation
+        proc accumulateBasic(ref betweenness: [?D] real, S: list(int), P: [?D2] list(int), 
+                            sigma: [?D3] real, s: int) {
+            debug("Starting _accumulateBasic for source node ", s);
+            var delta: [D] real = 0.0;
+            
+            debug("Initial betweenness: ", betweenness);
+            
+            // Process vertices in reversed order
+            var idx = S.size - 1;
+            while idx >= 0 {
+                var w = S[idx];
+                debug("Processing node ", w, " in reverse order");
+                var coeff = (1.0 + delta[w]) / sigma[w];
+                debug("  Coefficient for node ", w, ": ", coeff);
+                
+                for v in P[w] {
+                    debug("    Processing predecessor ", v, " of node ", w);
+                    delta[v] += sigma[v] * coeff;
+                    debug("    Updated delta[", v, "] = ", delta[v]);
+                }
+                if w != s {
+                    betweenness[w] += delta[w];
+                    debug("  Updated betweenness[", w, "] = ", betweenness[w]);
+                }
+                idx -= 1;
+            }
+            
+            debug("Final betweenness after accumulation: ", betweenness);
+            return betweenness;
+        }
+
+        // Helper function for rescaling
+        proc rescale(ref betweenness: [?D] real, n: int, k: int) {
+            // debug("Starting _rescale");
+            // debug("Initial betweenness: ", betweenness);
+            // debug("n = ", n, ", k = ", k);
+            
+            var scale: real;
+            if n <= 2 {
+                debug("No normalization needed (n <= 2)");
+                return betweenness;
+            }
+            
+            scale = 1.0 / ((n-1) * (n-2));
+            debug("Base scale factor: ", scale);
+            
+            // Adjust scale if using sampling (not applicable here since k = n)
+            if k != n {
+                scale = scale * n / k;
+                debug("Adjusted scale factor for sampling: ", scale);
+            }
+            
+            // scale *= 0.5;
+            // debug("Final scale factor: ", scale);
+            
+            forall v in D {
+                betweenness[v] *= scale;
+            }
+            
+            // debug("Final betweenness after rescaling: ", betweenness);
+            return betweenness;
+        }
+
+
+    /* Basic connectivity metrics */
+    proc calculateBasicConnectivity(ref cluster: set(int)) throws {
+        var metrics: connectivityMetrics;
+        
+        // Handle empty or singleton clusters
+        if cluster.size <= 1 {
+            metrics.minDegree = 0;
+            metrics.maxDegree = 0;
+            metrics.totalInternalEdges = 0;
+            metrics.avgDegree = 0.0;
+            metrics.edgeConnectivityLowerBound = 0;
+            return metrics;
+        }
+
+        // Get basic statistics first
+        var basicStats = calculateBasicStats(cluster);
+        
+        // Set basic metrics from stats
+        metrics.minDegree = basicStats.min_degree;
+        metrics.maxDegree = basicStats.max_degree;
+        metrics.avgDegree = basicStats.avg_degree;
+        metrics.totalInternalEdges = basicStats.n_edges;
+        
+        // Calculate degree variance and skewness in one pass
+        var variance_sum = 0.0;
+        var skewness_sum = 0.0;
+        forall v in cluster with (+ reduce variance_sum, + reduce skewness_sum) {
+            var diff = basicStats.degrees[v] - metrics.avgDegree;
+            var diff_squared = diff * diff;
+            variance_sum += diff_squared;
+            skewness_sum += diff_squared * diff;
+        }
+        
+        metrics.degreeVariance = variance_sum / cluster.size;
+        metrics.degreeSkewness = if metrics.degreeVariance > 0 then 
+            (skewness_sum / cluster.size) / (sqrt(metrics.degreeVariance) ** 3)
+            else 0.0;
+        
+        // Calculate Mader's theorem bound
+        metrics.edgeConnectivityLowerBound = ((metrics.avgDegree + 2) / 2): int;
+        
+        return metrics;
+    }
+/*
+To Oliver: for future:// based on bartozs outputs will be adjusted
+proc calculateSampleSize(ref cluster: set(int), graphDensity: real) {
+    var n = cluster.size;
+    var baseSampleSize: int;
+    
+    // Basic size calculation
+    if n < 1000 {
+        baseSampleSize = max(30, (n * 2) / 10);  // 20%
+    } else if n < 10000 {
+        baseSampleSize = max(100, n / 10);       // 10%
+    } else {
+        baseSampleSize = max(300, ceil(sqrt(n:real)):int);
+    }
+    
+    // Density adjustment
+    var densityFactor = if graphDensity < 0.1 then 1.5
+                       else if graphDensity < 0.3 then 1.2
+                       else 1.0;
+    
+    var adjustedSize = (baseSampleSize:real * densityFactor):int;
+    
+    // Bounds checking
+    return min(max(adjustedSize, 10), n);
+}
+*/
+/* Advanced connectivity metrics */
+proc calculateAdvancedConnectivity(ref cluster: set(int)) throws {
+    var metrics: connectivityMetrics;
+    //const SAMPLE_SIZE = min(cluster.size, floor(sqrt(cluster.size: real) * log2(cluster.size: real)): int);
+    // For large graphs, recommended sample size is O(log(n)) where n is cluster size
+    const SAMPLE_SIZE = max(2, ceil(log2(cluster.size) * 10): int);
+    // For these test SAMPLE_SIZE = cluster size
+    //const SAMPLE_SIZE = cluster.size;
+    // Get basic stats first
+    var basicStats = calculateBasicStats(cluster);
+    writeln("$$$$$$ basicStats calculated");
+    // Calculate assortativity in separate steps
+    metrics = calculateAssortativity(cluster, basicStats, metrics);
+    writeln("$$$$$$$$$$$$$$ Assortativity calculated");
+    writeln(metrics);
+    // Calculate diameter and betweenness
+    metrics = calculateDiameterAndBetweenness(cluster, SAMPLE_SIZE, metrics);
+    writeln("$$$$$$$$$DiameterAndBetweenness calculated");
+    writeln(metrics);
+
+    return metrics;
+}
+
+/* Helper function for assortativity calculation using reductions 
+1. Definition:
+- Measures the tendency of nodes to connect to other nodes with similar degrees
+- Ranges from -1 to 1
+- Similar to correlation coefficient but for network connections
+
+2-Interpreting Degree Assortativity Values
+----Positive Assortativity (Close to +1):
+
+Indicates that high-degree nodes (hubs) are more likely to connect to other high-degree nodes, and low-degree 
+nodes are more likely to connect to other low-degree nodes.
+Common in social networks, where people with many connections tend to connect with others who also have many 
+connections (e.g., friendships, professional networks).
+Example: r=0.8
+----Negative Assortativity (Close to -1):
+
+Indicates that high-degree nodes tend to connect to low-degree nodes.
+Common in technological or biological networks such as the Internet or neural networks, where hubs serve as connectors to many smaller nodes.
+Example: r=−0.7
+----Neutral Assortativity (Close to 0):
+
+Indicates no significant correlation between the degrees of connected nodes.
+Connections in such networks appear more random, with no preference for similar or dissimilar degrees.
+Example: r=0.0
+
+*/
+proc calculateAssortativity(ref cluster: set(int), ref basicStats, ref metrics: connectivityMetrics) throws{
+    var updatedMetrics = metrics;
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+
+    // Arrays to store local contributions
+    var localNums: [clusterDomain] real;
+    var localDen1s: [clusterDomain] real;
+    var localDen2s: [clusterDomain] real;
+    
+    // Calculate local contributions
+    forall v in cluster {
+        var v_deg = basicStats.degrees[v];
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        
+        // Initialize local sums
+        localNums[v] = 0.0;
+        localDen1s[v] = 0.0;
+        localDen2s[v] = 0.0;
+        
+        // Calculate local contributions
+        for u in neighbors {
+            var u_deg = basicStats.degrees[u];
+            localNums[v] += v_deg * u_deg;
+            localDen1s[v] += v_deg * v_deg;
+            localDen2s[v] += v_deg;
+        }
+    }
+    
+    // Use reductions to sum up all contributions
+    var numerator = + reduce localNums;
+    var denominator1 = + reduce localDen1s;
+    var denominator2 = + reduce localDen2s;
+    
+    // Calculate final metrics
+    var M = basicStats.n_edges;
+    if M > 0 {
+        var den2 = (denominator2 / (2 * M)) ** 2;
+        updatedMetrics.assortativity = (numerator/(2*M) - den2) / 
+                                     (denominator1/(2*M) - den2);
+    }
+    writeln("Degree Assortativity Coefficient: ", updatedMetrics.assortativity);
+    return updatedMetrics;
+}
+
+/* Helper function for diameter and betweenness calculations */
+proc calculateDiameterAndBetweenness(ref cluster: set(int), SAMPLE_SIZE: int, ref metrics: connectivityMetrics) throws {
+    var updatedMetrics = metrics;
+    var sampledVertices = sampleVertices(cluster, SAMPLE_SIZE);
+    // var sampledVertices = sampleVerticesForBetweenness(cluster, sampleSize);
+
+    // Calculate effective diameter
+    var (lowerBound, estimatedDiameter, effectiveDiam) = calculateDiameterBounds(cluster, sampledVertices);
+    writeln("after calculateDiameterBounds.");
+    updatedMetrics.effectiveDiameter = effectiveDiam;
+    writeln("effectiveDiam: ", effectiveDiam);
+    writeln("lowerBound: ", lowerBound);
+    writeln("estimatedDiameter: ", estimatedDiameter);
+
+    // Calculate betweenness
+    var (avgBetweenness, maxBetweenness) = calculateBetweennessCentrality(cluster, sampledVertices);
+    writeln("$$$$ after calculateBetweennessCentrality.");
+    writeln("avgBetweenness: ", avgBetweenness);
+    writeln("maxBetweenness: ", maxBetweenness);
+    updatedMetrics.avgBetweenness = avgBetweenness;
+    updatedMetrics.maxBetweenness = maxBetweenness;
+    
+    return updatedMetrics;
+}
+
+/*
+Algorithm based on: "On the Diameter of Real-World Networks" (2014)
+Authors: C. Magnien, M. Latapy, M. Habib
+Published in: ACM Transactions on Algorithms
+
+Runtime Analysis:
+- Full diameter computation: O(|V| * (|V| + |E|))
+- With sampling (k vertices): O(k * (|V| + |E|))
+  where k is the sample size, |V| is number of vertices, |E| is number of edges
+
+Space Complexity: O(|V|) for distance array
+
+Key Benefits:
+- Provides guaranteed lower bound
+- Estimates both exact and effective diameter
+- Theoretical bounds for estimation accuracy
+- Highly parallelizable
+
+Lower Bound: This is a guaranteed minimum diameter
+Effective Diameter:The distance at which 90% of all pairs of nodes can reach each other
+Estimated Diameter (True Diameter):Attempts to estimate the actual maximum shortest path
+
+Why we need all three:
+
+Lower bound: Gives certainty
+Effective diameter: Shows typical behavior
+Estimated diameter: Tries to find true maximum
+
+*/
+
+/* Efficient BFS implementation */
+proc efficientBFS(start: int, ref cluster: set(int)) throws {
+    writeln("Starting BFS from vertex ", start);
+    
+    const clusterDomain: domain(int, parSafe=true) = cluster.toArray();
+    var distances: [clusterDomain] int = -1;
+    var maxDist = 0;
+    
+    if !cluster.contains(start) {
+        writeln("Warning: Start vertex ", start, " not in cluster");
+        return (distances, maxDist);
+    }
+    
+    var frontier: set(int);
+    var nextFrontier: set(int);
+    var level = 0;
+    
+    distances[start] = 0;
+    frontier.add(start);
+    
+    while frontier.size > 0 {
+        writeln("  Level ", level, ": Processing frontier of size ", frontier.size);
+        nextFrontier.clear();
+        
+        for v in frontier {
+            var neighbors = neighborsSetGraphG1[v] & cluster;
+            var newNodes = 0;
+            
+            for n in neighbors {
+                if distances[n] == -1 {
+                    distances[n] = distances[v] + 1;
+                    maxDist = max(maxDist, distances[n]);
+                    nextFrontier.add(n);
+                    newNodes += 1;
+                }
+            }
+            
+            if newNodes > 0 {
+                writeln("    Vertex ", v, " discovered ", newNodes, " new nodes");
+            }
+        }
+        
+        frontier = nextFrontier;
+        level += 1;
+    }
+    
+    writeln("BFS from ", start, " complete. Max distance found: ", maxDist);
+    writeln("Number of vertices reached: ", 
+            + reduce(distances >= 0), " out of ", cluster.size);
+    
+    return (distances, maxDist);
+}
+
+proc calculateDiameterBounds(ref cluster: set(int), sampledVertices: set(int)) throws {
+    writeln("===================   calculateDiameterBounds   =========================");
+    // writeln("Cluster size: ", cluster.size);
+    // writeln("Sample size: ", sampledVertices.size);
+    
+    var globalLowerBound: atomic int;
+    var pathLengths: [0..cluster.size] atomic int;
+    
+    // writeln("\nPhase 1: Processing sampled vertices");
+    forall v in sampledVertices with (ref cluster) {
+        // writeln("  Processing sample vertex: ", v);
+        var (distances, maxDist) = efficientBFS(v, cluster);
+        
+        // Update lower bound atomically
+        var currentLower = globalLowerBound.read();
+        while (maxDist > currentLower && 
+               !globalLowerBound.compareAndSwap(currentLower, maxDist)) {
+            currentLower = globalLowerBound.read();
+        }
+        
+        // writeln("  Current lower bound: ", globalLowerBound.read());
+        
+        // Count path lengths for effective diameter
+        var distCounts: [0..maxDist] int;
+        for d in distances {
+            if d > 0 {  // only count non-zero distances
+                distCounts[d] += 1;
+                pathLengths[d].add(1);
+            }
+        }
+        
+        // writeln("  Distance distribution from vertex ", v, ":");
+        for i in 0..maxDist {
+            if distCounts[i] > 0 {
+                // writeln("    Distance ", i, ": ", distCounts[i], " vertices");
+            }
+        }
+    }
+    
+    var finalLowerBound = globalLowerBound.read();
+    // writeln("\nPhase 2: Calculating effective diameter");
+    
+    // Calculate total number of paths (excluding distance 0)
+    var totalPossiblePaths = 0;
+    for i in 1..finalLowerBound {
+        totalPossiblePaths += pathLengths[i].read();
+    }
+    
+    var targetPaths = (totalPossiblePaths * 0.9): int;  // 90% of actual paths
+    // writeln("Total paths found: ", totalPossiblePaths);
+    // writeln("Target paths for 90th percentile: ", targetPaths);
+    
+    var accumulatedPaths = 0;
+    var effectiveDiam = 1;  // start at 1 since we want actual path lengths
+    
+    for i in 1..finalLowerBound {
+        accumulatedPaths += pathLengths[i].read();
+        // writeln("  Cumulative paths at distance ", i, ": ", accumulatedPaths);
+        
+        if accumulatedPaths >= targetPaths {
+            effectiveDiam = i;
+            // writeln("  Found effective diameter: ", effectiveDiam);
+            break;
+        }
+    }
+    
+    // Calculate estimated diameter using Magnien's bound
+    var estimatedDiameter = max(finalLowerBound, 
+                               (effectiveDiam * (1.0 + 1.0/log(cluster.size))): int);
+    
+    writeln("\nFinal Results:");
+    writeln("Lower bound: ", finalLowerBound);
+    writeln("Estimated diameter: ", estimatedDiameter);
+    writeln("Effective diameter (90th percentile): ", effectiveDiam);
+    
+    return (finalLowerBound, estimatedDiameter, effectiveDiam);
+}
+    /* Basic and advanced density metrics */
+    proc calculateInternalDensity(ref cluster: set(int)) throws {
+        var metrics: densityMetrics;
+        writeln(" =====================     calculateInternalDensity     =====================================");
+        // Handle empty or singleton clusters
+        if cluster.size <= 1 {
+            metrics.density = 0.0;
+            metrics.sparsity = 1.0;
+            metrics.internalEdges = 0;
+            metrics.maxPossibleEdges = 0;
+            return metrics;
+        }
+        
+        // Get basic statistics
+        var basicStats = calculateBasicStats(cluster);
+        
+        // Calculate basic density metrics
+        metrics.internalEdges = basicStats.n_edges;
+        metrics.maxPossibleEdges = (cluster.size * (cluster.size - 1)) / 2;
+        
+        if metrics.maxPossibleEdges > 0 {
+            metrics.density = metrics.internalEdges: real / metrics.maxPossibleEdges: real;
+            metrics.sparsity = 1.0 - metrics.density;
+        } else {
+            metrics.density = 0.0;
+            metrics.sparsity = 1.0;
+        }
+        
+        // Calculate triangle count efficiently
+        metrics.triangleCount = calculateTriangles(cluster);
+        writeln("\n metrics: ", metrics);
+        return metrics;
+    }
+
+
+/* Advanced density metrics including clustering coefficients */
+proc calculateAdvancedDensity(ref cluster: set(int)) throws {
+    var metrics = calculateInternalDensity(cluster);  // Get basic metrics first
+    writeln("===================   calculateAdvancedDensity   =================================");
+    // Handle small clusters
+    if cluster.size <= 2 {
+        metrics = initializeEmptyDensityMetrics(metrics);
+        return metrics;
+    }
+    
+    // Calculate clustering coefficients
+    metrics = calculateClusteringCoefficients(cluster, metrics);
+    //writeln(" ClusteringCoefficients metrics: ", metrics);
+    //Calculate density distributions
+    metrics = calculateDensityDistributions(cluster, metrics);
+    
+    return metrics;
+}
+
+/* Initialize empty density metrics */
+proc initializeEmptyDensityMetrics(ref metrics) {
+    metrics.globalClusteringCoeff = 0.0;
+    metrics.avgLocalClusteringCoeff = 0.0;
+    metrics.edgeDensityDistribution = 0.0;
+    metrics.localDensityVariance = 0.0;
+    metrics.densityCorrelation = 0.0;
+    return metrics;
+}
+
+/* Calculate clustering coefficients */
+proc calculateClusteringCoefficients(ref cluster: set(int), metrics) {
+    var updatedMetrics = metrics;
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var localCCs: [clusterDomain] real;
+    writeln("====================== calculateClusteringCoefficients =======================");
+    // Use atomic variables for shared counters
+    var totalPossibleTriangles: atomic int;
+    var actualTriangles: atomic int;
+    var sumLocalCC: atomic real;
+    
+    // First pass: calculate local clustering coefficients
+    forall v in cluster {
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        var degree = neighbors.size;
+        
+        if degree >= 2 {
+            var possibleTriangles = (degree * (degree - 1)) / 2;
+            
+            // Count triangles for this vertex
+            var localTriangles = countLocalTriangles(v, neighbors);
+            
+            // Update atomic counters
+            totalPossibleTriangles.add(possibleTriangles);
+            actualTriangles.add(localTriangles);
+            
+            // Calculate and store local clustering coefficient
+            var localCC = if possibleTriangles > 0 then 
+                         localTriangles: real / possibleTriangles: real
+                         else 0.0;
+            
+            localCCs[v] = localCC;
+            sumLocalCC.add(localCC);
+        }
+    }
+    
+    // Calculate final coefficients
+    updatedMetrics.avgLocalClusteringCoeff = sumLocalCC.read() / cluster.size;
+    updatedMetrics.globalClusteringCoeff = if totalPossibleTriangles.read() > 0 then
+                                          actualTriangles.read(): real / totalPossibleTriangles.read(): real
+                                          else 0.0;
+    writeln("updatedMetrics: ", updatedMetrics);
+    return updatedMetrics;
+}
+
+
+/* Calculate local triangles */
+proc countLocalTriangles(v: int, ref neighbors) {
+    var localTriangles = 0;
+    for u in neighbors {
+        var commonNeighbors = neighbors & neighborsSetGraphG1[u];
+        localTriangles += commonNeighbors.size;
+    }
+    return localTriangles / 2;  // Each triangle counted twice
+}
+
+/* Calculate density distributions */
+proc calculateDensityDistributions(ref cluster: set(int), metrics) {
+    var updatedMetrics = metrics;
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var localDensities: [clusterDomain] real;
+    
+    // First pass: calculate local densities
+    forall v in cluster {
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        var degree = neighbors.size;
+        
+        if degree >= 1 {
+            
+            var localNeighborhood = neighbors;
+            localNeighborhood.add(v);
+            var localEdges = calculateLocalEdges(localNeighborhood);
+            var maxLocalEdges = (degree + 1) * degree / 2;
+            localDensities[v] = if maxLocalEdges > 0 then 
+                               localEdges: real / maxLocalEdges: real
+                               else 0.0;
+        }
+    }
+    
+    // Calculate mean density
+    var totalDensity = + reduce localDensities;
+    var meanDensity = totalDensity / cluster.size;
+    updatedMetrics.edgeDensityDistribution = meanDensity;
+    
+    // Calculate variance
+    var sumSquaredDiff = 0.0;
+    forall d in localDensities {
+        var diff = d - meanDensity;
+        sumSquaredDiff += diff * diff;
+    }
+    updatedMetrics.localDensityVariance = sumSquaredDiff / cluster.size;
+    
+    // Calculate density correlation
+    updatedMetrics = calculateDensityCorrelation(cluster, localDensities, updatedMetrics);
+    
+    return updatedMetrics;
+}
+
+/* Calculate local edges */
+proc calculateLocalEdges(ref localNeighborhood) {
+    var localEdges = 0;
+    for u in localNeighborhood {
+        localEdges += (neighborsSetGraphG1[u] & localNeighborhood).size;
+    }
+    return localEdges / 2;
+}
+
+/* Calculate density correlation using reductions */
+proc calculateDensityCorrelation(ref cluster: set(int), 
+                                       ref localDensities: [] real, 
+                                       metrics) {
+    var updatedMetrics = metrics;
+    
+    // Arrays to store local contributions
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var localNums: [clusterDomain] real;
+    var localDen1s: [clusterDomain] real;
+    var localDen2s: [clusterDomain] real;
+    
+    // Calculate local contributions
+    forall v in cluster {
+        var v_density = localDensities[v];
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        
+        // Calculate local values
+        localNums[v] = 0.0;
+        for u in neighbors {
+            localNums[v] += v_density * localDensities[u];
+        }
+        
+        localDen1s[v] = v_density * v_density;
+        localDen2s[v] = v_density;
+    }
+    
+    // Use reductions to sum up contributions
+    var num = + reduce localNums;
+    var den1 = + reduce localDen1s;
+    var den2 = + reduce localDen2s;
+    
+    // Calculate final correlation
+    if updatedMetrics.internalEdges > 0 {
+        var M = updatedMetrics.internalEdges;
+        den2 = (den2 / (2 * M)) ** 2;
+        updatedMetrics.densityCorrelation = (num/(2*M) - den2) / 
+                                          (den1/(2*M) - den2);
+    } else {
+        updatedMetrics.densityCorrelation = 0.0;
+    }
+    
+    return updatedMetrics;
+}
+/* Triangle Counting Implementation with Edge Sampling
+   Based on: "Colorful Triangle Counting and a MapReduce Implementation" 
+   (Pagh and Tsourakakis, 2012)
+   
+   Key features:
+   - Adaptive sampling based on graph size
+   - Hash-based deterministic sampling for parallel efficiency
+   - Direct counting for small clusters
+   - Memory efficient single-pass implementation
+   
+   Input: cluster - connected component as set of vertices
+   Output: number of triangles in the component
+   
+   Time complexity: 
+   - Small graphs: O(|V| * d^2) where d is average degree
+   - Large graphs: O(|V| * d * p) where p is sampling probability
+*/
+
+proc calculateTriangles(ref cluster: set(int), debug: bool = true) throws {
+    writeln("=====================  calculateTriangles ==================================");
+    if cluster.size <= 2 then return 0;
+    
+    const SAMPLING_THRESHOLD = 10000;
+    var triangleCount = 0;
+    
+    if debug then writeln("Processing cluster of size: ", cluster.size);
+    
+    if cluster.size > SAMPLING_THRESHOLD {
+        var actualEdges = + reduce [v in cluster] (neighborsSetGraphG1[v] & cluster).size / 2;
+        var samplingProb = min(1.0, sqrt(actualEdges:real) / cluster.size);
+        
+        if debug {
+            writeln("Actual edges: ", actualEdges);
+            writeln("Sampling probability: ", samplingProb);
+            writeln("Starting sampling-based counting...");
+        }
+        
+        var sampledEdgeCount = 0;
+        forall v in cluster with (+ reduce triangleCount, + reduce sampledEdgeCount) {
+            var neighbors = neighborsSetGraphG1[v] & cluster;
+            //if debug then writeln("Node ", v, " has ", neighbors.size, " neighbors");
+            
+            for u in neighbors do
+                if v < u {
+                    var hash = v * 31 + u;
+                    if (hash % 1000000) / 1000000.0 < samplingProb {
+                        var commonNeighbors = (neighbors & neighborsSetGraphG1[u]).size;
+                        triangleCount += commonNeighbors;
+                        sampledEdgeCount += 1;
+                        
+                        //if debug then writeln("Edge (", v, ",", u, ") sampled, common neighbors: ", commonNeighbors);
+                    }
+                }
+        }
+        
+        // if debug {
+        //     writeln("Sampled edges: ", sampledEdgeCount);
+        //     writeln("Raw triangle count: ", triangleCount);
+        // }
+        
+        triangleCount = (triangleCount:real / (samplingProb ** 3)):int;
+        
+        // if debug then writeln("Scaled triangle count: ", triangleCount);
+    } else {
+        // if debug then writeln("Using exact counting method");
+        
+        forall v in cluster with (+ reduce triangleCount) {
+            var neighbors = neighborsSetGraphG1[v] & cluster;
+            for u in neighbors do
+                if v < u {
+                    var commonNeighbors = (neighbors & neighborsSetGraphG1[u]).size;
+                    triangleCount += commonNeighbors;
+                    // if debug then 
+                        // writeln("Node pair (", v, ",", u, ") has ", commonNeighbors, " common neighbors");
+                }
+        }
+    }
+    
+    var finalCount = triangleCount / 3;
+    if debug then writeln("Final triangle count: ", finalCount);
+    return finalCount;
+}
+/* Basic spectral bounds based on conductance */
+proc calculateSpectralBounds(conductance: real) throws {
+    var metrics: spectralMetrics;
+    writeln("==================== calculateSpectralBounds ======================");
+
+    // Basic Cheeger inequality bounds
+    metrics.lambda2Lower = (conductance * conductance) / 2;
+    metrics.lambda2Upper = 2 * conductance;
+    metrics.lambda2Estimate = (metrics.lambda2Lower + metrics.lambda2Upper) / 2;
+    
+    return metrics;
+}
+
+/* Basic core numbers calculation */
+proc calculateCoreNumbers(ref cluster: set(int)) throws {
+    var metrics: coreMetrics;
+    writeln("========================== calculateCoreNumbers  ========================");
+    // Handle empty or singleton clusters
+    if cluster.size <= 1 {
+        metrics.coreNumber = 0;
+        metrics.coreDensity = 0.0;
+        metrics.coreSize = cluster.size;
+        return metrics;
+    }
+
+    // Create domain and arrays for tracking degrees and shells
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var degrees: [clusterDomain] int;
+    var vertexShells: [clusterDomain] int;  // Store shell number for each vertex
+    var currentCore = cluster;
+    
+    // Initialize degrees
+    forall v in cluster with(ref cluster) {
+        degrees[v] = calculateClusterDegree(cluster, v);
+    }
+    
+    // Initialize bin-sort arrays for efficient core decomposition
+    var maxDegree = max reduce degrees;
+    var vertexBins: [0..maxDegree] list(int);  // Vertices binned by degree
+    var vertexPos: [clusterDomain] int;        // Position of vertices in their bins
+    
+    // Populate bins
+    for v in cluster {
+        var d = degrees[v];
+        vertexPos[v] = vertexBins[d].size;
+        vertexBins[d].pushBack(v);
+    }
+    
+    // Core decomposition with bin-sorting
+    var k = 0;
+    var remainingVertices = cluster.size;
+    
+    while remainingVertices > 0 {
+        // Find smallest non-empty bin
+        while k <= maxDegree && vertexBins[k].size == 0 do k += 1;
+        
+        if k > maxDegree then break;
+        
+        // Process vertices with current minimum degree
+        while vertexBins[k].size > 0 {
+            var v = vertexBins[k].popBack();
+            vertexShells[v] = k;  // Record shell number
+            remainingVertices -= 1;
+            
+            // Update neighbors
+            var neighbors = neighborsSetGraphG1[v] & currentCore;
+            for u in neighbors {
+                var d = degrees[u];
+                if d > k {  // Only process neighbors with higher degree
+                    // Remove u from its current bin
+                    var pos = vertexPos[u];
+                    var lastVertex = vertexBins[d].popBack();
+                    if lastVertex != u {
+                        vertexBins[d].insert(pos, lastVertex);
+                        vertexPos[lastVertex] = pos;
+                    }
+                    
+                    // Decrease degree and add to new bin
+                    degrees[u] -= 1;
+                    vertexPos[u] = vertexBins[d-1].size;
+                    vertexBins[d-1].pushBack(u);
+                }
+            }
+        }
+    }
+    
+    // Set basic core metrics
+    metrics.coreNumber = max reduce vertexShells;
+    var maxCoreVertices: set(int);
+    
+    for v in cluster {
+        if vertexShells[v] == metrics.coreNumber {
+            maxCoreVertices.add(v);
+        }
+    }
+    
+    metrics.coreSize = maxCoreVertices.size;
+    
+    // Calculate core density if core exists
+    if maxCoreVertices.size > 1 {
+        var densityMetrics = calculateInternalDensity(maxCoreVertices);
+        metrics.coreDensity = densityMetrics.density;
+    } else {
+        metrics.coreDensity = 0.0;
+    }
+    writeln(metrics);
+    return metrics;
+}
+
+
+/* Enhanced core analysis implementation */
+proc calculateAdvancedCore(ref cluster: set(int)) throws {
+    var metrics: coreMetrics;
+    
+    // Basic initialization and checks
+    if cluster.size <= 1 {
+        return initializeEmptyCoremetrics();
+    }
+    
+    // Get basic core decomposition first
+    metrics = calculateCoreNumbers(cluster);
+    
+    // Create necessary data structures
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var vertexShells: [clusterDomain] int;
+    var shellMembers: [0..metrics.coreNumber] set(int);
+    
+    // Perform enhanced core decomposition
+    (vertexShells, shellMembers) = calculateShellDecomposition(cluster);
+    
+    // 1. Core-Periphery Analysis
+    metrics = calculateCorePeripheryMetrics(metrics, cluster, vertexShells, shellMembers);
+    
+    // 2. Shell Analysis
+    metrics = calculateShellMetrics(metrics, cluster, vertexShells, shellMembers);
+    
+    // 3. Hierarchical Analysis
+    metrics = calculateHierarchicalMetrics(metrics, cluster, vertexShells, shellMembers);
+    
+    // 4. Stability Analysis
+    metrics = calculateStabilityMetrics(metrics, cluster, vertexShells, shellMembers);
+    
+    // 5. Quality Analysis
+    metrics = calculateQualityMetrics(metrics, cluster, vertexShells, shellMembers);
+    
+    return metrics;
+}
+
+/* Helper function for shell decomposition */
+proc calculateShellDecomposition(ref cluster: set(int)) throws {
+    const clusterDomain: domain(int,  parSafe=true) = cluster.toArray();
+    var vertexShells: [clusterDomain] int;
+    var maxShell = 0;
+    var remainingVertices = cluster;
+    
+    // Calculate degrees
+    var degrees: [clusterDomain] int;
+    forall v in cluster {
+        degrees[v] = calculateClusterDegree(cluster, v);
+    }
+    
+    // Bin sort for efficient decomposition
+    var maxDegree = max reduce degrees;
+    var vertexBins: [0..maxDegree] list(int);
+    
+    for v in cluster {
+        vertexBins[degrees[v]].pushBack(v);
+    }
+    
+    // Decomposition
+    var shellMembers: [0..maxDegree] set(int);
+    var k = 0;
+    
+    while remainingVertices.size > 0 {
+        var currentShell: set(int);
+        var minDegree = max(int);
+        
+        // Find minimum degree vertices
+        for d in 0..maxDegree {
+            if vertexBins[d].size > 0 {
+                minDegree = d;
+                break;
+            }
+        }
+        
+        // Process vertices of minimum degree
+        var bin = vertexBins[minDegree];
+        while bin.size > 0 {
+            var v = bin.pop();
+            if remainingVertices.contains(v) {
+                currentShell.add(v);
+                vertexShells[v] = k;
+                remainingVertices.remove(v);
+                
+                // Update neighbors
+                var neighbors = neighborsSetGraphG1[v] & remainingVertices;
+                for u in neighbors {
+                    var oldDeg = degrees[u];
+                    degrees[u] -= 1;
+                    var newDeg = degrees[u];
+                    
+                    // Move to new bin
+                    if oldDeg != newDeg {
+                        vertexBins[oldDeg].remove(u);
+                        vertexBins[newDeg].pushBack(u);
+                    }
+                }
+            }
+        }
+        
+        shellMembers[k] = currentShell;
+        k += 1;
+        maxShell = k;
+    }
+    
+    return (vertexShells, shellMembers);
+}
+
+/* Core-Periphery metrics calculation */
+proc calculateCorePeripheryMetrics(metrics: coreMetrics, 
+                                         ref cluster: set(int),
+                                         vertexShells: [] int,
+                                         shellMembers: [] set(int)) throws {
+    var updatedMetrics = metrics;
+    var maxShell = metrics.coreNumber;
+    
+    // Calculate core strength
+    var coreVertices = shellMembers[maxShell];
+    var coreEdges = 0;
+    var peripheryEdges = 0;
+    var crossEdges = 0;
+    
+    forall v in cluster with (+ reduce coreEdges,
+                            + reduce peripheryEdges,
+                            + reduce crossEdges) {
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        var vInCore = vertexShells[v] == maxShell;
+        
+        for u in neighbors {
+            var uInCore = vertexShells[u] == maxShell;
+            if vInCore && uInCore {
+                coreEdges += 1;
+            } else if !vInCore && !uInCore {
+                peripheryEdges += 1;
+            } else {
+                crossEdges += 1;
+            }
+        }
+    }
+    
+    coreEdges /= 2;  // Each edge counted twice
+    peripheryEdges /= 2;
+    
+    updatedMetrics.coreStrength = if (coreEdges + crossEdges) > 0 then
+                                 coreEdges: real / (coreEdges + crossEdges): real
+                                 else 0.0;
+    
+    updatedMetrics.peripherySize = cluster.size - coreVertices.size;
+    
+    return updatedMetrics;
+}
+
+/* Shell metrics calculation */
+proc calculateShellMetrics(metrics: coreMetrics,
+                                 ref cluster: set(int),
+                                 vertexShells: [] int,
+                                 shellMembers: [] set(int)) throws {
+    var updatedMetrics = metrics;
+    
+    // Calculate shell densities and connectivity
+    for i in 0..metrics.coreNumber {
+        if shellMembers[i].size > 1 {
+            var shellDensityMetrics = calculateInternalDensity(shellMembers[i]);
+            updatedMetrics.shellDensities[i] = shellDensityMetrics.density;
+            
+            // Calculate connectivity to next shell if it exists
+            if i < metrics.coreNumber {
+                var crossEdges = countCrossEdges(shellMembers[i], shellMembers[i+1]);
+                var maxPossibleCross = shellMembers[i].size * shellMembers[i+1].size;
+                updatedMetrics.shellConnectivity[i] = if maxPossibleCross > 0 then
+                                                    crossEdges: real / maxPossibleCross: real
+                                                    else 0.0;
+            }
+        }
+    }
+    
+    return updatedMetrics;
+}
+
+/* Hierarchical metrics calculation */
+proc calculateHierarchicalMetrics(metrics: coreMetrics,
+                                        ref cluster: set(int),
+                                        vertexShells: [] int,
+                                        shellMembers: [] set(int)) throws {
+    var updatedMetrics = metrics;
+    
+    // Calculate hierarchy balance
+    var expectedShellSize = cluster.size: real / (metrics.coreNumber + 1): real;
+    var sizeVariance = 0.0;
+    
+    for i in 0..metrics.coreNumber {
+        var diff = shellMembers[i].size: real - expectedShellSize;
+        sizeVariance += diff * diff;
+    }
+    
+    updatedMetrics.hierarchyBalance = 1.0 - sqrt(sizeVariance) / cluster.size;
+    
+    return updatedMetrics;
+}
+
+/* Stability metrics calculation */
+proc calculateStabilityMetrics(metrics: coreMetrics,
+                                     ref cluster: set(int),
+                                     vertexShells: [] int,
+                                     shellMembers: [] set(int)) throws {
+    var updatedMetrics = metrics;
+    const SAMPLE_SIZE = min(cluster.size, 100);
+    
+    // Estimate core stability through random vertex removal
+    var stabilityScore = 0.0;
+    var trials = 10;
+    
+    for t in 1..trials {
+        var modifiedCluster = cluster;
+        var removedVertices = sampleVertices(cluster, SAMPLE_SIZE);
+        modifiedCluster -= removedVertices;
+        
+        var newMetrics = calculateCoreNumbers(modifiedCluster);
+        stabilityScore += newMetrics.coreNumber: real / metrics.coreNumber: real;
+    }
+    
+    updatedMetrics.coreStability = stabilityScore / trials;
+    
+    // Calculate core persistence and overlap
+    for k in 0..min(10, metrics.coreNumber) {
+        var kCore = getKCore(cluster, k, vertexShells);
+        var nextKCore = getKCore(cluster, k+1, vertexShells);
+        
+        // Persistence: ratio of vertices remaining in higher cores
+        updatedMetrics.corePersistence[k] = if kCore.size > 0 then
+                                          nextKCore.size: real / kCore.size: real
+                                          else 0.0;
+        
+        // Overlap: Jaccard similarity between consecutive cores
+        var intersection = kCore & nextKCore;
+        var unions = kCore | nextKCore;
+        updatedMetrics.coreOverlap[k] = if unions.size > 0 then
+                                       intersection.size: real / unions.size: real
+                                       else 0.0;
+    }
+    
+    return updatedMetrics;
+}
+
+/* Quality metrics calculation */
+proc calculateQualityMetrics(metrics: coreMetrics,
+                                   ref cluster: set(int),
+                                   vertexShells: [] int,
+                                   shellMembers: [] set(int)) throws {
+    var updatedMetrics = metrics;
+    var maxShell = metrics.coreNumber;
+    var coreVertices = shellMembers[maxShell];
+    
+    // Calculate core cohesion (internal connectivity)
+    if coreVertices.size > 1 {
+        var cohesionMetrics = calculateInternalDensity(coreVertices);
+        updatedMetrics.coreCohesion = cohesionMetrics.density;
+    }
+    
+    // Calculate core separation (external connectivity)
+    var internalEdges = 0;
+    var externalEdges = 0;
+    
+    forall v in coreVertices with (+ reduce internalEdges,
+                                 + reduce externalEdges) {
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        for u in neighbors {
+            if coreVertices.contains(u) {
+                internalEdges += 1;
+            } else {
+                externalEdges += 1;
+            }
+        }
+    }
+    
+    internalEdges /= 2;  // Each internal edge counted twice
+    
+    updatedMetrics.coreSeparation = if (internalEdges + externalEdges) > 0 then
+                                   internalEdges: real / (internalEdges + externalEdges): real
+                                   else 0.0;
+    
+    // Calculate core compactness
+    var maxPossibleEdges = (coreVertices.size * (coreVertices.size - 1)) / 2;
+    updatedMetrics.coreCompactness = if maxPossibleEdges > 0 then
+                                    internalEdges: real / maxPossibleEdges: real
+                                    else 0.0;
+    
+    return updatedMetrics;
+}
+
+/* Helper functions */
+proc countCrossEdges(ref set1: set(int), ref set2: set(int)) {
+    var count = 0;
+    forall v in set1 with (+ reduce count) {
+        count += (neighborsSetGraphG1[v] & set2).size;
+    }
+    return count;
+}
+
+proc getKCore(ref cluster: set(int), k: int, vertexShells: [] int) {
+    var kCore: set(int);
+    for v in cluster {
+        if vertexShells[v] >= k {
+            kCore.add(v);
+        }
+    }
+    return kCore;
+}
+/* Helper function for core-periphery score calculation */
+proc calculateCorePeripheryScore(vertexShells: [] int, maxShell: int, ref cluster: set(int)) throws {
+    if maxShell == 0 then return 0.0;
+    
+    var score = 0.0;
+    var totalPairs = 0;
+    
+    // Calculate score based on shell differences between connected vertices
+    forall v in cluster with (+ reduce score, + reduce totalPairs) {
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        for u in neighbors {
+            var shellDiff = abs(vertexShells[v] - vertexShells[u]);
+            score += shellDiff: real / maxShell: real;
+            totalPairs += 1;
+        }
+    }
+    
+    return if totalPairs > 0 then score / totalPairs else 0.0;
+}
+
+/* Helper function for core-degree correlation calculation */
+proc calculateCoreDegreeCorrelation(vertexShells: [] int, ref cluster: set(int)) throws {
+    var sumX = 0.0, sumY = 0.0, sumXY = 0.0, sumX2 = 0.0, sumY2 = 0.0;
+    var n = cluster.size;
+    
+    forall v in cluster with (
+        + reduce sumX, 
+        + reduce sumY, 
+        + reduce sumXY, 
+        + reduce sumX2, 
+        + reduce sumY2
+    ) {
+        var degree = (neighborsSetGraphG1[v] & cluster).size;
+        var shell = vertexShells[v];
+        
+        sumX += degree;
+        sumY += shell;
+        sumXY += degree * shell;
+        sumX2 += degree * degree;
+        sumY2 += shell * shell;
+    }
+    
+    var numerator = n * sumXY - sumX * sumY;
+    var denominator = sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+    
+    return if denominator != 0.0 then numerator / denominator else 0.0;
+}
+
+/* Initialize empty core metrics */
+proc initializeEmptyCoremetrics() {
+    var metrics: coreMetrics;
+    metrics.coreNumber = 0;
+    metrics.coreDensity = 0.0;
+    metrics.coreSize = 0;
+    metrics.corePeripheryScore = 0.0;
+    metrics.shellDecomposition = 0;
+    metrics.maxCoreSize = 0;
+    metrics.coreDegreeCorrelation = 0.0;
+    metrics.coreHierarchyDepth = 0;
+    return metrics;
+}
+
+
+/* Helper functions for interpretation */
+proc interpretCommunityStrength(strength: real) {
+    if strength > 0.8 then return "Excellent";
+    else if strength > 0.6 then return "Good";
+    else if strength > 0.4 then return "Moderate";
+    else if strength > 0.2 then return "Weak";
+    else return "Very Weak";
+}
+
+proc interpretMixingTime(mixingTime: int, clusterSize: int) {
+    var logSize = log2(clusterSize: real);
+    if mixingTime < logSize then return "Very Fast";
+    else if mixingTime < 1.5 * logSize then return "Fast";
+    else if mixingTime < 2 * logSize then return "Moderate";
+    else return "Slow";
+}
+
+proc interpretPartitionResistance(resistance: real) {
+    if resistance > 0.8 then return "Very Stable";
+    else if resistance > 0.6 then return "Stable";
+    else if resistance > 0.4 then return "Moderately Stable";
+    else return "Unstable";
+}
+proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) throws {
+    writeln("\n=================== Cluster Analysis (Size: ", clusterSize, ") ===================");
+    
+    writeln("\n1. Basic Connectivity Metrics:");
+    writeln("   - Minimum Degree: ", metrics.connectivity.minDegree);
+    writeln("   - Maximum Degree: ", metrics.connectivity.maxDegree);
+    writeln("   - Average Degree: ", metrics.connectivity.avgDegree);
+    //writeln("   - Edge Connectivity Lower Bound: ", metrics.connectivity.edgeConnectivityLowerBound);
+    writeln("*/*/ (Mader's Theorem and Its Implications ): Cluster has a ", metrics.connectivity.edgeConnectivityLowerBound, "-edge-connected subgraph. in the best case!");
+    writeln("   Advanced Connectivity:");
+    writeln("   - Degree Variance: ", metrics.connectivity.degreeVariance);
+    writeln("   - Degree Skewness: ", metrics.connectivity.degreeSkewness);
+    writeln("   - Assortativity: ", metrics.connectivity.assortativity);
+    writeln("   - Effective Diameter: ", metrics.connectivity.effectiveDiameter);
+    writeln("   - Average Betweenness: ", metrics.connectivity.avgBetweenness);
+    writeln("   - Maximum Betweenness: ", metrics.connectivity.maxBetweenness);
+    
+    writeln("\n2. Density Metrics:");
+    writeln("   Basic Density:");
+    writeln("   - Internal Density: ", metrics.density.density);
+    writeln("   - Sparsity: ", metrics.density.sparsity);
+    writeln("   - Internal Edges: ", metrics.density.internalEdges);
+    writeln("   - Maximum Possible Edges: ", metrics.density.maxPossibleEdges);
+    writeln("   Advanced Density:");
+    writeln("   - Triangle Count: ", metrics.density.triangleCount);
+    writeln("   - Global Clustering Coefficient: ", metrics.density.globalClusteringCoeff);
+    writeln("   - Average Local Clustering: ", metrics.density.avgLocalClusteringCoeff);
+    writeln("   - Edge Density Distribution: ", metrics.density.edgeDensityDistribution);
+    writeln("   - Local Density Variance: ", metrics.density.localDensityVariance);
+    writeln("   - Density Correlation: ", metrics.density.densityCorrelation);
+    
+    writeln("\n3. Conductance Metrics:");
+    writeln("   - Conductance: ", metrics.conductanceData[0]);
+    writeln("   - External Edges: ", metrics.conductanceData[1]);
+    
+    writeln("\n4. Spectral Properties:");
+    writeln("   Basic Spectral:");
+    writeln("   - λ2 lower bound: ", metrics.spectral.lambda2Lower);
+    writeln("   - λ2 upper bound: ", metrics.spectral.lambda2Upper);
+    writeln("   - λ2 estimate: ", metrics.spectral.lambda2Estimate);
+    writeln("   Advanced Spectral:");
+    writeln("   - Normalized λ2 bounds: [", metrics.spectral.normalizedLambda2Lower, 
+            ", ", metrics.spectral.normalizedLambda2Upper, "]");
+    writeln("   - Spectral Gap: ", metrics.spectral.spectralGap);
+    writeln("   - Community Strength: ", metrics.spectral.communityStrength);
+    writeln("   - Partition Resistance: ", metrics.spectral.partitionResistance);
+    writeln("   - Mixing Time: ", metrics.spectral.mixingTime);
+    writeln("   - Sub-community Likelihood: ", metrics.spectral.subcommunityLikelihood);
+    writeln("   - Spectral Radius: ", metrics.spectral.spectralRadius);
+    writeln("   - Energy Radius: ", metrics.spectral.energyRadius);
+    writeln("   - Spectral Variance: ", metrics.spectral.spectralVariance);
+    
+    writeln("\n5. Core Structure:");
+    writeln("   Basic Core:");
+    writeln("   - k-core number: ", metrics.core.coreNumber);
+    writeln("   - Core density: ", metrics.core.coreDensity);
+    writeln("   - Core size: ", metrics.core.coreSize);
+    writeln("   Advanced Core:");
+    writeln("   - Core-Periphery Score: ", metrics.core.corePeripheryScore);
+    writeln("   - Max Core Size: ", metrics.core.maxCoreSize);
+    writeln("   - Core-Degree Correlation: ", metrics.core.coreDegreeCorrelation);
+    writeln("   - Core Hierarchy Depth: ", metrics.core.coreHierarchyDepth);
+    
+    writeln("\n6. Flow and Boundary Properties:");
+    writeln("   Basic Flow:");
+    writeln("   - Edge boundary size: ", metrics.flow.edgeBoundarySize);
+    writeln("   - Normalized boundary: ", metrics.flow.normalizedBoundarySize);
+    writeln("   - Minimum cut estimate: ", metrics.flow.minCutEstimate);
+    writeln("   Advanced Flow:");
+    writeln("   - Edge Expansion: ", metrics.flow.edgeExpansion);
+    writeln("   - Vertex Expansion: ", metrics.flow.vertexExpansion);
+    writeln("   - Bottleneck Score: ", metrics.flow.bottleneckScore);
+    writeln("   - Flow Centrality: ", metrics.flow.flowCentrality);
+    writeln("   - Max Flow-Min Cut: ", metrics.flow.maxFlowMinCut);
+    
+    writeln("\n7. Robustness Properties:");
+    writeln("   Basic Robustness:");
+    writeln("   - Estimated diameter: ", metrics.robustness.estimatedDiameter);
+    writeln("   - Average path length: ", metrics.robustness.avgPathLength);
+    writeln("   - Robustness score: ", metrics.robustness.robustnessScore);
+    writeln("   Advanced Robustness:");
+    writeln("   - Local Efficiency: ", metrics.robustness.localEfficiency);
+    writeln("   - Global Efficiency: ", metrics.robustness.globalEfficiency);
+    writeln("   - Vulnerability Score: ", metrics.robustness.vulnerabilityScore);
+    writeln("   - Edge Vulnerability: ", metrics.robustness.edgeVulnerability);
+    writeln("   - Redundancy: ", metrics.robustness.redundancy);
+    writeln("   - Percolation Threshold: ", metrics.robustness.percolationThreshold);
+
+    writeln("\nComprehensive Quality Assessment:");
+    // 1. Connectivity Assessment
+    writeln("\n1. Connectivity Quality:");
+    if metrics.connectivity.minDegree == 0 {
+        writeln("   ! Critical: Cluster contains isolated vertices");
+    } else if metrics.connectivity.assortativity > 0.3 {
+        writeln("   + Strong degree correlation (well-mixed connectivity)");
+    }
+    if metrics.connectivity.degreeVariance > metrics.connectivity.avgDegree * 2 {
+        writeln("   ! High degree heterogeneity detected");
+    }
+
+    // 2. Density Assessment
+    writeln("\n2. Density Quality:");
+    if metrics.density.density > 0.7 {
+        writeln("   + Excellent density (>70% of possible edges)");
+    } else if metrics.density.density > 0.5 {
+        writeln("   + Good density (>50% of possible edges)");
+    } else if metrics.density.density < 0.1 {
+        writeln("   ! Very sparse structure (<10% of possible edges)");
+    }
+    if metrics.density.globalClusteringCoeff > 0.6 {
+        writeln("   + Strong local clustering");
+    }
+
+    // 3. Structural Assessment
+    writeln("\n3. Structural Quality:");
+    if metrics.conductanceData[0] < 0.1 {
+        writeln("   + Excellent cluster separation");
+    } else if metrics.conductanceData[0] > 0.7 {
+        writeln("   ! Poor cluster separation");
+    }
+    if metrics.core.coreNumber == 0 {
+        writeln("   ! Critical: Disconnected structure");
+    } else if metrics.core.corePeripheryScore > 0.8 {
+        writeln("   + Strong core-periphery structure");
+    }
+
+    // 4. Spectral Assessment
+    writeln("\n4. Spectral Quality:");
+    if metrics.spectral.lambda2Estimate < 0.01 {
+        writeln("   ! Critical: Very weak connectivity");
+    } else if metrics.spectral.lambda2Estimate >= 1.0 {
+        writeln("   + Strong algebraic connectivity");
+    }
+// Add detailed spectral analysis
+writeln("\n   Spectral Structure Analysis:");
+// Community structure assessment
+if metrics.spectral.spectralGap > 0.5 {
+    writeln("   + Very strong community structure (gap > 0.5)");
+} else if metrics.spectral.spectralGap > 0.1 {
+    writeln("   + Moderate community structure (gap > 0.1)");
+} else {
+    writeln("   ! Weak community structure, possible sub-communities");
+}
+
+// Partition resistance assessment
+if metrics.spectral.partitionResistance > 0.8 {
+    writeln("   + High resistance to partitioning");
+} else if metrics.spectral.partitionResistance < 0.2 {
+    writeln("   ! Low resistance, easily partitionable");
+}
+
+// Information flow assessment
+if metrics.spectral.mixingTime < log2(clusterSize: real) {
+    writeln("   + Fast information spread (efficient mixing)");
+} else if metrics.spectral.mixingTime > 2 * log2(clusterSize: real) {
+    writeln("   ! Slow information spread (poor mixing)");
+}
+
+// Sub-community assessment
+if metrics.spectral.subcommunityLikelihood > 0.7 {
+    writeln("   ! High likelihood of sub-communities");
+} else if metrics.spectral.subcommunityLikelihood < 0.3 {
+    writeln("   + Unified community structure");
+}
+
+// Community strength assessment
+writeln("\n   Community Cohesion Analysis:");
+writeln("   - Strength Score: ", (metrics.spectral.communityStrength * 100.0):int / 100.0, 
+        " (", interpretCommunityStrength(metrics.spectral.communityStrength), ")");
+writeln("   - Internal Communication Speed: ", 
+        interpretMixingTime(metrics.spectral.mixingTime, clusterSize));
+writeln("   - Structural Stability: ", 
+        interpretPartitionResistance(metrics.spectral.partitionResistance));
+
+    // 5. Flow Assessment
+    writeln("\n5. Flow Quality:");
+    if metrics.flow.bottleneckScore < 0.1 {
+        writeln("   ! Significant bottleneck detected");
+    }
+    if metrics.flow.edgeExpansion > 0.5 {
+        writeln("   + Good expansion properties");
+    }
+
+    // 6. Robustness Assessment
+    writeln("\n6. Robustness Quality:");
+    if metrics.robustness.vulnerabilityScore > 0.7 {
+        writeln("   ! High vulnerability to node removal");
+    }
+    if metrics.robustness.localEfficiency > 0.8 {
+        writeln("   + Excellent local efficiency");
+    }
+
+    // Overall Quality Score
+    writeln("\nOverall Cluster Quality Score:");
+    var qualityIssues = 0;
+    // Connectivity Issues
+    if metrics.connectivity.minDegree == 0 || metrics.connectivity.avgDegree < 2 then qualityIssues += 1;
+    // Density Issues
+    if metrics.density.density < 0.3 then qualityIssues += 1;
+    // Structural Issues
+    if metrics.conductanceData[0] > 0.5 || metrics.core.coreNumber < 2 then qualityIssues += 1;
+    // Spectral Issues
+    if metrics.spectral.lambda2Estimate < 0.1 then qualityIssues += 1;
+    if (metrics.spectral.communityStrength < 0.3 || 
+      metrics.spectral.partitionResistance < 0.2 || 
+      metrics.spectral.subcommunityLikelihood > 0.8) {
+      qualityIssues += 1;
+    }
+    // Flow Issues
+    if metrics.flow.bottleneckScore < 0.1 then qualityIssues += 1;
+    // Robustness Issues
+    if metrics.robustness.vulnerabilityScore > 0.7 then qualityIssues += 1;
+
+    if qualityIssues == 0 {
+        writeln("✓ Excellent: High-quality cluster with strong connectivity and robustness");
+    } else if qualityIssues == 1 {
+        writeln("○ Good: Well-formed cluster with minor issues");
+    } else if qualityIssues == 2 {
+        writeln("△ Fair: Cluster has some structural weaknesses");
+    } else {
+        writeln("! Poor: Cluster has significant structural issues");
+    }
+    
+    writeln("\n================================================================\n");
+}
+
+
+/* Record for storing evaluation results */
+record clusterEvaluation {
+   var isValid: bool;
+   var qualityScore: real;
+   var violations: int;
+}
+
+/* Calculate both bounds from the paper's inequality */
+proc calculateBounds(ref cluster: set(int)) throws {
+   writeln("\n================== Calculating Bounds for Cluster ====================");
+   writeln("Cluster size: ", cluster.size);
+   
+   var bounds: (real, real);
+   const clusterDomain: domain(int, parSafe=true) = cluster.toArray();
+   var externalCutArray: [clusterDomain]int;
+
+   if cluster.size == 0 {
+       writeln("Empty cluster detected, returning (0.0, 0.0)");
+       return (0.0, 0.0);
+   }
+   
+   // Calculate external cut size
+   forall v in cluster with(ref externalCutArray) {
+       var neighbors = neighborsSetGraphG1[v];
+       var outEdge = neighbors - cluster;
+       externalCutArray[v] = outEdge.size;
+   }
+   var externalCut = + reduce externalCutArray;
+   writeln("External cut size: ", externalCut);
+
+   // Left bound calculation
+   var leftBound = 0.0;
+   if g1.n_vertices == cluster.size {
+    writeln(" The cluster is the size of graph! we can say there is no cluster");
+    
+   } else {
+    var leftBound: real = externalCut / (g1.n_vertices - cluster.size): real;
+   }
+
+   writeln("Left bound: ", leftBound);
+
+   // Right bound calculation using N-I
+   var (minCutValue, cuts) = findAllMinCutsNI(cluster, neighborsSetGraphG1);
+   writeln("Minimum cut value: ", minCutValue);
+   
+   var minPartitionSize = max(int);
+   for (cutSet, _) in cuts {
+       minPartitionSize = min(minPartitionSize, min(cutSet.size, cluster.size - cutSet.size));
+   }
+   
+   var rightBound = if minPartitionSize > 0 then minCutValue / minPartitionSize: real else 0.0;
+   writeln("Right bound: ", rightBound);
+
+   bounds = (leftBound, rightBound);
+   return bounds;
+}
+
+
+/* Find valid alpha ranges for all clusters */
+proc findAlphaRanges(ref clusters: map(int, set(int))) throws {
+   writeln("\n=== Finding Alpha Ranges ===");
+
+   var clustersDomain: domain(int) = clusters.keysToArray();
+   var allRanges: [clustersDomain] (real, real);
+   
+   forall clusterId in clustersDomain {
+       writeln("\nProcessing cluster ", clusterId);
+       allRanges[clusterId] = calculateBounds(clusters[clusterId]);
+       writeln("Range for cluster ", clusterId, ": ", allRanges[clusterId]);
+   }
+
+   return allRanges;
+}
+
+/* Find overall valid alpha range */
+proc findValidAlphaRange(ref ranges: [] (real, real)) {
+   writeln("\n=== Finding Valid Alpha Range ===");
+   var maxLower = max reduce [r in ranges] r(1);
+   var minUpper = min reduce [r in ranges] r(2);
+   writeln("Max lower bound: ", maxLower);
+   writeln("Min upper bound: ", minUpper);
+   return (maxLower, minUpper);
+}
+
+/* Evaluate single cluster */
+proc evaluateCluster(ref cluster: set(int), alpha: real) throws {
+   writeln("\n=== Evaluating Cluster ===");
+   writeln("Using alpha: ", alpha);
+   
+   var evaluation: clusterEvaluation;
+   var (leftBound, rightBound) = calculateBounds(cluster);
+   
+   evaluation.isValid = leftBound <= alpha && alpha <= rightBound;
+   evaluation.qualityScore = if rightBound > 0 then (rightBound - leftBound) / rightBound else 0.0;
+   
+   // Count violations of community property
+   evaluation.violations = 0;
+   for v in cluster {
+       var internalNeigh = neighborsSetGraphG1[v] & cluster;
+       var internal = internalNeigh.size;
+       var external = neighborsSetGraphG1[v].size - internal;
+       if external >= internal {
+           evaluation.violations += 1;
+           writeln("Violation at node ", v);
+       }
+   }
+   
+   writeln("Evaluation results:");
+   writeln("- Valid: ", evaluation.isValid);
+   writeln("- Quality score: ", evaluation.qualityScore);
+   writeln("- Violations: ", evaluation.violations);
+   
+   return evaluation;
+}
+
+/* Find best alpha value */
+proc findBestAlpha(ref clusters: [] set(int), alphaRange: (real, real), steps: int = 10) throws {
+   writeln("\n=== Finding Best Alpha ===");
+   writeln("Alpha range: ", alphaRange);
+   writeln("Number of steps: ", steps);
+   
+   var (minAlpha, maxAlpha) = alphaRange;
+   if maxAlpha <= minAlpha {
+       writeln("Invalid range detected, returning minAlpha");
+       return minAlpha;
+   }
+   
+   var step = (maxAlpha - minAlpha) / steps;
+   var bestAlpha = minAlpha;
+   var bestScore = 0.0;
+   
+   for i in 0..steps {
+       var currentAlpha = minAlpha + i * step;
+       writeln("\nTesting alpha = ", currentAlpha);
+       
+       var validClusters = 0;
+       var totalViolations = 0;
+       
+       forall c in clusters with (+ reduce validClusters, + reduce totalViolations) {
+           var eval = evaluateCluster(c, currentAlpha);
+           if eval.isValid then validClusters += 1;
+           totalViolations += eval.violations;
+       }
+       
+       var score = validClusters: real / clusters.size - 
+                  (totalViolations: real / (g1.n_vertices * clusters.size));
+       writeln("Score for alpha ", currentAlpha, ": ", score);
+       
+       if score > bestScore {
+           bestScore = score;
+           bestAlpha = currentAlpha;
+           writeln("New best alpha found: ", bestAlpha);
+       }
+   }
+   
+   writeln("\nBest alpha found: ", bestAlpha);
+   writeln("Best score: ", bestScore);
+   return bestAlpha;
+}
+
+/* Main evaluation function */
+proc evaluateClustering(ref clusters: [] set(int)) throws {
+   writeln("\n====== Starting Clustering Evaluation ======");
+   writeln("Number of clusters: ", clusters.size);
+   writeln("Total graph vertices: ", g1.n_vertices);
+   
+   
+   writeln("\n=== Phase 1: Finding Alpha Ranges ===");
+   var ranges = findAlphaRanges(clusters);
+   
+   writeln("\n=== Phase 2: Finding Valid Alpha Range ===");
+   var alphaRange = findValidAlphaRange(ranges);
+   
+   writeln("\n=== Phase 3: Finding Best Alpha ===");
+   var bestAlpha = findBestAlpha(clusters, alphaRange);
+   
+   writeln("\n=== Phase 4: Final Evaluation ===");
+   var results: [clusters.domain] clusterEvaluation;
+   forall i in clusters.domain {
+       writeln("\nEvaluating cluster ", i);
+       results[i] = evaluateCluster(clusters[i], bestAlpha);
+   }
+   
+   writeln("\n====== Evaluation Complete ======");
+   
+   return (bestAlpha, results);
+}
+
+
 
     /* Function to calculate the conductance of a cluster */
     proc calculateConductance(ref cluster: set(int)) throws {
@@ -459,9 +2653,6 @@ module WellConnectedComponents {
       // Iterate through all vertices to calculate volumes, cutSize, and total graph volume
       for v in cluster {
         var neighbors = neighborsSetGraphG1[v];
-        if v== 37 || v == 38 {
-          writeln("neighbors ",v," are: ", neighbors);
-        }
         volumeCluster += neighbors.size;
         var outEdge = neighbors - cluster;
         //writeln("outEdge: ", outEdge);
@@ -494,38 +2685,38 @@ module WellConnectedComponents {
         conductance = SumOutEdges / denom: real;
       else
         conductance = 0.0;
-      var output: [0..4] real;
+      var output: [0..2] real;
       output[0] = conductance;
       output[1] = SumOutEdges;
-      output[2] = minDegreeCluster;
-      output[3] = meanDegreeCluster;
+      // output[2] = minDegreeCluster;
+      // output[3] = meanDegreeCluster;
       //output[0] = conductance;
-      writeln("conductance: ", conductance);
+      // writeln("conductance: ", conductance);
       if conductance == 0 then writeln("This cluster seems to be far from other clusters (outlier cluster)!!"); 
 
       // writeln("volumeCluster: ", volumeCluster);
       // writeln("volumeComplement: ", volumeComplement);
       // Output intermediate calculations for verification
-      writeln(cutSizePrevios, " <= Est. of Previos cutsize ");
+      // writeln(cutSizePrevios, " <= Est. of Previos cutsize ");
       // writeln("Cluster SumOutEdges : ", SumOutEdges);
-      writeln("Cluster Mean degree: ",meanDegreeCluster );
-      writeln("Based on Mader's theorem for sure we have a ",((meanDegreeCluster+2)/2):int,"-edge-connected subgraph. (a lower bound)" );
-      writeln("Based on Iequlaity. MinCut <= ", minDegreeCluster);
-      // Calculate lower and upper bounds of lambda2
-      var lambda2_lower = (conductance * conductance) / 2;
-      var lambda2_upper = 2 * conductance;
-      writeln("Based on Cheeger's Inequalit: ",lambda2_lower," <= λ2 <= ", lambda2_upper);
-      writeln("λ2 Midpoint Approximation: ",(lambda2_lower + lambda2_upper)/2 );
-      writeln("My metric: ",2 * conductance/(lambda2_lower + lambda2_upper) );
+      // writeln("Cluster Mean degree: ",meanDegreeCluster );
+      // writeln("Based on Mader's theorem for sure we have a ",((meanDegreeCluster+2)/2):int,"-edge-connected subgraph. (a lower bound)" );
+      // writeln("Based on Iequlaity. MinCut <= ", minDegreeCluster);
+      // // Calculate lower and upper bounds of lambda2
+      // var lambda2_lower = (conductance * conductance) / 2;
+      // var lambda2_upper = 2 * conductance;
+      // writeln("Based on Cheeger's Inequalit: ",lambda2_lower," <= λ2 <= ", lambda2_upper);
+      // writeln("λ2 Midpoint Approximation: ",(lambda2_lower + lambda2_upper)/2 );
+      // writeln("My metric: ",2 * conductance/(lambda2_lower + lambda2_upper) );
       //alpha*lambda2_lower + (1-alpha)* lambda2_upper
 
  
-      writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*");
-      writeln("λ2 == 0    --> Cluster is disconnected!");
-      writeln("λ2 near 0  --> Cluster is weakly connected, and for sure there is 2 subcluster in it.");
-      writeln("0 << λ2 < 1 --> Cluster is reasonably well-connected structure, with some potential for partitioning.");
-      writeln("λ2 >= 1    --> Cluster has strong connectivity and robustness");
-      writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*\n");
+      // writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*");
+      // writeln("λ2 == 0    --> Cluster is disconnected!");
+      // writeln("λ2 near 0  --> Cluster is weakly connected, and for sure there is 2 subcluster in it.");
+      // writeln("0 << λ2 < 1 --> Cluster is reasonably well-connected structure, with some potential for partitioning.");
+      // writeln("λ2 >= 1    --> Cluster has strong connectivity and robustness");
+      // writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*\n");
 
       return output;
     }// end of calculateConductance
@@ -729,773 +2920,1337 @@ module WellConnectedComponents {
 
         return (minCutValue, minCutSet, minCutEdges);
     }
-/////////////////////////////////////////Nagamochi-Ibaraki Algorithm//////////////////////////
-/* Graph representation using optimized data structures for shared memory */
-record Graph {
-    var numVertices: int;
-    var vertexDomain: domain(1);
-    var edgeDomain: domain(2*int);  // Stores edges as (v1,v2) where v1 < v2
-    var adjList: [vertexDomain] list(int);  // Adjacency lists using Chapel lists
-    var degree: [vertexDomain] int;         // Track degree of each vertex
-
-    /* Initialize a graph with n vertices */
-    proc init(n: int) {
-        this.numVertices = n;
-        this.vertexDomain = {1..n};
-        // Note: edgeDomain starts empty and grows as edges are added
-    }
-
-    /* Add an undirected edge between vertices v1 and v2 */
-    proc addEdge(v1: int, v2: int) {
-        if v1 == v2 then return;  // No self-loops
+    /////////////////////////////////////////Nagamochi-Ibaraki Algorithm//////////////////////////
+    /* Performs maximum adjacency search to find an ordering of vertices.
+      Takes a graph represented by vertices and adjacency lists, and a starting vertex.
+      Returns a tuple containing:
+      1. The vertex ordering (important for finding minimum cuts)
+      2. A parent map showing how vertices are connected in the resulting forest
+      
+      Key operations:
+      - Computes and maintains attachment numbers for vertices
+      - Selects vertices based on maximum attachment numbers
+      - Builds a forest structure through parent relationships
+      
+      Parameters:
+      - vertices: set of all vertices in the graph
+      - adj: map of adjacency lists for each vertex
+      - weights: map of edge weights (tuple of vertices -> weight)
+      - startVertex: the vertex to start the search from
+    */
+    proc scanningPhase(
+        ref vertices: set(int),
+        //ref adj: map(int, set(int)),
+        ref weights: map((int, int), int),
+        startVertex: int
+    ): (list(int), map(int, int)) throws {
+        writeln("\n=== Starting scanning phase from vertex ", startVertex, " ===");
         
-        // Ensure v1 < v2 for consistent edge representation
-        var (minV, maxV) = if v1 < v2 then (v1, v2) else (v2, v1);
+        var ordering = new list(int);
+        var inS = new set(int);
+        var d = new map(int, int);  // attachment numbers
+        var parent = new map(int, int);
+
+        // Initialize attachment numbers
+        for v in vertices do d[v] = 0;
         
-        // Add to edge domain if not already present
-        if !edgeDomain.contains((minV, maxV)) {
-            edgeDomain += (minV, maxV);
-            adjList[minV].append(maxV);
-            adjList[maxV].append(minV);
-            degree[minV] += 1;
-            degree[maxV] += 1;
-        }
-    }
-
-    /* Check if edge exists between vertices v1 and v2 */
-    proc hasEdge(v1: int, v2: int): bool {
-        var (minV, maxV) = if v1 < v2 then (v1, v2) else (v2, v1);
-        return edgeDomain.contains((minV, maxV));
-    }
-
-    /* Get all neighbors of a vertex */
-    proc neighbors(v: int): list(int) {
-        return adjList[v];
-    }
-
-    /* Get number of edges */
-    proc numEdges(): int {
-        return edgeDomain.size;
-    }
-
-    /* Print graph statistics */
-    proc printStats() {
-        writeln("Graph Statistics:");
-        writeln("  Vertices: ", numVertices);
-        writeln("  Edges: ", numEdges());
-        writeln("  Maximum degree: ", max reduce degree);
-        writeln("  Average degree: ", (+ reduce degree):real / numVertices:real);
-    }
-}
-/* Cut representation for storing minimum cuts with ratio information */
-record Cut {
-    var vertices: domain(1);    // Vertices in the cut set
-    var edges: domain(2*int);   // Cut edges
-    var value: int;             // Cut value
-    var ratio: real;            // Ratio of smaller part to total vertices
-    var totalVertices: int;     // Total number of vertices in graph
-
-    /* Initialize an empty cut */
-    proc init(numVertices: int) {
-        this.value = 0;
-        this.ratio = 0.0;
-        this.totalVertices = numVertices;
-    }
-
-    /* Add a vertex to the cut set */
-    proc addVertex(v: int) {
-        vertices += v;
-        updateRatio();
-    }
-
-    /* Add an edge to the cut */
-    proc addEdge(v1: int, v2: int) {
-        var (minV, maxV) = if v1 < v2 then (v1, v2) else (v2, v1);
-        edges += (minV, maxV);
-        value += 1;  // For unweighted graphs
-    }
-
-    /* Update ratio after changes to vertex set */
-    proc updateRatio() {
-        var setSize = vertices.size;
-        var complementSize = totalVertices - setSize;
-        // Ratio is always the size of smaller set / total vertices
-        ratio = min(setSize:real / totalVertices:real, 
-                   complementSize:real / totalVertices:real);
-    }
-
-    /* Check if vertex is in cut set */
-    proc contains(v: int): bool {
-        return vertices.contains(v);
-    }
-
-    /* Get difference from target ratio */
-    proc getRatioDifference(targetRatio: real): real {
-        return abs(ratio - targetRatio);
-    }
-
-    /* Get the complement of current cut set */
-    proc getComplement(): domain(1) {
-        var complement: domain(1) = {1..totalVertices};
-        for v in vertices do
-            complement -= v;
-        return complement;
-    }
-
-    /* Print cut information */
-    proc printInfo() {
-        writeln("Cut Information:");
-        writeln("  Vertices in cut: ", vertices);
-        writeln("  Complement: ", getComplement());
-        writeln("  Cut value: ", value);
-        writeln("  Cut ratio: ", ratio);
-        writeln("  Cut edges: ", edges);
-    }
-}
-
-/* Container for storing multiple cuts with ratio considerations */
-record CutSet {
-    var cuts: list(Cut);
-    var minCutValue: int = max(int);
-    var targetRatio: real = -1.0;  // -1.0 means no target ratio
-    var bestRatioDiff: real = max(real);
-
-    /* Initialize cut set with optional target ratio */
-    proc init(ratio: real = -1.0) {
-        this.targetRatio = ratio;
-    }
-
-    /* Add a new cut considering both value and ratio */
-    proc addCut(newCut: Cut) {
-        if targetRatio < 0.0 {
-            // No target ratio, just consider cut value
-            if newCut.value < minCutValue {
-                minCutValue = newCut.value;
-                cuts.clear();
-                cuts.append(newCut);
-            } else if newCut.value == minCutValue {
-                cuts.append(newCut);
-            }
-        } else {
-            // Consider both cut value and ratio
-            var ratioDiff = newCut.getRatioDifference(targetRatio);
-            
-            if newCut.value < minCutValue {
-                // New minimum cut value, reset everything
-                minCutValue = newCut.value;
-                bestRatioDiff = ratioDiff;
-                cuts.clear();
-                cuts.append(newCut);
-            } else if newCut.value == minCutValue {
-                if abs(ratioDiff - bestRatioDiff) < 1e-10 {
-                    // Same cut value and ratio, add to list
-                    cuts.append(newCut);
-                } else if ratioDiff < bestRatioDiff {
-                    // Better ratio for same cut value
-                    bestRatioDiff = ratioDiff;
-                    cuts.clear();
-                    cuts.append(newCut);
-                }
-            }
-        }
-    }
-
-    /* Get the cuts closest to target ratio */
-    proc getBestRatioCuts(): list(Cut) {
-        if targetRatio < 0.0 || cuts.size <= 1 then
-            return cuts;
-
-        var bestCuts: list(Cut);
-        var bestDiff = max(real);
-
-        // Find best ratio among existing cuts
-        for cut in cuts {
-            var diff = cut.getRatioDifference(targetRatio);
-            if diff < bestDiff {
-                bestDiff = diff;
-                bestCuts.clear();
-                bestCuts.append(cut);
-            } else if abs(diff - bestDiff) < 1e-10 {
-                bestCuts.append(cut);
-            }
+        // Add start vertex
+        inS.add(startVertex);
+        ordering.pushBack(startVertex);
+        parent[startVertex] = -1;
+        
+        writeln("Initial attachment numbers for neighbors of ", startVertex, ":");
+        var neighs_startVertex = neighborsSetGraphG1[startVertex] & vertices;
+        //for neighbor in adj[startVertex] {
+        for neighbor in neighs_startVertex {
+            var edge = if startVertex < neighbor then (startVertex, neighbor) else (neighbor, startVertex);
+            d[neighbor] = weights[edge];
+            writeln("  d[", neighbor, "] = ", d[neighbor]);
         }
 
-        return bestCuts;
-    }
-
-    /* Get number of minimum cuts found */
-    proc size(): int {
-        return cuts.size;
-    }
-
-    /* Print all cuts with their ratios */
-    proc printCuts() {
-        writeln("Found ", cuts.size, " minimum cuts with value ", minCutValue);
-        if targetRatio >= 0.0 then
-            writeln("Target ratio: ", targetRatio, ", Best achieved difference: ", bestRatioDiff);
-        
-        for cut in cuts {
-            cut.printInfo();
-            writeln("---");
-        }
-    }
-}
-/* Performs maximum adjacency search to find an ordering of vertices.
-   Takes a graph represented by vertices and adjacency lists, and a starting vertex.
-   Returns a tuple containing:
-   1. The vertex ordering (important for finding minimum cuts)
-   2. A parent map showing how vertices are connected in the resulting forest
-   
-   Key operations:
-   - Computes and maintains attachment numbers for vertices
-   - Selects vertices based on maximum attachment numbers
-   - Builds a forest structure through parent relationships
-   
-   Parameters:
-   - vertices: set of all vertices in the graph
-   - adj: map of adjacency lists for each vertex
-   - weights: map of edge weights (tuple of vertices -> weight)
-   - startVertex: the vertex to start the search from
-*/
-proc scanningPhase(
-    const ref graph: Graph,    // Now using Graph record
-    startVertex: int
-): (list(int), [graph.vertexDomain] int) throws {
-    writeln("\n=== Starting scanning phase from vertex ", startVertex, " ===");
-    
-    var ordering = new list(int);
-    var inS: [graph.vertexDomain] bool = false;     // Using array instead of set
-    var d: [graph.vertexDomain] int = 0;            // Using array instead of map
-    var parent: [graph.vertexDomain] int = -1;      // Using array instead of map
-    
-    // Add start vertex
-    inS[startVertex] = true;
-    ordering.append(startVertex);
-    
-    writeln("Initial attachment numbers for neighbors of ", startVertex, ":");
-    for neighbor in graph.neighbors(startVertex) {
-        // In unweighted graph, all attachments start at 1
-        d[neighbor] = 1;
-        writeln("  d[", neighbor, "] = ", d[neighbor]);
-    }
-
-    while ordering.size < graph.numVertices {
-        var maxVertex = -1;
-        var maxD = -1;
-        
-        // Find vertex not in S with maximum attachment number
-        for v in graph.vertexDomain {
-            if !inS[v] && d[v] > maxD {
-                maxVertex = v;
-                maxD = d[v];
-            }
-        }
-        
-        if maxVertex == -1 {
-            for v in graph.vertexDomain {
-                if !inS[v] {
+        while inS.size < vertices.size {
+            var maxVertex = -1;
+            var maxD = -1;
+            for v in vertices {
+                if !inS.contains(v) && d[v] > maxD {
                     maxVertex = v;
-                    break;
+                    maxD = d[v];
                 }
             }
-        }
-        
-        writeln("Selected vertex ", maxVertex, " with attachment number ", d[maxVertex]);
-
-        // Find parent with maximum weight connection
-        var maxNeighbor = -1;
-        var maxWeight = -1;
-        for neighbor in graph.neighbors(maxVertex) {
-            if inS[neighbor] {
-                // In unweighted graph, all weights are 1
-                if maxNeighbor == -1 || d[neighbor] > maxWeight {
-                    maxWeight = d[neighbor];
-                    maxNeighbor = neighbor;
-                }
-            }
-        }
-        parent[maxVertex] = maxNeighbor;
-        writeln("Parent of ", maxVertex, " is ", maxNeighbor);
-
-        inS[maxVertex] = true;
-        ordering.append(maxVertex);
-
-        writeln("Updating attachment numbers:");
-        for neighbor in graph.neighbors(maxVertex) {
-            if !inS[neighbor] {
-                var oldD = d[neighbor];
-                d[neighbor] += 1;  // Unweighted graph
-                writeln("  d[", neighbor, "] updated from ", oldD, " to ", d[neighbor]);
-            }
-        }
-    }
-
-    writeln("Final ordering: ", ordering);
-    return (ordering, parent);
-}
-
-/* Builds a k-edge-connected certificate of the input graph.
-   This is a sparse subgraph that preserves all cuts up to size k.
-   
-   Key operations:
-   - Performs k scanning phases from different start vertices
-   - Combines the resulting forests into a certificate
-   - Preserves minimum cuts while potentially reducing graph density
-   
-   Parameters:
-   - vertices: set of all vertices in the graph
-   - adj: map of adjacency lists for each vertex
-   - weights: map of edge weights
-   - k: connectivity parameter (usually set to the minimum cut value)
-   
-   Returns:
-   - Tuple containing the certificate's adjacency lists and edge weights
-*/
-proc buildCertificate(
-    const ref graph: Graph,
-    k: int
-): Graph throws {
-    writeln("\n=== Building certificate with k = ", k, " ===");
-    
-    var certGraph = new Graph(graph.numVertices);
-    
-    writeln("Performing ", k, " scanning phases");
-    
-    for i in 1..k {
-        var startVertex = ((i - 1) % graph.numVertices) + 1;
-        writeln("\nPhase ", i, " starting from vertex ", startVertex);
-        
-        var (ordering, parent) = scanningPhase(graph, startVertex);
-
-        // Add forest edges to certificate
-        for v in graph.vertexDomain {
-            if parent[v] != -1 {
-                certGraph.addEdge(v, parent[v]);
-                writeln("Added edge ", v, " -- ", parent[v], " to certificate");
-            }
-        }
-    }
-
-    writeln("\nCertificate construction complete");
-    writeln("Certificate edges:");
-    for v in certGraph.vertexDomain {
-        writeln(v, " -> ", certGraph.neighbors(v));
-    }
-
-    return certGraph;
-}
-
-/* Finds all minimum cuts in an undirected graph using the Nagamochi-Ibaraki algorithm.
-   Optionally finds balanced minimum cuts if a balance ratio is provided.
-   
-   Key operations:
-   - Performs scanning phases from each vertex
-   - Identifies all minimum cuts and their cut edges
-   - If balance ratio provided, filters cuts based on partition sizes
-   - Handles complementary cuts appropriately
-   
-   Parameters:
-   - vertices: set of all vertices in the graph
-   - adj: map of adjacency lists for each vertex
-   - balanceRatio: (optional) desired ratio between partition sizes (0 to 1)
-   
-   Returns:
-   - Tuple containing:
-     1. Global minimum cut value
-     2. List of minimum cuts (each cut is a tuple of cut set and cut edges)
-*/
-proc findAllMinCutsNI(
-    const ref graph: Graph,
-    balanceRatio: real = -1.0
-): (int, CutSet) throws {
-    writeln("\n=== Starting Nagamochi-Ibaraki algorithm ===");
-    if balanceRatio > 0.0 then
-        writeln("Target balance ratio: ", balanceRatio);
-    
-    var cutSet = new CutSet(balanceRatio);
-    var globalMinValue = max(int);
-    
-    writeln("\nFinding minimum cuts:");
-    for startVertex in graph.vertexDomain {
-        var (ordering, _) = scanningPhase(graph, startVertex);
-        writeln("\nProcessing ordering: ", ordering);
-        
-        // Process all prefixes
-        var currentCut = new Cut(graph.numVertices);
-        
-        for idx in 0..(ordering.size - 2) {
-            var v = ordering[idx];
-            currentCut.addVertex(v);
             
-            // Calculate cut edges
-            var cutEdges = new set((int, int));
-            var cutWeight = 0;
-            for u in currentCut.vertices {
-                for neighbor in graph.neighbors(u) {
-                    if !currentCut.contains(neighbor) {
-                        var edge = if u < neighbor then (u, neighbor) else (neighbor, u);
-                        if !cutEdges.contains(edge) {
-                            cutEdges.add(edge);
-                            cutWeight += 1;  // Unweighted graph
-                        }
+            if maxVertex == -1 {
+                for v in vertices {
+                    if !inS.contains(v) {
+                        maxVertex = v;
+                        break;
                     }
                 }
             }
             
-            // Create new cut with the calculated values
-            var newCut = new Cut(graph.numVertices);
-            for v in currentCut.vertices do newCut.addVertex(v);
-            for e in cutEdges do newCut.addEdge(e[1], e[2]);
+            writeln("Selected vertex ", maxVertex, " with attachment number ", d[maxVertex]);
+
+            var maxNeighbor = -1;
+            var maxWeight = -1;
+            var neighs_maxVertex = neighborsSetGraphG1[maxVertex] & vertices;
             
-            writeln("Cut value for set ", newCut.vertices, " is ", cutWeight,
-                   " (ratio: ", newCut.ratio, ")");
-
-            // Update cuts based on minimum value and ratio
-            if cutWeight <= globalMinValue {
-                if cutWeight < globalMinValue {
-                    writeln("New minimum cut value found: ", cutWeight);
-                    globalMinValue = newCut.value;
-                    cutSet = new CutSet(balanceRatio);
+            //for neighbor in adj[maxVertex] {
+            for neighbor in neighs_maxVertex {
+                if inS.contains(neighbor) {
+                    var edge = if maxVertex < neighbor then (maxVertex, neighbor) else (neighbor, maxVertex);
+                    if weights[edge] > maxWeight {
+                        maxWeight = weights[edge];
+                        maxNeighbor = neighbor;
+                    }
                 }
-                cutSet.addCut(newCut);
-                writeln("Added cut: ", newCut.vertices, " with edges ", newCut.edges);
+            }
+            parent[maxVertex] = maxNeighbor;
+            writeln("Parent of ", maxVertex, " is ", maxNeighbor);
+
+            inS.add(maxVertex);
+            ordering.pushBack(maxVertex);
+
+            writeln("Updating attachment numbers:");
+            //for neighbor in adj[maxVertex] {
+            for neighbor in neighs_maxVertex {
+                if !inS.contains(neighbor) {
+                    var edge = if maxVertex < neighbor then (maxVertex, neighbor) else (neighbor, maxVertex);
+                    var oldD = d[neighbor];
+                    d[neighbor] += weights[edge];
+                    writeln("  d[", neighbor, "] updated from ", oldD, " to ", d[neighbor]);
+                }
+            }
+        }
+
+        writeln("Final ordering: ", ordering);
+        return (ordering, parent);
+    }
+    /* Builds a k-edge-connected certificate of the input graph.
+      This is a sparse subgraph that preserves all cuts up to size k.
+      
+      Key operations:
+      - Performs k scanning phases from different start vertices
+      - Combines the resulting forests into a certificate
+      - Preserves minimum cuts while potentially reducing graph density
+      
+      Parameters:
+      - vertices: set of all vertices in the graph
+      - adj: map of adjacency lists for each vertex
+      - weights: map of edge weights
+      - k: connectivity parameter (usually set to the minimum cut value)
+      
+      Returns:
+      - Tuple containing the certificate's adjacency lists and edge weights
+    */
+    proc buildCertificate(
+        ref vertices: set(int),
+        ref adj: map(int, set(int)),
+        ref weights: map((int, int), int),
+        k: int
+    ): (map(int, set(int)), map((int, int), int)) throws {
+        writeln("\n=== Building certificate with k = ", k, " ===");
+        
+        var newAdj = new map(int, set(int));
+        var newWeights = new map((int, int), int);
+
+        for v in vertices {
+            newAdj[v] = new set(int);
+        }
+
+        var startVertices = vertices.toArray();
+        var numVertices = vertices.size;
+        
+        writeln("Performing ", k, " scanning phases");
+        
+        for i in 1..k {
+            var startVertex = startVertices[(i - 1) % numVertices];
+            writeln("\nPhase ", i, " starting from vertex ", startVertex);
+            
+            var (ordering, parent) = scanningPhase(vertices, adj, weights, startVertex);
+
+            for (child, par) in zip(parent.keys(), parent.values()) {
+                if par != -1 {
+                    newAdj[child].add(par);
+                    newAdj[par].add(child);
+                    var edge = if child < par then (child, par) else (par, child);
+                    newWeights[edge] = weights[edge];
+                    writeln("Added edge ", child, " -- ", par, " to certificate");
+                }
+            }
+        }
+
+        writeln("\nCertificate construction complete");
+        writeln("Certificate edges:");
+        for v in newAdj.keys() {
+            writeln(v, " -> ", newAdj[v]);
+        }
+
+        return (newAdj, newWeights);
+    }
+
+    /* Finds all minimum cuts in an undirected graph using the Nagamochi-Ibaraki algorithm.
+      Optionally finds balanced minimum cuts if a balance ratio is provided.
+      
+      Key operations:
+      - Performs scanning phases from each vertex
+      - Identifies all minimum cuts and their cut edges
+      - If balance ratio provided, filters cuts based on partition sizes
+      - Handles complementary cuts appropriately
+      
+      Parameters:
+      - vertices: set of all vertices in the graph
+      - adj: map of adjacency lists for each vertex
+      - balanceRatio: (optional) desired ratio between partition sizes (0 to 1)
+      
+      Returns:
+      - Tuple containing:
+        1. Global minimum cut value
+        2. List of minimum cuts (each cut is a tuple of cut set and cut edges)
+    */
+    proc findAllMinCutsNI(
+        ref vertices: set(int),
+        //ref adj: map(int, set(int)),
+        balanceRatio: real = -1.0  // Optional parameter, -1.0 means no ratio filtering
+    ): (int, list((set(int), set((int, int))))) throws {
+        writeln("\n======================= Starting Nagamochi-Ibaraki algorithm =============================");
+        if balanceRatio > 0.0 then
+            writeln("Target balance ratio: ", balanceRatio);
+        
+        // Initialize weights
+        var weights = new map((int, int), int);
+        for v in vertices {
+            var neighs = neighborsSetGraphG1[v] & vertices;
+            for u in neighs {
+                if v < u {
+                    weights[(v, u)] = 1;
+                }
+            }
+        }
+
+        var globalMinValue = max(int);
+        // Modified to store tuple of (cutSet, cutEdges, ratio)
+        var allCuts = new list((set(int), set((int, int)), real));
+        
+        writeln("\nFinding minimum cuts:");
+        for startVertex in vertices {
+            var (ordering, _) = scanningPhase(vertices, weights, startVertex);
+            writeln("\nProcessing ordering: ", ordering);
+            
+            var S = new set(int);
+            for idx in 0..(ordering.size - 2) {
+                var v = ordering[idx];
+                S.add(v);
+                
+                // Calculate cut value and edges
+                var cutWeight = 0;
+                var cutEdges = new set((int, int));
+                for u in S {
+                    var neighbors_u = neighborsSetGraphG1[u] & vertices;
+                    for neighbor in neighbors_u {
+                        if !S.contains(neighbor) {
+                            var edge = if u < neighbor then (u, neighbor) else (neighbor, u);
+                            if !cutEdges.contains(edge) {
+                                cutEdges.add(edge);
+                                cutWeight += weights[edge];
+                            }
+                        }
+                    }
+                }
+                
+                // Calculate ratio during cut finding
+                var setSize = S.size: real;
+                var totalSize = vertices.size: real;
+                var actualRatio = min(setSize/totalSize, (totalSize-setSize)/totalSize);
+                
+                writeln("Cut value for set ", S, " is ", cutWeight, " (ratio: ", actualRatio, ")");
+
+                if cutWeight <= globalMinValue {
+                    if cutWeight < globalMinValue {
+                        writeln("New minimum cut value found: ", cutWeight);
+                        globalMinValue = cutWeight;
+                        allCuts.clear();
+                    }
+                    // Store the ratio with the cut
+                    allCuts.pushBack((S, cutEdges, actualRatio));
+                    writeln("Added cut: ", S, " with edges ", cutEdges);
+                    
+                    // Add complement with its ratio
+                    var complement = new set(int);
+                    for v in vertices do
+                        if !S.contains(v) then complement.add(v);
+                    
+                    if S != complement {
+                        allCuts.pushBack((complement, cutEdges, actualRatio));
+                        writeln("Added complement cut: ", complement, " with edges ", cutEdges);
+                    }
+                }
+            }
+        }
+
+        writeln("\nGlobal minimum cut value: ", globalMinValue);
+
+        // If balance ratio is specified, filter cuts
+        if balanceRatio > 0.0 {
+            writeln("\nFiltering cuts based on balance ratio ", balanceRatio);
+            var bestBalanceScore = max(real);
+            var balancedCuts = new list((set(int), set((int, int))));
+
+            // First pass: find best balance score
+            for (cutSet, cutEdges, ratio) in allCuts {
+                var balanceScore = abs(ratio - balanceRatio);
+                bestBalanceScore = min(bestBalanceScore, balanceScore);
+            }
+
+            // Second pass: keep cuts with best balance
+            for (cutSet, cutEdges, ratio) in allCuts {
+                var balanceScore = abs(ratio - balanceRatio);
+                if abs(balanceScore - bestBalanceScore) < 1e-10 {
+                    balancedCuts.pushBack((cutSet, cutEdges));
+                    writeln("Selected balanced cut: ", cutSet, " (ratio: ", ratio, ")");
+                }
+            }
+
+            writeln("\nFound ", balancedCuts.size, " balanced minimum cuts:");
+            for (cutSet, cutEdges) in balancedCuts {
+                writeln("Cut set: ", cutSet);
+                writeln("Cut edges: ", cutEdges);
+                writeln("---");
+            }
+            
+            return (globalMinValue, balancedCuts);
+        }
+
+        // If no ratio specified, return all cuts
+        var regularCuts = new list((set(int), set((int, int))));
+        for (cutSet, cutEdges, _) in allCuts {
+            regularCuts.pushBack((cutSet, cutEdges));
+        }
+
+        writeln("\nFound ", regularCuts.size, " minimum cuts:");
+        for (cutSet, cutEdges) in regularCuts {
+            writeln("Cut set: ", cutSet);
+            writeln("Cut edges: ", cutEdges);
+            writeln("---");
+        }
+
+        return (globalMinValue, regularCuts);
+    }
+    /* Comprehensive test suite for the Nagamochi-Ibaraki algorithm implementation.
+      Tests various graph types and algorithm features.
+    */
+    proc testNagamochiIbaraki() throws {
+        writeln("===================== Testing Nagamochi-Ibaraki Algorithm =====================\n");
+
+        // Test 1: Simple cycle graph (4 vertices)
+        {
+            writeln("===========Test 1: Simple cycle graph (4 vertices)");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..4 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Add edges for cycle: 1-2-3-4-1
+            adj[1].add(2); adj[2].add(1);
+            adj[2].add(3); adj[3].add(2);
+            adj[3].add(4); adj[4].add(3);
+            adj[4].add(1); adj[1].add(4);
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            // Test without ratio
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            writeln("\nResults for cycle graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 2");
+
+            // Test with different ratios
+            //var ratios = [0.5, 0.25, 0.75];
+            var ratios = [0.5];
+            for ratio in ratios {
+                writeln("\nTesting cycle graph with balance ratio: ", ratio);
+                var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, ratio);
+            }
+        }
+
+        // Test 2: Path graph (4 vertices)
+        {
+            writeln("===========Test 2: Path graph (4 vertices)");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..4 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Add edges for path: 1-2-3-4
+            adj[1].add(2); adj[2].add(1);
+            adj[2].add(3); adj[3].add(2);
+            adj[3].add(4); adj[4].add(3);
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            
+            writeln("\nResults for path graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 1\n");
+        }
+
+        // Test 3: Complete graph (4 vertices)
+        {
+            writeln("===========Test 3: Complete graph (4 vertices)");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..4 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Add all possible edges
+            for i in 1..4 {
+                for j in i+1..4 {
+                    adj[i].add(j);
+                    adj[j].add(i);
+                }
+            }
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            
+            writeln("\nResults for complete graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 3\n");
+        }
+
+        // Test 4: Star graph (center vertex 1, 4 vertices total)
+        {
+            writeln("===========Test 4: Star graph (4 vertices)");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..4 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Add edges from center (vertex 1) to all others
+            for i in 2..4 {
+                adj[1].add(i);
+                adj[i].add(1);
+            }
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            
+            writeln("\nResults for star graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 1\n");
+        }
+
+        // Test 5: Disconnected graph (two components)
+        {
+            writeln("===========Test 5: Disconnected graph (4 vertices, two components)");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..4 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Add edges: 1-2 and 3-4 (two separate components)
+            adj[1].add(2); adj[2].add(1);
+            adj[3].add(4); adj[4].add(3);
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            
+            writeln("\nResults for disconnected graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 0\n");
+        }
+    // Test 6: Bridge graph (new test)
+        {
+            writeln("\nTest 6: Bridge graph");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..6 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Add edges to create two triangles connected by a bridge
+            // Triangle 1: 1-2-3-1
+            adj[1].add(2); adj[2].add(1);
+            adj[2].add(3); adj[3].add(2);
+            adj[3].add(1); adj[1].add(3);
+            
+            // Triangle 2: 4-5-6-4
+            adj[4].add(5); adj[5].add(4);
+            adj[5].add(6); adj[6].add(5);
+            adj[6].add(4); adj[4].add(6);
+            
+            // Bridge: 3-4
+            adj[3].add(4); adj[4].add(3);
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            // Test without ratio
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            writeln("\nResults for bridge graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 1");  // Bridge should give min cut of 1
+
+            // Test with balanced ratio
+            var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, 0.5);
+            writeln("\nResults for bridge graph with balanced cuts (ratio 0.5):");
+            writeln("Minimum cut value: ", balancedMinCutValue);
+        }
+
+        // Test 7: Multiple bridges graph (new test)
+        {
+            writeln("\nTest 7: Multiple bridges graph");
+            
+            var vertices = new set(int);
+            var adj = new map(int, set(int));
+            
+            // Add vertices
+            for i in 1..8 do vertices.add(i);
+            
+            // Initialize adjacency lists
+            for v in vertices do adj[v] = new set(int);
+            
+            // Create a graph with multiple bridges
+            // Component 1: 1-2
+            adj[1].add(2); adj[2].add(1);
+            
+            // Bridge 1: 2-3
+            adj[2].add(3); adj[3].add(2);
+            
+            // Component 2: 3-4-5
+            adj[3].add(4); adj[4].add(3);
+            adj[4].add(5); adj[5].add(4);
+            
+            // Bridge 2: 5-6
+            adj[5].add(6); adj[6].add(5);
+            
+            // Component 3: 6-7-8
+            adj[6].add(7); adj[7].add(6);
+            adj[7].add(8); adj[8].add(7);
+
+            writeln("Original graph:");
+            writeln("Graph:");
+            writeln("Vertices: ", vertices);
+            writeln("Edges:");
+            var printed = new set((int, int));
+            for v in vertices {
+                for u in adj[v] {
+                    var edge = if v < u then (v, u) else (u, v);
+                    if !printed.contains(edge) {
+                        writeln(v, " -- ", u);
+                        printed.add(edge);
+                    }
+                }
+            }
+
+            // Test without ratio
+            var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
+            writeln("\nResults for multiple bridges graph:");
+            writeln("Minimum cut value: ", minCutValue);
+            writeln("Expected value: 1");  // Bridges should give min cut of 1
+
+            // Test with different ratios
+            //var ratios = [0.5, 0.33, 0.66];
+            var ratios = [0.5];
+            for ratio in ratios {
+                writeln("\nTesting multiple bridges graph with balance ratio: ", ratio);
+                var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, ratio);
             }
         }
     }
 
-    writeln("\nGlobal minimum cut value: ", globalMinValue);
+/* Nagamochi-Ibaraki Algorithm 
+    // Phase 1: Forest Decomposition (same as original)
+    // Phase 2: Modified Edge Contraction with cut tracking
+        // Contract edge from first forest
+    // Procedure to build cactus representation 
+      // Add edges representing cut relationships
+   Main execution
+    // 1. Find edge connectivity
     
-    return (globalMinValue, cutSet);
+    // 2. Find all potential minimum cuts through contractions
+    
+    // 3. Find non-crossing minimum cuts
+
+    
+    // 4. Remove duplicate cuts and verify each is minimal
+   
+    // 5. Build cactus representation (optional)
+
+
+- FOREST Decomposition
+   With simple writeln debugging
+   
+   
+   The key differences from the original algorithm are:
+
+Cut Tracking
+
+
+Instead of just finding the minimum cut value, we track all cuts of minimum value
+We maintain a list of Cut records containing both the vertices and cut value
+
+
+Modified Contraction Phase
+
+
+When we find a vertex of minimum degree, we save its component as a potential minimum cut
+We still contract edges but keep track of which vertices were merged
+
+
+Additional Verification
+
+
+We add a verification phase to ensure each candidate cut is actually minimal
+This removes any false positives that might arise during the contraction process
+
+
+Cactus Representation
+
+
+Optionally builds a cactus graph representation of all minimum cuts
+This is a compact way to represent all minimum cuts
+Each cycle in the cactus corresponds to a family of minimum cuts
+
+Key Properties:
+
+Running Time: O(|E| + λ|V|² + αλ|V|)
+where:
+
+λ is the edge connectivity
+α is the number of minimum cuts
+|V| is number of vertices
+|E| is number of edges
+
+
+Space Complexity: O(α|V|)
+
+We need to store all minimum cuts
+The cactus representation can be more space-efficient
+
+
+Correctness:
+
+
+Finds all minimum cuts, not just one
+Each cut returned is guaranteed to be minimal
+No minimum cuts are missed
+
+Key Applications:
+
+Network reliability analysis
+Clustering with minimum cuts
+Finding redundant connections in networks
+Network vulnerability analysis
+   
+   
+   
+    */
+
+/* Record for edges */
+record Edge {
+  var u: int;
+  var v: int;
+  
+  proc writeThis(fw) throws {
+    fw.write("(", u, ",", v, ")");
+  }
 }
-/* Comprehensive test suite for the Nagamochi-Ibaraki algorithm implementation.
-   Tests various graph types and algorithm features.
-*/
-proc testNagamochiIbaraki() throws {
-    writeln("===================== Testing Nagamochi-Ibaraki Algorithm =====================\n");
 
-    // Test 1: Simple cycle graph (4 vertices)
-    {
-        writeln("===========Test 1: Simple cycle graph (4 vertices)");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..4 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Add edges for cycle: 1-2-3-4-1
-        adj[1].add(2); adj[2].add(1);
-        adj[2].add(3); adj[3].add(2);
-        adj[3].add(4); adj[4].add(3);
-        adj[4].add(1); adj[1].add(4);
+/* Helper function to create edge */
+proc createEdge(u: int, v: int): Edge {
+  if u <= v {
+    writeln("Creating edge (", u, ",", v, ")");
+    return new Edge(u, v);
+  } else {
+    writeln("Creating edge (", v, ",", u, ") [swapped]");
+    return new Edge(v, u);
+  }
+}
+/* New helper function to print working neighbors state */
+proc printWorkingNeighbors(workingNeighbors: map(int, set(int)), vertices: set(int)) throws{
+  writeln("\nCurrent Working Neighbors State:");
+  for v in vertices {
+    if workingNeighbors.contains(v) {
+      writeln("  Node ", v, " -> ", workingNeighbors[v]);
+    }
+  }
+  writeln();
+}
 
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
+/* Print current state of the decomposition */
+proc printDecompositionState(nodeLabels: map(int, int), 
+                           scannedNodes: set(int),
+                           scannedEdges: set(Edge),
+                           forestPartitions: map(Edge, int)) {
+  writeln("\nCurrent State:");
+  writeln("  Node labels: ", nodeLabels);
+  writeln("  Scanned nodes: ", scannedNodes);
+  writeln("  Number of scanned edges: ", scannedEdges.size);
+  writeln("  Forest partitions: ", forestPartitions);
+  writeln();
+}
+
+/* Main FOREST decomposition function */
+proc FOREST(vertices: set(int)) throws{
+  writeln("\n=== Starting FOREST decomposition ===");
+  writeln("Input vertices: ", vertices);
+  
+  var forestPartitions: map(Edge, int);
+  var nodeLabels: map(int, int);
+  var scannedNodes: set(int);
+  var scannedEdges: set(Edge);
+  
+  // Initialize node labels
+  for v in vertices {
+    nodeLabels[v] = 0;
+    writeln("Initialized node ", v, " with label 0");
+  }
+  
+  var iterCount = 0;
+  while scannedNodes.size < vertices.size {
+    iterCount += 1;
+    writeln("\n--- Iteration ", iterCount, " ---");
+    
+    // Find unscanned node with largest label
+    var maxLabel = -1;
+    var selectedNode = -1;
+    
+    for v in vertices {
+      if !scannedNodes.contains(v) {
+        if nodeLabels.contains(v) && nodeLabels[v] > maxLabel {
+          maxLabel = nodeLabels[v];
+          selectedNode = v;
+          writeln("Found better node ", v, " with label ", maxLabel);
+        }
+      }
+    }
+    
+    if selectedNode == -1 {
+      writeln("No more unscanned nodes found. Breaking.");
+      break;
+    }
+    
+    writeln("Selected node ", selectedNode, " with label ", maxLabel);
+    
+    // Process neighbors
+    var neighs = neighborsSetGraphG1[selectedNode] & vertices;
+    writeln("Neighbors of node ", selectedNode, ": ", neighs);
+    
+    for y in neighs {
+      if !scannedNodes.contains(y) {
+        var edge = createEdge(selectedNode, y);
+        
+        if !scannedEdges.contains(edge) {
+          var forestNum = nodeLabels[y] + 1;
+          forestPartitions[edge] = forestNum;
+          nodeLabels[y] = forestNum;
+          scannedEdges.add(edge);
+          
+          writeln("Added edge ", edge, " to forest ", forestNum);
+          writeln("Updated label of node ", y, " to ", forestNum);
+        } else {
+          writeln("Edge ", edge, " already processed");
+        }
+      }
+    }
+    
+    scannedNodes.add(selectedNode);
+    writeln("Marked node ", selectedNode, " as scanned");
+    writeln("Progress: ", scannedNodes.size, "/", vertices.size, " nodes processed");
+    
+    printDecompositionState(nodeLabels, scannedNodes, scannedEdges, forestPartitions);
+  }
+  
+  writeln("\n=== FOREST decomposition completed ===");
+  writeln("Final forest partitions:");
+
+  for key in forestPartitions.keysToArray(){
+//   for (edge, forestNum) in forestPartitions {
+    writeln("  Edge ", key, " -> Forest ", forestPartitions[key]);
+  }
+          writeln("////////////////// FOREST //////////////////");
+
+  return forestPartitions;
+}
+
+/* Helper function to get maximum forest number */
+proc getMaxForestNum(forestPartitions: map(Edge, int)): int throws{
+  var maxNum = 0;
+  writeln("\n=== getMaxForestNum ===");
+
+  for forestNum in forestPartitions.values() {
+    maxNum = max(maxNum, forestNum);
+  }
+  writeln("maximum forest number: ",maxNum );
+  return maxNum;
+}
+
+/* Helper function to get edges in a specific forest */
+proc getEdgesInForest(forestPartitions: map(Edge, int), forestNum: int): set(Edge) throws{
+  var edges = new set(Edge);
+  writeln("\n=== getEdgesInForest ===");
+
+  for edge in forestPartitions.keysToArray() {
+    var num = forestPartitions[edge];
+    if num == forestNum {
+      edges.add(edge);
+    }
+  }
+  writeln("Found ", edges.size, " edges in forest ", forestNum, ": ", edges);
+  return edges;
+}
+
+/* Edge contraction phase of Nagamochi-Ibaraki algorithm with debug output */
+
+/* Helper function to merge vertices during contraction */
+proc contractEdge(ref vertices: set(int), edge: Edge, ref workingNeighbors: map(int, set(int))) throws {
+ writeln("\n=== Starting Edge Contraction ===");
+  writeln("Contracting edge ", edge);
+  writeln("Initial vertices: ", vertices);
+  writeln("Initial working neighbors:");
+  printWorkingNeighbors(workingNeighbors, vertices);
+  
+  var newVertices = vertices;
+  
+  // Remove endpoints of the edge
+  newVertices.remove(edge.u);
+  newVertices.remove(edge.v);
+  
+  // Add new merged vertex (using smaller index as identifier)
+  var mergedVertex = min(edge.u, edge.v);
+  newVertices.add(mergedVertex);
+  
+  writeln("Removed vertices ", edge.u, " and ", edge.v);
+  writeln("Added merged vertex ", mergedVertex);
+  writeln("Resulting vertices: ", newVertices);
+  
+  return newVertices;
+}
+
+/* Helper function to update neighbors after contraction */
+proc updateNeighbors(edge: Edge, ref workingNeighbors: map(int, set(int)), ref vertices: set(int)) throws {
+  writeln("\n=== Updating Neighbors ===");
+  writeln("Processing edge ", edge);
+  
+  var mergedVertex = min(edge.u, edge.v);
+  var otherVertex = max(edge.u, edge.v);
+  
+  // Get neighbors from working set
+  var neighbors1 = workingNeighbors[edge.u];
+  var neighbors2 = workingNeighbors[edge.v];
+  
+  writeln("Current neighbors of ", edge.u, ": ", neighbors1);
+  writeln("Current neighbors of ", edge.v, ": ", neighbors2);
+  
+  // Merge neighbor sets and remove contracted vertices
+  var mergedNeighbors = neighbors1 | neighbors2;
+  mergedNeighbors.remove(edge.u);
+  mergedNeighbors.remove(edge.v);
+  
+  // Update working neighbors map
+  workingNeighbors[mergedVertex] = mergedNeighbors;
+  workingNeighbors.remove(otherVertex);
+  
+  writeln("Updated neighbors for merged vertex ", mergedVertex, ": ", mergedNeighbors);
+  printWorkingNeighbors(workingNeighbors, vertices);
+}
+
+
+
+/* Find minimum degree vertex */
+proc findMinDegreeVertex(ref vertices: set(int), ref workingNeighbors: map(int, set(int))) throws {
+  writeln("\n=== Finding Minimum Degree Vertex ===");
+  var minDegree = max(int);
+  var minVertex = -1;
+  
+  for v in vertices {
+    var degree = workingNeighbors[v].size;
+    writeln("Vertex ", v, " has degree ", degree, " (neighbors: ", workingNeighbors[v], ")");
+    if degree < minDegree {
+      minDegree = degree;
+      minVertex = v;
+      writeln("New minimum found: vertex ", v, " with degree ", degree);
+    }
+  }
+  
+  writeln("Selected vertex ", minVertex, " with minimum degree ", minDegree);
+  return (minVertex, minDegree);
+}
+
+/* Main edge contraction procedure */
+proc contractEdgesPhase(ref vertices: set(int)) throws {
+  writeln("\n=== Starting Edge Contraction Phase ===");
+  writeln("Initial vertices: ", vertices);
+  
+  // Initialize working neighbors
+  var workingNeighbors: map(int, set(int));
+  for v in vertices {
+    workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
+  }
+  writeln("Initial working neighbors:");
+  printWorkingNeighbors(workingNeighbors, vertices);
+  
+  var currentVertices = vertices;
+  var minCutValue = max(int);
+  var minCutEdges: set(Edge);
+  
+  while currentVertices.size > 2 {
+    writeln("\n--- Processing graph with ", currentVertices.size, " vertices ---");
+    
+    // Get forest decomposition
+    var forests = FOREST(currentVertices);
+    var maxForestNum = getMaxForestNum(forests);
+    
+    // Find minimum degree and update minCut if needed
+    var (minVertex, minDegree) = findMinDegreeVertex(currentVertices, workingNeighbors);
+    
+    if minDegree < minCutValue {
+      minCutValue = minDegree;
+      writeln("Updated minimum cut value to ", minCutValue);
+      
+      // Store edges in the cut
+      minCutEdges.clear();
+      var neighs = workingNeighbors[minVertex];
+      for n in neighs {
+        minCutEdges.add(createEdge(minVertex, n));
+      }
+      writeln("Updated minimum cut edges: ", minCutEdges);
+    }
+    
+    // Find edge to contract from first forest
+    var firstForestEdges = getEdgesInForest(forests, 1);
+    if firstForestEdges.size == 0 {
+      writeln("No edges in first forest. Breaking.");
+      break;
+    }
+    
+    var idx: int = 0;
+    var edgeToContract: Edge;
+    for elem in firstForestEdges {
+      if idx == 0 then edgeToContract = elem;
+      idx += 1;
+    }
+    writeln("Selected edge for contraction: ", edgeToContract);
+    
+    // Perform contraction
+    currentVertices = contractEdge(currentVertices, edgeToContract, workingNeighbors);
+    updateNeighbors(edgeToContract, workingNeighbors, currentVertices);
+    
+    writeln("State after contraction:");
+    writeln("  Vertices: ", currentVertices);
+    writeln("  Working neighbors:");
+    printWorkingNeighbors(workingNeighbors, currentVertices);
+  }
+  
+  writeln("\n=== Edge Contraction Phase Completed ===");
+  writeln("Final minimum cut value: ", minCutValue);
+  writeln("Final minimum cut edges: ", minCutEdges);
+  
+  return (minCutValue, minCutEdges);
+}
+
+/* First: Data Structures and Helper Functions */
+record Cut {
+    var vertices: set(int);  // One side of the cut
+    var cutValue: int;      // Size of the cut
+    
+    proc writeThis(fw) throws {
+        fw.write("Cut(vertices: ", vertices, ", value: ", cutValue, ")");
+    }
+}
+
+/* Track merged vertices during contractions */
+record VertexMapping {
+    var originalToContracted: map(int, int);  // original vertex -> contracted vertex
+    var contractedToOriginal: map(int, set(int));  // contracted vertex -> set of original vertices
+    
+    proc init() {
+        originalToContracted = new map(int, int);
+        contractedToOriginal = new map(int, set(int));
+    }
+    
+    /* Initialize with original vertices */
+    proc initializeVertices(ref vertices: set(int)) {
         for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
+            originalToContracted[v] = v;
+            contractedToOriginal[v] = new set(int);
+            contractedToOriginal[v].add(v);
+        }
+    }
+    
+    /* Update mapping when contracting vertices */
+    proc mergeVertices(u: int, v: int, mergedVertex: int) throws{
+        // Get all original vertices from both u and v
+        var originalsU = new set(int);  // Create empty set first
+        var originalsV = new set(int);
+        
+        if contractedToOriginal.contains(u) then
+            originalsU = contractedToOriginal[u];
+        else
+            originalsU.add(u);
+            
+        if contractedToOriginal.contains(v) then
+            originalsV = contractedToOriginal[v];
+        else
+            originalsV.add(v);
+        
+        // Create new set of all original vertices for merged vertex
+        var mergedOriginals = originalsU | originalsV;
+        
+        // Update mappings
+        for orig in mergedOriginals {
+            originalToContracted[orig] = mergedVertex;
+        }
+        contractedToOriginal[mergedVertex] = mergedOriginals;
+        
+        // Remove old mappings but keep the merged vertex mapping
+        if u != mergedVertex then contractedToOriginal.remove(u);
+        if v != mergedVertex then contractedToOriginal.remove(v);
+        
+        writeln("Merged ", u, " and ", v, " into ", mergedVertex);
+        writeln("New mapping for ", mergedVertex, ": ", mergedOriginals);
+    }
+}
+/* Verify if a cut is valid and minimal */
+proc validateCut(ref vertices: set(int), ref cutSide: set(int), ref neighbors: map(int, set(int)), ref minCutValue: int): bool throws{
+    if cutSide.size == 0 || cutSide.size == vertices.size {
+        writeln("Invalid cut: empty or full set");
+        return false;
+    }
+    
+    // Count crossing edges
+    var crossingEdges = 0;
+    for v in cutSide {
+        for n in neighbors[v] {
+            if !cutSide.contains(n) {
+                crossingEdges += 1;
+            }
+        }
+    }
+    
+    writeln("Cut validation - size: ", cutSide.size, " crossing edges: ", crossingEdges);
+    // A cut is valid if its crossing edges match the minimum cut value
+    if crossingEdges == minCutValue then return true;
+    return false;
+}
+/* Helper function to find one side of a cut */
+proc findCutComponent(startVertex: int, neighbors: map(int, set(int)), vertices: set(int)): set(int) throws{
+    var cutSide: set(int);
+    var queue = new list(int);
+    var degree = neighbors[startVertex].size;
+    
+    cutSide.add(startVertex);
+    queue.pushBack(startVertex);
+    
+    // Only add vertices that have the same or smaller degree
+    // This ensures we get just one side of the cut
+    while !queue.isEmpty() {
+        var current = queue.popBack();
+        for n in neighbors[current] & vertices {
+            if !cutSide.contains(n) && neighbors[n].size <= degree {
+                cutSide.add(n);
+                queue.pushBack(n);
+            }
+        }
+    }
+    
+    writeln("Found cut side starting from vertex ", startVertex, ": ", cutSide);
+    // If we got more than half the vertices, take the smaller side
+    if cutSide.size > vertices.size/2 {
+        var otherSide = vertices - cutSide;
+        writeln("Taking smaller side instead: ", otherSide);
+        return otherSide;
+    }
+    return cutSide;
+}
+/* Modified contraction phase to track all cuts */
+proc findAllMinCutsContraction(ref vertices: set(int)) throws {
+    writeln("\n=== Starting All MinCuts Contraction Phase ===");
+    
+    var currentVertices = vertices;
+    var workingNeighbors: map(int, set(int));
+    var vertexMapping = new VertexMapping();
+    var allCuts: list(Cut);
+    var minCutValue = max(int);
+    
+    // Initialize
+    vertexMapping.initializeVertices(vertices);
+    writeln("After initialization - vertexMapping contents:");
+    for key in vertexMapping.contractedToOriginal.keysToArray() {
+        writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
+    }
+
+    for v in vertices {
+        workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
+    }
+    writeln("Initial workingNeighbors:");
+    for v in vertices {
+        writeln("  ", v, " -> ", workingNeighbors[v]);
+    }
+    
+    while currentVertices.size > 2 {
+        writeln("\n--- Processing graph with ", currentVertices.size, " vertices ---");
+        writeln("Current vertices: ", currentVertices);
+        
+        // Get forest decomposition
+        var forests = FOREST(currentVertices);
+        
+        // Find minimum degree vertices
+        for v in currentVertices {
+            var degree = workingNeighbors[v].size;
+            writeln("\nProcessing vertex ", v, " with degree ", degree);
+            
+            if degree == minCutValue || degree < minCutValue {
+                // Track if this is a new minimum
+                var isNewMin = degree < minCutValue;
+                if isNewMin {
+                    writeln("Found new minimum cut (degree < minCutValue)");
+                    minCutValue = degree;
+                    allCuts.clear();  // Clear old cuts with higher values
+                } else {
+                    writeln("Found equal minimum cut (degree == minCutValue)");
+                }
+
+                // Find cut component (one side of the cut)
+                var cutComponent = findCutComponent(v, workingNeighbors, currentVertices);
+                var originalVertices: set(int);
+                
+                writeln("\nDEBUG - Before processing cut:");
+                writeln("Current minCutValue: ", minCutValue);
+                writeln("Current vertex: ", v);
+                writeln("Cut component size: ", cutComponent.size);
+                writeln("Cut component: ", cutComponent);
+                writeln("VertexMapping contents: ");
+                for key in vertexMapping.contractedToOriginal.keysToArray() {
+                    writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
+                }
+
+                // Map contracted vertices back to original vertices
+                for contractedVertex in cutComponent {
+                    if vertexMapping.contractedToOriginal.contains(contractedVertex) {
+                        originalVertices |= vertexMapping.contractedToOriginal[contractedVertex];
+                    } else {
+                        writeln("WARNING: Contracted vertex ", contractedVertex, " not found in mapping!");
+                    }
+                }
+
+                // Validate the cut
+                if validateCut(vertices, originalVertices, workingNeighbors, minCutValue) {
+                    // Check for duplicates
+                    var isDuplicate = false;
+                    for cut in allCuts {
+                        if cut.vertices == originalVertices || 
+                           cut.vertices == (vertices - originalVertices) {
+                            isDuplicate = true;
+                            writeln("Found duplicate cut - skipping");
+                            break;
+                        }
+                    }
+                    
+                    if !isDuplicate {
+                        allCuts.pushBack(new Cut(originalVertices, degree));
+                        writeln("Found new unique cut: ", allCuts[allCuts.size-1]);
+                    }
+                } else {
+                    writeln("Cut validation failed - skipping");
                 }
             }
         }
-
-        // Test without ratio
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        writeln("\nResults for cycle graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 2");
-
-        // Test with different ratios
-        var ratios = [0.5, 0.25, 0.75];
-        for ratio in ratios {
-            writeln("\nTesting cycle graph with balance ratio: ", ratio);
-            var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, ratio);
+        
+        // Contract edge from first forest
+        var firstForestEdges = getEdgesInForest(forests, 1);
+        if firstForestEdges.size == 0 {
+            writeln("No edges in first forest. Breaking.");
+            break;
         }
+        var idx: int = 0;
+        var edgeToContract: Edge;
+        for elem in firstForestEdges {
+            if idx == 0 then edgeToContract = elem;
+            idx += 1;
+        }
+        writeln("\nContracting edge: ", edgeToContract);
+        
+        // Perform contraction
+        var mergedVertex = min(edgeToContract.u, edgeToContract.v);
+        writeln("Will merge into vertex: ", mergedVertex);
+        writeln("VertexMapping before contraction:");
+        for key in vertexMapping.contractedToOriginal.keysToArray() {
+            writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
+        }
+
+        currentVertices = contractEdge(currentVertices, edgeToContract, workingNeighbors);
+        vertexMapping.mergeVertices(edgeToContract.u, edgeToContract.v, mergedVertex);
+
+        writeln("VertexMapping after contraction:");
+        for key in vertexMapping.contractedToOriginal.keysToArray() {
+            writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
+        }
+        writeln("Current vertices after contraction: ", currentVertices);
     }
+    
+    writeln("\n////////////////// findAllMinCutsContraction //////////////////");
+    writeln("Final Results:");
+    writeln("Minimum cut value: ", minCutValue);
+    writeln("Number of unique cuts found: ", allCuts.size);
+    writeln("All cuts: ", allCuts);
 
-    // Test 2: Path graph (4 vertices)
-    {
-        writeln("===========Test 2: Path graph (4 vertices)");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..4 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Add edges for path: 1-2-3-4
-        adj[1].add(2); adj[2].add(1);
-        adj[2].add(3); adj[3].add(2);
-        adj[3].add(4); adj[4].add(3);
+    return (minCutValue, allCuts);
+}
 
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
-        for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
-                }
+/* Verify if a cut is minimal */
+proc verifyMinCut(cut: Cut, workingNeighbors: map(int, set(int)), vertices: set(int)): bool throws{
+    // Count edges crossing the cut
+    var crossingEdges = 0;
+    for v in cut.vertices {
+        for n in workingNeighbors[v] {
+            if !cut.vertices.contains(n) {
+                crossingEdges += 1;
             }
         }
-
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        
-        writeln("\nResults for path graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 1\n");
     }
+    
+    return crossingEdges == cut.cutValue;
+}
 
-    // Test 3: Complete graph (4 vertices)
-    {
-        writeln("===========Test 3: Complete graph (4 vertices)");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..4 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Add all possible edges
-        for i in 1..4 {
-            for j in i+1..4 {
-                adj[i].add(j);
-                adj[j].add(i);
-            }
-        }
 
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
-        for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
-                }
-            }
-        }
-
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        
-        writeln("\nResults for complete graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 3\n");
+/* Main function to find all minimum cuts */
+proc findAllMinCuts(ref vertices: set(int)) throws {
+    writeln("Finding ALL minimum cuts...");
+    
+    // Find cuts through contractions
+    var (minCutValue, candidateCuts) = findAllMinCutsContraction(vertices);
+    
+    // Initialize working neighbors for verification
+    var workingNeighbors: map(int, set(int));
+    for v in vertices {
+        workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
     }
-
-    // Test 4: Star graph (center vertex 1, 4 vertices total)
-    {
-        writeln("===========Test 4: Star graph (4 vertices)");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..4 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Add edges from center (vertex 1) to all others
-        for i in 2..4 {
-            adj[1].add(i);
-            adj[i].add(1);
-        }
-
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
-        for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
-                }
-            }
-        }
-
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        
-        writeln("\nResults for star graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 1\n");
-    }
-
-    // Test 5: Disconnected graph (two components)
-    {
-        writeln("===========Test 5: Disconnected graph (4 vertices, two components)");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..4 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Add edges: 1-2 and 3-4 (two separate components)
-        adj[1].add(2); adj[2].add(1);
-        adj[3].add(4); adj[4].add(3);
-
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
-        for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
-                }
-            }
-        }
-
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        
-        writeln("\nResults for disconnected graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 0\n");
-    }
-// Test 6: Bridge graph (new test)
-    {
-        writeln("\nTest 6: Bridge graph");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..6 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Add edges to create two triangles connected by a bridge
-        // Triangle 1: 1-2-3-1
-        adj[1].add(2); adj[2].add(1);
-        adj[2].add(3); adj[3].add(2);
-        adj[3].add(1); adj[1].add(3);
-        
-        // Triangle 2: 4-5-6-4
-        adj[4].add(5); adj[5].add(4);
-        adj[5].add(6); adj[6].add(5);
-        adj[6].add(4); adj[4].add(6);
-        
-        // Bridge: 3-4
-        adj[3].add(4); adj[4].add(3);
-
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
-        for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
-                }
-            }
-        }
-
-        // Test without ratio
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        writeln("\nResults for bridge graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 1");  // Bridge should give min cut of 1
-
-        // Test with balanced ratio
-        var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, 0.5);
-        writeln("\nResults for bridge graph with balanced cuts (ratio 0.5):");
-        writeln("Minimum cut value: ", balancedMinCutValue);
-    }
-
-    // Test 7: Multiple bridges graph (new test)
-    {
-        writeln("\nTest 7: Multiple bridges graph");
-        
-        var vertices = new set(int);
-        var adj = new map(int, set(int));
-        
-        // Add vertices
-        for i in 1..8 do vertices.add(i);
-        
-        // Initialize adjacency lists
-        for v in vertices do adj[v] = new set(int);
-        
-        // Create a graph with multiple bridges
-        // Component 1: 1-2
-        adj[1].add(2); adj[2].add(1);
-        
-        // Bridge 1: 2-3
-        adj[2].add(3); adj[3].add(2);
-        
-        // Component 2: 3-4-5
-        adj[3].add(4); adj[4].add(3);
-        adj[4].add(5); adj[5].add(4);
-        
-        // Bridge 2: 5-6
-        adj[5].add(6); adj[6].add(5);
-        
-        // Component 3: 6-7-8
-        adj[6].add(7); adj[7].add(6);
-        adj[7].add(8); adj[8].add(7);
-
-        writeln("Original graph:");
-        writeln("Graph:");
-        writeln("Vertices: ", vertices);
-        writeln("Edges:");
-        var printed = new set((int, int));
-        for v in vertices {
-            for u in adj[v] {
-                var edge = if v < u then (v, u) else (u, v);
-                if !printed.contains(edge) {
-                    writeln(v, " -- ", u);
-                    printed.add(edge);
-                }
-            }
-        }
-
-        // Test without ratio
-        var (minCutValue, cuts) = findAllMinCutsNI(vertices, adj);
-        writeln("\nResults for multiple bridges graph:");
-        writeln("Minimum cut value: ", minCutValue);
-        writeln("Expected value: 1");  // Bridges should give min cut of 1
-
-        // Test with different ratios
-        var ratios = [0.5, 0.33, 0.66];
-        for ratio in ratios {
-            writeln("\nTesting multiple bridges graph with balance ratio: ", ratio);
-            var (balancedMinCutValue, balancedCuts) = findAllMinCutsNI(vertices, adj, ratio);
+    
+    // Verify and remove duplicates
+    var validatedCuts: list(Cut);
+    for cut in candidateCuts {
+        if verifyMinCut(cut, workingNeighbors, vertices) {
+            validatedCuts.pushBack(cut);
         }
     }
+    
+   
+    writeln("\nFound ", validatedCuts.size, " minimum validated cuts with value ", minCutValue);
+    for cut in validatedCuts {
+        writeln("  ", cut);
+    }
+    writeln("////////////////// findAllMinCuts //////////////////");
+    return (minCutValue, validatedCuts);
 }
     ///////////////////////////////////////findBridgesInCluster////////////////////////////////////////////////////////
 
@@ -1633,7 +4388,7 @@ proc testNagamochiIbaraki() throws {
     proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
       writeln("*****************wccRecursiveChecker called***********************");
       writeln("****** Let's check the cluster METRICS: \n");
-      calculateConductance(vertices);
+      //calculateConductance(vertices);
       var (src, dst, mapper) = getEdgeList(vertices);
 
       // If the generated edge list is empty, then return.
@@ -1677,7 +4432,7 @@ proc testNagamochiIbaraki() throws {
         if cluster1.size > postFilterMinSize {
         //writeln("//////before clusterC2D///////// ");
         writeln("cluster1(",id,")"," with size: ", cluster1.size, " created!"," members: ", cluster1);
-        calculateConductance(cluster1);
+        //calculateConductance(cluster1);
         
         var inPartition = cluster1;
         //var inPartition = kCoreDecomposition(cluster1, 2);
@@ -1686,7 +4441,7 @@ proc testNagamochiIbaraki() throws {
           //var inPartition = clusterC2D(cluster1);
 
         writeln("cluster1(",id,")"," with size: ", inPartition.size);
-        calculateConductance(inPartition);
+        //calculateConductance(inPartition);
 
 
 
@@ -1694,7 +4449,7 @@ proc testNagamochiIbaraki() throws {
         }
         if cluster2.size > postFilterMinSize {
         writeln("cluster2(",id,")"," with size: ", cluster2.size, " created!"," members: ", cluster2);
-        calculateConductance(cluster2);
+        //calculateConductance(cluster2);
         var outPartition =cluster2;
         //var outPartition = kCoreDecomposition(cluster2, 2);
 
@@ -1702,12 +4457,121 @@ proc testNagamochiIbaraki() throws {
           //var outPartition = clusterC2D(cluster2);
 
         writeln("cluster2(",id,")"," with size: ", outPartition.size);
-        calculateConductance(outPartition);
+        //calculateConductance(outPartition);
           wccRecursiveChecker(outPartition, id, depth+1);
         }
       }
       return;
     }
+
+/* Helper to print cluster structure */
+proc printClusterStructure(ref vertices: set(int), workingNeighbors: map(int, set(int))) throws{
+  writeln("Cluster edge structure:");
+  for v in vertices {
+    writeln("Node ", v, " connects to: ", workingNeighbors[v]);
+  }
+}
+
+/* Test FOREST decomposition */
+proc testForestDecomposition(ref vertices: set(int)) throws {
+  writeln("\n=== Testing FOREST Decomposition ===");
+  
+  var forests = FOREST(vertices);
+  
+  writeln("\nForest Decomposition Results:");
+  var maxForests = getMaxForestNum(forests);
+  writeln("Number of forests: ", maxForests);
+  
+  // Print edges in each forest
+  for i in 1..maxForests {
+    var edges = getEdgesInForest(forests, i);
+    writeln("Forest ", i, ": ", edges);
+  }
+  
+  return forests;
+}
+
+/* Test edge contraction */
+proc testEdgeContraction(ref vertices: set(int)) throws {
+  writeln("\n=== Testing Edge Contraction ===");
+  
+  // Initialize working neighbors
+  var workingNeighbors: map(int, set(int));
+  for v in vertices {
+    workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
+  }
+  
+  // Print initial structure
+  writeln("\nInitial graph structure:");
+  printClusterStructure(vertices, workingNeighbors);
+  
+  // Run contraction phase with working neighbors
+  var (cutValue, cutEdges) = contractEdgesPhase(vertices);
+  
+  writeln("\nEdge Contraction Results:");
+  writeln("Minimum cut value: ", cutValue);
+  writeln("Minimum cut edges: ", cutEdges);
+  
+  return (cutValue, cutEdges);
+}
+
+/* Main test runner */
+proc runAllTests(ref vertices: set(int)) throws {
+  writeln("Starting Nagamochi-Ibaraki Algorithm Tests");
+  writeln("=========================================");
+  
+  // Print initial cluster information
+  writeln("Initial cluster: ", vertices);
+  var initialNeighbors: map(int, set(int));
+  for v in vertices {
+    initialNeighbors[v] = neighborsSetGraphG1[v] & vertices;
+  }
+  printClusterStructure(vertices, initialNeighbors);
+  
+  // Test FOREST decomposition
+  writeln("\nStep 1: Testing FOREST Decomposition");
+  var forests = testForestDecomposition(vertices);
+  
+  // Test edge contraction
+  writeln("\nStep 2: Testing Edge Contraction");
+  var (cutValue, cutEdges) = testEdgeContraction(vertices);
+  
+  // Print final results
+  writeln("\nFinal Results Summary");
+  writeln("====================");
+  var maxForests = getMaxForestNum(forests);
+  writeln("1. Found ", maxForests, " forests");
+  writeln("2. Minimum cut value: ", cutValue);
+  writeln("3. Cut edges: ", cutEdges);
+  
+  // Verify results
+  var verificationPassed = true;
+  if cutValue > maxForests {
+    writeln("\nWARNING: Cut value greater than number of forests!");
+    verificationPassed = false;
+  }
+  
+  var remainingVertices = vertices;
+  for edge in cutEdges {
+    if !initialNeighbors[edge.u].contains(edge.v) {
+      writeln("\nWARNING: Cut edge (", edge.u, ",", edge.v, ") not in original graph!");
+      verificationPassed = false;
+    }
+  }
+  
+  if verificationPassed {
+    writeln("\nAll verification checks passed!");
+  }
+}
+
+/* Optional: Add helper to run specific test cases */
+proc runTestCase(testName: string, vertices: set(int)) throws {
+  writeln("\nRunning test case: ", testName);
+  writeln("-*-*-*-*-*-*-*-*-*-*");
+  writeln("Testing cluster with vertices: ", vertices);
+  runAllTests(vertices);
+}
+
 
     /* Main executing function for well-connected components. */
     proc wcc(g1: SegGraph): int throws {
@@ -1785,21 +4649,38 @@ proc testNagamochiIbaraki() throws {
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         writeln("-*-*-*-*-*-*-*-*-*-*at the beginning for cluster(",key,")"," and has ", clusterToAdd);
-        calculateConductance(clusterToAdd);
-        findBridgesInCluster(clusterToAdd);
+        //calculateConductance(clusterToAdd);
+        // findBridgesInCluster(clusterToAdd);
         //findAllMinCutsInCluster(clusterToAdd);
         //testStoerWagner();
         //runAllTests();
         //testWeightedStoerWagner();
         //testStoerWagner();
         //if key == 0 then testStoerWagner();
-        if key == 0{
-          writeln("we are here");
-          testNagamochiIbaraki();
+        // if key == 0{
+        //   writeln("we are here");
+        //   testNagamochiIbaraki();
+        // }
+        writeln("current cluster: ",clusterToAdd );
+        writeln("Cluster edge structure:");
+        for v in clusterToAdd {
+            var neighbors = neighborsSetGraphG1[v] & clusterToAdd;
+            writeln("Node ", v, " connects to: ", neighbors);
         }
-        
+        //var metrics = analyzeCluster(clusterToAdd);
+        //calculateBetweennessCentrality(clusterToAdd,clusterToAdd);
+// runAllTests(clusterToAdd);
+
+    var (minCutValue, allCuts) = findAllMinCuts(clusterToAdd);
+    
+    writeln("Minimum cut value: ", minCutValue);
+    writeln("Found ", allCuts.size, " minimum cuts:");
+    for cut in allCuts {
+        writeln(cut);
+    }
         //wccRecursiveChecker(clusterToAdd, key, 0);
       }
+
       if outputType == "post" then writeClustersToFile();
       
       outMsg = "WCC found " + globalId.read():string + " clusters to be well-connected.";
