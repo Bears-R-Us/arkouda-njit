@@ -3567,694 +3567,2041 @@ proc evaluateClustering(ref clusters: [] set(int)) throws {
         }
     }
 
-/* Nagamochi-Ibaraki Algorithm 
-    // Phase 1: Forest Decomposition (same as original)
-    // Phase 2: Modified Edge Contraction with cut tracking
-        // Contract edge from first forest
-    // Procedure to build cactus representation 
-      // Add edges representing cut relationships
-   Main execution
-    // 1. Find edge connectivity
-    
-    // 2. Find all potential minimum cuts through contractions
-    
-    // 3. Find non-crossing minimum cuts
-
-    
-    // 4. Remove duplicate cuts and verify each is minimal
-   
-    // 5. Build cactus representation (optional)
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////// begining of findAllMinCuts ////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 
-- FOREST Decomposition
-   With simple writeln debugging
-   
-   
-   The key differences from the original algorithm are:
-
-Cut Tracking
-
-
-Instead of just finding the minimum cut value, we track all cuts of minimum value
-We maintain a list of Cut records containing both the vertices and cut value
-
-
-Modified Contraction Phase
-
-
-When we find a vertex of minimum degree, we save its component as a potential minimum cut
-We still contract edges but keep track of which vertices were merged
-
-
-Additional Verification
-
-
-We add a verification phase to ensure each candidate cut is actually minimal
-This removes any false positives that might arise during the contraction process
-
-
-Cactus Representation
-
-
-Optionally builds a cactus graph representation of all minimum cuts
-This is a compact way to represent all minimum cuts
-Each cycle in the cactus corresponds to a family of minimum cuts
-
-Key Properties:
-
-Running Time: O(|E| + λ|V|² + αλ|V|)
-where:
-
-λ is the edge connectivity
-α is the number of minimum cuts
-|V| is number of vertices
-|E| is number of edges
-
-
-Space Complexity: O(α|V|)
-
-We need to store all minimum cuts
-The cactus representation can be more space-efficient
-
-
-Correctness:
-
-
-Finds all minimum cuts, not just one
-Each cut returned is guaranteed to be minimal
-No minimum cuts are missed
-
-Key Applications:
-
-Network reliability analysis
-Clustering with minimum cuts
-Finding redundant connections in networks
-Network vulnerability analysis
-   
-   
-   
-    */
-
-/* Record for edges */
+/* Edge record - essential base structure */
 record Edge {
-  var u: int;
-  var v: int;
-  
-  proc writeThis(fw) throws {
-    fw.write("(", u, ",", v, ")");
-  }
-}
-
-/* Helper function to create edge */
-proc createEdge(u: int, v: int): Edge {
-  if u <= v {
-    writeln("Creating edge (", u, ",", v, ")");
-    return new Edge(u, v);
-  } else {
-    writeln("Creating edge (", v, ",", u, ") [swapped]");
-    return new Edge(v, u);
-  }
-}
-/* New helper function to print working neighbors state */
-proc printWorkingNeighbors(workingNeighbors: map(int, set(int)), vertices: set(int)) throws{
-  writeln("\nCurrent Working Neighbors State:");
-  for v in vertices {
-    if workingNeighbors.contains(v) {
-      writeln("  Node ", v, " -> ", workingNeighbors[v]);
-    }
-  }
-  writeln();
-}
-
-/* Print current state of the decomposition */
-proc printDecompositionState(nodeLabels: map(int, int), 
-                           scannedNodes: set(int),
-                           scannedEdges: set(Edge),
-                           forestPartitions: map(Edge, int)) {
-  writeln("\nCurrent State:");
-  writeln("  Node labels: ", nodeLabels);
-  writeln("  Scanned nodes: ", scannedNodes);
-  writeln("  Number of scanned edges: ", scannedEdges.size);
-  writeln("  Forest partitions: ", forestPartitions);
-  writeln();
-}
-
-/* Main FOREST decomposition function */
-proc FOREST(vertices: set(int)) throws{
-  writeln("\n=== Starting FOREST decomposition ===");
-  writeln("Input vertices: ", vertices);
-  
-  var forestPartitions: map(Edge, int);
-  var nodeLabels: map(int, int);
-  var scannedNodes: set(int);
-  var scannedEdges: set(Edge);
-  
-  // Initialize node labels
-  for v in vertices {
-    nodeLabels[v] = 0;
-    writeln("Initialized node ", v, " with label 0");
-  }
-  
-  var iterCount = 0;
-  while scannedNodes.size < vertices.size {
-    iterCount += 1;
-    writeln("\n--- Iteration ", iterCount, " ---");
-    
-    // Find unscanned node with largest label
-    var maxLabel = -1;
-    var selectedNode = -1;
-    
-    for v in vertices {
-      if !scannedNodes.contains(v) {
-        if nodeLabels.contains(v) && nodeLabels[v] > maxLabel {
-          maxLabel = nodeLabels[v];
-          selectedNode = v;
-          writeln("Found better node ", v, " with label ", maxLabel);
-        }
-      }
-    }
-    
-    if selectedNode == -1 {
-      writeln("No more unscanned nodes found. Breaking.");
-      break;
-    }
-    
-    writeln("Selected node ", selectedNode, " with label ", maxLabel);
-    
-    // Process neighbors
-    var neighs = neighborsSetGraphG1[selectedNode] & vertices;
-    writeln("Neighbors of node ", selectedNode, ": ", neighs);
-    
-    for y in neighs {
-      if !scannedNodes.contains(y) {
-        var edge = createEdge(selectedNode, y);
-        
-        if !scannedEdges.contains(edge) {
-          var forestNum = nodeLabels[y] + 1;
-          forestPartitions[edge] = forestNum;
-          nodeLabels[y] = forestNum;
-          scannedEdges.add(edge);
-          
-          writeln("Added edge ", edge, " to forest ", forestNum);
-          writeln("Updated label of node ", y, " to ", forestNum);
-        } else {
-          writeln("Edge ", edge, " already processed");
-        }
-      }
-    }
-    
-    scannedNodes.add(selectedNode);
-    writeln("Marked node ", selectedNode, " as scanned");
-    writeln("Progress: ", scannedNodes.size, "/", vertices.size, " nodes processed");
-    
-    printDecompositionState(nodeLabels, scannedNodes, scannedEdges, forestPartitions);
-  }
-  
-  writeln("\n=== FOREST decomposition completed ===");
-  writeln("Final forest partitions:");
-
-  for key in forestPartitions.keysToArray(){
-//   for (edge, forestNum) in forestPartitions {
-    writeln("  Edge ", key, " -> Forest ", forestPartitions[key]);
-  }
-          writeln("////////////////// FOREST //////////////////");
-
-  return forestPartitions;
-}
-
-/* Helper function to get maximum forest number */
-proc getMaxForestNum(forestPartitions: map(Edge, int)): int throws{
-  var maxNum = 0;
-  writeln("\n=== getMaxForestNum ===");
-
-  for forestNum in forestPartitions.values() {
-    maxNum = max(maxNum, forestNum);
-  }
-  writeln("maximum forest number: ",maxNum );
-  return maxNum;
-}
-
-/* Helper function to get edges in a specific forest */
-proc getEdgesInForest(forestPartitions: map(Edge, int), forestNum: int): set(Edge) throws{
-  var edges = new set(Edge);
-  writeln("\n=== getEdgesInForest ===");
-
-  for edge in forestPartitions.keysToArray() {
-    var num = forestPartitions[edge];
-    if num == forestNum {
-      edges.add(edge);
-    }
-  }
-  writeln("Found ", edges.size, " edges in forest ", forestNum, ": ", edges);
-  return edges;
-}
-
-/* Edge contraction phase of Nagamochi-Ibaraki algorithm with debug output */
-
-/* Helper function to merge vertices during contraction */
-proc contractEdge(ref vertices: set(int), edge: Edge, ref workingNeighbors: map(int, set(int))) throws {
- writeln("\n=== Starting Edge Contraction ===");
-  writeln("Contracting edge ", edge);
-  writeln("Initial vertices: ", vertices);
-  writeln("Initial working neighbors:");
-  printWorkingNeighbors(workingNeighbors, vertices);
-  
-  var newVertices = vertices;
-  
-  // Remove endpoints of the edge
-  newVertices.remove(edge.u);
-  newVertices.remove(edge.v);
-  
-  // Add new merged vertex (using smaller index as identifier)
-  var mergedVertex = min(edge.u, edge.v);
-  newVertices.add(mergedVertex);
-  
-  writeln("Removed vertices ", edge.u, " and ", edge.v);
-  writeln("Added merged vertex ", mergedVertex);
-  writeln("Resulting vertices: ", newVertices);
-  
-  return newVertices;
-}
-
-/* Helper function to update neighbors after contraction */
-proc updateNeighbors(edge: Edge, ref workingNeighbors: map(int, set(int)), ref vertices: set(int)) throws {
-  writeln("\n=== Updating Neighbors ===");
-  writeln("Processing edge ", edge);
-  
-  var mergedVertex = min(edge.u, edge.v);
-  var otherVertex = max(edge.u, edge.v);
-  
-  // Get neighbors from working set
-  var neighbors1 = workingNeighbors[edge.u];
-  var neighbors2 = workingNeighbors[edge.v];
-  
-  writeln("Current neighbors of ", edge.u, ": ", neighbors1);
-  writeln("Current neighbors of ", edge.v, ": ", neighbors2);
-  
-  // Merge neighbor sets and remove contracted vertices
-  var mergedNeighbors = neighbors1 | neighbors2;
-  mergedNeighbors.remove(edge.u);
-  mergedNeighbors.remove(edge.v);
-  
-  // Update working neighbors map
-  workingNeighbors[mergedVertex] = mergedNeighbors;
-  workingNeighbors.remove(otherVertex);
-  
-  writeln("Updated neighbors for merged vertex ", mergedVertex, ": ", mergedNeighbors);
-  printWorkingNeighbors(workingNeighbors, vertices);
-}
-
-
-
-/* Find minimum degree vertex */
-proc findMinDegreeVertex(ref vertices: set(int), ref workingNeighbors: map(int, set(int))) throws {
-  writeln("\n=== Finding Minimum Degree Vertex ===");
-  var minDegree = max(int);
-  var minVertex = -1;
-  
-  for v in vertices {
-    var degree = workingNeighbors[v].size;
-    writeln("Vertex ", v, " has degree ", degree, " (neighbors: ", workingNeighbors[v], ")");
-    if degree < minDegree {
-      minDegree = degree;
-      minVertex = v;
-      writeln("New minimum found: vertex ", v, " with degree ", degree);
-    }
-  }
-  
-  writeln("Selected vertex ", minVertex, " with minimum degree ", minDegree);
-  return (minVertex, minDegree);
-}
-
-/* Main edge contraction procedure */
-proc contractEdgesPhase(ref vertices: set(int)) throws {
-  writeln("\n=== Starting Edge Contraction Phase ===");
-  writeln("Initial vertices: ", vertices);
-  
-  // Initialize working neighbors
-  var workingNeighbors: map(int, set(int));
-  for v in vertices {
-    workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
-  }
-  writeln("Initial working neighbors:");
-  printWorkingNeighbors(workingNeighbors, vertices);
-  
-  var currentVertices = vertices;
-  var minCutValue = max(int);
-  var minCutEdges: set(Edge);
-  
-  while currentVertices.size > 2 {
-    writeln("\n--- Processing graph with ", currentVertices.size, " vertices ---");
-    
-    // Get forest decomposition
-    var forests = FOREST(currentVertices);
-    var maxForestNum = getMaxForestNum(forests);
-    
-    // Find minimum degree and update minCut if needed
-    var (minVertex, minDegree) = findMinDegreeVertex(currentVertices, workingNeighbors);
-    
-    if minDegree < minCutValue {
-      minCutValue = minDegree;
-      writeln("Updated minimum cut value to ", minCutValue);
-      
-      // Store edges in the cut
-      minCutEdges.clear();
-      var neighs = workingNeighbors[minVertex];
-      for n in neighs {
-        minCutEdges.add(createEdge(minVertex, n));
-      }
-      writeln("Updated minimum cut edges: ", minCutEdges);
-    }
-    
-    // Find edge to contract from first forest
-    var firstForestEdges = getEdgesInForest(forests, 1);
-    if firstForestEdges.size == 0 {
-      writeln("No edges in first forest. Breaking.");
-      break;
-    }
-    
-    var idx: int = 0;
-    var edgeToContract: Edge;
-    for elem in firstForestEdges {
-      if idx == 0 then edgeToContract = elem;
-      idx += 1;
-    }
-    writeln("Selected edge for contraction: ", edgeToContract);
-    
-    // Perform contraction
-    currentVertices = contractEdge(currentVertices, edgeToContract, workingNeighbors);
-    updateNeighbors(edgeToContract, workingNeighbors, currentVertices);
-    
-    writeln("State after contraction:");
-    writeln("  Vertices: ", currentVertices);
-    writeln("  Working neighbors:");
-    printWorkingNeighbors(workingNeighbors, currentVertices);
-  }
-  
-  writeln("\n=== Edge Contraction Phase Completed ===");
-  writeln("Final minimum cut value: ", minCutValue);
-  writeln("Final minimum cut edges: ", minCutEdges);
-  
-  return (minCutValue, minCutEdges);
-}
-
-/* First: Data Structures and Helper Functions */
-record Cut {
-    var vertices: set(int);  // One side of the cut
-    var cutValue: int;      // Size of the cut
-    
-    proc writeThis(fw) throws {
-        fw.write("Cut(vertices: ", vertices, ", value: ", cutValue, ")");
-    }
-}
-
-/* Track merged vertices during contractions */
-record VertexMapping {
-    var originalToContracted: map(int, int);  // original vertex -> contracted vertex
-    var contractedToOriginal: map(int, set(int));  // contracted vertex -> set of original vertices
+    var u: int;
+    var v: int;
     
     proc init() {
-        originalToContracted = new map(int, int);
-        contractedToOriginal = new map(int, set(int));
+        this.u = -1;
+        this.v = -1;
     }
     
-    /* Initialize with original vertices */
-    proc initializeVertices(ref vertices: set(int)) {
-        for v in vertices {
-            originalToContracted[v] = v;
-            contractedToOriginal[v] = new set(int);
-            contractedToOriginal[v].add(v);
-        }
+    proc init(u: int, v: int) {
+        this.u = min(u,v);
+        this.v = max(u,v);
     }
     
-    /* Update mapping when contracting vertices */
-    proc mergeVertices(u: int, v: int, mergedVertex: int) throws{
-        // Get all original vertices from both u and v
-        var originalsU = new set(int);  // Create empty set first
-        var originalsV = new set(int);
-        
-        if contractedToOriginal.contains(u) then
-            originalsU = contractedToOriginal[u];
-        else
-            originalsU.add(u);
-            
-        if contractedToOriginal.contains(v) then
-            originalsV = contractedToOriginal[v];
-        else
-            originalsV.add(v);
-        
-        // Create new set of all original vertices for merged vertex
-        var mergedOriginals = originalsU | originalsV;
-        
-        // Update mappings
-        for orig in mergedOriginals {
-            originalToContracted[orig] = mergedVertex;
-        }
-        contractedToOriginal[mergedVertex] = mergedOriginals;
-        
-        // Remove old mappings but keep the merged vertex mapping
-        if u != mergedVertex then contractedToOriginal.remove(u);
-        if v != mergedVertex then contractedToOriginal.remove(v);
-        
-        writeln("Merged ", u, " and ", v, " into ", mergedVertex);
-        writeln("New mapping for ", mergedVertex, ": ", mergedOriginals);
+    operator ==(other: Edge) {
+        return (this.u == other.u && this.v == other.v);
+    }
+    
+    proc writeThis(fw) throws {
+        fw.write("(", u, ",", v, ")");
     }
 }
 
-/* Helper function to find one side of a cut */
-proc findCutComponent(startVertex: int, neighbors: map(int, set(int)), vertices: set(int)): set(int) throws {
-    writeln("\n=== Finding Cut Component ===");
-    writeln("Start vertex: ", startVertex);
+
+/* Helper function to get minimum degree */
+proc getMinDegree(ref vertices: set(int), ref neighborMap: map(int, set(int))): int throws{
+    var minDeg = max(int);
+    for v in vertices {
+        var deg = neighborMap[v].size;
+        minDeg = min(minDeg, deg);
+    }
+    return minDeg;
+}
+
+
+/* Select edge for splitting graph based on paper's suggestion */
+proc selectEdgeForSplit(vertices: set(int), 
+                       neighborMap: map(int, set(int))): (int, int) throws {
+    writeln("Selecting edge for split");
     
-    var cutSide: set(int);
-    cutSide.add(startVertex);
-    
-    // Add just one neighbor to form cut
-    var possibleNeighbors = neighbors[startVertex] & vertices;
-    if possibleNeighbors.size > 0 {
-        var idx = 0;
-        var neighbor = -1;
-        for elem in possibleNeighbors{
-            if idx == 0 then neighbor = elem;
-            idx += 1;
+    // Find vertex with maximum degree
+    var maxDegVertex = -1;
+    var maxDeg = 0;
+    for v in vertices {
+        var deg = neighborMap[v].size;
+        if deg > maxDeg {
+            maxDegVertex = v;
+            maxDeg = deg;
         }
-        // var neighbor = possibleNeighbors.first();
-        cutSide.add(neighbor);
     }
     
-    writeln("Found cut side with target and one neighbor: ", cutSide);
-    return cutSide;
+    // Among its neighbors, select one with high degree
+    var bestNeighbor = -1;
+    maxDeg = 0;
+    for u in neighborMap[maxDegVertex] {
+        var deg = neighborMap[u].size;
+        if deg > maxDeg {
+            bestNeighbor = u;
+            maxDeg = deg;
+        }
+    }
+    
+    writeln("Selected edge: (", maxDegVertex, ",", bestNeighbor, ")");
+    return (maxDegVertex, bestNeighbor);
 }
-/* Verify if a cut is valid and minimal */
-proc validateCut(ref vertices: set(int), ref cutSide: set(int), ref neighbors: map(int, set(int)), ref minCutValue: int): bool throws {
-   writeln("\n=== Validating Cut ===");
-   writeln("Cut side: ", cutSide);
-   writeln("Other side: ", vertices - cutSide);
-   writeln("Cut size: ", cutSide.size);
-   writeln("Total vertices: ", vertices.size);
+
+/* Paper's recursion-based approach */
+proc nagamochiMinCutOptimized(ref vertices: set(int), 
+                             ref neighborMap: map(int, set(int)), 
+                             upperBound: int): (int,  list(MinCut)) throws {
+    writeln("=== Starting Nagamochi Algorithm ===");
+    var allMinCuts: list(MinCut);
+    
+    // Base cases
+    if vertices.size <= 1 then return (upperBound, allMinCuts);
+    if vertices.size == 2 {
+        var v: int;
+        for elem in vertices {
+            v = elem;
+        }
+        var cutValue = neighborMap[v].size;
+        var part1: set(int);
+        part1.add(v);
+        allMinCuts.pushBack(new MinCut(cutValue, part1, vertices - part1, 0.5));
+        return (cutValue, allMinCuts);
+    }
+    
+    // Step 1: Select (s,t) edge - paper suggests high degree vertices
+    var (s,t) = selectEdgeForSplit(vertices, neighborMap);
+    
+    // Step 2: Find minimum s-t cut
+    var (cutValue, residualGraph) = findMinSTCut(vertices, neighborMap, s, t);
+    
+    // Step 3: If cut > upperBound, contract and recurse
+    if cutValue > upperBound {
+        contractEdge(vertices, neighborMap, s, t);
+        return nagamochiMinCutOptimized(vertices, neighborMap, upperBound);
+    }
+    
+    // Step 4: Get components
+    var components = getConnectedComponents(residualGraph);
+    
+    // Step 5: Process based on number of components (Section 3.2 in paper)
+    if components.size == 2 {
+        // Binary case: process each component separately
+        for comp in components {
+            var subNeighbors = extractSubgraph(comp, neighborMap);
+            var (subValue, subCuts) = nagamochiMinCutOptimized(comp, subNeighbors, upperBound);
+            // Add component's cuts
+            for cut in subCuts {
+                allMinCuts.pushBack(cut);
+            }
+        }
+        // Add the s-t cut itself
+        var sSide: set(int);
+        sSide.add(s);
+        allMinCuts.pushBack(new MinCut(cutValue, sSide, vertices - sSide, 0.5));
+    } else {
+        // Cycle case: handle according to paper's Section 3.2
+        writeln("Found cycle case with ", components.size, " components");
+        handleCycleCaseFromPaper(components, neighborMap, vertices, upperBound, allMinCuts);
+    }
+    
+    return (upperBound, allMinCuts);
+}
+
+/* Handle cycle case following paper's Section 3.2 */
+proc handleCycleCaseFromPaper(ref components: list(set(int)),
+                             ref neighborMap: map(int, set(int)),
+                             ref vertices: set(int),
+                             upperBound: int,
+                             ref allMinCuts: list(MinCut)) throws {
+    writeln("Processing cycle with ", components.size, " components");
+    
+    // The paper's approach for cycle case:
+    // 1. Process each component recursively
+    for i in 0..components.size-1 {
+        var comp = components[i];
+        var subNeighbors = extractSubgraph(comp, neighborMap);
+        var (_, subCuts) = nagamochiMinCutOptimized(comp, subNeighbors, upperBound);
+        
+        // Add component's cuts
+        for cut in subCuts {
+            allMinCuts.pushBack(cut);
+        }
+        
+        // 2. Add cuts corresponding to each prefix of components
+        var prefix: set(int);
+        for j in 0..i {
+            for v in components[j] {
+                prefix.add(v);
+            }
+        }
+        
+        var cutValue = computeCutValue(prefix, vertices - prefix, neighborMap);
+        if cutValue <= upperBound {
+            allMinCuts.pushBack(new MinCut(cutValue, prefix, vertices - prefix, 0.5));
+        }
+    }
+}
+
+/* Find minimum s-t cut using Ford-Fulkerson with BFS */
+proc findMinSTCut(vertices: set(int), 
+                 neighborMap: map(int, set(int)), 
+                 s: int, t: int) throws {
+    writeln("Finding minimum s-t cut between ", s, " and ", t);
+    
+    // Initialize residual graph with capacities
+    var residualGraph: map(int, map(int, int));
+    for v in vertices {
+        residualGraph[v] = new map(int, int);
+        for u in neighborMap[v] {
+            // For unweighted graph, capacity is 1
+            residualGraph[v][u] = 1;
+            // Initialize reverse edge
+            if !residualGraph.contains(u) then 
+                residualGraph[u] = new map(int, int);
+            residualGraph[u][v] = 0;
+        }
+    }
+    
+    var maxFlow = 0;
+    while true {
+        // Find augmenting path using BFS
+        var path = findAugmentingPath(residualGraph, s, t, vertices);
+        if path.size == 0 then break;
+        
+        // Find minimum residual capacity along path
+        var minCapacity = max(int);
+        for i in 0..path.size-2 {
+            var u = path[i];
+            var v = path[i+1];
+            minCapacity = min(minCapacity, residualGraph[u][v]);
+        }
+        
+        // Update residual graph
+        for i in 0..path.size-2 {
+            var u = path[i];
+            var v = path[i+1];
+            residualGraph[u][v] -= minCapacity;
+            residualGraph[v][u] += minCapacity;
+        }
+        
+        maxFlow += minCapacity;
+    }
+    
+    writeln("Maximum flow value: ", maxFlow);
+    return (maxFlow, residualGraph);
+}
+
+/* Find augmenting path using BFS */
+proc findAugmentingPath(ref residualGraph: map(int, map(int, int)),
+                       s: int, t: int,
+                       vertices: set(int)): list(int) throws{
+    var parent: map(int, int);
+    var visited: set(int);
+    var queue = new list(int);
+    
+    queue.pushBack(s);
+    visited.add(s);
+    
+    var foundPath = false;
+    while queue.size > 0 && !foundPath {
+        // Get first element and remove it
+        var u = queue.first;
+        queue.getAndRemove(0);  // Remove first element (index 0)
+        
+        // Iterate over keys in residual graph
+        for v in residualGraph[u].keysToArray() {
+            var cap = residualGraph[u][v];
+            if !visited.contains(v) && cap > 0 {
+                visited.add(v);
+                parent[v] = u;
+                queue.pushBack(v);
+                if v == t {
+                    foundPath = true;
+                    break;
+                }
+            }
+        }
+    }
+    
+    // Reconstruct path if t was reached
+    var path: list(int);
+    if visited.contains(t) {
+        // Build path in reverse order
+        var cur = t;
+        while cur != s {
+            path.pushBack(cur);
+            cur = parent[cur];
+        }
+        path.pushBack(s);
+        
+        // Create reversed path
+        var reversedPath: list(int);
+        for i in 0..path.size-1 {
+            reversedPath.pushBack(path.getValue(path.size-1-i));
+        }
+        return reversedPath;
+    }
+    
+    return path;  // Empty path if no path found
+}
+
+/* Get connected components from residual graph */
+proc getConnectedComponents(residualGraph: map(int, map(int, int))) throws {
+    var components: list(set(int));
+    var visited: set(int);
+    
+        proc dfs(v: int, ref currentComp: set(int)) throws{
+            visited.add(v);
+            currentComp.add(v);
+
+            // Check if 'v' has any neighbors
+            if residualGraph.contains(v) {
+                // Iterate over all neighbors of 'v'
+                for u in residualGraph[v].keys() {
+                    var cap = residualGraph[v][u];  // Get the residual capacity
+                    if !visited.contains(u) && cap > 0 {
+                        dfs(u, currentComp);
+                    }
+                }
+            }
+        }
+    
+    // Find all components
+    for v in residualGraph.keysToArray() {
+        if !visited.contains(v) {
+            var comp: set(int);
+            dfs(v, comp);
+            components.pushBack(comp);
+            writeln("Found component: ", setToString(comp));
+        }
+    }
+    
+    writeln("Total components found: ", components.size);
+    return components;
+}
+
+/* Handle cycle case in minimum cut finding */
+proc handleCycleCase(ref components: list(set(int)),
+                    ref neighborMap: map(int, set(int)),
+                    ref vertices: set(int),
+                    upperBound: int,
+                    ref allMinCuts: list(MinCut)) throws {
+    writeln("Handling cycle case with ", components.size, " components");
+    
+    if components.size == 0 {
+        writeln("Warning: No components to process");
+        return;
+    }
+    
+    // Process first component
+    var comp = components[0];
+    writeln("Processing component: ", setToString(comp));
+    
+    // Create subgraph for component
+    var subNeighbors: map(int, set(int));
+    for v in comp {
+        subNeighbors[v] = neighborMap[v] & comp;
+    }
+    
+    // Find cuts in the component
+    if comp.size > 1 {  // Only process if component has multiple vertices
+        var (subValue, subCuts) = nagamochiMinCutOptimized(comp, subNeighbors, upperBound);
+        
+        // Add any new cuts found
+        for cut in subCuts {
+            var found = false;
+            for existingCut in allMinCuts {
+                if (cut.partition1 == existingCut.partition1 && 
+                    cut.partition2 == existingCut.partition2) ||
+                   (cut.partition1 == existingCut.partition2 && 
+                    cut.partition2 == existingCut.partition1) {
+                    found = true;
+                    break;
+                }
+            }
+            if !found {
+                allMinCuts.pushBack(cut);
+            }
+        }
+    }
+    
+    // Remove processed component
+    components.popBack();
+    
+    // If there are remaining components, process cross-component cut
+    if components.size > 0 {
+        var otherVertices: set(int);
+        for remainingComp in components {
+            for v in remainingComp {
+                otherVertices.add(v);
+            }
+        }
+        
+        var cutValue = computeCutValue(comp, otherVertices, neighborMap);
+        if cutValue <= upperBound {
+            var newCut = new MinCut(cutValue, comp, otherVertices, computeBalance(comp, otherVertices));
+            allMinCuts.pushBack(newCut);
+        }
+        
+        // Recursively process remaining components
+        handleCycleCase(components, neighborMap, vertices, upperBound, allMinCuts);
+    }
+}
+/* Extract subgraph for component */
+proc extractSubgraph(component: set(int),
+                    neighborMap: map(int, set(int))): map(int, set(int)) throws{
+    writeln("Extracting subgraph for component: ", setToString(component));
+    
+    var subNeighbors: map(int, set(int));
+    for v in component {
+        subNeighbors[v] = new set(int);
+        // Only keep edges within component
+        for u in neighborMap[v] {
+            if component.contains(u) {
+                subNeighbors[v].add(u);
+            }
+        }
+    }
+    
+    writeln("Extracted subgraph with ", subNeighbors.size, " vertices");
+    return subNeighbors;
+}
+
+
+
+/* Verify cut properties and check uniqueness */
+proc verifyAndIsUnique(cut: MinCut, 
+                     vertices: set(int),
+                     neighborMap: map(int, set(int)),
+                     existingCuts: list(MinCut)): bool throws{
+   writeln("Verifying cut properties and uniqueness");
    
-   if cutSide.size == 0 || cutSide.size == vertices.size {
-       writeln("Invalid cut: empty or full set");
+   // Check basic properties
+   if cut.partition1.size == 0 || cut.partition2.size == 0 {
+       writeln("Invalid: empty partition");
        return false;
    }
    
-   // Count crossing edges
-   var crossingEdges = 0;
-   writeln("\nCounting crossing edges:");
-   for v in cutSide {
-       var outsideNeighbors = neighbors[v] & (vertices - cutSide);
-       writeln("Vertex ", v, " has ", outsideNeighbors.size, " outside neighbors: ", outsideNeighbors);
-       crossingEdges += outsideNeighbors.size;
+   if (cut.partition1 | cut.partition2) != vertices {
+       writeln("Invalid: partitions don't cover all vertices");
+       return false;
    }
    
-   writeln("\nValidation result:");
-   writeln("Total crossing edges: ", crossingEdges);
-   writeln("Required min cut value: ", minCutValue);
-   writeln("Valid: ", crossingEdges == minCutValue);
-   //if crossingEdges == minCutValue then return true;
-   return crossingEdges == minCutValue;
-}
-
-/* Modified contraction phase to track all cuts */
-proc findAllMinCutsContraction(ref vertices: set(int)) throws {
-    writeln("\n=== Starting All MinCuts Contraction Phase ===");
-    
-    var currentVertices = vertices;
-    var workingNeighbors: map(int, set(int));
-    var vertexMapping = new VertexMapping();
-    var allCuts: list(Cut);
-    var minCutValue = max(int);
-    
-    // Initialize
-    vertexMapping.initializeVertices(vertices);
-    writeln("After initialization - vertexMapping contents:");
-    for key in vertexMapping.contractedToOriginal.keysToArray() {
-        writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-    }
-
-    for v in vertices {
-        workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
-    }
-    writeln("Initial workingNeighbors:");
-    for v in vertices {
-        writeln("  ", v, " -> ", workingNeighbors[v]);
-    }
-    
-    while currentVertices.size > 2 {
-        writeln("\n--- Processing graph with ", currentVertices.size, " vertices ---");
-        writeln("Current vertices: ", currentVertices);
-        
-        // Get forest decomposition
-        var forests = FOREST(currentVertices);
-        
-        // Find minimum degree vertices
-        for v in currentVertices {
-            var degree = workingNeighbors[v].size;
-            writeln("\nProcessing vertex ", v, " with degree ", degree);
-            
-            if degree == minCutValue || degree < minCutValue {
-                // Track if this is a new minimum
-                var isNewMin = degree < minCutValue;
-                if isNewMin {
-                    writeln("Found new minimum cut (degree < minCutValue)");
-                    minCutValue = degree;
-                    allCuts.clear();  // Clear old cuts with higher values
-                } else {
-                    writeln("Found equal minimum cut (degree == minCutValue)");
-                }
-
-                // Find cut component (one side of the cut)
-                var cutComponent = findCutComponent(v, workingNeighbors, currentVertices);
-                var originalVertices: set(int);
-                
-                writeln("\nDEBUG - Before processing cut:");
-                writeln("Current minCutValue: ", minCutValue);
-                writeln("Current vertex: ", v);
-                writeln("Cut component size: ", cutComponent.size);
-                writeln("Cut component: ", cutComponent);
-                writeln("VertexMapping contents: ");
-                for key in vertexMapping.contractedToOriginal.keysToArray() {
-                    writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-                }
-
-                // Map contracted vertices back to original vertices
-                for contractedVertex in cutComponent {
-                    if vertexMapping.contractedToOriginal.contains(contractedVertex) {
-                        originalVertices |= vertexMapping.contractedToOriginal[contractedVertex];
-                    } else {
-                        writeln("WARNING: Contracted vertex ", contractedVertex, " not found in mapping!");
-                    }
-                }
-
-                // Validate the cut
-                if validateCut(vertices, originalVertices, workingNeighbors, minCutValue) {
-                    // Check for duplicates
-                    var isDuplicate = false;
-                    for cut in allCuts {
-                        if cut.vertices == originalVertices || 
-                           cut.vertices == (vertices - originalVertices) {
-                            isDuplicate = true;
-                            writeln("Found duplicate cut - skipping");
-                            break;
-                        }
-                    }
-                    
-                    if !isDuplicate {
-                        allCuts.pushBack(new Cut(originalVertices, degree));
-                        writeln("Found new unique cut: ", allCuts[allCuts.size-1]);
-                    }
-                } else {
-                    writeln("Cut validation failed - skipping");
-                }
-            }
-        }
-        
-        // Contract edge from first forest
-        var firstForestEdges = getEdgesInForest(forests, 1);
-        if firstForestEdges.size == 0 {
-            writeln("No edges in first forest. Breaking.");
-            break;
-        }
-        var idx: int = 0;
-        var edgeToContract: Edge;
-        for elem in firstForestEdges {
-            if idx == 0 then edgeToContract = elem;
-            idx += 1;
-        }
-        writeln("\nContracting edge: ", edgeToContract);
-        
-        // Perform contraction
-        var mergedVertex = min(edgeToContract.u, edgeToContract.v);
-        writeln("Will merge into vertex: ", mergedVertex);
-        writeln("VertexMapping before contraction:");
-        for key in vertexMapping.contractedToOriginal.keysToArray() {
-            writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-        }
-
-        currentVertices = contractEdge(currentVertices, edgeToContract, workingNeighbors);
-        vertexMapping.mergeVertices(edgeToContract.u, edgeToContract.v, mergedVertex);
-
-        writeln("VertexMapping after contraction:");
-        for key in vertexMapping.contractedToOriginal.keysToArray() {
-            writeln("  ", key, " -> ", vertexMapping.contractedToOriginal[key]);
-        }
-        writeln("Current vertices after contraction: ", currentVertices);
-    }
-    
-    writeln("\n////////////////// findAllMinCutsContraction //////////////////");
-    writeln("Final Results:");
-    writeln("Minimum cut value: ", minCutValue);
-    writeln("Number of unique cuts found: ", allCuts.size);
-    writeln("All cuts: ", allCuts);
-
-    return (minCutValue, allCuts);
-}
-
-/* Verify if a cut is minimal */
-proc verifyMinCut(cut: Cut, workingNeighbors: map(int, set(int)), vertices: set(int)): bool throws{
-    // Count edges crossing the cut
-    var crossingEdges = 0;
-    for v in cut.vertices {
-        for n in workingNeighbors[v] {
-            if !cut.vertices.contains(n) {
-                crossingEdges += 1;
-            }
-        }
-    }
-    
-    return crossingEdges == cut.cutValue;
-}
-
-
-/* Main function to find all minimum cuts */
-proc findAllMinCuts(ref vertices: set(int)) throws {
-    writeln("Finding ALL minimum cuts...");
-    
-    // Find cuts through contractions
-    var (minCutValue, candidateCuts) = findAllMinCutsContraction(vertices);
-    
-    // Initialize working neighbors for verification
-    var workingNeighbors: map(int, set(int));
-    for v in vertices {
-        workingNeighbors[v] = neighborsSetGraphG1[v] & vertices;
-    }
-    
-    // Verify and remove duplicates
-    var validatedCuts: list(Cut);
-    for cut in candidateCuts {
-        if verifyMinCut(cut, workingNeighbors, vertices) {
-            validatedCuts.pushBack(cut);
-        }
-    }
-    
+   if (cut.partition1 & cut.partition2).size != 0 {
+       writeln("Invalid: partitions overlap");
+       return false;
+   }
    
-    writeln("\nFound ", validatedCuts.size, " minimum validated cuts with value ", minCutValue);
-    for cut in validatedCuts {
-        writeln("  ", cut);
-    }
-    writeln("////////////////// findAllMinCuts //////////////////");
-    return (minCutValue, validatedCuts);
+   // Verify cut value
+   var actualCutValue = computeCutValue(cut.partition1, cut.partition2, neighborMap);
+   if actualCutValue != cut.cutValue {
+       writeln("Invalid: incorrect cut value");
+       return false;
+   }
+   
+   // Check for uniqueness (considering symmetry)
+   for existing in existingCuts {
+       if (existing.partition1 == cut.partition1 && existing.partition2 == cut.partition2) ||
+          (existing.partition1 == cut.partition2 && existing.partition2 == cut.partition1) {
+           writeln("Cut already exists");
+           return false;
+       }
+   }
+   
+   writeln("Cut verified and is unique");
+   return true;
 }
+/* Verify basic cut properties */
+proc verifyBasicProperties(cut: MinCut, 
+                         vertices: set(int),
+                         neighborMap: map(int, set(int))): bool {
+    // Non-empty partitions
+    if cut.partition1.size == 0 || cut.partition2.size == 0 {
+        return false;
+    }
+    
+    // Partitions contain all vertices exactly once
+    if (cut.partition1 | cut.partition2) != vertices {
+        return false;
+    }
+    
+    // Partitions are disjoint
+    if (cut.partition1 & cut.partition2).size != 0 {
+        return false;
+    }
+    
+    return true;
+}
+/* Maximum adjacency ordering without early termination *//// can be removed
+proc maximumAdjacencyOrder(vertices: set(int),
+                         neighborMap: map(int, set(int))) throws {
+   writeln("\n--- Starting Maximum Adjacency Ordering ---");
+   var n = vertices.size;
+   var order: [1..n] int;
+   var marked: set(int);
+   var degrees: map(int, int);
+   
+   // Initialize with actual degrees
+   writeln("Initializing degrees:");
+   for v in vertices {
+       degrees[v] = neighborMap[v].size;
+       writeln("Vertex ", v, " initial degree: ", degrees[v]);
+   }
+   
+   // Build ordering
+   for i in 1..n {
+       writeln("\nFinding vertex for position ", i);
+       var maxDegVertex = -1;
+       var maxDeg = -1;
+       
+       // Find unmarked vertex with maximum strong degree to marked set
+       for v in vertices {
+           if !marked.contains(v) {
+               var strongDeg = 0;
+               // Count connections to marked vertices
+               for u in neighborMap[v] {
+                   if marked.contains(u) {
+                       strongDeg += 1;
+                   }
+               }
+               writeln("Vertex ", v, " has strong degree ", strongDeg);
+               
+               if strongDeg > maxDeg {
+                   maxDeg = strongDeg;
+                   maxDegVertex = v;
+               }
+           }
+       }
+       
+       writeln("Selected vertex ", maxDegVertex, " with strong degree ", maxDeg);
+       order[i] = maxDegVertex;
+       marked.add(maxDegVertex);
+   }
+   
+   writeln("Final ordering: ", order);
+   return (order, degrees);
+}
+/* Compute cut value between two partitions */
+proc computeCutValue(part1: set(int), 
+                   part2: set(int), 
+                   neighborMap: map(int, set(int))): int throws{
+   writeln("Computing cut value between parts: ", setToString(part1), " and ", setToString(part2));
+   var cutValue = 0;
+   
+   // Count edges between partitions
+   for v in part1 {
+       for u in neighborMap[v] {
+           if part2.contains(u) {
+               cutValue += 1;  // For unweighted graph
+           }
+       }
+   }
+   
+   writeln("Cut value: ", cutValue);
+   return cutValue;
+}
+/* Maximum adjacency ordering */// can be removed
+proc maximumAdjacencyOrderEarly(vertices: set(int),
+                               neighborMap: map(int, set(int))) throws{
+    var n = vertices.size;
+    var order: [1..n] int;
+    var marked: set(int);
+    var degrees: map(int, int);
+    writeln("\n--- Starting maximum AdjacencyOrderEarly ---");
+    // Initialize with actual degrees
+    for v in vertices {
+        degrees[v] = neighborMap[v].size;
+    }
+    
+    for i in 1..n {
+        var maxDegVertex = -1;
+        var maxDeg = -1;
+        
+        for v in vertices {
+            if !marked.contains(v) {
+                var deg = 0;
+                for u in neighborMap[v] {
+                    if marked.contains(u) {
+                        deg += 1;
+                    }
+                }
+                if deg > maxDeg {
+                    maxDeg = deg;
+                    maxDegVertex = v;
+                }
+            }
+        }
+        
+        order[i] = maxDegVertex;
+        marked.add(maxDegVertex);
+    }
+    
+    return (order, degrees);
+}
+
+/* Main entry point for finding all minimum cuts */
+proc findAllMinCuts(ref vertices: set(int), ref neighborMap: map(int, set(int))) throws {
+    writeln("=== Starting All Minimum Cuts Algorithm ===");
+    
+    // Step 1: Get initial bound 
+    // Note: Paper uses VieCut here, but we use minimum degree as temporary solution
+    var minCutBoundNaive = getMinDegree(vertices, neighborMap);
+    writeln("Initial minimum cut bound (λ): ", minCutBoundNaive);
+    
+    // Step 2: Contract Phase - using your contractPhase function
+    var (contractedVertices, contractedNeighbors, degreeOneVertices, minCutBound) = contractPhase(vertices, neighborMap, minCutBoundNaive);
+    
+    // Store contracted graph state
+    vertices = contractedVertices;
+    neighborMap = contractedNeighbors;
+    
+    // Step 3: Find exact minimum cut value
+    // var exactminCutBound = nagamochiMinCutOptimized(vertices, neighborMap);
+    
+    // Step 4: Build cactus representation recursively
+    // var cactus = buildCactusRepresentation(vertices, neighborMap, exactminCutBound);
+    
+    // Step 5: Reinsert degree-one vertices into cactus
+    //reinsertDegreeOneVertices(cactus, degreeOneVertices);
+    
+    //return (exactminCutBound, cactus);
+}
+/////////////////////////////////// all contraction functions  /////////////////////////////////////////
+
+/* Find edges that can be contracted based on connectivity certificate */
+proc findContractibleEdges(forests: list(set(Edge)),
+                        vertices: set(int),
+                        neighborMap: map(int, set(int)),
+                        minCutBound: int) throws {
+   writeln("=== Finding Contractible Edges ===");
+   writeln("Current minimum cut bound: ", minCutBound);
+   writeln("Number of forests: ", forests.size);
+   
+   var contractibleEdges = new set(Edge);
+   var edgeConnectivity: map(Edge, int);
+   
+   // Count forest occurrences for each edge
+   for edge in getAllEdges(vertices, neighborMap) {
+       var connectivity = 0;
+       
+       // Count how many forests contain this edge
+       for forest in forests {
+           if forest.contains(edge) {
+               connectivity += 1;
+           }
+       }
+       
+       edgeConnectivity[edge] = connectivity;
+       writeln("Edge ", edge, " appears in ", connectivity, " forests");
+       
+       // If edge appears in more forests than minCutBound, it can be contracted
+       if connectivity > minCutBound {
+           writeln("Found contractible edge ", edge, " with connectivity ", connectivity);
+           contractibleEdges.add(edge);
+       }
+   }
+   
+   writeln("Found ", contractibleEdges.size, " contractible edges");
+   if contractibleEdges.size > 0 {
+       writeln("Contractible edges:");
+       for edge in contractibleEdges {
+           writeln("  ", edge, " (connectivity: ", edgeConnectivity[edge], ")");
+       }
+   }
+   
+   return contractibleEdges;
+}
+
+
+/* Contract Phase - combines different contraction strategies */
+proc contractPhase( in vertices: set(int), 
+                   in neighborMap: map(int, set(int)),
+                   const in minCutBound: int) throws {
+    var changed = true;
+    var degreeOneVertices: list((int, int));  // Store for later reinsertion
+    
+    // Create copies
+    var workingVertices = vertices;
+    var workingNeighbors = neighborMap;
+    var workingLambda = minCutBound;
+
+    writeln("\n=== Starting Contraction Phase ===");
+    writeln("Initial graph size: ", vertices.size, " vertices");
+    writeln("Initial λ: ", minCutBound);
+    
+    while changed {
+        changed = false;
+        
+        // 1. Contract degree-one vertices
+        var newDegOneVertices = contractDegreeOne(workingVertices, workingNeighbors);
+        if newDegOneVertices.size > 0 {
+            changed = true;
+            // Store for reinsertion
+            for v in newDegOneVertices do
+                degreeOneVertices.pushBack(v);
+            writeln("Contracted ", newDegOneVertices.size, " degree-one vertices");
+        }
+        
+        if workingVertices.size <= 2 then break;
+        
+        // 2. Connectivity-based contraction
+        var forests = buildForests(workingVertices, workingNeighbors);
+        var connEdges = findContractibleEdges(forests, vertices, workingNeighbors, workingLambda);
+        
+        if connEdges.size > 0 {
+            for edge in connEdges {
+                contractEdge(workingVertices, workingNeighbors, edge.u, edge.v);
+            }
+            changed = true;
+            writeln("Contracted ", connEdges.size, " high-connectivity edges");
+        }
+        
+        if workingVertices.size <= 2 then break;
+        
+        // 3. Local contraction criteria
+        var edgesToContract: set(Edge);
+        for v in workingVertices {
+            for u in workingNeighbors[v] {
+                if v < u {  // Check each edge only once
+                    var edge = new Edge(v, u);
+                    // Check all local criteria from paper
+                    if isHeavyEdge(edge, workingLambda) ||
+                       hasImbalancedVertex(edge, workingVertices, workingNeighbors, workingLambda) ||
+                       hasImbalancedTriangle(edge, workingVertices, workingNeighbors, workingLambda) ||
+                       hasHeavyNeighborhood(edge, workingVertices, workingNeighbors, workingLambda) {
+                        edgesToContract.add(edge);
+                    }
+                }
+            }
+        }
+        
+        // Perform local contractions
+        for edge in edgesToContract {
+            contractEdge(workingVertices, workingNeighbors, edge.u, edge.v);
+            changed = true;
+        }
+        if edgesToContract.size > 0 {
+            writeln("Contracted ", edgesToContract.size, " edges based on local criteria");
+        }
+        
+        // Update lambda if we find smaller value
+        var newLambda = getMinDegree(workingVertices, workingNeighbors);
+        if newLambda < workingLambda {
+            writeln("Updated λ from ", workingLambda, " to ", newLambda);
+            workingLambda = newLambda;
+            changed = true;
+        }
+        
+        writeln("Current graph size: ", workingVertices.size, " vertices");
+    }
+    
+    return (workingVertices, workingNeighbors, degreeOneVertices, workingLambda);
+}
+
+/* Added missing local criterion from paper */
+proc hasImbalancedTriangle(edge: Edge,
+                          vertices: set(int),
+                          neighborMap: map(int, set(int)),
+                          minCutBound: int): bool throws {
+    var u = edge.u;
+    var v = edge.v;
+    
+    // Check shared neighbors for triangle formation
+    var sharedNeighbors = neighborMap[u] & neighborMap[v];
+    
+    for w in sharedNeighbors {
+        // Check conditions for both vertices u and v
+        if hasImbalancedVertexInTriangle(u, v, w, vertices, neighborMap, minCutBound) &&
+           hasImbalancedVertexInTriangle(v, u, w, vertices, neighborMap, minCutBound) {
+            return true;
+        }
+    }
+    return false;
+}
+
+/* Helper for ImbalancedTriangle criterion */
+proc hasImbalancedVertexInTriangle(v: int, u: int, w: int,
+                                  vertices: set(int),
+                                  neighborMap: map(int, set(int)),
+                                  minCutBound: int): bool throws {
+    // Get vertex degree
+    var degree = neighborMap[v].size;
+    
+    // Check if vertex degree exceeds lambda
+    if degree <= minCutBound then return false;
+    
+    // Check if the two triangle edges are heavier than all other edges combined
+    var triangleEdgeWeight = 2; // In unweighted case, two edges = weight 2
+    var otherEdgesWeight = degree - 2; // Rest of edges have weight 1 each
+    
+    return triangleEdgeWeight > otherEdgesWeight;
+}
+
+/* Contract degree-one vertices */
+proc contractDegreeOne(ref vertices: set(int), 
+                     ref neighborMap: map(int, set(int))) throws {
+   writeln("--- Starting Degree-One Contraction ---");
+   var degOneVertices: list((int, int));  // store (vertex, neighbor) pairs
+   
+   // Find initial degree-one vertices
+   var toProcess: list(int);
+   writeln("Checking for degree-one vertices...");
+   for v in vertices {
+       if neighborMap.contains(v) && neighborMap[v].size == 1 {
+           writeln("Found initial degree-one vertex: ", v);
+           toProcess.pushBack(v);
+       }
+   }
+   
+   writeln("Number of initial degree-one vertices: ", toProcess.size);
+   
+   while toProcess.size > 0 {
+       var v = toProcess.popBack();
+       writeln("\nProcessing vertex ", v);
+       
+       // Verify vertex still exists and has degree one
+       if !neighborMap.contains(v) {
+           writeln("Vertex ", v, " no longer exists in graph");
+           continue;
+       }
+       if neighborMap[v].size != 1 {
+           writeln("Vertex ", v, " no longer has degree one (degree: ", neighborMap[v].size, ")");
+           continue;
+       }
+       
+       // Get the single neighbor safely
+       var u: int = -1;
+       var neighSet = neighborMap[v];
+       for neigh in neighSet {
+           u = neigh;
+           break;
+       }
+       if u == -1 {
+           writeln("Error: Could not get neighbor for vertex ", v);
+           continue;
+       }
+       
+       writeln("Contracting vertex ", v, " into neighbor ", u);
+       
+       // Store for later reinsertion
+       degOneVertices.pushBack((v, u));
+       
+       // Contract v into u
+       for w in neighborMap[v] {
+           if w != u {  // Skip self-loops
+               writeln("Processing edge from ", v, " to ", w);
+               if !neighborMap.contains(u) {
+                   neighborMap[u] = new set(int);
+               }
+               neighborMap[u].add(w);
+               
+               // Update w's neighbors
+               if neighborMap.contains(w) {
+                   neighborMap[w].remove(v);
+                   neighborMap[w].add(u);
+                   
+                   // Check if w now has degree one
+                   if neighborMap[w].size == 1 {
+                       writeln("New degree-one vertex found: ", w);
+                       toProcess.pushBack(w);
+                   }
+               }
+           }
+       }
+       
+       // Remove v
+       writeln("Removing vertex ", v);
+       vertices.remove(v);
+       neighborMap.remove(v); ///// we have problem here because we are removing removed one not on its neighbors
+   }
+   
+   writeln("Degree-one contraction complete");
+   writeln("Contracted vertices: ", degOneVertices.size);
+   writeln("Remaining vertices: ", vertices.size);
+   writeln("\n vertices: ", vertices);
+   writeln("neighborMap: ", neighborMap);
+   
+   return degOneVertices;
+}
+
+/* Basic edge contraction */
+proc contractEdge(ref vertices: set(int), 
+                 ref neighborMap: map(int, set(int)),
+                 v: int, u: int) throws {
+    writeln("Contracting edge (", v, ",", u, ")");
+    
+    // Merge v's neighbors into u
+    for w in neighborMap[v] {
+        if w != u {  // Skip self-loops
+            neighborMap[u].add(w);
+            // Update w's neighbors
+            neighborMap[w].remove(v);
+            neighborMap[w].add(u);
+        }
+    }
+    
+    // Remove v
+    vertices.remove(v);
+    neighborMap.remove(v);
+    
+    writeln("After contraction: vertex ", u, " connects to: ", setToString(neighborMap[u]));
+}
+
+/* Connectivity-based contraction */
+proc connectivityBasedContraction(vertices: set(int),
+                                neighborMap: map(int, set(int)),
+                                minCutBound: int) throws {
+    var contractedEdges: set(Edge);
+    var currentVertices = vertices;
+    var currentNeighbors = neighborMap;
+    
+    // Build forests for connectivity bounds
+    var forests = buildForests(vertices, neighborMap);
+    
+    // Find edges with high connectivity
+    var edgeConnectivity: map(Edge, int);
+    for edge in getAllEdges(vertices, neighborMap) {
+        var conn = getEdgeConnectivity(edge, forests);
+        if conn > minCutBound {
+            contractedEdges.add(edge);
+        }
+    }
+    
+    // Contract found edges
+    for edge in contractedEdges {
+        contractEdge(currentVertices, currentNeighbors, edge.u, edge.v);
+    }
+    
+    return (contractedEdges, (currentVertices, currentNeighbors));
+}
+/* Get edge connectivity from forests */
+proc getEdgeConnectivity(edge: Edge, forests: list(set(Edge))): int {
+    var count = 0;
+    for forest in forests {
+        if forest.contains(edge) {
+            count += 1;
+        }
+    }
+    return count;
+}
+/* Check if edge can be contracted based on local criteria */
+proc canContractLocal(edge: Edge,
+                     vertices: set(int),
+                     neighborMap: map(int, set(int)),
+                     minCutBound: int) throws {
+    writeln("Checking local contraction criteria for edge ", edge);
+    
+    // 1. Heavy Edge
+    if isHeavyEdge(edge, minCutBound) {
+        writeln("Edge is heavy");
+        return true;
+    }
+    
+    // 2. Imbalanced Vertex
+    if hasImbalancedVertex(edge, vertices, neighborMap, minCutBound) {
+        writeln("Has imbalanced vertex");
+        return true;
+    }
+    
+    // 3. Heavy Neighborhood
+    if hasHeavyNeighborhood(edge, vertices, neighborMap, minCutBound) {
+        writeln("Has heavy neighborhood");
+        return true;
+    }
+    
+    return false;
+}
+
+
+/* Local contraction criterion 1: Heavy Edge */
+proc isHeavyEdge(edge: Edge, minCutBound: int): bool {
+    // In unweighted graph, edges have weight 1
+    return false;  // No edge can be heavy in unweighted case
+}
+
+/* Local contraction criterion 2: Imbalanced Vertex */
+proc hasImbalancedVertex(edge: Edge,
+                        vertices: set(int),
+                        neighborMap: map(int, set(int)),
+                        minCutBound: int): bool throws{
+    // Check if either endpoint has all heavy edges
+    for v in [edge.u, edge.v] {
+        var degreeSum = neighborMap[v].size;
+        if degreeSum < 2 && degreeSum > minCutBound {
+            writeln("Vertex ", v, " is imbalanced");
+            return true;
+        }
+    }
+    return false;
+}
+/* Local contraction criterion 3: Heavy Neighborhood */
+proc hasHeavyNeighborhood(edge: Edge,
+                         vertices: set(int),
+                         neighborMap: map(int, set(int)),
+                         minCutBound: int): bool throws{
+    // Get shared neighbors
+    var sharedNeighbors = neighborMap[edge.u] & neighborMap[edge.v];
+    var connectionSum = sharedNeighbors.size;
+    
+    // In unweighted case, if shared connections > minCutBound
+    return connectionSum > minCutBound;
+}
+/* Local contraction criteria */
+proc localContraction(vertices: set(int),
+                     neighborMap: map(int, set(int)),
+                     minCutBound: int) throws {
+    var contractedEdges: set(Edge);
+    var currentVertices = vertices;
+    var currentNeighbors = neighborMap;
+    
+    // Check each edge against local criteria
+    for v in vertices {
+        for u in neighborMap[v] {
+            if v < u {  // Check each edge once
+                var edge = new Edge(v, u);
+                if canContractLocal(edge, vertices, neighborMap, minCutBound) {
+                    contractedEdges.add(edge);
+                }
+            }
+        }
+    }
+    
+    // Contract found edges
+    for edge in contractedEdges {
+        contractEdge(currentVertices, currentNeighbors, edge.u, edge.v);
+    }
+    
+    return (contractedEdges, (currentVertices, currentNeighbors));
+}
+/* Get all edges in graph */
+proc getAllEdges(vertices: set(int),
+                neighborMap: map(int, set(int))) throws {
+    writeln("\n--- Getting all edges from graph ---");
+    var edges = new set(Edge);
+    
+    for v in vertices {
+        for u in neighborMap[v] {
+            if v < u {  // Add each edge only once
+                edges.add(new Edge(v, u));
+                writeln("Added edge (", v, ",", u, ")");
+            }
+        }
+    }
+    
+    writeln("Found ", edges.size, " total edges");
+    return edges;
+}
+
+
+
+/* Build edge-disjoint forests */
+proc buildForests(ref vertices: set(int),
+                 ref neighborMap: map(int, set(int))) throws {
+    writeln("\n=== Building Forests called ===");
+    var forests: list(set(Edge));
+    var remainingEdges = getAllEdges(vertices, neighborMap);
+    
+    writeln("Starting with ", remainingEdges.size, " edges");
+    
+    while remainingEdges.size > 0 {
+        writeln("\nBuilding forest ", forests.size);
+        writeln("Remaining edges: ", setToString(remainingEdges));
+        
+        // Build maximum spanning forest
+        var forest = buildMaximumSpanningForest(vertices, remainingEdges);
+        forests.pushBack(forest);
+        
+        // Remove used edges
+        for edge in forest {
+            remainingEdges.remove(edge);
+        }
+    }
+    
+    return forests;
+}
+/* Build maximum spanning forest */
+proc buildMaximumSpanningForest(ref vertices: set(int),
+                               availableEdges: set(Edge)) throws {
+    var forest = new set(Edge);
+    
+    // Create vertex ID mapping for union-find
+    var vertexToIndex: map(int, int);
+    var indexa = 0;
+    for v in vertices {
+        vertexToIndex[v] = indexa;
+        indexa += 1;
+    }
+    
+    // Track connected components
+    var componentParent: [0..#vertices.size] int = [i in 0..#vertices.size] i;
+    
+    proc findComponent(v: int) throws {
+        var current = vertexToIndex[v];
+        while componentParent[current] != current {
+            current = componentParent[current];
+        }
+        return current;
+    }
+    
+    proc unionComponents(v1: int, v2: int) throws{
+        var root1 = findComponent(v1);
+        var root2 = findComponent(v2);
+        if root1 != root2 {
+            componentParent[root2] = root1;
+        }
+    }
+    
+    // Add edges that don't create cycles
+    for edge in availableEdges {
+        if findComponent(edge.u) != findComponent(edge.v) {
+            forest.add(edge);
+            unionComponents(edge.u, edge.v);
+            writeln("Added edge ", edge, " to forest");
+        } else {
+            writeln("Skipped edge ", edge, " (would create cycle)");
+        }
+    }
+    
+    return forest;
+}
+
+
+/////////////////////////////////// End of contraction functions  /////////////////////////////////////////
+
+
+
+/* MinCut record with default initializer */
+record MinCut {
+    var cutValue: int;
+    var partition1: set(int);
+    var partition2: set(int);
+    var balance: real;
+    
+    proc init() {
+        this.cutValue = 0;
+        this.partition1 = new set(int);
+        this.partition2 = new set(int);
+        this.balance = 0.0;
+    }
+    
+    proc init(value: int, ref part1: set(int), ref part2: set(int), bal: real) {
+        this.cutValue = value;
+        this.partition1 = part1;
+        this.partition2 = part2;
+        this.balance = bal;
+    }
+    proc writeThis(fw) throws {
+        fw.write("MinCut(value=", cutValue, 
+                ", part1=", setToString(partition1),
+                ", part2=", setToString(partition2),
+                ", balance=", balance, ")");
+    }
+}
+
+/* Compute balance ratio between partitions */
+proc computeBalance(part1: set(int), part2: set(int)): real {
+   var totalSize = part1.size + part2.size;
+   if totalSize == 0 then return 0.0;
+   
+   var smallerSize = min(part1.size, part2.size);
+   var balance = smallerSize:real / totalSize:real;
+   
+   writeln("Balance ratio: ", balance, " (", smallerSize, "/", totalSize, ")");
+   return balance;
+}
+
+
+/* Find most balanced cut with given minimum ratio */
+proc findBalancedCut(ref cuts: list(MinCut), minRatio: real) {
+    // Initialize with invalid/default values
+    var bestCut = new MinCut(0, new set(int), new set(int), 0.0);
+    var bestBalance = 0.0;
+    var foundValidCut = false;
+    
+    writeln("Finding most balanced cut with minimum ratio: ", minRatio);
+    for cut in cuts {
+        writeln("Examining cut with balance: ", cut.balance);
+        if cut.balance >= minRatio && cut.balance > bestBalance {
+            bestBalance = cut.balance;
+            
+            bestCut.cutValue = cut.cutValue;
+            bestCut.partition1 = cut.partition1;
+            bestCut.partition2 = cut.partition2;
+            bestCut.balance = cut.balance;
+
+            foundValidCut = true;
+            writeln("Found better balanced cut with balance: ", bestBalance);
+        }
+    }
+    
+    if !foundValidCut {
+        writeln("No cut found meeting balance criteria");
+    } else {
+        writeln("Best balanced cut found with balance: ", bestBalance);
+    }
+    
+    return bestCut;
+}
+/* Helper to reinsert degree-one vertices into partitions */
+proc reinsertDegreeOneVertices(ref part1: set(int), 
+                              ref part2: set(int),
+                              degOneVertices: list((int, int))) {
+    var newPart1 = part1;
+    var newPart2 = part2;
+    
+    // Process degree-one vertices in reverse order
+    for i in 0..degOneVertices.size-1 {
+        var idx = degOneVertices.size - 1 - i;
+        var (v, u) = degOneVertices[idx];
+        
+        // Add v to same partition as u
+        if newPart1.contains(u) {
+            newPart1.add(v);
+        } else {
+            newPart2.add(v);
+        }
+    }
+    
+    return (newPart1, newPart2);
+}
+
+
+/* Integration test function */
+proc testMinCuts(graphName: string) throws {
+    writeln("\nTesting minimum cuts for ", graphName);
+    
+    // Create test graph
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Initialize empty neighbor sets
+    for i in 1..10 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Helper to add undirected edge
+    proc addEdge(u: int, v: int) {
+        neighborMap[u].add(v);
+        neighborMap[v].add(u);
+        writeln("Added edge: ", u, " - ", v);
+    }
+    
+    // Add test edges
+    if graphName == "cycle4" {
+        // Cycle of 4 vertices - should find 4 minimum cuts of size 2
+        addEdge(1, 2);
+        addEdge(2, 3);
+        addEdge(3, 4);
+        addEdge(4, 1);
+    } else if graphName == "two-triangles" {
+        // Two triangles connected by bridge - should find more complex cuts
+        addEdge(1, 2); addEdge(2, 3); addEdge(3, 1);  // Triangle 1
+        addEdge(4, 5); addEdge(5, 6); addEdge(6, 4);  // Triangle 2
+        addEdge(3, 4);  // Bridge
+    }
+    
+    writeln("\nInitial graph structure:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborMap[v]));
+    }
+    
+    // Run algorithm
+    var (minCutValue, minCuts) = findAllMinCuts(vertices, neighborMap);
+    
+    // Verify results
+    writeln("\nVerifying results:");
+    for cut in minCuts {
+        // Check cut properties
+        assert(verifyAndIsUnique(cut, vertices, neighborMap, new list(MinCut)));
+        // Verify cut value
+        var actualValue = computeCutValue(cut.partition1, cut.partition2, neighborMap);
+        assert(actualValue == minCutValue, "Cut value mismatch");
+    }
+    
+    writeln("All cuts verified successfully!");
+}
+/* Main testing procedure */
+proc runAllTests() throws {
+    writeln("\n=== Starting All Tests ===\n");
+    
+    // // Test 1: Simple cycle (4 vertices)
+    // testCycleFour();
+    
+    // // Test 2: Two triangles connected by bridge
+    // testTwoTriangles();
+    
+    // // Test 3: Known from paper
+    // testPaperExample();
+    runContractionTests();
+}
+/* Main testing procedure for contraction phase */
+proc runContractionTests() throws {
+    writeln("\n=== Starting Contraction Phase Tests ===\n");
+    
+    // Test 1: Simple path with degree-one vertices
+    testDegreeOneContraction();
+    
+    // Test 2: High connectivity edge test
+    testConnectivityContraction();
+    
+    // Test 3: Local criteria test
+    testLocalCriteriaContraction();
+    
+    // Test 4: Combined test
+    testCombinedContraction();
+
+    // Test 5: Combined test
+    testTrianglesWithPaths();
+}
+
+/* Helper to create and print graph state */
+proc printGraphState(vertices: set(int), neighborMap: map(int, set(int))) throws{
+    writeln("\nCurrent graph state:");
+    writeln("Vertices: ", vertices.size, " ", vertices);
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborMap[v]));
+    }
+}
+/* Test: Two triangles with paths */
+proc testTrianglesWithPaths() throws {
+    writeln("\n=== Test 5: Two Triangles With Attached Paths ===");
+    
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create vertices (12 total)
+    // 1-2-3: left triangle
+    // 5-6-7: right triangle
+    // 3-5: bridge edge between triangles
+    // p1-p2-p3-p4: path attached to vertex 1
+    // p5-p6-p7-p8: path attached to vertex 7
+    for i in 1..7 do {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    for i in [11,12,13,14,21,22,23,24] do {  // path vertices
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Create left triangle (1-2-3)
+    neighborMap[1].add(2); neighborMap[2].add(1);
+    neighborMap[2].add(3); neighborMap[3].add(2);
+    neighborMap[3].add(1); neighborMap[1].add(3);
+    
+    // Create right triangle (5-6-7)
+    neighborMap[5].add(6); neighborMap[6].add(5);
+    neighborMap[6].add(7); neighborMap[7].add(6);
+    neighborMap[7].add(5); neighborMap[5].add(7);
+    
+    // Add bridge edge (3-5)
+    neighborMap[3].add(5); neighborMap[5].add(3);
+    
+    // Add left path (p1-p2-p3-p4) connected to vertex 1
+    neighborMap[1].add(11); neighborMap[11].add(1);   // Connect to triangle
+    neighborMap[11].add(12); neighborMap[12].add(11);
+    neighborMap[12].add(13); neighborMap[13].add(12);
+    neighborMap[13].add(14); neighborMap[14].add(13);
+    
+    // Add right path (p5-p6-p7-p8) connected to vertex 7
+    neighborMap[7].add(21); neighborMap[21].add(7);   // Connect to triangle
+    neighborMap[21].add(22); neighborMap[22].add(21);
+    neighborMap[22].add(23); neighborMap[23].add(22);
+    neighborMap[23].add(24); neighborMap[24].add(23);
+    
+    writeln("Initial state - Two triangles with paths:");
+    writeln("- Left triangle: 1-2-3");
+    writeln("- Right triangle: 5-6-7");
+    writeln("- Bridge edge: 3-5");
+    writeln("- Left path: 1-11-12-13-14");
+    writeln("- Right path: 7-21-22-23-24");
+    printGraphState(vertices, neighborMap);
+    
+    var lambda_ = 1;  // Minimum degree is 1 (path endpoints)
+    var (contractedVertices, contractedNeighbors, degreeOneVertices, lambdaRturned) = 
+        contractPhase(vertices, neighborMap, lambda_);
+    
+    // Verify results
+    writeln("\nAfter contraction:");
+    printGraphState(contractedVertices, contractedNeighbors);
+    writeln("\nDegree-one vertices stored for reinsertion: ", degreeOneVertices);
+    
+    // We expect:
+    // - Path vertices should be contracted (8 degree-one contractions)
+    // - Triangles should remain (they have degree > 1)
+    assert(degreeOneVertices.size == 8, "Should store 8 degree-one vertices from paths");
+    assert(contractedVertices.size <= 6, "Should have at most 6 vertices remaining (triangles + bridge)");
+    
+    writeln("Test passed!");
+    writeln("-------------------------------------------------------------------------------------\n");
+}
+/* Test 1: Degree-one contraction */
+proc testDegreeOneContraction() throws {
+    writeln("\n=== Test 1: Degree-One Contraction ===");
+    
+    // Create path: 1 - 2 - 3 - 4 - 5
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Setup vertices
+    for i in 1..5 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Create path
+    for i in 1..4 {
+        neighborMap[i].add(i+1);
+        neighborMap[i+1].add(i);
+    }
+    
+    writeln("Initial state - Path of length 5:");
+    printGraphState(vertices, neighborMap);
+    
+    var lambda_ = 1;  // Minimum degree is 1
+    var (contractedVertices, contractedNeighbors, degreeOneVertices, lambdaRturned) = 
+        contractPhase(vertices, neighborMap, lambda_);
+    
+    // Verify results
+    writeln("\nAfter contraction:");
+    printGraphState(contractedVertices, contractedNeighbors);
+    writeln("Stored degree-one vertices: ", degreeOneVertices);
+    
+    // Should contract to a single central vertex
+    assert(contractedVertices.size == 1, "Should contract to single vertex");
+    assert(degreeOneVertices.size == 4, "Should store 4 degree-one vertices");
+    
+    writeln("Test 1 passed!");
+}
+
+/* Test 2: Connectivity contraction */
+proc testConnectivityContraction() throws {
+    writeln("\n=== Test 2: Connectivity Contraction ===");
+    
+    // Create dense subgraph that should contract
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create clique of size 4
+    for i in 1..4 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+        for j in 1..4 {
+            if i != j then
+                neighborMap[i].add(j);
+        }
+    }
+    
+    // Add two more vertices loosely connected
+    for i in 5..6 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+        neighborMap[i].add(1);
+        neighborMap[1].add(i);
+    }
+    
+    writeln("Initial state - Dense subgraph with loose connections:");
+    printGraphState(vertices, neighborMap);
+    
+    var lambda_ = 2;
+    var (contractedVertices, contractedNeighbors, degreeOneVertices, lambdaRturned) = 
+        contractPhase(vertices, neighborMap, lambda_);
+    
+    // Verify results
+    writeln("\nAfter contraction:");
+    printGraphState(contractedVertices, contractedNeighbors);
+    
+    // Dense part should contract
+    assert(contractedVertices.size <= 3, "Should contract dense subgraph");
+    
+    writeln("Test 2 passed!");
+}
+
+/* Test 3: Local criteria contraction */
+proc testLocalCriteriaContraction() throws {
+    writeln("\n=== Test 3: Local Criteria Contraction ===");
+    
+    // Create graph with various local contraction opportunities
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Setup triangle with heavy neighborhood
+    for i in 1..3 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Create triangle
+    neighborMap[1].add(2); neighborMap[2].add(1);
+    neighborMap[2].add(3); neighborMap[3].add(2);
+    neighborMap[3].add(1); neighborMap[1].add(3);
+    
+    // Add shared neighbors
+    for i in 4..6 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+        // Connect to vertices 1 and 2 to create heavy neighborhood
+        neighborMap[i].add(1); neighborMap[1].add(i);
+        neighborMap[i].add(2); neighborMap[2].add(i);
+    }
+    
+    writeln("Initial state - Triangle with shared neighbors:");
+    printGraphState(vertices, neighborMap);
+    
+    var lambda_ = 2;
+    var (contractedVertices, contractedNeighbors, degreeOneVertices, lambdaRturned) = 
+        contractPhase(vertices, neighborMap, lambda_);
+    
+    // Verify results
+    writeln("\nAfter contraction:");
+    printGraphState(contractedVertices, contractedNeighbors);
+    
+    // Should contract heavy neighborhood
+    assert(contractedVertices.size < vertices.size, "Should perform some contractions");
+    
+    writeln("Test 3 passed!");
+}
+
+/* Test 4: Combined test */
+proc testCombinedContraction() throws {
+    writeln("\n=== Test 4: Combined Contractions ===");
+    
+    // Create complex graph with multiple contraction opportunities
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create base structure (can be modified based on needs)
+    // ... Setup vertices and edges for combined test ...
+    
+    writeln("Initial state - Complex graph:");
+    printGraphState(vertices, neighborMap);
+    
+    var lambda_ = 2;
+    var (contractedVertices, contractedNeighbors, degreeOneVertices, lambdaRturned) = 
+        contractPhase(vertices, neighborMap, lambda_);
+    
+    // Verify results
+    writeln("\nAfter contraction:");
+    printGraphState(contractedVertices, contractedNeighbors);
+    
+    writeln("Test 4 passed!");
+}
+/* Test 1: Cycle with 4 vertices */
+proc testCycleFour() throws {
+    writeln("Test 1: Cycle with 4 vertices");
+    writeln("Expected: 6 minimum cuts of value 2");
+    writeln("we expect these:\n");
+    writeln("{1} and {4, 2, 3}");
+    writeln("{2} and {4, 1, 3}");
+    writeln("{3} and {4, 2, 1}");
+    writeln("{4} and {1, 2, 3}");
+    writeln("{1, 4} and {2, 3}");
+    writeln("{1, 2} and {3, 4}");
+    
+
+     
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create vertices
+    for i in 1..4 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Add edges to create cycle
+    proc addEdge(u: int, v: int) {
+        neighborMap[u].add(v);
+        neighborMap[v].add(u);
+        writeln("Added edge: ", u, " - ", v);
+    }
+    
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 4);
+    addEdge(4, 1);
+    
+    writeln("\nInitial graph:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborMap[v]));
+    }
+    
+    var (minCutValue, allCuts) = findAllMinCuts(vertices, neighborMap);
+    
+    // Verify results
+    assert(minCutValue == 2, "Minimum cut should be 2");
+    assert(allCuts.size == 4, "Should find exactly 4 minimum cuts");
+    
+    writeln("\nTest 1 passed!\n");
+    writeln("-------------------------------------------------------------------------------------\n");
+}
+
+/* Test 2: Two triangles connected by bridge */
+proc testTwoTriangles() throws {
+    writeln("Test 2: Two triangles connected by bridge");
+    writeln("Expected: minimum cut of value 1");
+    
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create vertices
+    for i in 1..6 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Add edges
+    proc addEdge(u: int, v: int) {
+        neighborMap[u].add(v);
+        neighborMap[v].add(u);
+        writeln("Added edge: ", u, " - ", v);
+    }
+    
+    // First triangle
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 1);
+    
+    // Second triangle
+    addEdge(4, 5);
+    addEdge(5, 6);
+    addEdge(6, 4);
+    
+    // Bridge
+    addEdge(3, 4);
+    
+    writeln("\nInitial graph:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborMap[v]));
+    }
+    
+    var (minCutValue, allCuts) = findAllMinCuts(vertices, neighborMap);
+    
+    // Verify results
+    assert(minCutValue == 1, "Minimum cut should be 1");
+    writeln("Found ", allCuts.size, " minimum cuts:");
+    for cut in allCuts {
+        writeln("Cut: ", setToString(cut.partition1), " | ", setToString(cut.partition2));
+        writeln("Value: ", cut.cutValue);
+        writeln("Balance: ", cut.balance);
+    }
+    
+    writeln("\nTest 2 passed!\n");
+    writeln("----------------------------------------------------------------------------------------\n");
+}
+
+/* Test 3: Example from paper */
+proc testPaperExample() throws {
+    writeln("Test 3: Example from paper");
+    
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create vertices
+    for i in 1..8 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Add edges
+    proc addEdge(u: int, v: int) {
+        neighborMap[u].add(v);
+        neighborMap[v].add(u);
+        writeln("Added edge: ", u, " - ", v);
+    }
+    
+    // Add graph structure as per paper
+    // You'll need to check the paper for the exact structure
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 4);
+    addEdge(4, 1);
+    addEdge(4, 5);
+    addEdge(5, 6);
+    addEdge(6, 7);
+    addEdge(7, 8);
+    addEdge(8, 5);
+    
+    writeln("\nInitial graph:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborMap[v]));
+    }
+    
+    var (minCutValue, allCuts) = findAllMinCuts(vertices, neighborMap);
+    
+    writeln("\nFound minimum cut value: ", minCutValue);
+    writeln("Found ", allCuts.size, " minimum cuts:");
+    for cut in allCuts {
+        writeln("Cut: ", setToString(cut.partition1), " | ", setToString(cut.partition2));
+        writeln("Value: ", cut.cutValue);
+        writeln("Balance: ", cut.balance);
+    }
+    
+    writeln("\nTest 3 completed!\n");
+}
+
+proc testEdgeOperations() throws {
+    writeln("=== Testing Edge Operations ===");
+    var e1 = new Edge(1, 2);
+    var e2 = new Edge(2, 1);
+    var e3 = new Edge(1, 3);
+    
+    assert(e1 == e2, "Edge equality failed for (1,2) and (2,1)");
+    assert(e1 != e3, "Edge inequality failed");
+    writeln("Edge operations test passed");
+}
+
+proc testGraphConstruction() throws {
+    writeln("=== Testing Graph Construction ===");
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Add vertices 1-4
+    for i in 1..4 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+
+   // Add edges with logging
+   proc addEdge(u: int, v: int) {
+       neighborMap[u].add(v);
+       neighborMap[v].add(u);
+       writeln("Added edge: ", u, " - ", v);
+   }
+    // Create simple square graph
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 4);
+    addEdge(4, 1);
+    
+    for v in vertices {
+        assert(neighborMap[v].size == 2, "Wrong degree for vertex " + v:string);
+    }
+    writeln("Graph construction test passed");
+}
+proc testForestConstruction() throws {
+    writeln("=== Testing Forest Construction ===");
+    
+    // Create simple graph where forest structure is known
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create smaller test graph - two triangles with bridge
+    for i in 1..6 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+       // Add edges with logging
+   proc addEdge(u: int, v: int) {
+       neighborMap[u].add(v);
+       neighborMap[v].add(u);
+       writeln("Added edge: ", u, " - ", v);
+   }
+    // Triangle 1: 1-2-3
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 1);
+    
+    // Triangle 2: 4-5-6
+    addEdge(4, 5);
+    addEdge(5, 6);
+    addEdge(6, 4);
+    
+    // Bridge: 3-4
+    addEdge(3, 4);
+    
+    writeln("\nInitial graph state:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", neighborMap[v]);
+    }
+    
+    var forests = buildForests(vertices, neighborMap);
+    writeln("\nForests constructed:");
+    for i in 0..forests.size-1 {
+        writeln("Forest ", i, ": ", forests[i]);
+        
+        // Verify each forest is actually a forest (no cycles)
+        var forestEdges = forests[i];
+        var verticesInForest: set(int);
+        for edge in forestEdges {
+            verticesInForest.add(edge.u);
+            verticesInForest.add(edge.v);
+        }
+        
+        // A forest should have |E| = |V| - c where c is number of components
+        assert(forestEdges.size <= verticesInForest.size, 
+               "Forest " + i:string + " has too many edges");
+    }
+    
+    // First forest should be spanning
+    var firstForest = forests[0];
+    assert(firstForest.size == vertices.size - 1, 
+           "First forest should be spanning tree with " + (vertices.size-1):string + " edges");
+    
+    // We should find at least two forests due to triangles
+    assert(forests.size >= 2, 
+           "Should find at least 2 forests, found " + forests.size:string);
+    
+    writeln("Forest construction test passed");
+}
+
+proc testMaximumAdjacencyOrder() throws {
+    writeln("=== Testing Maximum Adjacency Ordering ===");
+    
+    // Create path graph: 1-2-3-4-5
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    for i in 1..5 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Create path by adding edges
+    proc addEdge(u: int, v: int) {
+        neighborMap[u].add(v);
+        neighborMap[v].add(u);
+        writeln("Added edge: ", u, " - ", v);
+    }
+    
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 4);
+    addEdge(4, 5);
+    
+    writeln("\nInitial graph state:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", neighborMap[v]);
+    }
+    
+    var (order, degrees) = maximumAdjacencyOrder(vertices, neighborMap);
+    
+    // Verify properties of the ordering
+    writeln("\nVerifying ordering properties:");
+    writeln("1. All vertices appear in ordering");
+    assert(order.size == vertices.size, "Ordering should contain all vertices");
+    
+    // Verify that vertex with highest degree appears early
+    var firstVertex = order[1];
+    writeln("First vertex in ordering: ", firstVertex, " with degree ", degrees[firstVertex]);
+    
+    // The vertex ordering should prioritize connections to marked set
+    var seenVertices: set(int);
+    for i in 1..order.size {
+        var v = order[i];
+        var connections = 0;
+        for u in neighborMap[v] {
+            if seenVertices.contains(u) {
+                connections += 1;
+            }
+        }
+        writeln("Vertex ", v, " has ", connections, " connections to earlier vertices");
+        seenVertices.add(v);
+    }
+    
+    writeln("Maximum adjacency ordering test passed");
+}
+proc testCutValueComputation() throws {
+    writeln("=== Testing Cut Value Computation ===");
+    
+    // Create simple graph with known cut values
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create two triangles connected by single edge
+    for i in 1..6 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+   // Add edges with logging
+   proc addEdge(u: int, v: int) {
+       neighborMap[u].add(v);
+       neighborMap[v].add(u);
+       writeln("Added edge: ", u, " - ", v);
+   }
+    // Triangle 1
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 1);
+    
+    // Triangle 2
+    addEdge(4, 5);
+    addEdge(5, 6);
+    addEdge(6, 4);
+    
+    // Bridge
+    addEdge(3, 4);
+    
+    var part1: set(int);
+    part1.add(1); part1.add(2); part1.add(3);
+    
+    var cutValue = computeCutValue(part1, vertices - part1, neighborMap);
+    assert(cutValue == 1, "Cut value should be 1");
+    
+    writeln("Cut value computation test passed");
+}
+proc testKnownMinCuts() throws {
+    writeln("=== Testing Known Minimum Cuts ===");
+    
+    // Create cycle of 4 vertices
+    var vertices = new set(int);
+    var neighborMap: map(int, set(int));
+    
+    // Create vertices
+    for i in 1..4 {
+        vertices.add(i);
+        neighborMap[i] = new set(int);
+    }
+    
+    // Add edges to create cycle
+    proc addEdge(u: int, v: int) {
+        neighborMap[u].add(v);
+        neighborMap[v].add(u);
+        writeln("Added edge: ", u, " - ", v);
+    }
+    
+    addEdge(1, 2);
+    addEdge(2, 3);
+    addEdge(3, 4);
+    addEdge(4, 1);
+    
+    writeln("\nGraph structure before finding cuts:");
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborMap[v]));
+    }
+    
+    // Find all minimum cuts
+    var (minCutVal, minCuts) = findAllMinCuts(vertices, neighborMap);
+    
+    // Verify results
+    assert(minCutVal == 2, "Minimum cut value should be 2, got " + minCutVal:string);
+    assert(minCuts.size == 6, "Should find exactly 6 minimum cuts, got " + minCuts.size:string);
+    
+    // Expected cuts
+    var expectedCuts: list((set(int), set(int)));
+    // Singleton cuts
+    for i in 1..4 {
+        var part1: set(int);
+        part1.add(i);
+        var part2 = vertices - part1;
+        expectedCuts.pushBack((part1, part2));
+    }
+    // Pair cuts
+    var pair1: set(int);
+    pair1.add(1); pair1.add(4);
+    expectedCuts.pushBack((pair1, vertices - pair1));
+    var pair2: set(int);
+    pair2.add(1); pair2.add(2);
+    expectedCuts.pushBack((pair2, vertices - pair2));
+    
+    writeln("\nVerifying found cuts:");
+    for cut in minCuts {
+        // Verify basic properties
+        verifyCut(cut, vertices, neighborMap);
+        
+        // Verify cut is expected
+        var found = false;
+        for (exp1, exp2) in expectedCuts {
+            if (cut.partition1 == exp1 && cut.partition2 == exp2) || 
+               (cut.partition1 == exp2 && cut.partition2 == exp1) {
+                found = true;
+                break;
+            }
+        }
+        if !found {
+            writeln("WARNING: Found unexpected cut not in expected list:");
+            writeln("  Found cut: ", setToString(cut.partition1), " | ", setToString(cut.partition2));
+            writeln("Expected cuts were:");
+            for (exp1, exp2) in expectedCuts {
+                writeln("  ", setToString(exp1), " | ", setToString(exp2));
+            }
+            return false;
+        }
+    }
+    
+    writeln("Known minimum cuts test passed");
+    return true;
+}
+/* For sets of integers */
+proc setToString(s: set(int)): string {
+   var result = "{";
+   var first = true;
+   for x in s {
+       if !first then result += ", ";
+       result += x:string;
+       first = false;
+   }
+   result += "}";
+   return result;
+}
+
+/* For sets of Edges */
+proc setToString(s: set(Edge)): string {
+   var result = "{";
+   var first = true;
+   for e in s {
+       if !first then result += ", ";
+       result += "(" + e.u:string + "," + e.v:string + ")";
+       first = false;
+   }
+   result += "}";
+   return result;
+}
+
+/* Debug helper for components */
+proc printComponents(components: map(int, set(int))) {
+    writeln("\nCurrent component mapping:");
+    for v in components.domain {
+        writeln("Component ", v, ": ", setToString(components[v]));
+    }
+}
+
+/* Debug helper for showing all cuts */
+proc printAllCuts(cuts: list(MinCut)) {
+    writeln("\nAll found cuts:");
+    for cut in cuts {
+        writeln("Cut of value ", cut.cutValue, ":");
+        writeln("  Part 1: ", setToString(cut.partition1));
+        writeln("  Part 2: ", setToString(cut.partition2));
+        writeln("  Balance: ", cut.balance);
+        writeln();
+    }
+}
+
+proc verifyCut(cut: MinCut, vertices: set(int), neighborMap: map(int, set(int))) {
+    if !verifyBasicProperties(cut, vertices, neighborMap) {
+        writeln("Failed basic properties check for cut:");
+        writeln("  Part 1: ", setToString(cut.partition1));
+        writeln("  Part 2: ", setToString(cut.partition2));
+        return false;
+    }
+    return true;
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////// end of findAllMinCuts /////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     ///////////////////////////////////////findBridgesInCluster////////////////////////////////////////////////////////
 
     // /* Define the threshold for small subclusters */
@@ -4674,13 +6021,22 @@ proc runTestCase(testName: string, vertices: set(int)) throws {
         //calculateBetweennessCentrality(clusterToAdd,clusterToAdd);
 // runAllTests(clusterToAdd);
 
-    var (minCutValue, allCuts) = findAllMinCuts(clusterToAdd);
+    // var (minCutValue, allCuts) = findAllMinCuts(clusterToAdd);
     
-    writeln("Minimum cut value: ", minCutValue);
-    writeln("Found ", allCuts.size, " minimum cuts:");
-    for cut in allCuts {
-        writeln(cut);
+    // writeln("Minimum cut value: ", minCutValue);
+    // writeln("Found ", allCuts.size, " minimum cuts:");
+    // for cut in allCuts {
+    //     writeln(cut);
+    // }
+    var neighborMap: map(int, set(int));
+    for v in clusterToAdd {
+        neighborMap[v] = neighborsSetGraphG1[v] & clusterToAdd;
     }
+    // findAllMinCuts(clusterToAdd, neighborMap);
+// runAllTests();
+
+
+    runAllTests();
         //wccRecursiveChecker(clusterToAdd, key, 0);
       }
 
