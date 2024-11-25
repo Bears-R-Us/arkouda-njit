@@ -88,6 +88,11 @@ module WellConnectedComponents {
     
           
       writeln("/************* graph info**************/");
+      var graphset: set(int, parSafe = true);
+      forall i in 0..g1.n_vertices - 1 with (ref graphset){
+        graphset.add(i);
+      }
+      printGraphState(graphset);
       var totalVolume: int = 0;  // To store the total degree sum of the graph
       var graphMinDegree: int = g1.n_vertices;
       for v in 0..<g1.n_vertices{
@@ -102,6 +107,13 @@ module WellConnectedComponents {
 
       writeln("meanDegreeGraph: ", meanDegreeGraph);
       writeln();
+
+      // Module level variables
+var wccMetrics = new WCCMetrics();
+ const gapThreshold = 0.03;
+ const maxRecursionDepth = 20;
+ const minRelativeSize = 0.1;
+
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
       ID is mapped to all of the vertices with that cluster ID. 
@@ -299,6 +311,106 @@ module WellConnectedComponents {
       return reducedPartition;
     }
 ////////////////////////////////////////////// Metrics ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////// Metrics ///////////////////////////////////////////////////////////////////
+////////////////////////////////////////////// Metrics ///////////////////////////////////////////////////////////////////
+/* Record for storing conductance metrics */
+record ConductanceMetrics {
+    var conductance: real;          // Cut conductance (φc)
+    var volumeCluster: int;         // Volume of cluster
+    var outEdges: int;             // Number of edges going out
+    var meanDegree: real;          // Average degree within cluster
+    var minDegree: int;            // Minimum degree in cluster
+    var lambda2Lower: real;         // Lower bound for λ2
+    var lambda2Upper: real;         // Upper bound for λ2
+    var lambda2Estimate: real;      // Estimated λ2
+}
+
+/* Record to track statistics of WCC process */
+record WCCMetrics {
+    var totalClusters: atomic int;
+    var passedGapThreshold: atomic int;
+    var totalRecursionDepth: atomic int;
+    var maxRecursionDepth: atomic int;
+    var gapValues: list(real, parSafe=true);
+    var splitSizes: list(int, parSafe=true);
+    var conductanceValues: list(real, parSafe=true);
+
+    var theoreticalGapValues: list(real, parSafe=true);
+    var approachAgreements: atomic int;
+    var approachDisagreements: atomic int;
+
+    proc recordTheoreticalGap(gap: real) {
+        theoreticalGapValues.pushBack(gap);
+    }
+    
+    proc recordComparison(ref original: bool, theoretical: bool) {
+        if original == theoretical then approachAgreements.add(1);
+        else approachDisagreements.add(1);
+    }
+
+    proc recordGap(const gap: real) {
+        gapValues.pushBack(gap);
+    }
+    
+    proc recordSplit(const size: int) {
+        splitSizes.pushBack(size);
+    }
+    
+    proc recordConductance(const cond: real) {
+        conductanceValues.pushBack(cond);
+    }
+    
+    proc updateDepth(const depth: int) {
+        totalRecursionDepth.add(depth);
+        var current = maxRecursionDepth.read();
+        while current < depth && !maxRecursionDepth.compareAndSwap(current, depth) {
+            current = maxRecursionDepth.read();
+        }
+    }
+
+    proc printSummary() {
+        writeln("\n============= WCC Metrics Summary =============");
+        writeln("Total Clusters Processed: ", totalClusters.read());
+        writeln("Clusters Passed Gap Threshold: ", passedGapThreshold.read());
+        writeln("Average Recursion Depth: ", 
+                if totalClusters.read() > 0 then totalRecursionDepth.read():real/totalClusters.read():real else 0);
+        writeln("Max Recursion Depth: ", maxRecursionDepth.read());
+        
+        if gapValues.size > 0 {
+            var gapArray = gapValues.toArray();
+            sort(gapArray);
+            writeln("\nGap Value Distribution:");
+            writeln("  Min: ", gapArray[0]);
+            writeln("  25th percentile: ", gapArray[(gapArray.size/4):int]);
+            writeln("  Median: ", gapArray[(gapArray.size/2):int]);
+            writeln("  75th percentile: ", gapArray[(3*gapArray.size/4):int]);
+            writeln("  Max: ", gapArray[gapArray.size-1]);
+        }
+        
+        if conductanceValues.size > 0 {
+            var condArray = conductanceValues.toArray();
+            sort(condArray);
+            writeln("\nConductance Distribution:");
+            writeln("  Min: ", condArray[0]);
+            writeln("  Median: ", condArray[(condArray.size/2):int]);
+            writeln("  Max: ", condArray[condArray.size-1]);
+        }
+        writeln("\nApproach Comparison:");
+        writeln("  Agreements: ", approachAgreements.read());
+        writeln("  Disagreements: ", approachDisagreements.read());
+        
+        if theoreticalGapValues.size > 0 {
+            var theoArray = theoreticalGapValues.toArray();
+            sort(theoArray);
+            writeln("\nTheoretical Gap Distribution:");
+            writeln("  Min: ", theoArray[0]);
+            writeln("  Median: ", theoArray[(theoArray.size/2):int]);
+            writeln("  Max: ", theoArray[theoArray.size-1]);
+        }
+
+        writeln("\n===========================================");
+    }
+}
     /* Enhanced Record definitions for storing metrics */
     record connectivityMetrics {
         // Basic connectivity
@@ -335,6 +447,7 @@ module WellConnectedComponents {
 
     record spectralMetrics {
         // Basic spectral
+        var conductance: real;  
         var lambda2Lower: real;
         var lambda2Upper: real;
         var lambda2Estimate: real;
@@ -395,7 +508,6 @@ module WellConnectedComponents {
         var density: densityMetrics;
         var spectral: spectralMetrics;
         var core: coreMetrics;
-        var conductanceData:[0..2] real;  
     }
         /* Basic connectivity metrics */
     proc calculateBasicConnectivity(ref cluster: set(int)) throws {
@@ -420,7 +532,7 @@ module WellConnectedComponents {
         metrics.totalInternalEdges = basicStats.n_edges;
         
         // Calculate degree variance and skewness in one pass
-        var variance_sum = 0.0;
+        var variance_sum: real = 0.0;
         var skewness_sum = 0.0;
         forall v in cluster with (+ reduce variance_sum, + reduce skewness_sum) {
             var diff = basicStats.degrees[v] - metrics.avgDegree;
@@ -429,9 +541,9 @@ module WellConnectedComponents {
             skewness_sum += diff_squared * diff;
         }
         
-        metrics.degreeVariance = variance_sum / cluster.size;
+        metrics.degreeVariance = variance_sum / cluster.size:real;
         metrics.degreeSkewness = if metrics.degreeVariance > 0 then 
-            (skewness_sum / cluster.size) / (sqrt(metrics.degreeVariance) ** 3)
+            (skewness_sum / cluster.size) / (sqrt(metrics.degreeVariance) ** 3): real
             else 0.0;
         
         // Calculate Mader's theorem bound
@@ -521,7 +633,23 @@ module WellConnectedComponents {
         writeln("\n metrics: ", metrics);
         return metrics;
     }
+/* Basic spectral bounds based on conductance */
+proc calculateSpectralBounds(conductance: real) {
+    var metrics: spectralMetrics;
+    writeln("==================== calculateSpectralBounds ======================");
 
+    // Store conductance
+    metrics.conductance = conductance;
+
+    // Basic Cheeger inequality bounds
+    metrics.lambda2Lower = (conductance * conductance) / 2;
+    metrics.lambda2Upper = 2 * conductance;
+    metrics.lambda2Estimate = (metrics.lambda2Lower + metrics.lambda2Upper) / 2;
+
+
+    
+    return metrics;
+}
 
     /* Main analysis function */
     proc analyzeCluster(ref cluster: set(int)) throws {
@@ -537,8 +665,12 @@ module WellConnectedComponents {
       // Basic Metrics
       metrics.connectivity = calculateBasicConnectivity(cluster);
       metrics.density = calculateInternalDensity(cluster);
-      metrics.conductanceData = calculateConductance(cluster, totalVolume)[0];
-      writeln("we are here after calculateConductance"); 
+      
+      
+      // Calculate conductance and spectral properties
+      var conductance = calculateConductance(cluster, totalVolume);
+      metrics.spectral = calculateSpectralBounds(conductance);
+      
       printClusterAnalysis(metrics, cluster.size);
 
       return metrics;
@@ -556,9 +688,9 @@ module WellConnectedComponents {
     writeln("   - Degree Variance: ", metrics.connectivity.degreeVariance);
     writeln("   - Degree Skewness: ", metrics.connectivity.degreeSkewness);
     writeln("   - Assortativity: ", metrics.connectivity.assortativity);
-    writeln("   - Effective Diameter: ", metrics.connectivity.effectiveDiameter);
-    writeln("   - Average Betweenness: ", metrics.connectivity.avgBetweenness);
-    writeln("   - Maximum Betweenness: ", metrics.connectivity.maxBetweenness);
+    // writeln("   - Effective Diameter: ", metrics.connectivity.effectiveDiameter);
+    // writeln("   - Average Betweenness: ", metrics.connectivity.avgBetweenness);
+    // writeln("   - Maximum Betweenness: ", metrics.connectivity.maxBetweenness);
     
     writeln("\n2. Density Metrics:");
     writeln("   Basic Density:");
@@ -575,8 +707,8 @@ module WellConnectedComponents {
     writeln("   - Density Correlation: ", metrics.density.densityCorrelation);
     
     writeln("\n3. Conductance Metrics:");
-    writeln("   - Conductance: ", metrics.conductanceData[0]);
-    writeln("   - External Edges: ", metrics.conductanceData[1]);
+    writeln("   - Conductance: ", metrics.spectral.conductance);
+    // writeln("   - External Edges: ", metrics.conductanceData[1]);
     
     writeln("\n4. Spectral Properties:");
     writeln("   Basic Spectral:");
@@ -658,9 +790,9 @@ module WellConnectedComponents {
 
     // 3. Structural Assessment
     writeln("\n3. Structural Quality:");
-    if metrics.conductanceData[0] < 0.1 {
+    if  metrics.spectral.conductance < 0.1 {
         writeln("   + Excellent cluster separation");
-    } else if metrics.conductanceData[0] > 0.7 {
+    } else if  metrics.spectral.conductance > 0.7 {
         writeln("   ! Poor cluster separation");
     }
     // if metrics.core.coreNumber == 0 {
@@ -743,7 +875,7 @@ writeln("\n   Community Cohesion Analysis:");
     // Density Issues
     if metrics.density.density < 0.3 then qualityIssues += 1;
     // Structural Issues
-    if metrics.conductanceData[0] > 0.5 || metrics.core.coreNumber < 2 then qualityIssues += 1;
+    if metrics.spectral.conductance > 0.5 || metrics.core.coreNumber < 2 then qualityIssues += 1;
     // Spectral Issues
     if metrics.spectral.lambda2Estimate < 0.1 then qualityIssues += 1;
     if (metrics.spectral.communityStrength < 0.3 || 
@@ -769,6 +901,13 @@ writeln("\n   Community Cohesion Analysis:");
     writeln("\n================================================================\n");
 }
 /* Helper to create and print graph state */
+proc printClusterState(vertices: set(int)) throws{
+    writeln("\nCurrent graph state:");
+    writeln("Vertices: ", vertices.size, " ", vertices);
+    for v in vertices {
+        writeln("Vertex ", v, " connects to: ", setToString(neighborsSetGraphG1[v] & vertices));
+    }
+}
 proc printGraphState(vertices: set(int)) throws{
     writeln("\nCurrent graph state:");
     writeln("Vertices: ", vertices.size, " ", vertices);
@@ -867,63 +1006,323 @@ proc setToString(s: set(int)): string {
       // writeln("λ2 >= 1    --> Cluster has strong connectivity and robustness");
       // writeln("//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*//*\n");
 
-      return output;
+      return conductance;
     }// end of calculateConductance
-////////////////////////////////////////////// End of Metrics ///////////////////////////////////////////////////////////////////
+/* Enhanced conductance calculation with additional metrics */
+proc calculateConductanceWCC(ref cluster: set(int), const totalVolume: int) throws {
+    var metrics = new ConductanceMetrics();
+    metrics.minDegree = g1.n_edges;  // Initialize to max possible
 
-    /* Recursive method that processes a given set of vertices (partition), denotes if it is 
-       well-connected or not, and if not calls itself on the new generated partitions. */
-    proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
-      var (src, dst, mapper) = getEdgeList(vertices);
-
-      // If the generated edge list is empty, then return.
-      if src.size < 1 then return;
-
-      var n = mapper.size;
-      var m = src.size;
-
-      var partitionArr: [{0..<n}] int;
-      var cut = c_computeMinCut(partitionArr, src, dst, n, m);
-
-      var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-      if cut > criterionValue { // Cluster is well-connected.
-        var currentId = globalId.fetchAdd(1);
-        if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
-        else if outputType == "during" then writeClustersToFile(vertices, currentId);
-        for v in vertices {
-          finalVertices.pushBack(v);
-          finalClusters.pushBack(currentId);
-        }
-        if logLevel == LogLevel.DEBUG {
-          var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
-                    + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
-          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        }
-        return;
-      }
-      else { // Cluster is not well-connected.
-        var cluster1, cluster2 = new set(int);
+    // Calculate volumes and edge counts
+    for v in cluster {
+        var neighbors = neighborsSetGraphG1[v];
+        metrics.volumeCluster += neighbors.size;
+        var outEdge = neighbors - cluster;
+        metrics.outEdges += outEdge.size;
         
-        // Separate vertices into two partitions.
-        for (v,p) in zip(partitionArr.domain, partitionArr) {
-          if p == 1 then cluster1.add(mapper[v]);
-          else cluster2.add(mapper[v]);
-        }
-        
-        // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
-        if cluster1.size > postFilterMinSize {
-          var inPartition = removeDegreeOne(cluster1);
-          wccRecursiveChecker(inPartition, id, depth+1);
-        }
-        if cluster2.size > postFilterMinSize {
-          var outPartition = removeDegreeOne(cluster2);
-          wccRecursiveChecker(outPartition, id, depth+1);
-        }
-      }
-      return;
+        // Track minimum degree
+        metrics.minDegree = min(metrics.minDegree, neighbors.size);
     }
 
-    /* Main executing function for well-connected components. */
+    var volumeComplement = totalVolume - metrics.volumeCluster;
+    metrics.meanDegree = metrics.volumeCluster / cluster.size: real;
+
+    // Calculate conductance
+    var denom = min(metrics.volumeCluster, volumeComplement);
+    if denom > 0 {
+        metrics.conductance = metrics.outEdges / denom: real;
+    } else {
+        metrics.conductance = 0.0;
+    }
+
+    // Calculate spectral bounds using Cheeger's inequality
+    metrics.lambda2Lower = (metrics.conductance * metrics.conductance) / 2;
+    metrics.lambda2Upper = 2 * metrics.conductance;
+    metrics.lambda2Estimate = (metrics.lambda2Lower + metrics.lambda2Upper) / 2;
+
+    /* Debug output for cluster analysis */
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nCluster Analysis:");
+        writeln("Size: ", cluster.size);
+        writeln("Volume: ", metrics.volumeCluster);
+        writeln("Mean Degree: ", metrics.meanDegree);
+        writeln("Min Degree: ", metrics.minDegree);
+        writeln("Out Edges: ", metrics.outEdges);
+        writeln("Conductance: ", metrics.conductance);
+        writeln("Spectral Bounds (λ2):");
+        writeln("  Lower: ", metrics.lambda2Lower);
+        writeln("  Upper: ", metrics.lambda2Upper);
+        writeln("  Estimate: ", metrics.lambda2Estimate);
+    }
+
+    return metrics;
+}
+    /* Calculate gap based on metrics */
+proc calculateGap(metrics: ConductanceMetrics) {
+    if metrics.conductance == 0 then return 0.0;
+    
+    var internalConnectivity = metrics.lambda2Estimate;
+    var clusterConn = (internalConnectivity * internalConnectivity) / 
+                      log(max(2, metrics.volumeCluster):real);  // avoid log(1)
+    
+    return clusterConn / metrics.conductance;
+}
+
+/* Evaluate if cluster is well-connected */
+proc isWellConnectedCluster(ref metrics: ConductanceMetrics, ref gap: real, size: int) {
+    // Record metrics
+    wccMetrics.recordGap(gap);
+    wccMetrics.recordConductance(metrics.conductance);
+    
+    // Basic size check
+    if size < postFilterMinSize then return false;
+    
+    // Gap threshold check
+    if gap < gapThreshold then return false;
+    
+    // Additional structural checks
+    if metrics.meanDegree < 2 then return false;
+    if metrics.lambda2Estimate < 0.1 then return false;
+    
+    // Density check
+    var density = metrics.volumeCluster:real / 
+                 (metrics.volumeCluster:real + metrics.outEdges:real);
+    if density < 0.3 then return false;
+    
+    return true;
+}
+
+/* Calculate set conductance using spectral approach */
+proc calculateSetConductanceTheoretical(ref cluster: set(int)) throws{
+    writeln("\n=== Theoretical Set Conductance Calculation ===");
+    // Get subgraph of just the cluster
+    var (src, dst, mapper) = getEdgeList(cluster);
+    
+    if src.size < 1 {
+        writeln("Empty edge list - returning 0");
+        return 0.0;
+    }
+
+    // TODO: Implement eigenvalue calculation here
+    // For now, we can approximate using Cheeger's inequality and current conductance
+    var conductance = calculateConductance(cluster, totalVolume);
+    var lambda2 = conductance * conductance / 2;  // Lower bound from Cheeger
+    
+    writeln("Theoretical calculation:");
+    writeln("  Vertices: ", mapper.size);
+    writeln("  Edges: ", src.size/2);
+    writeln("  Lambda2: ", lambda2);
+    writeln("  Estimated φs: ", sqrt(lambda2/2));
+    writeln("=====================================\n");
+    
+    return sqrt(lambda2/2);
+}
+
+/* Calculate theoretical gap following paper exactly */
+proc calculateGapTheoretical(ref cluster: set(int)) throws{
+    writeln("\n=== Theoretical Gap Calculation ===");
+    
+    // Get φc (cut conductance)
+    var phi_c = calculateConductance(cluster, totalVolume);
+    if phi_c == 0 {
+        writeln("Zero cut conductance - returning 0");
+        return 0.0;
+    }
+    
+    // Get φs (set conductance)
+    var phi_s = calculateSetConductanceTheoretical(cluster);
+    
+    // Calculate volume
+    var vol = 0;
+    for v in cluster {
+        vol += neighborsSetGraphG1[v].size;
+    }
+    
+    // Calculate Gap = (φs²/log(vol(A)))/φc
+    var gap = (phi_s * phi_s) / (log(max(2.0, vol:real)) * phi_c);
+    
+    writeln("Theoretical values:");
+    writeln("  Cut conductance (φc): ", phi_c);
+    writeln("  Set conductance (φs): ", phi_s);
+    writeln("  Volume: ", vol);
+    writeln("  Final Gap: ", gap);
+    writeln("=====================================\n");
+    
+    return gap;
+}
+
+/* Evaluate cluster using theoretical criteria */
+proc isWellConnectedTheoretical(ref cluster: set(int), gap: real) {
+    writeln("\n=== Theoretical Well-Connected Check ===");
+    writeln("Cluster size: ", cluster.size);
+    writeln("Gap value: ", gap);
+    
+    var isWellConnected = true;
+    
+    // More flexible gap threshold
+    if gap < gapThreshold {
+        writeln("FAILED: Gap < threshold (", gapThreshold, ")");
+        isWellConnected = false;
+    }
+
+    // Add density check
+    var (src, dst, mapper) = getEdgeList(cluster);
+    var density = if cluster.size > 1 then 
+                   src.size:real / (cluster.size * (cluster.size-1):real/2)  // Corrected formula
+                 else 0.0;
+    
+    // Average degree is just edges/vertices
+    var avgDeg = src.size:real / cluster.size:real;  // Corrected - removed the *2
+    var minDeg = min reduce [v in cluster] neighborsSetGraphG1[v].size;
+
+    if density < 0.3 {
+        writeln("FAILED: Low density (", density, ")");
+        isWellConnected = false;
+    }
+
+    if minDeg < avgDeg/2 {
+        writeln("FAILED: Unbalanced degrees");
+        isWellConnected = false;
+    }
+
+    writeln("Density: ", density);
+    writeln("Average degree: ", avgDeg);
+    writeln("Minimum degree: ", minDeg);
+    writeln("Number of edges: ", src.size);
+    writeln("Maximum possible edges: ", (cluster.size * (cluster.size-1))/2);
+    writeln("Theoretical decision: ", if isWellConnected then "WELL-CONNECTED" else "NOT WELL-CONNECTED");
+    writeln("=====================================\n");
+    
+    return isWellConnected;
+}
+////////////////////////////////////////////// End of Metrics ///////////////////////////////////////////////////////////////////
+proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int, originalSize: int = -1) throws {
+    var actualOriginalSize = if originalSize == -1 then vertices.size else originalSize;
+    
+    writeln("\n============== WCC Recursive Checker (Depth: ", depth, ") ==============");
+    writeln("Current cluster info:");
+    writeln("  Size: ", vertices.size);
+    writeln("  Original size: ", actualOriginalSize);
+    printClusterState(vertices);
+    // Update metrics
+    wccMetrics.totalClusters.add(1);
+    wccMetrics.updateDepth(depth);
+    
+    // Check stopping conditions
+    if vertices.size <= postFilterMinSize {
+        writeln("STOP: Size <= postFilterMinSize (", postFilterMinSize, ")");
+        return;
+    }
+    if depth > min(maxRecursionDepth, ceil(log10(actualOriginalSize:real)):int) {
+        writeln("STOP: Exceeded max depth");
+        return;
+    }
+    if vertices.size:real < actualOriginalSize:real * minRelativeSize {
+        writeln("STOP: Size too small relative to original");
+        return;
+    }
+
+    writeln("\n--- Approach 1: Original Method ---");
+    // Original approach
+    var metrics = calculateConductanceWCC(vertices, totalVolume);
+    var gap = calculateGap(metrics);
+    var isWellConnected = isWellConnectedCluster(metrics, gap, vertices.size);
+    
+    writeln("\n--- Approach 2: Theoretical Method ---");
+    // Theoretical approach
+    var theoreticalGap = calculateGapTheoretical(vertices);
+    var isWellConnectedTheo = isWellConnectedTheoretical(vertices, theoreticalGap);
+    
+    writeln("\n=== Results Comparison ===");
+    writeln("Original Method:");
+    writeln("  Gap: ", gap);
+    writeln("  Decision: ", if isWellConnected then "WELL-CONNECTED" else "NOT WELL-CONNECTED");
+    writeln("Theoretical Method:");
+    writeln("  Gap: ", theoreticalGap);
+    writeln("  Decision: ", if isWellConnectedTheo then "WELL-CONNECTED" else "NOT WELL-CONNECTED");
+    
+    // Record comparison
+    wccMetrics.recordComparison(isWellConnected, isWellConnectedTheo);
+    
+    // Use theoretical approach for decision making
+    if isWellConnectedTheo {
+        writeln("\n>>> Cluster ACCEPTED as well-connected (theoretical) <<<");
+        wccMetrics.passedGapThreshold.add(1);
+        var currentId = globalId.fetchAdd(1);
+        
+        // Output handling
+        if outputType == "debug" {
+            writeClustersToFile(vertices, id, currentId, depth, metrics.conductance:int);
+            writeln("Found well-connected cluster: ", currentId);
+            writeln("  Size: ", vertices.size);
+            writeln("  Theoretical Gap: ", theoreticalGap);
+            writeln("  Conductance: ", metrics.conductance);
+        } else if outputType == "during" {
+            writeClustersToFile(vertices, currentId);
+        }
+        
+        // Add to final results
+        for v in vertices {
+            finalVertices.pushBack(v);
+            finalClusters.pushBack(currentId);
+        }
+        
+    } else {
+        writeln("\n>>> Cluster needs splitting (theoretical) <<<");
+        // Split cluster using VieCut
+        var (src, dst, mapper) = getEdgeList(vertices);
+        if src.size < 1 {
+            writeln("WARNING: Empty edge list - cannot split further");
+            return;
+        }
+
+        writeln("Splitting cluster using VieCut:");
+        writeln("  Number of vertices: ", mapper.size);
+        writeln("  Number of edges: ", src.size/2);
+
+        var n = mapper.size;
+        var partitionArr: [{0..<n}] int;
+        var cut = c_computeMinCut(partitionArr, src, dst, n, src.size);
+        
+        // Create two new clusters
+        var cluster1 = new set(int);
+        var cluster2 = new set(int);
+        for (v,p) in zip(partitionArr.domain, partitionArr) {
+            if p == 1 then cluster1.add(mapper[v]);
+            else cluster2.add(mapper[v]);
+        }
+        
+        writeln("Split result:");
+        writeln("  Cluster 1 size: ", cluster1.size);
+        writeln("  Cluster 2 size: ", cluster2.size);
+        writeln("  Cut size: ", cut);
+        
+        // Record split sizes
+        wccMetrics.recordSplit(cluster1.size);
+        wccMetrics.recordSplit(cluster2.size);
+        
+        // Recursively process new clusters if they're large enough
+        if cluster1.size > postFilterMinSize {
+            writeln("\nProcessing Cluster 1:");
+            var inPartition = cluster1;
+            writeln("  Cluster 1 has: ", inPartition.size, " vertices");
+            wccRecursiveChecker(inPartition, id, depth+1, actualOriginalSize);
+        } else {
+            writeln("Cluster 1 too small - discarding");
+        }
+        
+        if cluster2.size > postFilterMinSize {
+            writeln("\nProcessing Cluster 2:");
+            var outPartition = cluster2;
+            writeln("  After degree-one removal: ", outPartition.size, " vertices");
+            wccRecursiveChecker(outPartition, id, depth+1, actualOriginalSize);
+        } else {
+            writeln("Cluster 2 too small - discarding");
+        }
+    }
+    writeln("================================================================\n");
+}
+     /* Main executing function for well-connected components. */
     proc wcc(g1: SegGraph): int throws {
       var outMsg = "Graph loaded with " + g1.n_vertices:string + " vertices and " 
                  + g1.n_edges:string + " edges.";
@@ -942,15 +1341,66 @@ proc setToString(s: set(int)): string {
       //
       // NOTE: This is probably noy even needed here. We could add a pre-filtering step to run this
       //       during graph construction or as a totally separate process instead of here.
-
       for key in originalClusters.keysToArray() {
-        try {
-            printGraphState(originalClusters[key]);
-            analyzeCluster(originalClusters[key]);
-        } catch e {
-            writeln("Error analyzing cluster: ", e.message());
+        var (src, dst, mapper) = getEdgeList(originalClusters[key]);
+        if src.size > 0 { // If no edges were generated, then do not process this component.
+          // Call connected components and decide if multiple connected components exist or not.
+          var components = connectedComponents(src, dst, mapper.size);
+          var multipleComponents:bool = false;
+          for c in components do if c != 0 { multipleComponents = true; break; }
+          
+          // Add each vertex in each connected component to its own cluster, or just add the whole
+          // cluster if it is composed of only one connected component.
+          if multipleComponents {
+            var tempMap = new map(int, set(int));
+            for (c,v) in zip(components,components.domain) { // NOTE: Could be parallel.
+              if tempMap.contains(c) then tempMap[c].add(mapper[v]);
+              else {
+                var s = new set(int);
+                s.add(mapper[v]);
+                tempMap[c] = s;
+              }
+            }
+            for c in tempMap.keys() { // NOTE: Could be parallel.
+              var newId = newClusterIds.fetchAdd(1);
+              if tempMap[c].size > preFilterMinSize {
+                newClusters[newId] = tempMap[c];
+                newClusterIdToOriginalClusterId[newId] = key;
+              }
+            }
+            if logLevel == LogLevel.DEBUG {
+              var outMsg = "Original cluster " + key:string + " was split up into " 
+                        + tempMap.size:string + " clusters.";
+              wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+            }
+          } else {
+            if originalClusters[key].size > preFilterMinSize {
+              var newId = newClusterIds.fetchAdd(1);
+              newClusters[newId] = originalClusters[key];
+              newClusterIdToOriginalClusterId[newId] = key;
+            }
+          }
         }
       }
+      outMsg = "Splitting up clusters yielded " + newClusters.size:string + " new clusters.";
+      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+      // forall key in newClusters.keysToArray() with (ref newClusters) {
+      for key in newClusters.keysToArray() {
+        ref clusterToAdd = newClusters[key];
+        if logLevel == LogLevel.DEBUG {
+          var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
+                    + newClusterIdToOriginalClusterId[key]:string + ".";
+          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        }
+        wccRecursiveChecker(clusterToAdd, key, 0);
+      }
+      if outputType == "post" then writeClustersToFile();
+      
+      outMsg = "WCC found " + globalId.read():string + " clusters to be well-connected.";
+      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      
+      wccMetrics.printSummary();
 
       return globalId.read();
     } // end of wcc
