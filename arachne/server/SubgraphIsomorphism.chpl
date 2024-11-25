@@ -187,6 +187,11 @@ module SubgraphIsomorphism {
     // Since the default `outerMatch` for "and" is true, then if no checks were actually done, 
     // then we should return false.
     if matchType == "and" && matchCounter == 0 then return false;
+
+    // Alternatively, if there were no matches performed, and the matching type is "or" then return
+    // true.
+    if matchType == "or" && matchCounter == 0 then return true;
+
     else return outerMatch;
   } // end of doAttributesMatch
 
@@ -201,6 +206,9 @@ module SubgraphIsomorphism {
     var semanticOrCheck = if semanticCheckType == "or" then true else false;
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
+
+    // TODO: ADD THIS AS A PARAMETER TO THE ARACHNE API.
+    var noVertexAttributes = true;
 
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -256,6 +264,39 @@ module SubgraphIsomorphism {
       }
 
       return vertexFlagger;
+    }
+
+    /* Pick the edges from the host graph that can be mapped to the first edge of the data graph. */
+    proc edgePicker() throws {
+      var edgeFlagger: [0..<g1.n_edges] bool = false;
+      var Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
+      var Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+
+      var Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
+      var Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
+
+      var subgraphEdgeId = getEdgeId(0, 1, dstNodesG2, segGraphG2);
+
+      forall e in 0..<g1.n_edges {
+        var u = srcNodesG1[e];
+        var v = dstNodesG1[e];
+
+        var Tin_u = dstRG1[segRG1[u]..<segRG1[u+1]];            
+        var Tout_u = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+
+        var Tin_v = dstRG1[segRG1[v]..<segRG1[v+1]];            
+        var Tout_v = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+        if semanticAndCheck {
+          if doAttributesMatch(e, subgraphEdgeId, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) && (Tin_u.size >= Tin_0.size) && (Tout_u.size >= Tout_0.size) && (Tin_v.size >= Tin_1.size) && (Tout_v.size >= Tout_1.size)
+            then edgeFlagger[v] = true;
+        } else if semanticOrCheck {
+          if doAttributesMatch(e, subgraphEdgeId, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) && (Tin_u.size >= Tin_0.size) && (Tout_u.size >= Tout_0.size) && (Tin_v.size >= Tin_1.size) && (Tout_v.size >= Tout_1.size)
+            then edgeFlagger[v] = true;
+        } else { edgeFlagger[v] = true; }
+      }
+
+      return edgeFlagger;
     }
 
     /* Generate in-neighbors and out-neighbors for a given subgraph state.*/
@@ -540,8 +581,8 @@ module SubgraphIsomorphism {
       return;
     }
     
-    /* Executes VF2SI. */
-    proc VF2SI(g1: SegGraph, g2: SegGraph, const ref vertexFlagger) throws {
+    /* Executes VF2SIFromVertices. */
+    proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph, const ref vertexFlagger) throws {
       forall edgeIndex in 0..mG1-1 {
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
@@ -549,7 +590,18 @@ module SubgraphIsomorphism {
           if edgechecked then vf2Helper(initialState, 2);
         }
       }
-    } // end of VF2SI
+    } // end of VF2SIFrom Vertices
+
+    /* Executes VF2SIFromEdges. */
+    proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph, const ref edgeFlagger) throws {
+      forall edgeIndex in 0..mG1-1 {
+        if edgeFlagger[edgeIndex] {
+          var initialState = new State(g1.n_vertices, g2.n_vertices);
+          var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          if edgechecked then vf2Helper(initialState, 2);
+        }
+      }
+    } // end of VF2SIFromEdges
 
     /* Executes VF2PS. */
     proc VF2PS(g1: SegGraph, g2: SegGraph) throws {
@@ -561,7 +613,10 @@ module SubgraphIsomorphism {
     if algType == "ps" then VF2PS(g1, g2);
     else if algType == "si" {
       var vertexFlagger = vertexPicker();
-      VF2SI(g1,g2,vertexFlagger);
+      VF2SIFromVertices(g1,g2,vertexFlagger);
+    } else if algType == "si" && noVertexAttributes == true {
+      var edgeFlagger = edgePicker();
+      VF2SIFromVertices(g1,g2,edgeFlagger);
     }
     else VF2PS(g1, g2);
 
