@@ -566,7 +566,8 @@ module SubgraphIsomorphism {
       var candidatePairs = getCandidatePairsOpti(state);
 
       // Iterate in parallel over candidate pairs
-      forall (n1, n2) in candidatePairs with (ref state) {
+      // forall (n1, n2) in candidatePairs with (ref state) {
+      for (n1, n2) in candidatePairs {
         if isFeasible(n1, n2, state) {
           // Work on a clone, not the original state.
           var newState = state.clone();
