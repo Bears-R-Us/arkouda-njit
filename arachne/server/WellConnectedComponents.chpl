@@ -298,12 +298,34 @@ module WellConnectedComponents {
       return reducedPartition;
     }
 ////////////////////////////////////////////////////////////////////////////////////////////////
+/* Triangle distribution metrics */
+record triangleDistMetrics {
+    var triangleDensity: real;           // triangles/possible triangles
+    var participationRate: real;         // % of vertices in triangles
+    var maxLocalTriangles: int;          // max triangles for any vertex
+    var avgTrianglesPerVertex: real;     // average triangles per vertex
+}
+
+/* Path and transitivity metrics */
+record pathMetrics {
+    var localGlobalRatio: real;          // local/global transitivity ratio
+    var cohesionScore: real;             // measure of cluster cohesion
+    var pathDistribution: [0..#10] int;  // distribution of path lengths
+}
+
+/* Diameter-based metrics */
+record eccentricityMetrics {
+    var radius: int;                     // minimum eccentricity
+    var centerVertices: list(int);       // vertices with minimum eccentricity
+    var peripheralVertices: list(int);   // vertices with maximum eccentricity
+    var avgEccentricity: real;           // average eccentricity
+}
 /* Record for diameter calculation results */
 record diameterMetrics {
     var exactDiameter: bool;          // Whether result is exact
     var lowerBound: int;             // Lower bound on diameter
     var upperBound: int;             // Upper bound on diameter
-    var estimatedDiameter: real;     // Best estimate
+    var estimatedDiameter: int;     // Best estimate
 }
 /* Record for transitivity-based metrics */
 record transitivityMetrics {
@@ -334,7 +356,7 @@ record connectivityMetrics {
 
     var triangleCentrality = new list(real);  // List of triangle centralities
 
-    var diameter: real;              // Estimated diameter
+    var diameter: int;              // Estimated diameter
     var diameterLowerBound: int;     // Lower bound
     var diameterUpperBound: int;     // Upper bound
     var exactDiameter: bool;         // Whether diameter is exact
@@ -363,23 +385,49 @@ record spectralMetrics {
     var conductance: real;
 }
 
-/* Main record to hold all metrics */
+/* Enhanced Record definitions for storing metrics */
 record clusterMetricsRecord {
     var key: int;
     var connectivity: connectivityMetrics;
     var density: densityMetrics;
     var spectral: spectralMetrics;
-    var transitivity: transitivityMetrics;  
-
-    // var core: coreMetrics;
-    // var flow: flowMetrics;
-    // var robustness: robustnessMetrics;
+    var transitivity: transitivityMetrics;
+    
+    // Add new metric records
+    var triangleDist: triangleDistMetrics;
+    var paths: pathMetrics;
+    var eccentricity: eccentricityMetrics;
+    
+    // Add statistical distributions
+    var degreeDistribution: distributionStats;
+    var triangleDistribution: distributionStats;
+    var pathDistribution: distributionStats;
+}
+/* Record for statistical analysis of distributions */
+record distributionStats {
+    var mean: real;
+    var median: real;
+    var standardDev: real;
+    var skewness: real;
+    var kurtosis: real;
+    var percentiles: [0..100] real;  // Store all percentiles
 }
 
 /* Triangle Centrality record for storing metrics */
 record triangleCentralityMetrics {
     var triangleCentralities = new list(real);  // List to store centrality values
     var totalTriangles: int;                    // Total number of triangles in the cluster
+}
+
+/* Wrapper for analyzing cluster with ID */
+proc analyzeCluster(ref cluster: set(int), clusterId: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nAnalyzing cluster ", clusterId, " (Original cluster: ", 
+                newClusterIdToOriginalClusterId[clusterId], ")");
+        writeln("Cluster vertices:", cluster); 
+
+    }
+    return analyzeCluster(cluster);
 }
 
 /* Main analysis function for cluster metrics */
@@ -471,6 +519,49 @@ proc analyzeCluster(ref cluster: set(int)) throws {
         metrics.connectivity.diameterUpperBound = diameterMetrics.upperBound;
         metrics.connectivity.exactDiameter = diameterMetrics.exactDiameter;
 
+        // Calculate triangle distribution metrics
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n----- Computing Triangle Distribution Metrics -----");
+        }
+        metrics.triangleDist = calculateTriangleDistribution(cluster, metrics.density.triangleCount);
+
+        // Calculate path metrics
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n----- Computing Path Metrics -----");
+        }
+        metrics.paths = calculatePathMetrics(cluster, 
+                                   metrics.transitivity.globalTransitivity,
+                                   metrics.density.avgLocalClusteringCoeff,
+                                   metrics.density.density);  // rememebr to Pass existing density
+
+        // Calculate eccentricity metrics once diameter is fixed?!
+        // Wait until we have diameter calculation
+        if metrics.connectivity.diameter > 0 {
+            if logLevel == LogLevel.DEBUG {
+                writeln("\n----- Computing Eccentricity Metrics -----");
+            }
+            metrics.eccentricity = calculateEccentricityMetrics(cluster, metrics.connectivity.diameter);
+        }
+        // Calculate statistical distributions
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n----- Computing Distribution Statistics -----");
+        }
+        
+        // Get degree distribution
+        var degrees = [v in cluster] (neighborsSetGraphG1[v] & cluster).size: real;
+        metrics.degreeDistribution = calculateDistributionStats(degrees);
+        
+        // Get triangle distribution
+        var trianglesPerVertex = [v in cluster] countLocalTriangles(v, neighborsSetGraphG1[v] & cluster): real;
+        metrics.triangleDistribution = calculateDistributionStats(trianglesPerVertex);
+        
+        // Get path length distribution (from BFS results)
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n----- Computing Path Length Distribution -----");
+        }
+        var pathLengths = getPathLengths(cluster);
+        metrics.pathDistribution = calculateDistributionStats(pathLengths);
+
         if logLevel == LogLevel.DEBUG {
             writeln("\n----- Analysis Complete -----");
         }
@@ -481,13 +572,285 @@ proc analyzeCluster(ref cluster: set(int)) throws {
     }
 
     // Print final analysis
-    if logLevel == LogLevel.DEBUG {
+    //if logLevel == LogLevel.DEBUG {
         printClusterAnalysis(metrics, cluster.size);
-    }
+    //}
     
     return metrics;
 }
 
+/* Get path lengths distribution in the cluster */
+proc getPathLengths(ref cluster: set(int)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Getting Path Lengths Distribution ====");
+        writeln("Cluster size: ", cluster.size);
+    }
+
+    // Convert cluster to array and create proper domain
+    var clusterArray = cluster.toArray();
+    var clusterDomain: domain(int, parSafe=true) = clusterArray;
+    
+    // Create array to store all path lengths
+    var pathLengths: list(real, parSafe=true);
+
+    // Sample vertices for large clusters
+    var verticesToProcess = cluster;
+    if cluster.size > 10000 {
+        const sampleSize = if cluster.size <= 50000 then (cluster.size * 0.2): int
+                     else if cluster.size <= 100000 then (cluster.size * 0.1): int
+                     else (cluster.size * 0.05): int;
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("Large cluster, using sampling");
+            writeln("Sample size: ", sampleSize);
+        }
+        verticesToProcess = sampleClusterVertices(cluster, sampleSize);
+    }
+
+    // Run BFS from each vertex and collect path lengths
+    forall v in verticesToProcess with(ref cluster, ref pathLengths) {
+        var (_, depths) = enhancedBFS(v, cluster);
+        for u in cluster {
+            if depths[u] != -1 {  // Only include reachable vertices
+                pathLengths.pushBack(depths[u]: real);
+            }
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Collected ", pathLengths.size, " path lengths");
+        writeln("==== Path Lengths Collection Complete ====\n");
+    }
+
+    return pathLengths.toArray();
+}
+
+
+/* Calculate distribution statistics */
+proc calculateDistributionStats(ref data: [] real) {
+    var stats = new distributionStats();
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Calculating Distribution Statistics ====");
+        writeln("Sample size: ", data.size);
+    }
+
+    // Calculate mean
+    stats.mean = + reduce data / data.size;
+    
+    // Calculate median and percentiles
+    var sortedData = data;
+    sort(sortedData);
+    stats.median = if data.size % 2 == 0 
+                  then (sortedData[data.size/2 - 1] + sortedData[data.size/2]) / 2.0
+                  else sortedData[data.size/2];
+    
+    // Calculate standard deviation
+    var variance = 0.0;
+    forall x in data with (+ reduce variance) {
+        var diff = x - stats.mean;
+        variance += diff * diff;
+    }
+    stats.standardDev = sqrt(variance / (data.size - 1));
+    
+    // Calculate higher moments (skewness and kurtosis)
+    var m3 = 0.0, m4 = 0.0;
+    forall x in data with (+ reduce m3, + reduce m4) {
+        var diff = x - stats.mean;
+        var diff2 = diff * diff;
+        m3 += diff * diff2;
+        m4 += diff2 * diff2;
+    }
+    
+    stats.skewness = m3 / (data.size * stats.standardDev ** 3);
+    stats.kurtosis = m4 / (data.size * stats.standardDev ** 4) - 3.0;
+    
+    // Calculate percentiles
+    for i in 0..100 {
+        var idx = (i:real * (data.size-1):real / 100.0):int;
+        stats.percentiles[i] = sortedData[idx];
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nDistribution Statistics:");
+        writeln("  Mean: ", stats.mean);
+        writeln("  Median: ", stats.median);
+        writeln("  Standard Deviation: ", stats.standardDev);
+        writeln("  Skewness: ", stats.skewness);
+        writeln("  Kurtosis: ", stats.kurtosis);
+        writeln("  Key Percentiles:");
+        writeln("    25th: ", stats.percentiles[25]);
+        writeln("    50th: ", stats.percentiles[50]);
+        writeln("    75th: ", stats.percentiles[75]);
+        writeln("==== Distribution Statistics Complete ====\n");
+    }
+
+    return stats;
+}
+
+/* Calculate triangle distribution metrics */
+proc calculateTriangleDistribution(ref cluster: set(int), triangleCount: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Triangle Distribution Analysis ====");
+        writeln("Cluster size: ", cluster.size);
+        writeln("Total triangles: ", triangleCount);
+    }
+
+    // Convert cluster to array and create proper domain
+    var clusterArray = cluster.toArray();
+    var clusterDomain: domain(int, parSafe=true) = clusterArray;
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Created domain from cluster");
+    }
+
+    var metrics = new triangleDistMetrics();
+    var totalEdges = 0;
+    var participatingVertices: atomic int;
+    var maxTriangles = 0;
+    var totalTrianglesPerVertex = 0;
+
+    forall v in clusterDomain with (+ reduce totalEdges, 
+                                  max reduce maxTriangles,
+                                  + reduce totalTrianglesPerVertex) {
+        var neighbors = neighborsSetGraphG1[v] & cluster;
+        var localTriangleCount = 0;
+        
+        // Count triangles for this vertex
+        for u in neighbors {
+            if u > v {  // Process each edge once
+                var u_neighbors = neighborsSetGraphG1[u] & cluster;
+                for w in (u_neighbors & neighbors) {
+                    if w > u {  // Maintain ordering v < u < w
+                        localTriangleCount += 1;
+                    }
+                }
+            }
+        }
+
+        // Update metrics
+        if localTriangleCount > 0 {
+            participatingVertices.add(1);
+        }
+        maxTriangles = max(maxTriangles, localTriangleCount);
+        totalTrianglesPerVertex += localTriangleCount;
+        totalEdges += neighbors.size;
+    }
+
+    // Calculate final metrics
+    totalEdges = totalEdges / 2;  // Each edge was counted twice
+    
+    // Triangle density = number of triangles / number of possible triangles
+    // For an undirected graph, possible triangles = (n * (n-1) * (n-2)) / 6
+    var possibleTriangles = (cluster.size * (cluster.size-1) * (cluster.size-2)) / 6;
+    metrics.triangleDensity = if possibleTriangles > 0 
+                             then triangleCount:real / (totalEdges:real)
+                             else 0.0;
+    
+    metrics.participationRate = participatingVertices.read():real / cluster.size:real;
+    metrics.maxLocalTriangles = maxTriangles;
+    metrics.avgTrianglesPerVertex = totalTrianglesPerVertex:real / cluster.size:real;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nTriangle Distribution Results:");
+        writeln("Total edges: ", totalEdges);
+        writeln("Triangle density: ", metrics.triangleDensity);
+        writeln("Participation rate: ", metrics.participationRate);
+        writeln("Max triangles per vertex: ", metrics.maxLocalTriangles);
+        writeln("Average triangles per vertex: ", metrics.avgTrianglesPerVertex);
+        writeln("==== Triangle Distribution Analysis Complete ====\n");
+    }
+
+    return metrics;
+}
+/* Calculate path-based metrics */
+proc calculatePathMetrics(ref cluster: set(int), globalTransitivity: real, localTransitivity: real, clusterDensity: real) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Path Metrics Analysis ====");
+        writeln("Global transitivity: ", globalTransitivity);
+        writeln("Local transitivity: ", localTransitivity);
+        writeln("Cluster density: ", clusterDensity);
+    }
+
+    var metrics = new pathMetrics();
+    
+    // Calculate local/global ratio
+    metrics.localGlobalRatio = if globalTransitivity > 0.0 then 
+                              localTransitivity / globalTransitivity else 0.0;
+    
+    // Calculate cohesion score (based on transitivity and density)
+    metrics.cohesionScore = (metrics.localGlobalRatio + clusterDensity) / 2.0;
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nPath Metrics Results:");
+        writeln("  Local/Global ratio: ", metrics.localGlobalRatio);
+        writeln("  Cohesion score: ", metrics.cohesionScore);
+        writeln("==== Path Metrics Analysis Complete ====\n");
+    }
+
+    return metrics;
+}
+/* Calculate eccentricity-based metrics */
+proc calculateEccentricityMetrics(ref cluster: set(int), diameter: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Eccentricity Analysis ====");
+        writeln("Diameter: ", diameter);
+    }
+
+    // Convert cluster to array and create proper domain
+    var clusterArray = cluster.toArray();
+    var clusterDomain: domain(int, parSafe=true) = clusterArray;
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Created domain from cluster of size: ", clusterArray.size);
+    }
+
+    var metrics = new eccentricityMetrics();
+    var eccentricities: [clusterDomain] atomic int;
+    
+    // Calculate eccentricities for each vertex
+    forall v in cluster with(ref cluster){
+        var maxDist = 0;
+        var (dist, _) = enhancedBFS(v, cluster);
+        eccentricities[v].write(dist);
+    }
+    
+    // Find radius and center vertices
+    var radius = min reduce [v in cluster] eccentricities[v].read();
+    metrics.radius = radius;
+    
+    // Identify center and peripheral vertices
+    var centerSet: set(int, parSafe=true);  
+    var peripheralSet: set(int, parSafe=true);
+
+    forall v in cluster with(ref centerSet, ref peripheralSet) {
+        var ecc = eccentricities[v].read();
+        if ecc == radius then
+            centerSet.add(v);
+        if ecc == diameter then
+            peripheralSet.add(v);
+    }
+
+    // After parallel section, convert to lists
+    for v in centerSet do
+        metrics.centerVertices.pushBack(v);
+    for v in peripheralSet do
+        metrics.peripheralVertices.pushBack(v);
+    
+    // Calculate average eccentricity
+    metrics.avgEccentricity = (+ reduce [v in cluster] eccentricities[v].read()):real / cluster.size:real;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nEccentricity Results:");
+        writeln("  Radius: ", metrics.radius);
+        writeln("  Number of center vertices: ", metrics.centerVertices.size);
+        writeln("  Number of peripheral vertices: ", metrics.peripheralVertices.size);
+        writeln("  Average eccentricity: ", metrics.avgEccentricity);
+        writeln("==== Eccentricity Analysis Complete ====\n");
+    }
+
+    return metrics;
+}
 /* Enhanced BFS for cluster analysis */
 proc enhancedBFS(start: int, ref cluster: set(int)) {
     if logLevel == LogLevel.DEBUG {
@@ -497,11 +860,25 @@ proc enhancedBFS(start: int, ref cluster: set(int)) {
     }
 
     // Create arrays and domains
-    var clusterArray = cluster.toArray();
-    var clusterDomain: domain(int, parSafe=true) = clusterArray;
-    var depth: [clusterDomain] int = -1;
     var maxDist = 0;
     
+    var clusterArray = cluster.toArray();
+    if logLevel == LogLevel.DEBUG {
+        writeln("Created cluster array of size: ", clusterArray.size);
+    }
+
+    var clusterDomain: domain(int, parSafe=true) = clusterArray;
+    if logLevel == LogLevel.DEBUG {
+        writeln("Created domain: ", clusterDomain);
+    }
+    var depth: [clusterDomain] int = -1;
+
+    // Check if start vertex is valid
+    if !clusterDomain.contains(start) {
+        writeln("ERROR: Start vertex ", start, " not in cluster domain");
+        return (0, depth);
+    }
+
     // Create frontier sets for current and next level
     var frontierSets: [0..1] list(int, parSafe=true);
     frontierSets[0] = new list(int, parSafe=true);
@@ -567,13 +944,12 @@ proc enhancedBFS(start: int, ref cluster: set(int)) {
     
     if logLevel == LogLevel.DEBUG {
         writeln("\nBFS Complete:");
-        writeln("Maximum distance found: ", maxDist);
+        writeln("$$$ Maximum distance found: ", maxDist);
         writeln("==== Enhanced BFS Complete ====\n");
     }
     
     return (maxDist, depth);
 }
-
 /* Enhanced diameter calculation using double sweep */
 proc calculateDiameter(ref cluster: set(int)) throws {
     if logLevel == LogLevel.DEBUG {
@@ -585,6 +961,9 @@ proc calculateDiameter(ref cluster: set(int)) throws {
     
     // For very small clusters, use exact calculation
     if cluster.size <= 1000 {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Using exact calculation for small cluster");
+        }
         metrics.exactDiameter = true;
         var maxDist = 0;
         
@@ -595,18 +974,47 @@ proc calculateDiameter(ref cluster: set(int)) throws {
         
         metrics.lowerBound = maxDist;
         metrics.upperBound = maxDist;
-        metrics.estimatedDiameter = maxDist:real;
+        metrics.estimatedDiameter = maxDist:int;
         return metrics;
     }
 
+    if logLevel == LogLevel.DEBUG {
+        writeln("Using approximate calculation for large cluster");
+    }
     // For larger clusters, use double sweep with sampling
     metrics.exactDiameter = false;
     
     // First sweep from random vertex
+    if logLevel == LogLevel.DEBUG {
+        writeln("Converting cluster to array");
+    }
     var clusterArray = cluster.toArray();
-    var rng = new randomStream(int);
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Created array of size: ", clusterArray.size);
+        writeln("Setting up random number generator");
+    }
+    
+    var rng = new randomStream(real);
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Selecting random start vertex");
+    }
+    
     var randIdx = (rng.next() * (cluster.size-1)):int;
-    var start = clusterArray[randIdx];    var (firstDist, firstDepths) = enhancedBFS(start, cluster);
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Selected random index: ", randIdx);
+    }
+
+    var start = clusterArray[randIdx];
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Selected start vertex: ", start);
+    }
+
+  
+    var (firstDist, firstDepths) = enhancedBFS(start, cluster);
     
     // Find farthest vertex
     var maxDist = 0;
@@ -624,7 +1032,7 @@ proc calculateDiameter(ref cluster: set(int)) throws {
     
     metrics.lowerBound = secondDist;
     metrics.upperBound = min(2 * secondDist, cluster.size - 1);
-    metrics.estimatedDiameter = (metrics.lowerBound + metrics.upperBound) / 2.0;
+    metrics.estimatedDiameter = ((metrics.lowerBound + metrics.upperBound) / 2.0):int;
 
     if logLevel == LogLevel.DEBUG {
         writeln("\nDiameter Results:");
@@ -740,7 +1148,7 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
                     for w in (u_neighbors & neighbors) {
                         if w > u {  // Maintain strict ordering
                             if logLevel == LogLevel.DEBUG {
-                                writeln("Found triangle: ", v, "-", u, "-", w);
+                                //writeln("Found triangle: ", v, "-", u, "-", w);
                             }
                             totalTriangles.add(1);
                         }
@@ -764,8 +1172,8 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
     // Calculate final ratios with checks for division by zero
     if metrics.wedgeCount > 0 {
         // Multiply triangles by 3 because each triangle creates three wedges
-        metrics.triangleToWedgeRatio = (3 * triangles):real / metrics.wedgeCount:real;
-        metrics.globalTransitivity = metrics.triangleToWedgeRatio;
+        metrics.triangleToWedgeRatio = triangles:real / metrics.wedgeCount:real;
+        metrics.globalTransitivity = (3 * triangles):real / metrics.wedgeCount:real;
     } else {
         metrics.triangleToWedgeRatio = 0.0;
         metrics.globalTransitivity = 0.0;
@@ -821,7 +1229,9 @@ proc calculateConductance(ref cluster: set(int)) throws {
 /* Basic spectral bounds based on conductance */
 proc calculateSpectralBounds(conductance: real) {
     var metrics: spectralMetrics;
-    writeln("==================== calculateSpectralBounds ======================");
+    if logLevel == LogLevel.DEBUG {
+        writeln("==================== calculateSpectralBounds ======================");
+    }
 
     // Store conductance
     metrics.conductance = conductance;
@@ -835,16 +1245,7 @@ proc calculateSpectralBounds(conductance: real) {
     
     return metrics;
 }
-/* Wrapper for analyzing cluster with ID */
-proc analyzeCluster(ref cluster: set(int), clusterId: int) throws {
-    if logLevel == LogLevel.DEBUG {
-        writeln("\nAnalyzing cluster ", clusterId, " (Original cluster: ", 
-                newClusterIdToOriginalClusterId[clusterId], ")");
-        writeln("Cluster vertices:", cluster); 
 
-    }
-    return analyzeCluster(cluster);
-}
 /* Basic statistics calculation - foundation for other metrics */
 proc calculateBasicStats(in cluster: set(int)) throws {
     const SAMPLE_THRESHOLD = 10000; 
@@ -1056,7 +1457,6 @@ proc sampleClusterVertices(ref cluster: set(int), sampleSize: int) {
     
     return sampledVertices;
 }
-
 /* Calculate clustering coefficients using minimum search strategy */
 proc calculateClusteringCoefficients(ref cluster: set(int), ref metrics: densityMetrics) throws {
     if logLevel == LogLevel.DEBUG {
@@ -1080,54 +1480,44 @@ proc calculateClusteringCoefficients(ref cluster: set(int), ref metrics: density
         analysisCluster = sampleClusterVertices(cluster, sampleSize);
     }
 
+    // Convert to array and create domain
+    var clusterArray = analysisCluster.toArray();
+    var clusterDomain: domain(int) = clusterArray;
+
     // Atomic counters for parallel computation
     var totalTriangles: atomic int;
-    var totalPossibleTriangles: atomic int;
+    var totalWedges: atomic int;
     var sumLocalCC: atomic real;
-
-    // Sort vertices by degree for more efficient processing
-    var vertexDegrees: [0..#analysisCluster.size] (int, int); // (vertex, degree)
-    var idx = 0;
-    for v in analysisCluster {
-        vertexDegrees[idx] = (v, neighborsSetGraphG1[v].size);
-        idx += 1;
-    }
-    sort(vertexDegrees, comparator=new DegreeComparator());
+    var validVertices: atomic int;
 
     if logLevel == LogLevel.DEBUG {
-        writeln("Starting triangle counting with sorted vertices");
+        writeln("Starting triangle and wedge counting");
     }
 
     // Process vertices in parallel
-    forall i in 0..#vertexDegrees.size with (ref totalTriangles, 
-                                            ref totalPossibleTriangles,
-                                            ref sumLocalCC) {
-        var (v, v_deg) = vertexDegrees[i];
+    forall v in clusterDomain {
         var v_neighbors = neighborsSetGraphG1[v] & analysisCluster;
+        var v_deg = v_neighbors.size;
         
         if v_deg >= 2 {
+            validVertices.add(1);
             var localTriangles = 0;
             var possibleTriangles = (v_deg * (v_deg - 1)) / 2;
-            
-            // Process higher-degree neighbors
+            totalWedges.add(possibleTriangles);
+
+            // Count triangles for this vertex
             for u in v_neighbors {
-                if u > v {  // Process only in one direction
-                    var u_neighbors = neighborsSetGraphG1[u] & analysisCluster;
-                    // Find common neighbors
-                    for w in (u_neighbors & v_neighbors) {
-                        if w > u {  // Maintain ordering v < u < w
+                for w in v_neighbors {
+                    if u != w && u > v && w > u {  // Avoid counting same triangle multiple times
+                        if (neighborsSetGraphG1[u] & analysisCluster).contains(w) {
                             localTriangles += 1;
-                            if logLevel == LogLevel.DEBUG {
-                                writeln("Triangle found: ", v, "-", u, "-", w);
-                            }
                         }
                     }
                 }
             }
 
             totalTriangles.add(localTriangles);
-            totalPossibleTriangles.add(possibleTriangles);
-            
+
             // Calculate local clustering coefficient
             var localCC = if possibleTriangles > 0 
                          then localTriangles:real / possibleTriangles:real
@@ -1137,7 +1527,8 @@ proc calculateClusteringCoefficients(ref cluster: set(int), ref metrics: density
             if logLevel == LogLevel.DEBUG {
                 writeln("Vertex ", v, " stats:");
                 writeln("  Degree: ", v_deg);
-                writeln("  Triangles: ", localTriangles);
+                writeln("  Local triangles: ", localTriangles);
+                writeln("  Possible triangles: ", possibleTriangles);
                 writeln("  Local CC: ", localCC);
             }
         }
@@ -1145,22 +1536,34 @@ proc calculateClusteringCoefficients(ref cluster: set(int), ref metrics: density
 
     // Calculate final metrics
     var finalTriangles = totalTriangles.read();
+    var finalWedges = totalWedges.read();
+    var numValidVertices = validVertices.read();
     
     // Scale up if sampling was used
     if cluster.size > 10000 {
         var scaleFactor = cluster.size:real / analysisCluster.size:real;
         finalTriangles = (finalTriangles:real * scaleFactor):int;
+        finalWedges = (finalWedges:real * scaleFactor):int;
     }
     
     updatedMetrics.triangleCount = finalTriangles;
-    updatedMetrics.avgLocalClusteringCoeff = sumLocalCC.read() / analysisCluster.size;
-    updatedMetrics.globalClusteringCoeff = if totalPossibleTriangles.read() > 0
-                                          then totalTriangles.read():real / totalPossibleTriangles.read():real
+    
+    // Calculate average local clustering coefficient (only for vertices with degree >= 2)
+    updatedMetrics.avgLocalClusteringCoeff = if numValidVertices > 0
+                                            then sumLocalCC.read() / numValidVertices:real
+                                            else 0.0;
+    
+    // Calculate global clustering coefficient (same as transitivity)
+    updatedMetrics.globalClusteringCoeff = if finalWedges > 0
+                                          then (3.0 * finalTriangles:real) / finalWedges:real
                                           else 0.0;
 
     if logLevel == LogLevel.DEBUG {
         writeln("\nFinal Results:");
         writeln("Total triangles: ", updatedMetrics.triangleCount);
+        writeln("Total wedges: ", finalWedges);
+        writeln("Valid vertices (degree >= 2): ", numValidVertices);
+        writeln("Sum of local CCs: ", sumLocalCC.read());
         writeln("Average local clustering: ", updatedMetrics.avgLocalClusteringCoeff);
         writeln("Global clustering: ", updatedMetrics.globalClusteringCoeff);
         writeln("==== Clustering Coefficients Calculation Complete ====\n");
@@ -1362,8 +1765,16 @@ proc calculateAssortativity(ref cluster: set(int), ref basicStats, ref metrics: 
         }
 
         var den2 = (denominator2 / (2 * M)) ** 2;
-        updatedMetrics.assortativity = (numerator/(2*M) - den2) / 
-                                     (denominator1/(2*M) - den2);
+        // Add check for division by zero
+        var denominator = (denominator1/(2*M) - den2);
+        if denominator != 0 {
+            updatedMetrics.assortativity = (numerator/(2*M) - den2) / denominator;
+        } else {
+            updatedMetrics.assortativity = 0.0;  // or another appropriate default value
+            if logLevel == LogLevel.DEBUG {
+                writeln("Warning: Unable to calculate assortativity (division by zero)");
+            }
+        }
         
         if logLevel == LogLevel.DEBUG {
             writeln("Assortativity coefficient: ", updatedMetrics.assortativity);
@@ -1408,7 +1819,7 @@ proc calculateAssortativity(ref cluster: set(int), ref basicStats, ref metrics: 
     metrics.spectral.conductance = 0.0;
     
     // Initialize diameter metrics
-    metrics.connectivity.diameter = 0.0;
+    metrics.connectivity.diameter = 0;
     metrics.connectivity.diameterLowerBound = 0;
     metrics.connectivity.diameterUpperBound = 0;
     metrics.connectivity.exactDiameter = true;
@@ -1439,7 +1850,6 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
     writeln("Basic Density:");
     writeln("  Density: ", metrics.density.density);
     writeln("  Sparsity: ", metrics.density.sparsity);
-    // writeln("  Internal Edges: ", metrics.density.internalEdges);
     writeln("  Maximum Possible Edges: ", metrics.density.maxPossibleEdges);
 
     writeln("\nClustering Metrics:");
@@ -1458,7 +1868,21 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
     writeln("  Triangle-to-Wedge Ratio: ", metrics.transitivity.triangleToWedgeRatio);
     writeln("  Global Transitivity: ", metrics.transitivity.globalTransitivity);
 
-    writeln("\nDiameter Metrics:");
+    writeln("\n----- Triangle Distribution Metrics -----");
+    writeln("  Triangle Density: ", metrics.triangleDist.triangleDensity);
+    writeln("  Participation Rate: ", metrics.triangleDist.participationRate);
+    writeln("  Max Local Triangles: ", metrics.triangleDist.maxLocalTriangles);
+    writeln("  Average Triangles Per Vertex: ", metrics.triangleDist.avgTrianglesPerVertex);
+
+    writeln("\n----- Path-based Metrics -----");
+    writeln("  Local/Global Transitivity Ratio: ", metrics.paths.localGlobalRatio);
+    writeln("  Cohesion Score: ", metrics.paths.cohesionScore);
+    writeln("  Path Distribution: ");
+    for i in metrics.paths.pathDistribution.domain {
+        writeln("    Length ", i, ": ", metrics.paths.pathDistribution[i]);
+    }
+
+    writeln("\n----- Diameter and Eccentricity Metrics -----");
     writeln("  Diameter: ", metrics.connectivity.diameter);
     if !metrics.connectivity.exactDiameter {
         writeln("  Lower Bound: ", metrics.connectivity.diameterLowerBound);
@@ -1467,9 +1891,56 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
     } else {
         writeln("  (Exact calculation)");
     }
+    writeln("  Radius: ", metrics.eccentricity.radius);
+    writeln("  Number of Center Vertices: ", metrics.eccentricity.centerVertices.size);
+    if metrics.eccentricity.centerVertices.size <= 10 {
+        writeln("  Center Vertices: ", metrics.eccentricity.centerVertices);
+    }
+    writeln("  Number of Peripheral Vertices: ", metrics.eccentricity.peripheralVertices.size);
+    if metrics.eccentricity.peripheralVertices.size <= 10 {
+        writeln("  Peripheral Vertices: ", metrics.eccentricity.peripheralVertices);
+    }
+    writeln("  Average Eccentricity: ", metrics.eccentricity.avgEccentricity);
+
+    writeln("\n----- Distribution Statistics -----");
+    writeln("Degree Distribution:");
+    writeln("  Mean: ", metrics.degreeDistribution.mean);
+    writeln("  Median: ", metrics.degreeDistribution.median);
+    writeln("  Standard Deviation: ", metrics.degreeDistribution.standardDev);
+    writeln("  Skewness: ", metrics.degreeDistribution.skewness);
+    writeln("  Kurtosis: ", metrics.degreeDistribution.kurtosis);
+    writeln("  Key Percentiles:");
+    writeln("    25th: ", metrics.degreeDistribution.percentiles[25]);
+    writeln("    50th: ", metrics.degreeDistribution.percentiles[50]);
+    writeln("    75th: ", metrics.degreeDistribution.percentiles[75]);
+    writeln("    90th: ", metrics.degreeDistribution.percentiles[90]);
+    
+    writeln("\nTriangle Distribution:");
+    writeln("  Mean: ", metrics.triangleDistribution.mean);
+    writeln("  Median: ", metrics.triangleDistribution.median);
+    writeln("  Standard Deviation: ", metrics.triangleDistribution.standardDev);
+    writeln("  Skewness: ", metrics.triangleDistribution.skewness);
+    writeln("  Kurtosis: ", metrics.triangleDistribution.kurtosis);
+    writeln("  Key Percentiles:");
+    writeln("    25th: ", metrics.triangleDistribution.percentiles[25]);
+    writeln("    50th: ", metrics.triangleDistribution.percentiles[50]);
+    writeln("    75th: ", metrics.triangleDistribution.percentiles[75]);
+    writeln("    90th: ", metrics.triangleDistribution.percentiles[90]);
+    
+    writeln("\nPath Length Distribution:");
+    writeln("  Mean: ", metrics.pathDistribution.mean);
+    writeln("  Median: ", metrics.pathDistribution.median);
+    writeln("  Standard Deviation: ", metrics.pathDistribution.standardDev);
+    writeln("  Skewness: ", metrics.pathDistribution.skewness);
+    writeln("  Kurtosis: ", metrics.pathDistribution.kurtosis);
+    writeln("  Key Percentiles:");
+    writeln("    25th: ", metrics.pathDistribution.percentiles[25]);
+    writeln("    50th: ", metrics.pathDistribution.percentiles[50]);
+    writeln("    75th: ", metrics.pathDistribution.percentiles[75]);
+    writeln("    90th: ", metrics.pathDistribution.percentiles[90]);
+
     writeln("\n===========================================");
 }
-
 
 
 
@@ -1545,6 +2016,7 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
                     + newClusterIdToOriginalClusterId[key]:string + ".";
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
+        // if key == 1 then 
         analyzeCluster(clusterToAdd, key);
       }
       if outputType == "post" then writeClustersToFile();
