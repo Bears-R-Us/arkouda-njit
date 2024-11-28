@@ -298,6 +298,13 @@ module WellConnectedComponents {
       return reducedPartition;
     }
 ////////////////////////////////////////////////////////////////////////////////////////////////
+/* Record for diameter calculation results */
+record diameterMetrics {
+    var exactDiameter: bool;          // Whether result is exact
+    var lowerBound: int;             // Lower bound on diameter
+    var upperBound: int;             // Upper bound on diameter
+    var estimatedDiameter: real;     // Best estimate
+}
 /* Record for transitivity-based metrics */
 record transitivityMetrics {
     var wedgeCount: int;              // Number of two-edge paths
@@ -327,6 +334,10 @@ record connectivityMetrics {
 
     var triangleCentrality = new list(real);  // List of triangle centralities
 
+    var diameter: real;              // Estimated diameter
+    var diameterLowerBound: int;     // Lower bound
+    var diameterUpperBound: int;     // Upper bound
+    var exactDiameter: bool;         // Whether diameter is exact
 }
 record densityMetrics {
     // Basic density
@@ -447,7 +458,19 @@ proc analyzeCluster(ref cluster: set(int)) throws {
           writeln("\n----- Computing Transitivity Metrics -----");
         }
         metrics.transitivity = calculateTransitivityMetrics(cluster);
+
+       // Calculate diameter after basic connectivity metrics
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n----- Computing Diameter Metrics -----");
+        }
+        var diameterMetrics = calculateDiameter(cluster);
         
+        // Update connectivity metrics with diameter results
+        metrics.connectivity.diameter = diameterMetrics.estimatedDiameter;
+        metrics.connectivity.diameterLowerBound = diameterMetrics.lowerBound;
+        metrics.connectivity.diameterUpperBound = diameterMetrics.upperBound;
+        metrics.connectivity.exactDiameter = diameterMetrics.exactDiameter;
+
         if logLevel == LogLevel.DEBUG {
             writeln("\n----- Analysis Complete -----");
         }
@@ -463,6 +486,191 @@ proc analyzeCluster(ref cluster: set(int)) throws {
     }
     
     return metrics;
+}
+
+/* Enhanced BFS for cluster analysis */
+proc enhancedBFS(start: int, ref cluster: set(int)) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Enhanced BFS ====");
+        writeln("Starting vertex: ", start);
+        writeln("Cluster size: ", cluster.size);
+    }
+
+    // Create arrays and domains
+    var clusterArray = cluster.toArray();
+    var clusterDomain: domain(int, parSafe=true) = clusterArray;
+    var depth: [clusterDomain] int = -1;
+    var maxDist = 0;
+    
+    // Create frontier sets for current and next level
+    var frontierSets: [0..1] list(int, parSafe=true);
+    frontierSets[0] = new list(int, parSafe=true);
+    frontierSets[1] = new list(int, parSafe=true);
+    
+    // Initialize BFS from start vertex
+    var currentLevel: atomic int;
+    currentLevel.write(0);
+    depth[start] = 0;
+    frontierSets[0].pushBack(start);
+    var frontierIdx = 0;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Initialized frontier sets and depth array");
+        writeln("Starting BFS traversal");
+    }
+    
+    while true {
+        var pendingWork = false;
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nProcessing level ", currentLevel.read());
+            writeln("Current frontier size: ", frontierSets[frontierIdx].size);
+        }
+        
+        forall u in frontierSets[frontierIdx] with (|| reduce pendingWork, 
+                                                   max reduce maxDist,
+                                                   ref currentLevel) {
+            var neighbors = neighborsSetGraphG1[u] & cluster;
+            var uLevel = depth[u];
+            
+            if logLevel == LogLevel.DEBUG {
+                writeln("Processing vertex ", u, " at level ", uLevel);
+                writeln("Number of neighbors: ", neighbors.size);
+            }
+            
+            for v in neighbors {
+                if depth[v] == -1 {
+                    pendingWork = true;
+                    var newLevel = uLevel + 1;
+                    depth[v] = newLevel;
+                    frontierSets[(frontierIdx + 1) % 2].pushBack(v);
+                    maxDist = max(maxDist, newLevel);
+                    currentLevel.write(newLevel);
+                    
+                    if logLevel == LogLevel.DEBUG {
+                        writeln("  Found new vertex ", v, " at level ", newLevel);
+                    }
+                }
+            }
+        }
+        
+        frontierSets[frontierIdx].clear();
+        if !pendingWork then break;
+        
+        frontierIdx = (frontierIdx + 1) % 2;
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("Completed level ", currentLevel.read());
+            writeln("Current max distance: ", maxDist);
+        }
+    }
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nBFS Complete:");
+        writeln("Maximum distance found: ", maxDist);
+        writeln("==== Enhanced BFS Complete ====\n");
+    }
+    
+    return (maxDist, depth);
+}
+
+/* Enhanced diameter calculation using double sweep */
+proc calculateDiameter(ref cluster: set(int)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Enhanced Diameter Calculation ====");
+        writeln("Cluster size: ", cluster.size);
+    }
+
+    var metrics = new diameterMetrics();
+    
+    // For very small clusters, use exact calculation
+    if cluster.size <= 1000 {
+        metrics.exactDiameter = true;
+        var maxDist = 0;
+        
+        forall v in cluster with (max reduce maxDist, ref cluster) {
+            var (dist, _) = enhancedBFS(v, cluster);
+            maxDist = max(maxDist, dist);
+        }
+        
+        metrics.lowerBound = maxDist;
+        metrics.upperBound = maxDist;
+        metrics.estimatedDiameter = maxDist:real;
+        return metrics;
+    }
+
+    // For larger clusters, use double sweep with sampling
+    metrics.exactDiameter = false;
+    
+    // First sweep from random vertex
+    var clusterArray = cluster.toArray();
+    var rng = new randomStream(int);
+    var randIdx = (rng.next() * (cluster.size-1)):int;
+    var start = clusterArray[randIdx];    var (firstDist, firstDepths) = enhancedBFS(start, cluster);
+    
+    // Find farthest vertex
+    var maxDist = 0;
+    var farthestVertex = start;
+    forall v in cluster with (max reduce maxDist, 
+                            ref farthestVertex) {
+        if firstDepths[v] > maxDist {
+            maxDist = firstDepths[v];
+            farthestVertex = v;
+        }
+    }
+    
+    // Second sweep from farthest vertex
+    var (secondDist, _) = enhancedBFS(farthestVertex, cluster);
+    
+    metrics.lowerBound = secondDist;
+    metrics.upperBound = min(2 * secondDist, cluster.size - 1);
+    metrics.estimatedDiameter = (metrics.lowerBound + metrics.upperBound) / 2.0;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nDiameter Results:");
+        writeln("  First sweep max distance: ", firstDist);
+        writeln("  Second sweep max distance: ", secondDist);
+        writeln("  Lower bound: ", metrics.lowerBound);
+        writeln("  Upper bound: ", metrics.upperBound);
+        writeln("==== Diameter Calculation Complete ====\n");
+    }
+    
+    return metrics;
+}
+
+/* Perform double sweep for initial diameter bounds */
+proc doubleSweepEstimate(ref cluster: set(int)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nStarting double sweep diameter estimation");
+    }
+
+    // First sweep: start from random vertex
+    var clusterArray = cluster.toArray();
+    var rng = new randomStream(int);
+    var start = clusterArray[rng.next(0..#cluster.size)];
+    
+    var (dist1, firstDistances) = bfsDistance(start, cluster);
+    
+    // Find farthest vertex from start
+    var maxDist = 0;
+    var farthestVertex = start;
+    for v in cluster {
+        if firstDistances[v] > maxDist {
+            maxDist = firstDistances[v];
+            farthestVertex = v;
+        }
+    }
+    
+    // Second sweep: from farthest vertex
+    var (dist2, _) = bfsDistance(farthestVertex, cluster);
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Double sweep results:");
+        writeln("  First sweep max distance: ", dist1);
+        writeln("  Second sweep max distance: ", dist2);
+    }
+    
+    return dist2;  // This is a lower bound on the diameter
 }
 
 /* Calculate transitivity-based metrics for a cluster with parallel optimizations */
@@ -1199,6 +1407,12 @@ proc calculateAssortativity(ref cluster: set(int), ref basicStats, ref metrics: 
     metrics.spectral.lambda2Estimate = 0.0;
     metrics.spectral.conductance = 0.0;
     
+    // Initialize diameter metrics
+    metrics.connectivity.diameter = 0.0;
+    metrics.connectivity.diameterLowerBound = 0;
+    metrics.connectivity.diameterUpperBound = 0;
+    metrics.connectivity.exactDiameter = true;
+    
     return metrics;
 }
 proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
@@ -1211,7 +1425,7 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
     writeln("  Maximum Degree: ", metrics.connectivity.maxDegree);
     writeln("  Average Degree: ", metrics.connectivity.avgDegree);
     writeln("  Total Internal Edges: ", metrics.connectivity.totalInternalEdges);
-    writeln("  Edge Connectivity Lower Bound: ", metrics.connectivity.edgeConnectivityLowerBound);
+    writeln("  Edge Connectivity Lower Bound: ", metrics.connectivity.edgeConnectivityLowerBound, " Mader's theorem bound");
     writeln("  Cluster Volume: ", metrics.connectivity.clusterVolume);
     writeln("  Cluster CutEdges: ", metrics.connectivity.clusterCutEdges);
 
@@ -1244,6 +1458,15 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
     writeln("  Triangle-to-Wedge Ratio: ", metrics.transitivity.triangleToWedgeRatio);
     writeln("  Global Transitivity: ", metrics.transitivity.globalTransitivity);
 
+    writeln("\nDiameter Metrics:");
+    writeln("  Diameter: ", metrics.connectivity.diameter);
+    if !metrics.connectivity.exactDiameter {
+        writeln("  Lower Bound: ", metrics.connectivity.diameterLowerBound);
+        writeln("  Upper Bound: ", metrics.connectivity.diameterUpperBound);
+        writeln("  (Approximated using sampling)");
+    } else {
+        writeln("  (Exact calculation)");
+    }
     writeln("\n===========================================");
 }
 
