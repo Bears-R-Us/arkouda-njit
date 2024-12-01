@@ -1,0 +1,1249 @@
+2024-12-01:15:02:46 [ServerDaemon] run Line 507 DEBUG [Chapel] initialized the .arkouda directory /scratch/users/md724/arkouda-njit/.arkouda
+
+
+******************************************************************************************************
+******************************************************************************************************
+*                                                                                                    *
+*                          server listening on tcp://n81.cluster.local:5555                          *
+*                                arkouda server version = v2024.06.21                                *
+*                                   built with chapel version2.1.0                                   *
+*                                    memory limit = 973796998348                                     *
+*                                      bytes of memory used = 0                                      *
+*                                                                                                    *
+******************************************************************************************************
+******************************************************************************************************
+
+
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> connect 
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"connected to arkouda server tcp://*:5555", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< connect took 0.0015699863433837891 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after connect command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> getconfig []
+2024-12-01:15:02:54 [MsgProcessing] getconfigMsg Line 198 DEBUG [Chapel] cmd: getconfig
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"{\"arkoudaVersion\":\"v2024.06.21\", \"chplVersion\":\"2.1.0\", \"ZMQVersion\":\"4.3.5\", \"HDF5Version\":\"1.12.2\", \"serverHostname\":\"n81.cluster.local\", \"ServerPort\":5555, \"numLocales\":1, \"numPUs\":128, \"maxTaskPar\":128, \"physicalMemory\":1081996664832, \"distributionType\":\"domain(1,int(64),one)\", \"LocaleConfigs\":[{\"id\":0, \"name\":\"n81.cluster.local\", \"numPUs\":128, \"maxTaskPar\":128, \"physicalMemory\":1081996664832}], \"authenticate\":false, \"logLevel\":\"DEBUG\", \"logChannel\":\"CONSOLE\", \"regexMaxCaptures\":20, \"byteorder\":\"little\", \"autoShutdown\":false, \"serverInfoNoSplash\":false,\"ARROW_VERSION\":\"14.0.1\"}", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< getconfig took 0.00017189979553222656 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after getconfig command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = Directed, val = False, objType = VALUE, dtype = bool), (key = CommentHeader, val = #, objType = VALUE, dtype = str), (key = Path, val = /scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network_simple_core_1.tsv, objType = VALUE, dtype = str)], size = 3}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> readTSVFile ["{\"key\": \"Path\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network_simple_core_1.tsv\"}", "{\"key\": \"Directed\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"CommentHeader\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"#\"}"]
+$$$$$ we get here 1
+$$$$$ we get here 2
+2024-12-01:15:02:54 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 80 memory limit = 973796998348 projected pct memory used of 0%
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_1 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_2 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_3 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_1 int64 10 1 [10] 8+ created id_Ixhadpc_2 int64 10 1 [10] 8+ nil", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< readTSVFile took 0.0023570060729980469 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after readTSVFile command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = shape, val = 1, objType = VALUE, dtype = int64), (key = seg_string, val = False, objType = VALUE, dtype = bool), (key = dtype, val = int64, objType = VALUE, dtype = str)], size = 3}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2024-12-01:15:02:54 [GenSymIO] arrayMsg Line 45 DEBUG [Chapel] dtype: Int64 shape: (1,) size: 1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_4 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_4
+2024-12-01:15:02:54 [GenSymIO] arrayMsg Line 100 DEBUG [Chapel] created id_Ixhadpc_4 int64 1 1 [1] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_4 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00048398971557617188 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_Ixhadpc_1", "id_Ixhadpc_2"], objType = LIST, dtype = str)], size = 4}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_1\\\", \\\"id_Ixhadpc_2\\\"]\"}"]
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 37 DEBUG [Chapel] number of arrays: 2 names: id_Ixhadpc_1 id_Ixhadpc_2
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_Ixhadpc_2
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 218 DEBUG [Chapel] creating pdarray id_Ixhadpc_5 of type Int64
+2024-12-01:15:02:54 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 160 memory limit = 973796998348 projected pct memory used of 0%
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_5 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 247 DEBUG [Chapel] created concatenated pdarray: id_Ixhadpc_5 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 384 DEBUG [Chapel] created id_Ixhadpc_5 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_5 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.0014219284057617188 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = objType, val = pdarray, objType = VALUE, dtype = str), (key = names, val = ["id_Ixhadpc_2", "id_Ixhadpc_1"], objType = LIST, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = nstr, val = 2, objType = VALUE, dtype = int64)], size = 4}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_2\\\", \\\"id_Ixhadpc_1\\\"]\"}"]
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 37 DEBUG [Chapel] number of arrays: 2 names: id_Ixhadpc_2 id_Ixhadpc_1
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_Ixhadpc_2
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 218 DEBUG [Chapel] creating pdarray id_Ixhadpc_6 of type Int64
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_6 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 247 DEBUG [Chapel] created concatenated pdarray: id_Ixhadpc_6 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [ConcatenateMsg] concatenateMsg Line 384 DEBUG [Chapel] created id_Ixhadpc_6 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_6 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.0018880367279052734 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = shape, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = float64, objType = VALUE, dtype = str), (key = seg_string, val = False, objType = VALUE, dtype = bool)], size = 3}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"float64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2024-12-01:15:02:54 [GenSymIO] arrayMsg Line 45 DEBUG [Chapel] dtype: Float64 shape: (1,) size: 1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_7 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_7
+2024-12-01:15:02:54 [GenSymIO] arrayMsg Line 100 DEBUG [Chapel] created id_Ixhadpc_7 float64 1 1 [1] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_7 float64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00051093101501464844 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = nstr, val = 2, objType = VALUE, dtype = int64), (key = keytypes, val = ["pdarray", "pdarray"], objType = LIST, dtype = str), (key = keynames, val = ["id_Ixhadpc_5", "id_Ixhadpc_6"], objType = LIST, dtype = str)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_5\\\", \\\"id_Ixhadpc_6\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\", \\\"pdarray\\\"]\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 134218288 memory limit = 973796998348 projected pct memory used of 0%
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [RadixSortLSD] radixSortLSDCore Line 67 DEBUG [Chapel] type = (2*uint(16),int(64)) nBits = 32
+2024-12-01:15:02:54 [RadixSortLSD] radixSortLSDCore Line 78 DEBUG [Chapel] rshift = 0
+2024-12-01:15:02:54 [RadixSortLSD] radixSortLSDCore Line 78 DEBUG [Chapel] rshift = 16
+2024-12-01:15:02:54 [Unique] uniqueFromSorted Line 113 DEBUG [Chapel] early out already unique
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_9 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_9
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_10 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_10
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_11 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_9 int64 20 1 [20] 8+created id_Ixhadpc_10 int64 20 1 [20] 8+created id_Ixhadpc_11 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.079929828643798828 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_Ixhadpc_11, objType = PDARRAY, dtype = int64), (key = array, val = id_Ixhadpc_5, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_5\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_11\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:54 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_Ixhadpc_5 gX: id_Ixhadpc_5 int64 20 1 [20] 8 gIV: id_Ixhadpc_11 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_12 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_Ixhadpc_12 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_12 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00098299980163574219 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_Ixhadpc_6, objType = PDARRAY, dtype = int64), (key = idx, val = id_Ixhadpc_11, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_6\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_11\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:54 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_Ixhadpc_6 gX: id_Ixhadpc_6 int64 20 1 [20] 8 gIV: id_Ixhadpc_11 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_13 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_Ixhadpc_13 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_13 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00085186958312988281 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = a, val = id_Ixhadpc_12, objType = PDARRAY, dtype = int64), (key = op, val = ==, objType = VALUE, dtype = str), (key = b, val = id_Ixhadpc_13, objType = PDARRAY, dtype = int64)], size = 3}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> binopvv1D ["{\"key\": \"op\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"==\"}", "{\"key\": \"a\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_12\"}", "{\"key\": \"b\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_13\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [OperatorMsg] binopvvMsg Line 52 DEBUG [Chapel] cmd: binopvv1D op: == left pdarray: id_Ixhadpc_12 int64 20 1 [20] 8 right pdarray: id_Ixhadpc_13 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_14 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_14
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_14 bool 20 1 [20] 1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< binopvv1D took 0.00080990791320800781 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after binopvv1D command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_14, objType = VALUE, dtype = str), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = targetDtype, val = int64, objType = VALUE, dtype = str), (key = opt, val = strict, objType = VALUE, dtype = str)], size = 4}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> cast1D ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_14\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"targetDtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"opt\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"strict\"}"]
+2024-12-01:15:02:54 [CastMsg] castMsg Line 25 DEBUG [Chapel] name: id_Ixhadpc_14 obgtype: PDARRAY targetDtype: Int64 opt: strict
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_14
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_15 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_15
+2024-12-01:15:02:54 [Cast] castGenSymEntry Line 30 DEBUG [Chapel] created id_Ixhadpc_15 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_15 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< cast1D took 0.00065302848815917969 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after cast1D command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = keytypes, val = ["pdarray"], objType = LIST, dtype = str), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = keynames, val = ["id_Ixhadpc_15"], objType = LIST, dtype = str)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_15\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_15
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_15
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_15
+2024-12-01:15:02:54 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_17 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_17
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_18 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_18
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_19 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_19
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_17 int64 20 1 [20] 8+created id_Ixhadpc_18 int64 1 1 [1] 8+created id_Ixhadpc_19 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.001873016357421875 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_Ixhadpc_14, objType = PDARRAY, dtype = bool), (key = idx, val = id_Ixhadpc_19, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"bool\", \"val\": \"id_Ixhadpc_14\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_19\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_14
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_19
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_14
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_19
+2024-12-01:15:02:54 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_Ixhadpc_14 gX: id_Ixhadpc_14 bool 20 1 [20] 1 gIV: id_Ixhadpc_19 int64 1 1 [1] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_20 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_20
+2024-12-01:15:02:54 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_Ixhadpc_20 bool 1 1 [1] 1
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_20 bool 1 1 [1] 1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00051808357238769531 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_15, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_15\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_15
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_15 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_15
+2024-12-01:15:02:54 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_15
+deinit SymEntry
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_15
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_15", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00035500526428222656 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segments, val = id_Ixhadpc_18, objType = PDARRAY, dtype = int64), (key = size, val = 20, objType = VALUE, dtype = int64)], size = 2}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> sizeReduction ["{\"key\": \"segments\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_18\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}"]
+2024-12-01:15:02:54 [ReductionMsg] sizeReductionMsg Line 521 DEBUG [Chapel] cmd: sizeReduction segments_name: id_Ixhadpc_18 size: 20
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_18
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_21 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_21
+2024-12-01:15:02:54 [ReductionMsg] sizeReductionMsg Line 535 DEBUG [Chapel] created id_Ixhadpc_21 int64 1 1 [1] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_21 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< sizeReduction took 0.00045800209045410156 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after sizeReduction command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_17, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_17\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_17
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_17 int64 20 1 [20] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_17
+2024-12-01:15:02:54 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_17
+deinit SymEntry
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_17
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_17", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.0003261566162109375 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_18, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_18\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_18
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_18 int64 1 1 [1] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_18
+2024-12-01:15:02:54 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_18
+deinit SymEntry
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_18
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_18", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.0002880096435546875 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_19, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_19\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_19
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_19 int64 1 1 [1] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_19
+2024-12-01:15:02:54 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_19
+deinit SymEntry
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_19
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_19", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024199485778808594 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_20, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_20\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_20
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_20 bool 1 1 [1] 1
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_20
+2024-12-01:15:02:54 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_20
+deinit SymEntry
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_20
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_20", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026297569274902344 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_21, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_21\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_21
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_21 int64 1 1 [1] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_21
+2024-12-01:15:02:54 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_21
+deinit SymEntry
+2024-12-01:15:02:54 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_21
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_21", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024294853210449219 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str), (key = keynames, val = ["id_Ixhadpc_12"], objType = LIST, dtype = str)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_12\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 10
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_23 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_23
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_24 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_24
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_25 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_25
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_23 int64 20 1 [20] 8+created id_Ixhadpc_24 int64 10 1 [10] 8+created id_Ixhadpc_25 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.0022749900817871094 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_Ixhadpc_25, objType = PDARRAY, dtype = int64), (key = array, val = id_Ixhadpc_12, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_12\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_25\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_25
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_25
+2024-12-01:15:02:54 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_Ixhadpc_12 gX: id_Ixhadpc_12 int64 20 1 [20] 8 gIV: id_Ixhadpc_25 int64 10 1 [10] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_26 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_26
+2024-12-01:15:02:54 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_Ixhadpc_26 int64 10 1 [10] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_26 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00070810317993164062 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str), (key = keynames, val = ["id_Ixhadpc_13"], objType = LIST, dtype = str), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = returnGroupStr, val = True, objType = VALUE, dtype = bool)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_13\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [RadixSortLSD] radixSortLSDCore Line 67 DEBUG [Chapel] type = (2*uint(16),int(64)) nBits = 16
+2024-12-01:15:02:54 [RadixSortLSD] radixSortLSDCore Line 78 DEBUG [Chapel] rshift = 0
+2024-12-01:15:02:54 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 10
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_28 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_28
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_29 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_29
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_30 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_30
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_28 int64 20 1 [20] 8+created id_Ixhadpc_29 int64 10 1 [10] 8+created id_Ixhadpc_30 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.043420076370239258 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_Ixhadpc_30, objType = PDARRAY, dtype = int64), (key = array, val = id_Ixhadpc_13, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_13\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_30\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_30
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_30
+2024-12-01:15:02:54 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_Ixhadpc_13 gX: id_Ixhadpc_13 int64 20 1 [20] 8 gIV: id_Ixhadpc_30 int64 10 1 [10] 8
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_31 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_31
+2024-12-01:15:02:54 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_Ixhadpc_31 int64 10 1 [10] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_31 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00056099891662597656 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = stop, val = 10, objType = VALUE, dtype = int64), (key = start, val = 0, objType = VALUE, dtype = int64), (key = stride, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = int64, objType = VALUE, dtype = str)], size = 4}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> arange ["{\"key\": \"start\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"0\"}", "{\"key\": \"stop\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"10\"}", "{\"key\": \"stride\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}"]
+2024-12-01:15:02:54 [SequenceMsg] arangeHelper Line 29 DEBUG [Chapel] cmd: arange start: 0 stop: 10 stride: 1 : len: 10 rname: id_Ixhadpc_32
+2024-12-01:15:02:54 [SequenceMsg] arangeHelper Line 35 DEBUG [Chapel] alloc time = 0 sec
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_32 
+2024-12-01:15:02:54 [SequenceMsg] arangeHelper Line 44 DEBUG [Chapel] compute time = 0 sec
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_32
+2024-12-01:15:02:54 [SequenceMsg] arangeMsg Line 82 DEBUG [Chapel] created id_Ixhadpc_32 int64 10 1 [10] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_32 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< arange took 0.00061392784118652344 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after arange command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segName, val = id_Ixhadpc_24, objType = VALUE, dtype = str), (key = permute, val = True, objType = VALUE, dtype = bool), (key = valName, val = id_Ixhadpc_32, objType = VALUE, dtype = str), (key = permName, val = id_Ixhadpc_23, objType = VALUE, dtype = str), (key = size, val = 20, objType = VALUE, dtype = int64)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> broadcast ["{\"key\": \"permName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_23\"}", "{\"key\": \"segName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_24\"}", "{\"key\": \"valName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_32\"}", "{\"key\": \"permute\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_24
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_32
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_23
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_33 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:54 [BroadcastMsg] broadcastMsg Line 136 DEBUG [Chapel] created id_Ixhadpc_33 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_33 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< broadcast took 0.0014319419860839844 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after broadcast command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segName, val = id_Ixhadpc_29, objType = VALUE, dtype = str), (key = valName, val = id_Ixhadpc_32, objType = VALUE, dtype = str), (key = permName, val = id_Ixhadpc_28, objType = VALUE, dtype = str), (key = permute, val = True, objType = VALUE, dtype = bool), (key = size, val = 20, objType = VALUE, dtype = int64)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> broadcast ["{\"key\": \"permName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_28\"}", "{\"key\": \"segName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_29\"}", "{\"key\": \"valName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_32\"}", "{\"key\": \"permute\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_29
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_32
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_28
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_34 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_34
+2024-12-01:15:02:54 [BroadcastMsg] broadcastMsg Line 136 DEBUG [Chapel] created id_Ixhadpc_34 int64 20 1 [20] 8
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_34 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< broadcast took 0.00075602531433105469 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after broadcast command is 0% pct of max memory 973796998348
+2024-12-01:15:02:54 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = assumeSortedStr, val = True, objType = VALUE, dtype = bool), (key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keynames, val = ["id_Ixhadpc_33"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str)], size = 5}
+2024-12-01:15:02:54 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_33\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:54 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 10
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_36 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_36
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_37 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_37
+2024-12-01:15:02:54 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_38 
+2024-12-01:15:02:54 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_38
+2024-12-01:15:02:54 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_36 int64 20 1 [20] 8+created id_Ixhadpc_37 int64 10 1 [10] 8+created id_Ixhadpc_38 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:54 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.0011479854583740234 sec
+2024-12-01:15:02:54 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_Ixhadpc_38, objType = PDARRAY, dtype = int64), (key = array, val = id_Ixhadpc_33, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_33\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_38\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_38
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_38
+2024-12-01:15:02:55 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_Ixhadpc_33 gX: id_Ixhadpc_33 int64 20 1 [20] 8 gIV: id_Ixhadpc_38 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_39 
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_39
+2024-12-01:15:02:55 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_Ixhadpc_39 int64 10 1 [10] 8
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_39 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00066494941711425781 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = size, val = 20, objType = VALUE, dtype = int64), (key = segments, val = id_Ixhadpc_37, objType = PDARRAY, dtype = int64)], size = 2}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> sizeReduction ["{\"key\": \"segments\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_37\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}"]
+2024-12-01:15:02:55 [ReductionMsg] sizeReductionMsg Line 521 DEBUG [Chapel] cmd: sizeReduction segments_name: id_Ixhadpc_37 size: 20
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_37
+2024-12-01:15:02:55 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_40 
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_40
+2024-12-01:15:02:55 [ReductionMsg] sizeReductionMsg Line 535 DEBUG [Chapel] created id_Ixhadpc_40 int64 10 1 [10] 8
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_40 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< sizeReduction took 0.00044202804565429688 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after sizeReduction command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_Ixhadpc_40, objType = PDARRAY, dtype = int64), (key = func, val = cumsum, objType = VALUE, dtype = str)], size = 2}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> efunc1D ["{\"key\": \"func\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"cumsum\"}", "{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_40\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_40
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_40
+2024-12-01:15:02:55 [EfuncMsg] efuncMsg Line 53 DEBUG [Chapel] cmd: efunc1D efunc: cumsum pdarray: id_Ixhadpc_40 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_41 
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_41
+2024-12-01:15:02:55 [EfuncMsg] efuncMsg Line 483 DEBUG [Chapel] created id_Ixhadpc_41 int64 10 1 [10] 8
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_41 int64 10 1 [10] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< efunc1D took 0.00054192543029785156 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after efunc1D command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = shape, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = int64, objType = VALUE, dtype = str), (key = seg_string, val = False, objType = VALUE, dtype = bool)], size = 3}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2024-12-01:15:02:55 [GenSymIO] arrayMsg Line 45 DEBUG [Chapel] dtype: Int64 shape: (1,) size: 1
+2024-12-01:15:02:55 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_42 
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_42
+2024-12-01:15:02:55 [GenSymIO] arrayMsg Line 100 DEBUG [Chapel] created id_Ixhadpc_42 int64 1 1 [1] 8
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_42 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00051903724670410156 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_Ixhadpc_42", "id_Ixhadpc_41"], objType = LIST, dtype = str)], size = 4}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_Ixhadpc_42\\\", \\\"id_Ixhadpc_41\\\"]\"}"]
+2024-12-01:15:02:55 [ConcatenateMsg] concatenateMsg Line 37 DEBUG [Chapel] number of arrays: 2 names: id_Ixhadpc_42 id_Ixhadpc_41
+2024-12-01:15:02:55 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_Ixhadpc_42
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_42
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_42
+2024-12-01:15:02:55 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_Ixhadpc_41
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_41
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_41
+2024-12-01:15:02:55 [ConcatenateMsg] concatenateMsg Line 218 DEBUG [Chapel] creating pdarray id_Ixhadpc_43 of type Int64
+2024-12-01:15:02:55 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_Ixhadpc_43 
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_42
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_41
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_43
+2024-12-01:15:02:55 [ConcatenateMsg] concatenateMsg Line 247 DEBUG [Chapel] created concatenated pdarray: id_Ixhadpc_43 int64 11 1 [11] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_43
+2024-12-01:15:02:55 [ConcatenateMsg] concatenateMsg Line 384 DEBUG [Chapel] created id_Ixhadpc_43 int64 11 1 [11] 8
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_Ixhadpc_43 int64 11 1 [11] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.00081801414489746094 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_41, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_41\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_41
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_41 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_41
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_41
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_41
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_41", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00031208992004394531 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = Directed, val = False, objType = VALUE, dtype = bool), (key = Weighted, val = False, objType = VALUE, dtype = bool), (key = NumVertices, val = 10, objType = VALUE, dtype = int64), (key = NumEdges, val = 10, objType = VALUE, dtype = int64), (key = VERTEX_MAP_SDI, val = id_Ixhadpc_26, objType = PDARRAY, dtype = int64), (key = SEGMENTS_SDI, val = id_Ixhadpc_43, objType = PDARRAY, dtype = int64), (key = DST_SDI, val = id_Ixhadpc_34, objType = PDARRAY, dtype = int64), (key = SRC_SDI, val = id_Ixhadpc_33, objType = PDARRAY, dtype = int64), (key = EDGE_WEIGHT_SDI, val = id_Ixhadpc_7, objType = PDARRAY, dtype = float64)], size = 9}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> insertComponents ["{\"key\": \"SRC_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_33\"}", "{\"key\": \"DST_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_34\"}", "{\"key\": \"SEGMENTS_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_43\"}", "{\"key\": \"EDGE_WEIGHT_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"float64\", \"val\": \"id_Ixhadpc_7\"}", "{\"key\": \"VERTEX_MAP_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_Ixhadpc_26\"}", "{\"key\": \"Directed\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"Weighted\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"NumVertices\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"10\"}", "{\"key\": \"NumEdges\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"10\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_26
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_26
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_43
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_43
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_34
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_34
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:55 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_Ixhadpc_44 
+2024-12-01:15:02:55 [BuildGraphMsg] insertComponentsMsg Line 178 DEBUG [Chapel] Inserting components took 0.001264 sec
+2024-12-01:15:02:55 [BuildGraphMsg] insertComponentsMsg Line 179 DEBUG [Chapel] id_Ixhadpc_44
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"id_Ixhadpc_44", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< insertComponents took 0.0018050670623779297 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after insertComponents command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_6, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_6\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_6 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_6
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_6
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_6
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_6", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00029587745666503906 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_5, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_5\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_5 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_5
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_5
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_5
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_5", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.0002899169921875 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_9, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_9\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_9
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_9 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_9
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_9
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_9
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_9", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00027203559875488281 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_10, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_10\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_10
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_10 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_10
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_10
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_10
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_10", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024890899658203125 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_11, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_11\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_11 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_11
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_11
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_11
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_11", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023913383483886719 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_14, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_14\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_14
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_14 bool 20 1 [20] 1
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_14
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_14
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_14
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_14", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026106834411621094 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_12, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_12\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_12 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_12
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_12
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_12
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_12", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023889541625976562 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_23, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_23\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_23
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_23 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_23
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_23
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_23
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_23", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023889541625976562 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_24, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_24\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_24
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_24 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_24
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_24
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_24
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_24", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023698806762695312 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_25, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_25\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_25
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_25 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_25
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_25
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_25
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_25", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025200843811035156 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_13, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_13\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_13 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_13
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_13
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_13
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_13", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024008750915527344 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_31, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_31\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_31
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_31 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_31
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_31
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_31
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_31", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023794174194335938 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_28, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_28\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_28
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_28 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_28
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_28
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_28
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_28", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026702880859375 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_29, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_29\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_29
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_29 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_29
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_29
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_29
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_29", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023913383483886719 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_30, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_30\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_30
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_30 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_30
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_30
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_30
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_30", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023889541625976562 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_32, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_32\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_32
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_32 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_32
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_32
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_32
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_32", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00031495094299316406 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_39, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_39\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_39
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_39 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_39
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_39
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_39
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_39", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.0002460479736328125 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_36, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_36\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_36
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_36 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_36
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_36
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_36
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_36", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.0010039806365966797 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_37, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_37\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_37
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_37 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_37
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_37
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_37
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_37", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00083899497985839844 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_38, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_38\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_38
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_38 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_38
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_38
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_38
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_38", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023889541625976562 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_40, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_40\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_40
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_40 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_40
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_40
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_40
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_40", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023794174194335938 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_42, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_42\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_42
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_42 int64 1 1 [1] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_42
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_42
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_42
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_42", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026798248291015625 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_33, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_33\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_33 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_33
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_33
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_33
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_33", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024199485778808594 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_34, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_34\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_34
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_34 int64 20 1 [20] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_34
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_34
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_34
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_34", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023913383483886719 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_43, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_43\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_43
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_43 int64 11 1 [11] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_43
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_43
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_43
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_43", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026607513427734375 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_7, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_7\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_7
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_7 float64 1 1 [1] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_7
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_7
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_7
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_7", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026297569274902344 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_26, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_26\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_26
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_26 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_26
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_26
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_26
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_26", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023603439331054688 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_1, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_1\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_1 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_1
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_1
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_1
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026702880859375 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_2, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_2\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_2 int64 10 1 [10] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_2
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_2
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_2
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_2", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024104118347167969 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_Ixhadpc_4, objType = VALUE, dtype = str)], size = 1}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_4\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_4
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_Ixhadpc_4 int64 1 1 [1] 8
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_4
+2024-12-01:15:02:55 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_Ixhadpc_4
+deinit SymEntry
+2024-12-01:15:02:55 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_Ixhadpc_4
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_Ixhadpc_4", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00036191940307617188 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = FilePath, val = /scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering_simple_core_1.tsv, objType = VALUE, dtype = str), (key = OutputType, val = debug, objType = VALUE, dtype = str), (key = OutputPath, val = /scratch/users/md724/arkouda-njit/arachne/output/log10_test_network_wcc_output_debug, objType = VALUE, dtype = str), (key = ConnectednessCriterion, val = log10, objType = VALUE, dtype = str), (key = GraphName, val = id_Ixhadpc_44, objType = VALUE, dtype = str), (key = PostFilterMinSize, val = 1, objType = VALUE, dtype = int64), (key = ConnectednessCriterionMultValue, val = 0.0, objType = VALUE, dtype = float64), (key = PreFilterMinSize, val = 1, objType = VALUE, dtype = int64)], size = 8}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> wellConnectedComponents ["{\"key\": \"GraphName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_Ixhadpc_44\"}", "{\"key\": \"FilePath\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering_simple_core_1.tsv\"}", "{\"key\": \"OutputPath\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/scratch/users/md724/arkouda-njit/arachne/output/log10_test_network_wcc_output_debug\"}", "{\"key\": \"OutputType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"debug\"}", "{\"key\": \"ConnectednessCriterion\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"log10\"}", "{\"key\": \"ConnectednessCriterionMultValue\", \"objType\": \"VALUE\", \"dtype\": \"float64\", \"val\": \"0.0\"}", "{\"key\": \"PreFilterMinSize\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"PostFilterMinSize\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}"]
+2024-12-01:15:02:55 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_Ixhadpc_44
+2024-12-01:15:02:55 [WellConnectedComponentsMsg] wellConnectedComponentsMsg Line 46 INFO [Chapel] Generating neighbors set.
+2024-12-01:15:02:55 [WellConnectedComponents] wcc Line 2869 INFO [Chapel] Graph loaded with 10 vertices and 10 edges.
+2024-12-01:15:02:55 [WellConnectedComponents] readClustersFile Line 141 INFO [Chapel] Number of clusters originally found in file: 1
+2024-12-01:15:02:55 [WellConnectedComponents] wcc Line 2872 INFO [Chapel] Reading clusters file finished.
+2024-12-01:15:02:55 [WellConnectedComponents] wcc Line 2926 INFO [Chapel] Splitting up clusters yielded 1 new clusters.
+2024-12-01:15:02:55 [WellConnectedComponents] wcc Line 2934 DEBUG [Chapel] Processing cluster 0 which is a subcluster of 100.
+runConfig: (computeBasicConnectivity = true, computeDensity = true, computeTriangles = false, computeTransitivity = false, computeSpectral = false, computeDiameter = false, computeDegreeDistribution = false, computeTriangleDistribution = false, computeTriangleCentrality = false, computeCoreMetrics = true)
+
+========== Starting Cluster Analysis ==========
+Cluster size: 10
+
+----- Computing Basic Connectivity Metrics -----
+
+----- Computing Density Metrics -----
+
+----- Computing Core Metrics -----
+
+==== Starting Advanced Core Analysis ====
+Cluster size: 10
+
+==== Starting Core Number Calculation ====
+Cluster size: 10
+Initial edges:
+    5 -> {8, 2}
+    7 -> {4}
+    8 -> {5}
+    1 -> {0, 4, 2, 3}
+    0 -> {1}
+    4 -> {7, 1}
+    6 -> {9, 3}
+    2 -> {5, 1, 3}
+    9 -> {6}
+    3 -> {1, 6, 2}
+
+Initialized arrays for 10 vertices
+Initial degree of vertex 2: 3
+Initial degree of vertex 9: 1
+Initial degree of vertex 8: 1
+Initial degree of vertex 7: 1
+Initial degree of vertex 1: 4
+Initial degree of vertex 0: 1
+Initial degree of vertex 4: 2
+Initial degree of vertex 3: 3
+Initial degree of vertex 6: 2
+Initial degree of vertex 5: 2
+
+Maximum degree: 4
+Starting core decomposition
+
+Processing shell 1
+  Added vertex 9 to shell 1
+    Updated neighbor 6 degree from 2 to 1
+  Added vertex 6 to shell 1
+    Updated neighbor 3 degree from 3 to 2
+  Added vertex 0 to shell 1
+    Updated neighbor 1 degree from 4 to 3
+  Added vertex 8 to shell 1
+    Updated neighbor 5 degree from 2 to 1
+  Added vertex 5 to shell 1
+    Updated neighbor 2 degree from 3 to 2
+  Added vertex 7 to shell 1
+    Updated neighbor 4 degree from 2 to 1
+  Added vertex 4 to shell 1
+    Updated neighbor 1 degree from 3 to 2
+
+Processing shell 2
+  Added vertex 1 to shell 2
+  Added vertex 2 to shell 2
+  Added vertex 3 to shell 2
+  Added vertex 4 to shell 2
+  Added vertex 6 to shell 2
+  Added vertex 5 to shell 2
+
+Shell distribution:
+Shell 1: {5, 7, 8, 0, 4, 6, 9}
+Shell 2: {5, 1, 4, 6, 2, 3}
+
+Core density calculation:
+  Core vertices: {5, 1, 4, 6, 2, 3}
+  Number of edges in core: 6
+  Maximum possible edges: 15
+  Core density: 0.4
+
+Final Results:
+  Core Number: 2
+  Core Size: 6
+  Max Core Size: 2
+  Core Density: 0.4
+==== Core Number Calculation Complete ====
+
+Basic core numbers calculated
+Starting shell decomposition
+
+==== Starting Shell Decomposition ====
+Cluster size: 10
+Maximum degree: 4
+Starting shell identification
+  Shell 0 size: 7
+  Shell 1 size: 3
+
+Shell Decomposition Complete:
+  Number of shells: 2
+==== Shell Decomposition Complete ====
+
+Shell decomposition complete
+Calculating shell metrics
+
+==== Starting Shell Metrics Calculation ====
+Cluster size: 10
+Number of shells: 3
+Starting parallel shell analysis
+Processing shell 1 with size 3
+Processing shell 2 with size 0
+Processing shell 0 with size 7
+Shell 0 density: 0.142857
+Shell 1 density: 1.0
+Shell 0 to 1 connectivity: 0.190476
+Shell 1 to 2 connectivity: 0.0
+
+Shell Analysis Results:
+Total vertices in shells: 10
+Number of non-empty shells: 2
+Shell density range: 0.0 to 1.0
+==== Shell Metrics Calculation Complete ====
+
+Calculating core-periphery metrics
+
+==== Starting Core-Periphery Analysis ====
+Cluster size: 10
+Core size: 0
+Computing edge distributions
+
+Core-Periphery Results:
+  Internal Edges: 0
+  External Edges: 10
+  Cross Edges: 0
+  Core Strength: 0.0
+  Periphery Size: 10
+==== Core-Periphery Analysis Complete ====
+
+Calculating hierarchical metrics
+
+==== Starting Hierarchical Metrics Calculation ====
+Cluster size: 10
+Number of shells: 3
+Expected shell size: 3.33333
+Calculating shell size variations
+Calculating core-degree correlation
+
+Hierarchical Analysis Results:
+Core Hierarchy Depth: 2
+Hierarchy Balance: 0.503345
+Core-Degree Correlation: 0.872872
+==== Hierarchical Metrics Calculation Complete ====
+
+Calculating stability metrics
+
+==== Starting Stability Metrics Calculation ====
+Cluster size: 10
+Maximum shell: 2
+Starting stability trials
+Removal size per trial: 1
+Cluster size <= 10000, using full cluster
+Cluster size <= 10000, using full cluster
+Cluster size <= 10000, using full cluster
+Cluster size <= 10000, using full cluster
+Cluster size <= 10000, using full cluster
+Cluster size <= 10000, using full cluster
+
+==== Starting Core Number Calculation ====
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+Initial edges:
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+Initial edges:
+Cluster size <= 10000, using full cluster
+Cluster size: 0
+Initial edges:
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+Initial edges:
+Initial edges:
+Empty or singleton cluster detected
+Empty or singleton cluster detected
+Empty or singleton cluster detected
+Trial 6 score: 0.0
+Trial 7 score: 0.0
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+Initial edges:
+Empty or singleton cluster detected
+Empty or singleton cluster detected
+Trial 3 score: 0.0
+Trial 2 score: 0.0
+Trial 1 score: 0.0
+Cluster size <= 10000, using full cluster
+Cluster size <= 10000, using full cluster
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+Initial edges:
+Empty or singleton cluster detected
+
+==== Starting Core Number Calculation ====
+Trial 8 score: 0.0
+Cluster size: 0
+Initial edges:
+
+==== Starting Core Number Calculation ====
+Empty or singleton cluster detected
+Trial 4 score: 0.0
+Empty or singleton cluster detected
+Trial 5 score: 0.0
+Cluster size: 0
+Initial edges:
+Cluster size <= 10000, using full cluster
+
+==== Starting Core Number Calculation ====
+Cluster size: 0
+Initial edges:
+Empty or singleton cluster detected
+Trial 9 score: 0.0
+Empty or singleton cluster detected
+Trial 10 score: 0.0
+
+Calculating core persistence and overlap
+Shell 2:
+  Persistence: 0.0
+  Overlap: 0.0
+Shell 0:
+  Persistence: 0.3
+  Overlap: 0.3
+Shell 1:
+  Persistence: 0.0
+  Overlap: 0.0
+
+Stability Metrics Results:
+Core Stability: 0.0
+Average Persistence: 0.1
+Average Overlap: 0.1
+==== Stability Metrics Calculation Complete ====
+
+Calculating quality metrics
+
+==== Starting Quality Metrics Calculation ====
+Cluster size: 10
+Maximum shell: 2
+Starting core cohesion calculation
+Core size: 0
+
+Quality Metrics Results:
+Internal Edges: 0
+External Edges: 0
+Boundary Vertices: 0
+Core Cohesion: 0.0
+Core Separation: 0.0
+Core Compactness: 0.0
+==== Quality Metrics Calculation Complete ====
+
+
+Advanced Core Analysis Results:
+Basic Metrics:
+  Core Number: 2
+  Core Size: 6
+  Core Density: 0.4
+
+Core-Periphery Metrics:
+  Core-Periphery Score: 0.0
+  Core Strength: 0.0
+  Periphery Size: 10
+
+Hierarchical Metrics:
+  Core Hierarchy Depth: 2
+  Core-Degree Correlation: 0.872872
+  Hierarchy Balance: 0.503345
+
+Stability Metrics:
+  Core Stability: 0.0
+  Average Persistence: 0.1
+  Average Overlap: 0.1
+
+Quality Metrics:
+  Core Cohesion: 0.0
+  Core Separation: 0.0
+  Core Compactness: 0.0
+
+Shell Metrics:
+  Number of Shells: 3
+  Shell Distribution: 7 3 0 0 0 0 0 0 0 0 0
+==== Advanced Core Analysis Complete ====
+
+
+----- Analysis Complete -----
+
+========== Cluster Analysis Report ==========
+Cluster Size: 10 vertices
+
+----- Connectivity Metrics -----
+Basic Connectivity:
+  Number of vertices: 10
+  Number of Edges: 10
+  Minimum Degree: 1
+  Maximum Degree: 4
+  Average Degree: 2.0
+  Edge Connectivity Lower Bound: 2 Mader's theorem bound
+  Cluster Volume: 0
+  Cluster CutEdges: 0
+
+Degree Distribution:
+  Degree Variance: 1.0
+  Degree Skewness: 0.6
+  Degree Second Moment: 50.0
+  Assortativity: 0.0
+
+----- Density Metrics -----
+Basic Density:
+  Density: 0.222222
+  Sparsity: 0.777778
+  Maximum Possible Edges: 45
+
+Clustering Metrics:
+  Triangle Count: 0
+  Global Clustering Coefficient: 0.0
+  Average Local Clustering Coefficient: 0.0
+
+----- Spectral Metrics -----
+  Conductance: 0.0
+  λ2 Lower Bound: 0.0
+  λ2 Upper Bound: 0.0
+  λ2 Estimate: 0.0
+
+----- Transitivity Metrics -----
+  Wedge Count: 0
+  Triangle-to-Wedge Ratio: 0.0
+  Global Transitivity: 0.0
+
+----- Triangle Distribution Metrics -----
+  Triangle Density: 0.0
+  Participation Rate: 0.0
+  Max Local Triangles: 0
+  Average Triangles Per Vertex: 0.0
+
+----- Diameter and Eccentricity Metrics -----
+  Diameter: 0
+  Lower Bound: 0
+  Upper Bound: 0
+  (Approximated using sampling)
+  Radius: 0
+  Number of Center Vertices: 0
+  Center Vertices: []
+  Number of Peripheral Vertices: 0
+  Peripheral Vertices: []
+  Average Eccentricity: 0.0
+
+----- Distribution Statistics -----
+Degree Distribution:
+  Mean: 0.0
+  Median: 0.0
+  Standard Deviation: 0.0
+  Skewness: 0.0
+  Kurtosis: 0.0
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+    90th: 0.0
+
+Triangle Distribution:
+  Mean: 0.0
+  Median: 0.0
+  Standard Deviation: 0.0
+  Skewness: 0.0
+  Kurtosis: 0.0
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+    90th: 0.0
+
+----- Core Decomposition Metrics -----
+Basic Core Structure:
+  Core Number: 2
+  Core Size: 6
+  Core Density: 0.4
+  Maximum Core Size: 2
+
+Core-Periphery Structure:
+  Core-Periphery Score: 0.0
+  Core Strength: 0.0
+  Periphery Size: 10
+
+Hierarchical Structure:
+  Core Hierarchy Depth: 2
+  Core-Degree Correlation: 0.872872
+  Hierarchy Balance: 0.503345
+
+Core Quality Metrics:
+  Core Cohesion: 0.0
+  Core Separation: 0.0
+  Core Compactness: 0.0
+
+Core Stability Metrics:
+  Core Stability: 0.0
+  Core Persistence:
+    Shell 0: 0.3
+  Core Overlap:
+    Shell 0: 0.3
+
+Shell Structure:
+  Shell 0:
+    Size: 7
+    Density: 0.142857
+    Connectivity to next shell: 0.190476
+  Shell 1:
+    Size: 3
+    Density: 1.0
+    Connectivity to next shell: 0.0
+
+Core Structure Summary:
+  Average Shell Density: 0.380952
+  Average Core Persistence: 0.1
+  Average Shell Connectivity: 0.0952381
+
+===========================================
+2024-12-01:15:02:55 [WellConnectedComponents] wcc Line 2947 INFO [Chapel] WCC found 0 clusters to be well-connected.
+2024-12-01:15:02:55 [WellConnectedComponentsMsg] wellConnectedComponentsMsg Line 57 INFO [Chapel] Well connected components took 0.0099 sec
+2024-12-01:15:02:55 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"0", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-12-01:15:02:55 [ServerDaemon] run Line 722 INFO [Chapel] <<< wellConnectedComponents took 0.011322021484375 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after wellConnectedComponents command is 0% pct of max memory 973796998348
+2024-12-01:15:02:55 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2024-12-01:15:02:55 [ServerDaemon] run Line 601 INFO [Chapel] >>> shutdown 
+2024-12-01:15:02:55 [ServerDaemon] sendShutdownRequest Line 615 INFO [Chapel] <<< shutdown initiated by md724 took 0.00011396408081054688 sec
+2024-12-01:15:02:55 [ServerDaemon] run Line 1106 INFO [Chapel] requests = 68 responseCount = 68 elapsed sec = 9
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry

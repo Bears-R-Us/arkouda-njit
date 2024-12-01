@@ -1,0 +1,3902 @@
+2024-11-30:14:36:26 [ServerDaemon] run Line 507 DEBUG [Chapel] initialized the .arkouda directory /scratch/users/md724/arkouda-njit/.arkouda
+
+
+********************************************************************************************************
+********************************************************************************************************
+*                                                                                                      *
+*                          server listening on tcp://n113.cluster.local:5555                           *
+*                                 arkouda server version = v2024.06.21                                 *
+*                                    built with chapel version2.1.0                                    *
+*                                     memory limit = 973796994662                                      *
+*                                       bytes of memory used = 0                                       *
+*                                                                                                      *
+********************************************************************************************************
+********************************************************************************************************
+
+
+2024-11-30:14:36:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2024-11-30:14:36:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> connect 
+2024-11-30:14:36:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"connected to arkouda server tcp://*:5555", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< connect took 0.00029587745666503906 sec
+2024-11-30:14:36:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after connect command is 0% pct of max memory 973796994662
+2024-11-30:14:36:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2024-11-30:14:36:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> getconfig []
+2024-11-30:14:36:28 [MsgProcessing] getconfigMsg Line 198 DEBUG [Chapel] cmd: getconfig
+2024-11-30:14:36:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"{\"arkoudaVersion\":\"v2024.06.21\", \"chplVersion\":\"2.1.0\", \"ZMQVersion\":\"4.3.5\", \"HDF5Version\":\"1.12.2\", \"serverHostname\":\"n113.cluster.local\", \"ServerPort\":5555, \"numLocales\":1, \"numPUs\":128, \"maxTaskPar\":128, \"physicalMemory\":1081996660736, \"distributionType\":\"domain(1,int(64),one)\", \"LocaleConfigs\":[{\"id\":0, \"name\":\"n113.cluster.local\", \"numPUs\":128, \"maxTaskPar\":128, \"physicalMemory\":1081996660736}], \"authenticate\":false, \"logLevel\":\"DEBUG\", \"logChannel\":\"CONSOLE\", \"regexMaxCaptures\":20, \"byteorder\":\"little\", \"autoShutdown\":false, \"serverInfoNoSplash\":false,\"ARROW_VERSION\":\"14.0.1\"}", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< getconfig took 0.00014591217041015625 sec
+2024-11-30:14:36:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after getconfig command is 0% pct of max memory 973796994662
+2024-11-30:14:36:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = Path, val = /scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network_simple_1.tsv, objType = VALUE, dtype = str), (key = Directed, val = False, objType = VALUE, dtype = bool), (key = CommentHeader, val = #, objType = VALUE, dtype = str)], size = 3}
+2024-11-30:14:36:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> readTSVFile ["{\"key\": \"Path\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_network_simple_1.tsv\"}", "{\"key\": \"Directed\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"CommentHeader\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"#\"}"]
+$$$$$ we get here 1
+$$$$$ we get here 2
+2024-11-30:14:36:28 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 184 memory limit = 973796994662 projected pct memory used of 0%
+2024-11-30:14:36:28 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_1 
+2024-11-30:14:36:28 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_2 
+2024-11-30:14:36:28 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_3 
+2024-11-30:14:36:28 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:28 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_1 int64 23 1 [23] 8+ created id_LIz3l84_2 int64 23 1 [23] 8+ nil", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< readTSVFile took 0.0030200481414794922 sec
+2024-11-30:14:36:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after readTSVFile command is 0% pct of max memory 973796994662
+2024-11-30:14:36:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = dtype, val = int64, objType = VALUE, dtype = str), (key = seg_string, val = False, objType = VALUE, dtype = bool), (key = shape, val = 1, objType = VALUE, dtype = int64)], size = 3}
+2024-11-30:14:36:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2024-11-30:14:36:28 [GenSymIO] arrayMsg Line 45 DEBUG [Chapel] dtype: Int64 shape: (1,) size: 1
+2024-11-30:14:36:28 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_4 
+2024-11-30:14:36:28 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_4
+2024-11-30:14:36:28 [GenSymIO] arrayMsg Line 100 DEBUG [Chapel] created id_LIz3l84_4 int64 1 1 [1] 8
+2024-11-30:14:36:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_4 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00043201446533203125 sec
+2024-11-30:14:36:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_LIz3l84_1", "id_LIz3l84_2"], objType = LIST, dtype = str)], size = 4}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_1\\\", \\\"id_LIz3l84_2\\\"]\"}"]
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 37 DEBUG [Chapel] number of arrays: 2 names: id_LIz3l84_1 id_LIz3l84_2
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_LIz3l84_1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_LIz3l84_2
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 218 DEBUG [Chapel] creating pdarray id_LIz3l84_5 of type Int64
+2024-11-30:14:36:29 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 368 memory limit = 973796994662 projected pct memory used of 0%
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_5 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 247 DEBUG [Chapel] created concatenated pdarray: id_LIz3l84_5 int64 46 1 [46] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 384 DEBUG [Chapel] created id_LIz3l84_5 int64 46 1 [46] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_5 int64 46 1 [46] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.0014660358428955078 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = objType, val = pdarray, objType = VALUE, dtype = str), (key = nstr, val = 2, objType = VALUE, dtype = int64), (key = names, val = ["id_LIz3l84_2", "id_LIz3l84_1"], objType = LIST, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str)], size = 4}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_2\\\", \\\"id_LIz3l84_1\\\"]\"}"]
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 37 DEBUG [Chapel] number of arrays: 2 names: id_LIz3l84_2 id_LIz3l84_1
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_LIz3l84_2
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_LIz3l84_1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 218 DEBUG [Chapel] creating pdarray id_LIz3l84_6 of type Int64
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_6 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 247 DEBUG [Chapel] created concatenated pdarray: id_LIz3l84_6 int64 46 1 [46] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 384 DEBUG [Chapel] created id_LIz3l84_6 int64 46 1 [46] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_6 int64 46 1 [46] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.0019259452819824219 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = shape, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = float64, objType = VALUE, dtype = str), (key = seg_string, val = False, objType = VALUE, dtype = bool)], size = 3}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"float64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2024-11-30:14:36:29 [GenSymIO] arrayMsg Line 45 DEBUG [Chapel] dtype: Float64 shape: (1,) size: 1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_7 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_7
+2024-11-30:14:36:29 [GenSymIO] arrayMsg Line 100 DEBUG [Chapel] created id_LIz3l84_7 float64 1 1 [1] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_7 float64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00043892860412597656 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = nstr, val = 2, objType = VALUE, dtype = int64), (key = keynames, val = ["id_LIz3l84_5", "id_LIz3l84_6"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray", "pdarray"], objType = LIST, dtype = str)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_5\\\", \\\"id_LIz3l84_6\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\", \\\"pdarray\\\"]\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 134219016 memory limit = 973796994662 projected pct memory used of 0%
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [RadixSortLSD] radixSortLSDCore Line 67 DEBUG [Chapel] type = (2*uint(16),int(64)) nBits = 32
+2024-11-30:14:36:29 [RadixSortLSD] radixSortLSDCore Line 78 DEBUG [Chapel] rshift = 0
+2024-11-30:14:36:29 [RadixSortLSD] radixSortLSDCore Line 78 DEBUG [Chapel] rshift = 16
+2024-11-30:14:36:29 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 44
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_9 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_9
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_10 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_10
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_11 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_9 int64 46 1 [46] 8+created id_LIz3l84_10 int64 44 1 [44] 8+created id_LIz3l84_11 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.070177078247070312 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_LIz3l84_11, objType = PDARRAY, dtype = int64), (key = array, val = id_LIz3l84_5, objType = PDARRAY, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_5\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_11\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_LIz3l84_5 gX: id_LIz3l84_5 int64 46 1 [46] 8 gIV: id_LIz3l84_11 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_12 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_LIz3l84_12 int64 44 1 [44] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_12 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00078797340393066406 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_LIz3l84_11, objType = PDARRAY, dtype = int64), (key = array, val = id_LIz3l84_6, objType = PDARRAY, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_6\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_11\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_LIz3l84_6 gX: id_LIz3l84_6 int64 46 1 [46] 8 gIV: id_LIz3l84_11 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_13 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_LIz3l84_13 int64 44 1 [44] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_13 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00081706047058105469 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = b, val = id_LIz3l84_13, objType = PDARRAY, dtype = int64), (key = op, val = ==, objType = VALUE, dtype = str), (key = a, val = id_LIz3l84_12, objType = PDARRAY, dtype = int64)], size = 3}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> binopvv1D ["{\"key\": \"op\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"==\"}", "{\"key\": \"a\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_12\"}", "{\"key\": \"b\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_13\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [OperatorMsg] binopvvMsg Line 52 DEBUG [Chapel] cmd: binopvv1D op: == left pdarray: id_LIz3l84_12 int64 44 1 [44] 8 right pdarray: id_LIz3l84_13 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_14 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_14
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_14 bool 44 1 [44] 1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< binopvv1D took 0.00061106681823730469 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after binopvv1D command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_14, objType = VALUE, dtype = str), (key = opt, val = strict, objType = VALUE, dtype = str), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = targetDtype, val = int64, objType = VALUE, dtype = str)], size = 4}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> cast1D ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_14\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"targetDtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"opt\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"strict\"}"]
+2024-11-30:14:36:29 [CastMsg] castMsg Line 25 DEBUG [Chapel] name: id_LIz3l84_14 obgtype: PDARRAY targetDtype: Int64 opt: strict
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_14
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_15 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_15
+2024-11-30:14:36:29 [Cast] castGenSymEntry Line 30 DEBUG [Chapel] created id_LIz3l84_15 int64 44 1 [44] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_15 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< cast1D took 0.00079202651977539062 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after cast1D command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = keynames, val = ["id_LIz3l84_15"], objType = LIST, dtype = str)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_15\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_15
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_15
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_15
+2024-11-30:14:36:29 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_17 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_17
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_18 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_18
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_19 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_19
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_17 int64 44 1 [44] 8+created id_LIz3l84_18 int64 1 1 [1] 8+created id_LIz3l84_19 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.0012559890747070312 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_LIz3l84_14, objType = PDARRAY, dtype = bool), (key = idx, val = id_LIz3l84_19, objType = PDARRAY, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"bool\", \"val\": \"id_LIz3l84_14\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_19\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_14
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_19
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_14
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_19
+2024-11-30:14:36:29 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_LIz3l84_14 gX: id_LIz3l84_14 bool 44 1 [44] 1 gIV: id_LIz3l84_19 int64 1 1 [1] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_20 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_20
+2024-11-30:14:36:29 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_LIz3l84_20 bool 1 1 [1] 1
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_20 bool 1 1 [1] 1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00060606002807617188 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_15, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_15\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_15
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_15 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_15
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_15
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_15
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_15", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00030303001403808594 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segments, val = id_LIz3l84_18, objType = PDARRAY, dtype = int64), (key = size, val = 44, objType = VALUE, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> sizeReduction ["{\"key\": \"segments\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_18\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2024-11-30:14:36:29 [ReductionMsg] sizeReductionMsg Line 521 DEBUG [Chapel] cmd: sizeReduction segments_name: id_LIz3l84_18 size: 44
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_18
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_21 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_21
+2024-11-30:14:36:29 [ReductionMsg] sizeReductionMsg Line 535 DEBUG [Chapel] created id_LIz3l84_21 int64 1 1 [1] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_21 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< sizeReduction took 0.00044012069702148438 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after sizeReduction command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_17, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_17\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_17
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_17 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_17
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_17
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_17
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_17", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00031995773315429688 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_18, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_18\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_18
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_18 int64 1 1 [1] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_18
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_18
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_18
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_18", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00028204917907714844 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_19, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_19\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_19
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_19 int64 1 1 [1] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_19
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_19
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_19
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_19", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00027990341186523438 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_20, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_20\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_20
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_20 bool 1 1 [1] 1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_20
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_20
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_20
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_20", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00027108192443847656 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_21, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_21\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_21
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_21 int64 1 1 [1] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_21
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_21
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_21
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_21", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023698806762695312 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 1, objType = VALUE, dtype = int64), (key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str), (key = keynames, val = ["id_LIz3l84_12"], objType = LIST, dtype = str)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_12\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 20
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_23 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_23
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_24 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_24
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_25 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_25
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_23 int64 44 1 [44] 8+created id_LIz3l84_24 int64 20 1 [20] 8+created id_LIz3l84_25 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.0025439262390136719 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_LIz3l84_12, objType = PDARRAY, dtype = int64), (key = idx, val = id_LIz3l84_25, objType = PDARRAY, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_12\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_25\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_25
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_25
+2024-11-30:14:36:29 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_LIz3l84_12 gX: id_LIz3l84_12 int64 44 1 [44] 8 gIV: id_LIz3l84_25 int64 20 1 [20] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_26 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_26
+2024-11-30:14:36:29 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_LIz3l84_26 int64 20 1 [20] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_26 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00066518783569335938 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = keynames, val = ["id_LIz3l84_13"], objType = LIST, dtype = str), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_13\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [RadixSortLSD] radixSortLSDCore Line 67 DEBUG [Chapel] type = (2*uint(16),int(64)) nBits = 16
+2024-11-30:14:36:29 [RadixSortLSD] radixSortLSDCore Line 78 DEBUG [Chapel] rshift = 0
+2024-11-30:14:36:29 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 20
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_28 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_28
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_29 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_29
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_30 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_30
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_28 int64 44 1 [44] 8+created id_LIz3l84_29 int64 20 1 [20] 8+created id_LIz3l84_30 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.042689085006713867 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_LIz3l84_13, objType = PDARRAY, dtype = int64), (key = idx, val = id_LIz3l84_30, objType = PDARRAY, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_13\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_30\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_30
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_30
+2024-11-30:14:36:29 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_LIz3l84_13 gX: id_LIz3l84_13 int64 44 1 [44] 8 gIV: id_LIz3l84_30 int64 20 1 [20] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_31 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_31
+2024-11-30:14:36:29 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_LIz3l84_31 int64 20 1 [20] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_31 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00055694580078125 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = stride, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = int64, objType = VALUE, dtype = str), (key = stop, val = 20, objType = VALUE, dtype = int64), (key = start, val = 0, objType = VALUE, dtype = int64)], size = 4}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> arange ["{\"key\": \"start\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"0\"}", "{\"key\": \"stop\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}", "{\"key\": \"stride\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}"]
+2024-11-30:14:36:29 [SequenceMsg] arangeHelper Line 29 DEBUG [Chapel] cmd: arange start: 0 stop: 20 stride: 1 : len: 20 rname: id_LIz3l84_32
+2024-11-30:14:36:29 [SequenceMsg] arangeHelper Line 35 DEBUG [Chapel] alloc time = 0 sec
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_32 
+2024-11-30:14:36:29 [SequenceMsg] arangeHelper Line 44 DEBUG [Chapel] compute time = 0 sec
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_32
+2024-11-30:14:36:29 [SequenceMsg] arangeMsg Line 82 DEBUG [Chapel] created id_LIz3l84_32 int64 20 1 [20] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_32 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< arange took 0.00064897537231445312 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after arange command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = permName, val = id_LIz3l84_23, objType = VALUE, dtype = str), (key = segName, val = id_LIz3l84_24, objType = VALUE, dtype = str), (key = size, val = 44, objType = VALUE, dtype = int64), (key = permute, val = True, objType = VALUE, dtype = bool), (key = valName, val = id_LIz3l84_32, objType = VALUE, dtype = str)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> broadcast ["{\"key\": \"permName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_23\"}", "{\"key\": \"segName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_24\"}", "{\"key\": \"valName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_32\"}", "{\"key\": \"permute\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_24
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_32
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_23
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_33 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [BroadcastMsg] broadcastMsg Line 136 DEBUG [Chapel] created id_LIz3l84_33 int64 44 1 [44] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_33 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< broadcast took 0.00086998939514160156 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after broadcast command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segName, val = id_LIz3l84_29, objType = VALUE, dtype = str), (key = permute, val = True, objType = VALUE, dtype = bool), (key = permName, val = id_LIz3l84_28, objType = VALUE, dtype = str), (key = size, val = 44, objType = VALUE, dtype = int64), (key = valName, val = id_LIz3l84_32, objType = VALUE, dtype = str)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> broadcast ["{\"key\": \"permName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_28\"}", "{\"key\": \"segName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_29\"}", "{\"key\": \"valName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_32\"}", "{\"key\": \"permute\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_29
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_32
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_28
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_34 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_34
+2024-11-30:14:36:29 [BroadcastMsg] broadcastMsg Line 136 DEBUG [Chapel] created id_LIz3l84_34 int64 44 1 [44] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_34 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< broadcast took 0.0015890598297119141 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after broadcast command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = keynames, val = ["id_LIz3l84_33"], objType = LIST, dtype = str), (key = assumeSortedStr, val = True, objType = VALUE, dtype = bool), (key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str)], size = 5}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_33\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [Unique] uniqueFromSorted Line 131 DEBUG [Chapel] pop = 20
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_36 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_36
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_37 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_37
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_38 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_38
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_36 int64 44 1 [44] 8+created id_LIz3l84_37 int64 20 1 [20] 8+created id_LIz3l84_38 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.0013868808746337891 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = idx, val = id_LIz3l84_38, objType = PDARRAY, dtype = int64), (key = array, val = id_LIz3l84_33, objType = PDARRAY, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_33\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_38\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_38
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_38
+2024-11-30:14:36:29 [IndexingMsg] pdarrayIndexMsg Line 536 DEBUG [Chapel] cmd: [pdarray] name: id_LIz3l84_33 gX: id_LIz3l84_33 int64 44 1 [44] 8 gIV: id_LIz3l84_38 int64 20 1 [20] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_39 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_39
+2024-11-30:14:36:29 [IndexingMsg] ivInt64Helper Line 572 DEBUG [Chapel] created id_LIz3l84_39 int64 20 1 [20] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_39 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00072002410888671875 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segments, val = id_LIz3l84_37, objType = PDARRAY, dtype = int64), (key = size, val = 44, objType = VALUE, dtype = int64)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> sizeReduction ["{\"key\": \"segments\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_37\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2024-11-30:14:36:29 [ReductionMsg] sizeReductionMsg Line 521 DEBUG [Chapel] cmd: sizeReduction segments_name: id_LIz3l84_37 size: 44
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_37
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_40 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_40
+2024-11-30:14:36:29 [ReductionMsg] sizeReductionMsg Line 535 DEBUG [Chapel] created id_LIz3l84_40 int64 20 1 [20] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_40 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< sizeReduction took 0.00048899650573730469 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after sizeReduction command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_LIz3l84_40, objType = PDARRAY, dtype = int64), (key = func, val = cumsum, objType = VALUE, dtype = str)], size = 2}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> efunc1D ["{\"key\": \"func\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"cumsum\"}", "{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_40\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_40
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_40
+2024-11-30:14:36:29 [EfuncMsg] efuncMsg Line 53 DEBUG [Chapel] cmd: efunc1D efunc: cumsum pdarray: id_LIz3l84_40 int64 20 1 [20] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_41 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_41
+2024-11-30:14:36:29 [EfuncMsg] efuncMsg Line 483 DEBUG [Chapel] created id_LIz3l84_41 int64 20 1 [20] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_41 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< efunc1D took 0.00058698654174804688 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after efunc1D command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = seg_string, val = False, objType = VALUE, dtype = bool), (key = shape, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = int64, objType = VALUE, dtype = str)], size = 3}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2024-11-30:14:36:29 [GenSymIO] arrayMsg Line 45 DEBUG [Chapel] dtype: Int64 shape: (1,) size: 1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_42 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_42
+2024-11-30:14:36:29 [GenSymIO] arrayMsg Line 100 DEBUG [Chapel] created id_LIz3l84_42 int64 1 1 [1] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_42 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00040507316589355469 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_LIz3l84_42", "id_LIz3l84_41"], objType = LIST, dtype = str)], size = 4}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_LIz3l84_42\\\", \\\"id_LIz3l84_41\\\"]\"}"]
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 37 DEBUG [Chapel] number of arrays: 2 names: id_LIz3l84_42 id_LIz3l84_41
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_LIz3l84_42
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_42
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_42
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 75 DEBUG [Chapel] pdarray name id_LIz3l84_41
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_41
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_41
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 218 DEBUG [Chapel] creating pdarray id_LIz3l84_43 of type Int64
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 73 DEBUG [Chapel] adding symbol: id_LIz3l84_43 
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_42
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_41
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_43
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 247 DEBUG [Chapel] created concatenated pdarray: id_LIz3l84_43 int64 21 1 [21] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_43
+2024-11-30:14:36:29 [ConcatenateMsg] concatenateMsg Line 384 DEBUG [Chapel] created id_LIz3l84_43 int64 21 1 [21] 8
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_LIz3l84_43 int64 21 1 [21] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.00071096420288085938 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_41, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_41\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_41
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_41 int64 20 1 [20] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_41
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_41
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_41
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_41", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00030207633972167969 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = Weighted, val = False, objType = VALUE, dtype = bool), (key = SRC_SDI, val = id_LIz3l84_33, objType = PDARRAY, dtype = int64), (key = NumEdges, val = 22, objType = VALUE, dtype = int64), (key = NumVertices, val = 20, objType = VALUE, dtype = int64), (key = DST_SDI, val = id_LIz3l84_34, objType = PDARRAY, dtype = int64), (key = SEGMENTS_SDI, val = id_LIz3l84_43, objType = PDARRAY, dtype = int64), (key = EDGE_WEIGHT_SDI, val = id_LIz3l84_7, objType = PDARRAY, dtype = float64), (key = VERTEX_MAP_SDI, val = id_LIz3l84_26, objType = PDARRAY, dtype = int64), (key = Directed, val = False, objType = VALUE, dtype = bool)], size = 9}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> insertComponents ["{\"key\": \"SRC_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_33\"}", "{\"key\": \"DST_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_34\"}", "{\"key\": \"SEGMENTS_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_43\"}", "{\"key\": \"EDGE_WEIGHT_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"float64\", \"val\": \"id_LIz3l84_7\"}", "{\"key\": \"VERTEX_MAP_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_LIz3l84_26\"}", "{\"key\": \"Directed\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"Weighted\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"NumVertices\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}", "{\"key\": \"NumEdges\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"22\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_34
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_34
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_43
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_43
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_26
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_26
+2024-11-30:14:36:29 [MultiTypeSymbolTable] addEntry Line 122 DEBUG [Chapel] adding symbol: id_LIz3l84_44 
+2024-11-30:14:36:29 [BuildGraphMsg] insertComponentsMsg Line 178 DEBUG [Chapel] Inserting components took 0.000688 sec
+2024-11-30:14:36:29 [BuildGraphMsg] insertComponentsMsg Line 179 DEBUG [Chapel] id_LIz3l84_44
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"id_LIz3l84_44", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< insertComponents took 0.0011110305786132812 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after insertComponents command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_6, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_6\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_6 int64 46 1 [46] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_6
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_6
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_6
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_6", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00029015541076660156 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_5, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_5\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_5 int64 46 1 [46] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_5
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_5
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_5
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_5", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00029897689819335938 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_9, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_9\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_9
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_9 int64 46 1 [46] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_9
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_9
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_9
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_9", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025582313537597656 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_10, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_10\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_10
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_10 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_10
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_10
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_10
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_10", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025296211242675781 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_11, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_11\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_11 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_11
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_11
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_11
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_11", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023508071899414062 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_14, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_14\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_14
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_14 bool 44 1 [44] 1
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_14
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_14
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_14
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_14", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025701522827148438 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_12, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_12\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_12 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_12
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_12
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_12
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_12", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023818016052246094 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_23, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_23\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_23
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_23 int64 44 1 [44] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_23
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_23
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_23
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_23", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023603439331054688 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_24, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_24\"}"]
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_24
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_24 int64 20 1 [20] 8
+2024-11-30:14:36:29 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_24
+2024-11-30:14:36:29 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_24
+deinit SymEntry
+2024-11-30:14:36:29 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_24
+2024-11-30:14:36:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_24", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023293495178222656 sec
+2024-11-30:14:36:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_25, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_25\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_25
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_25 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_25
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_25
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_25
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_25", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025296211242675781 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_13, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_13\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_13 int64 44 1 [44] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_13
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_13
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_13
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_13", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024104118347167969 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_31, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_31\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_31
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_31 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_31
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_31
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_31
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_31", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024008750915527344 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_28, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_28\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_28
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_28 int64 44 1 [44] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_28
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_28
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_28
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_28", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.0002689361572265625 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_29, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_29\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_29
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_29 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_29
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_29
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_29
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_29", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024199485778808594 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_30, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_30\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_30
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_30 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_30
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_30
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_30
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_30", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023603439331054688 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_32, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_32\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_32
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_32 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_32
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_32
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_32
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_32", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026798248291015625 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_39, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_39\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_39
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_39 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_39
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_39
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_39
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_39", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024104118347167969 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_36, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_36\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_36
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_36 int64 44 1 [44] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_36
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_36
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_36
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_36", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023794174194335938 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_37, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_37\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_37
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_37 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_37
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_37
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_37
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_37", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026297569274902344 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_38, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_38\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_38
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_38 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_38
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_38
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_38
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_38", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024199485778808594 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_40, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_40\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_40
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_40 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_40
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_40
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_40
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_40", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023198127746582031 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_42, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_42\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_42
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_42 int64 1 1 [1] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_42
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_42
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_42
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_42", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00026392936706542969 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_33, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_33\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_33 int64 44 1 [44] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_33
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_33
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_33
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_33", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023913383483886719 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_34, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_34\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_34
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_34 int64 44 1 [44] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_34
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_34
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_34
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_34", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023603439331054688 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_43, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_43\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_43
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_43 int64 21 1 [21] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_43
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_43
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_43
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_43", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025987625122070312 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_7, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_7\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_7
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_7 float64 1 1 [1] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_7
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_7
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_7
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_7", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00024294853210449219 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_26, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_26\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_26
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_26 int64 20 1 [20] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_26
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_26
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_26
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_26", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023794174194335938 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_1, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_1\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_1 int64 23 1 [23] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_1
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_1
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_1
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00025892257690429688 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_2, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_2\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_2 int64 23 1 [23] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_2
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_2
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_2
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_2", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023698806762695312 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_LIz3l84_4, objType = VALUE, dtype = str)], size = 1}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_4\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_4
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 129 DEBUG [Chapel] cmd: delete array: id_LIz3l84_4 int64 1 1 [1] 8
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_4
+2024-11-30:14:36:30 [MultiTypeSymbolTable] deleteEntry Line 186 DEBUG [Chapel] Deleting unregistered entry: id_LIz3l84_4
+deinit SymEntry
+2024-11-30:14:36:30 [MsgProcessing] deleteMsg Line 138 DEBUG [Chapel] deleted id_LIz3l84_4
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_LIz3l84_4", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00023102760314941406 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = PostFilterMinSize, val = 1, objType = VALUE, dtype = int64), (key = ConnectednessCriterionMultValue, val = 0.0, objType = VALUE, dtype = float64), (key = FilePath, val = /scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering_simple_1.tsv, objType = VALUE, dtype = str), (key = GraphName, val = id_LIz3l84_44, objType = VALUE, dtype = str), (key = PreFilterMinSize, val = 1, objType = VALUE, dtype = int64), (key = OutputPath, val = /scratch/users/md724/arkouda-njit/arachne/output/log10_test_network_wcc_output_post.tsv, objType = VALUE, dtype = str), (key = OutputType, val = post, objType = VALUE, dtype = str), (key = ConnectednessCriterion, val = log10, objType = VALUE, dtype = str)], size = 8}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> wellConnectedComponents ["{\"key\": \"GraphName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_LIz3l84_44\"}", "{\"key\": \"FilePath\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/scratch/users/md724/arkouda-njit/arachne/data/wcc/test_clustering_simple_1.tsv\"}", "{\"key\": \"OutputPath\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/scratch/users/md724/arkouda-njit/arachne/output/log10_test_network_wcc_output_post.tsv\"}", "{\"key\": \"OutputType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"post\"}", "{\"key\": \"ConnectednessCriterion\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"log10\"}", "{\"key\": \"ConnectednessCriterionMultValue\", \"objType\": \"VALUE\", \"dtype\": \"float64\", \"val\": \"0.0\"}", "{\"key\": \"PreFilterMinSize\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"PostFilterMinSize\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}"]
+2024-11-30:14:36:30 [MultiTypeSymbolTable] checkTable Line 234 DEBUG [Chapel] found symbol: id_LIz3l84_44
+2024-11-30:14:36:30 [WellConnectedComponentsMsg] wellConnectedComponentsMsg Line 46 INFO [Chapel] Generating neighbors set.
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1868 INFO [Chapel] Graph loaded with 20 vertices and 22 edges.
+2024-11-30:14:36:30 [WellConnectedComponents] readClustersFile Line 133 DEBUG [Chapel] Vertex not found in the graph: 43
+2024-11-30:14:36:30 [WellConnectedComponents] readClustersFile Line 141 INFO [Chapel] Number of clusters originally found in file: 2
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1871 INFO [Chapel] Reading clusters file finished.
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1913 DEBUG [Chapel] Original cluster 200 was split up into 2 clusters.
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1925 INFO [Chapel] Splitting up clusters yielded 3 new clusters.
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1933 DEBUG [Chapel] Processing cluster 1 which is a subcluster of 200.
+
+Analyzing cluster 1 (Original cluster: 200)
+Cluster vertices:{16, 17, 19, 15, 18, 14}
+
+========== Starting Cluster Analysis ==========
+Cluster size: 6
+
+----- Computing Basic Connectivity Metrics -----
+
+----- Computing Advanced Connectivity Metrics -----
+
+==== Starting Assortativity Calculation ====
+Cluster size: 6
+Created cluster array of size: 6
+Created domain with bounds: {0..5}
+Initialized arrays for calculations
+Starting local contributions calculation
+Sample calculation for first vertex:
+  Vertex: 16 Degree: 1
+  Number of neighbors: 1
+  Local contributions: 4.0, 1.0, 1.0
+
+Final calculations:
+Total edges (M): 7
+Numerator sum: 108.0
+Denominator1 sum: 128.0
+Denominator2 sum: 40.0
+Assortativity coefficient: -0.458333
+==== Assortativity Calculation Complete ====
+
+Using sample size: 6 for diameter and betweenness
+
+----- Computing Density and Clustering Metrics -----
+
+==== Starting Triangle and Clustering Analysis ====
+Cluster size: 6
+
+Processing vertex 19
+  Degree: 3
+  Neighbors: {17, 18, 14}
+
+Processing vertex 18
+  Degree: 2
+  Neighbors: {17, 19}
+
+Processing vertex 14
+  Degree: 3
+  Neighbors: {17, 19, 15}
+
+Processing vertex 16
+  Degree: 1
+  Neighbors: {17}
+    Checking neighbor 17
+    U's neighbors: {16, 19, 18, 14}
+      Found triangle: 14-17-19
+    Checking neighbor 17
+    U's neighbors: {16, 19, 18, 14}
+      Found triangle: 18-17-19
+    Checking neighbor 19
+    U's neighbors: {17, 18, 14}
+      Found triangle: 14-19-17
+    Checking neighbor 15
+    U's neighbors: {14}
+
+Processing vertex 17
+  Degree: 4
+  Neighbors: {16, 19, 18, 14}
+
+Processing vertex 15
+  Degree: 1
+  Neighbors: {14}
+    Checking neighbor 17
+    U's neighbors: {16, 19, 18, 14}
+      Found triangle: 19-17-18
+      Found triangle: 19-17-14
+    Checking neighbor 16
+    U's neighbors: {17}
+    Checking neighbor 18
+    U's neighbors: {17, 19}
+    Checking neighbor 19
+    U's neighbors: {17, 18, 14}
+      Found triangle: 17-19-18
+      Found triangle: 17-19-14
+      Found triangle: 19-18-17
+    Checking neighbor 18
+    U's neighbors: {17, 19}
+      Found triangle: 17-18-19
+    Checking neighbor 14
+    U's neighbors: {17, 19, 15}
+      Found triangle: 17-14-19
+    Checking neighbor 14
+    U's neighbors: {17, 19, 15}
+      Found triangle: 19-14-17
+  Stats for vertex 19:
+    Raw triangles: 4
+    Local triangles (after division): 2
+    Possible triangles: 3
+    Local CC: 0.666667
+    Checking neighbor 19
+    U's neighbors: {17, 18, 14}
+      Found triangle: 18-19-17
+  Stats for vertex 14:
+    Raw triangles: 2
+    Local triangles (after division): 1
+    Possible triangles: 3
+    Local CC: 0.333333
+  Stats for vertex 18:
+    Raw triangles: 2
+    Local triangles (after division): 1
+    Possible triangles: 1
+    Local CC: 1.0
+  Stats for vertex 17:
+    Raw triangles: 4
+    Local triangles (after division): 2
+    Possible triangles: 6
+    Local CC: 0.333333
+
+Final Results:
+Total triangles: 2
+Total wedges: 13
+Valid vertices: 4
+Participating vertices: 4
+Maximum triangles per vertex: 2
+Average local CC: 0.388889
+Global CC: 0.461538
+Triangle density: 0.285714
+Participation rate: 0.666667
+==== Triangle Analysis Complete ====
+
+
+----- Computing Spectral Metrics -----
+
+Graph Volume:44
+Cluster Analysis:
+Size: 6
+Cluster Volume: 14
+Cluster cutedges: 0
+Conductance: 0.0
+Spectral Bounds (λ2):
+==================== calculateSpectralBounds ======================
+
+----- Computing Triangle Centrality -----
+
+==== Starting Triangle Centrality Calculation ====
+Cluster size: 6
+Starting triangle counting phase
+Found triangle: 17-18-19
+Found triangle: 14-17-19
+
+Calculating neighbor triangle counts
+
+Calculating final centralities
+
+Triangle Centrality Results:
+Total triangles: 2
+Sample centralities:
+Vertex 16: 0.333333
+Vertex 17: 1.0
+Vertex 19: 1.0
+Vertex 15: 0.166667
+Vertex 18: 0.833333
+==== Triangle Centrality Calculation Complete ====
+
+
+----- Computing Transitivity Metrics -----
+
+==== Starting Transitivity Metrics Calculation ====
+Original cluster size: 6
+Pre-computing neighbor sets
+Starting parallel wedge and triangle counting
+
+Final Results:
+Analyzed vertices: 6
+Total wedges found: 13
+Total triangles found: 2
+Triangle-to-Wedge ratio: 0.153846
+Global transitivity: 0.461538
+==== Transitivity Metrics Calculation Complete ====
+
+
+----- Computing Diameter Metrics -----
+
+==== Starting Enhanced Diameter Calculation ====
+Cluster size: 6
+Using exact calculation for small cluster
+
+==== Starting Enhanced BFS ====
+Starting vertex: 16
+Cluster size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 17
+Cluster size: 6
+Created cluster array of size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 19
+Cluster size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 15
+Cluster size: 6
+Created cluster array of size: 6
+Created cluster array of size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+Created cluster array of size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 18
+Created domain: {16, 17, 19, 15, 18, 14}
+Cluster size: 6
+Created cluster array of size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+
+==== Starting Enhanced BFS ====
+Starting vertex: 14
+Cluster size: 6
+Created cluster array of size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+Created domain: {16, 17, 19, 15, 18, 14}
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Created domain: {16, 17, 19, 15, 18, 14}
+Processing vertex 14 at level 0
+Number of neighbors: 3
+  Found new vertex 17 at level 1
+  Found new vertex 19 at level 1
+  Found new vertex 15 at level 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Processing vertex 19 at level 0
+Number of neighbors: 3
+  Found new vertex 17 at level 1
+  Found new vertex 18 at level 1
+  Found new vertex 14 at level 1
+Current frontier size: 1
+Completed level 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 3
+Processing vertex 15 at level 0
+Number of neighbors: 1
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 16 at level 2
+Processing vertex 17 at level 0
+Number of neighbors: 4
+  Found new vertex 14 at level 1
+Processing vertex 18 at level 1
+Number of neighbors: 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Processing vertex 14 at level 1
+Number of neighbors: 3
+  Found new vertex 15 at level 2
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Completed level 2
+Current frontier size: 1
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+  Found new vertex 16 at level 1
+  Found new vertex 19 at level 1
+  Found new vertex 18 at level 1
+  Found new vertex 14 at level 1
+Processing vertex 16 at level 2
+Number of neighbors: 1
+Processing vertex 14 at level 1
+Number of neighbors: 3
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 4
+Processing vertex 15 at level 2
+Number of neighbors: 1
+Processing vertex 16 at level 1
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+  Found new vertex 17 at level 2
+  Found new vertex 19 at level 2
+Processing vertex 19 at level 1
+Number of neighbors: 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+==== Enhanced BFS Complete ====
+
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 3
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 17 at level 2
+Number of neighbors: 4
+  Found new vertex 16 at level 3
+Processing vertex 18 at level 1
+Number of neighbors: 2
+  Found new vertex 18 at level 3
+Processing vertex 14 at level 1
+Number of neighbors: 3
+  Found new vertex 15 at level 2
+Processing vertex 19 at level 2
+Number of neighbors: 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+Processing vertex 18 at level 0
+Number of neighbors: 2
+  Found new vertex 17 at level 1
+  Found new vertex 19 at level 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Processing vertex 15 at level 2
+Number of neighbors: 1
+Current frontier size: 2
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 16 at level 3
+Number of neighbors: 1
+Processing vertex 18 at level 3
+Number of neighbors: 2
+Processing vertex 16 at level 0
+Number of neighbors: 1
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 16 at level 2
+  Found new vertex 18 at level 2
+  Found new vertex 17 at level 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 19 at level 1
+Number of neighbors: 3
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 15 at level 1
+Number of neighbors: 1
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 19 at level 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+  Found new vertex 18 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+  Found new vertex 14 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 3
+Processing vertex 16 at level 2
+Number of neighbors: 1
+Processing vertex 19 at level 2
+Number of neighbors: 3
+Processing vertex 18 at level 2
+Number of neighbors: 2
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 18 at level 2
+Number of neighbors: 2
+Processing vertex 14 at level 2
+Number of neighbors: 3
+  Found new vertex 15 at level 3
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 16 at level 2
+  Found new vertex 14 at level 2
+Processing vertex 19 at level 1
+Number of neighbors: 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Processing vertex 16 at level 2
+Number of neighbors: 1
+Processing vertex 15 at level 3
+Number of neighbors: 1
+Processing vertex 14 at level 2
+Number of neighbors: 3
+  Found new vertex 15 at level 3
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 15 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+----- Computing Triangle Distribution Metrics -----
+
+----- Computing Path Metrics -----
+
+==== Starting Path Metrics Analysis ====
+Global transitivity: 0.461538
+Local transitivity: 0.388889
+Cluster density: 0.466667
+
+Path Metrics Results:
+  Local/Global ratio: 0.842593
+  Cohesion score: 0.65463
+==== Path Metrics Analysis Complete ====
+
+
+----- Computing Eccentricity Metrics -----
+
+==== Starting Eccentricity Analysis ====
+Diameter: 3
+Created domain from cluster of size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 16
+Cluster size: 6
+Created cluster array of size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 17
+Cluster size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 15
+Cluster size: 6
+Created cluster array of size: 6
+Created cluster array of size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+Created domain: {16, 17, 19, 15, 18, 14}
+
+==== Starting Enhanced BFS ====
+Starting vertex: 19
+Cluster size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+Created cluster array of size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 18
+Cluster size: 6
+
+==== Starting Enhanced BFS ====
+Starting vertex: 14
+Cluster size: 6
+Created cluster array of size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+Created cluster array of size: 6
+Created domain: {16, 17, 19, 15, 18, 14}
+Created domain: {16, 17, 19, 15, 18, 14}
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 19 at level 0
+Number of neighbors: 3
+  Found new vertex 17 at level 1
+  Found new vertex 18 at level 1
+  Found new vertex 14 at level 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 3
+Processing vertex 14 at level 0
+Number of neighbors: 3
+  Found new vertex 17 at level 1
+  Found new vertex 19 at level 1
+  Found new vertex 15 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 3
+Processing vertex 17 at level 1
+Number of neighbors: 4
+Initialized frontier sets and depth array
+Starting BFS traversal
+  Found new vertex 16 at level 2
+Initialized frontier sets and depth array
+Starting BFS traversal
+Processing vertex 18 at level 1
+Number of neighbors: 2
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 14 at level 1
+Number of neighbors: 3
+  Found new vertex 15 at level 2
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 17 at level 0
+Number of neighbors: 4
+  Found new vertex 16 at level 1
+Processing vertex 15 at level 0
+Number of neighbors: 1
+  Found new vertex 19 at level 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+  Found new vertex 14 at level 1
+  Found new vertex 18 at level 1
+  Found new vertex 14 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 4
+Processing vertex 16 at level 2
+Number of neighbors: 1
+Processing vertex 15 at level 2
+Number of neighbors: 1
+Current frontier size: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 14 at level 1
+Number of neighbors: 3
+Processing vertex 16 at level 1
+Number of neighbors: 1
+  Found new vertex 17 at level 2
+  Found new vertex 19 at level 2
+Processing vertex 19 at level 1
+Number of neighbors: 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+Processing vertex 18 at level 1
+Number of neighbors: 2
+Processing vertex 17 at level 2
+Number of neighbors: 4
+Processing vertex 14 at level 1
+Number of neighbors: 3
+  Found new vertex 16 at level 3
+  Found new vertex 15 at level 2
+  Found new vertex 18 at level 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 16 at level 2
+  Found new vertex 18 at level 2
+Processing vertex 19 at level 1
+Number of neighbors: 3
+Processing vertex 15 at level 1
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+Processing vertex 18 at level 0
+Number of neighbors: 2
+  Found new vertex 17 at level 1
+  Found new vertex 19 at level 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 16 at level 2
+Number of neighbors: 1
+Processing vertex 18 at level 2
+Number of neighbors: 2
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 15 at level 2
+Number of neighbors: 1
+Processing vertex 19 at level 2
+Number of neighbors: 3
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 2
+Processing vertex 16 at level 0
+Number of neighbors: 1
+  Found new vertex 17 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 19 at level 2
+  Found new vertex 18 at level 2
+  Found new vertex 14 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 3
+Processing vertex 19 at level 2
+Number of neighbors: 3
+Processing vertex 18 at level 2
+Number of neighbors: 2
+Processing vertex 14 at level 2
+Number of neighbors: 3
+  Found new vertex 15 at level 3
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Processing vertex 15 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 16 at level 3
+Number of neighbors: 1
+Processing vertex 18 at level 3
+Number of neighbors: 2
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+Processing vertex 17 at level 1
+Number of neighbors: 4
+  Found new vertex 16 at level 2
+  Found new vertex 14 at level 2
+Processing vertex 19 at level 1
+Number of neighbors: 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 2
+Processing vertex 16 at level 2
+Number of neighbors: 1
+Processing vertex 14 at level 2
+Number of neighbors: 3
+  Found new vertex 15 at level 3
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Processing vertex 15 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+Eccentricity Results:
+  Radius: 2
+  Number of center vertices: 3
+  Number of peripheral vertices: 3
+  Average eccentricity: 2.5
+==== Eccentricity Analysis Complete ====
+
+
+----- Computing Distribution Statistics -----
+
+==== Calculating Distribution Statistics ====
+Sample size: 6
+
+Distribution Statistics:
+  Mean: 2.33333
+  Median: 2.5
+  Standard Deviation: 1.21106
+  Skewness: 0.0417032
+  Kurtosis: -1.88085
+  Key Percentiles:
+    25th: 1.0
+    50th: 2.0
+    75th: 3.0
+==== Distribution Statistics Complete ====
+
+
+Counting triangles for vertex 16
+Neighbors: {17}
+Total triangles for vertex 16: 0
+
+Counting triangles for vertex 17
+Neighbors: {16, 19, 18, 14}
+Found triangle: 17-18-19
+Total triangles for vertex 17: 1
+
+Counting triangles for vertex 19
+Neighbors: {17, 18, 14}
+Total triangles for vertex 19: 0
+
+Counting triangles for vertex 15
+Neighbors: {14}
+Total triangles for vertex 15: 0
+
+Counting triangles for vertex 18
+Neighbors: {17, 19}
+Total triangles for vertex 18: 0
+
+Counting triangles for vertex 14
+Neighbors: {17, 19, 15}
+Found triangle: 14-17-19
+Total triangles for vertex 14: 1
+
+==== Calculating Distribution Statistics ====
+Sample size: 6
+
+Distribution Statistics:
+  Mean: 0.333333
+  Median: 0.0
+  Standard Deviation: 0.516398
+  Skewness: 0.537914
+  Kurtosis: -1.95833
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+==== Distribution Statistics Complete ====
+
+
+----- Analysis Complete -----
+
+========== Cluster Analysis Report ==========
+Cluster Size: 6 vertices
+
+----- Connectivity Metrics -----
+Basic Connectivity:
+  Minimum Degree: 1
+  Maximum Degree: 4
+  Average Degree: 2.33333
+  Total Internal Edges: 7
+  Edge Connectivity Lower Bound: 2 Mader's theorem bound
+  Cluster Volume: 14
+  Cluster CutEdges: 0
+
+Degree Distribution:
+  Degree Variance: 1.22222
+  Degree Skewness: 0.0548202
+  Degree Second Moment: 40.0
+  Assortativity: -0.458333
+
+----- Density Metrics -----
+Basic Density:
+  Density: 0.466667
+  Sparsity: 0.533333
+  Maximum Possible Edges: 15
+
+Clustering Metrics:
+  Triangle Count: 2
+  Global Clustering Coefficient: 0.461538
+  Average Local Clustering Coefficient: 0.388889
+
+----- Spectral Metrics -----
+  Conductance: 0.0
+  λ2 Lower Bound: 0.0
+  λ2 Upper Bound: 0.0
+  λ2 Estimate: 0.0
+
+----- Transitivity Metrics -----
+  Wedge Count: 13
+  Triangle-to-Wedge Ratio: 0.153846
+  Global Transitivity: 0.461538
+
+----- Triangle Distribution Metrics -----
+  Triangle Density: 0.285714
+  Participation Rate: 0.666667
+  Max Local Triangles: 2
+  Average Triangles Per Vertex: 0.333333
+
+----- Diameter and Eccentricity Metrics -----
+  Diameter: 3
+  (Exact calculation)
+  Radius: 2
+  Number of Center Vertices: 3
+  Center Vertices: [17, 19, 14]
+  Number of Peripheral Vertices: 3
+  Peripheral Vertices: [16, 15, 18]
+  Average Eccentricity: 2.5
+
+----- Distribution Statistics -----
+Degree Distribution:
+  Mean: 2.33333
+  Median: 2.5
+  Standard Deviation: 1.21106
+  Skewness: 0.0417032
+  Kurtosis: -1.88085
+  Key Percentiles:
+    25th: 1.0
+    50th: 2.0
+    75th: 3.0
+    90th: 3.0
+
+Triangle Distribution:
+  Mean: 0.333333
+  Median: 0.0
+  Standard Deviation: 0.516398
+  Skewness: 0.537914
+  Kurtosis: -1.95833
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+    90th: 1.0
+
+===========================================
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1933 DEBUG [Chapel] Processing cluster 0 which is a subcluster of 200.
+
+Analyzing cluster 0 (Original cluster: 200)
+Cluster vertices:{12, 13, 11, 3}
+
+========== Starting Cluster Analysis ==========
+Cluster size: 4
+
+----- Computing Basic Connectivity Metrics -----
+
+----- Computing Advanced Connectivity Metrics -----
+
+==== Starting Assortativity Calculation ====
+Cluster size: 4
+Created cluster array of size: 4
+Created domain with bounds: {0..3}
+Initialized arrays for calculations
+Starting local contributions calculation
+Sample calculation for first vertex:
+  Vertex: 12 Degree: 2
+  Number of neighbors: 2
+  Local contributions: 6.0, 8.0, 4.0
+
+Final calculations:
+Total edges (M): 3
+Numerator sum: 16.0
+Denominator1 sum: 18.0
+Denominator2 sum: 10.0
+Assortativity coefficient: -0.5
+==== Assortativity Calculation Complete ====
+
+Using sample size: 4 for diameter and betweenness
+
+----- Computing Density and Clustering Metrics -----
+
+==== Starting Triangle and Clustering Analysis ====
+Cluster size: 4
+
+Processing vertex 12
+  Degree: 2
+
+Processing vertex 3
+  Degree: 2
+  Neighbors: {12, 11}
+  Neighbors: {13, 3}
+    Checking neighbor 12
+    U's neighbors: {13, 3}
+    Checking neighbor 13
+    U's neighbors: {12}
+    Checking neighbor 11
+    U's neighbors: {3}
+  Stats for vertex 3:
+    Raw triangles: 0
+    Local triangles (after division): 0
+    Possible triangles: 1
+    Local CC: 0.0
+    Checking neighbor 3
+    U's neighbors: {12, 11}
+
+Processing vertex 11
+  Degree: 1
+  Neighbors: {3}
+
+Processing vertex 13
+  Degree: 1
+  Neighbors: {12}
+  Stats for vertex 12:
+    Raw triangles: 0
+    Local triangles (after division): 0
+    Possible triangles: 1
+    Local CC: 0.0
+
+Final Results:
+Total triangles: 0
+Total wedges: 2
+Valid vertices: 2
+Participating vertices: 0
+Maximum triangles per vertex: 0
+Average local CC: 0.0
+Global CC: 0.0
+Triangle density: 0.0
+Participation rate: 0.0
+==== Triangle Analysis Complete ====
+
+
+----- Computing Spectral Metrics -----
+
+Graph Volume:44
+Cluster Analysis:
+Size: 4
+Cluster Volume: 8
+Cluster cutedges: 2
+Conductance: 0.25
+Spectral Bounds (λ2):
+==================== calculateSpectralBounds ======================
+
+----- Computing Triangle Centrality -----
+
+==== Starting Triangle Centrality Calculation ====
+Cluster size: 4
+Starting triangle counting phase
+
+Calculating neighbor triangle counts
+
+Calculating final centralities
+
+Triangle Centrality Results:
+Total triangles: 0
+Sample centralities:
+Vertex 12: 0.0
+Vertex 13: 0.0
+Vertex 11: 0.0
+Vertex 3: 0.0
+==== Triangle Centrality Calculation Complete ====
+
+
+----- Computing Transitivity Metrics -----
+
+==== Starting Transitivity Metrics Calculation ====
+Original cluster size: 4
+Pre-computing neighbor sets
+Starting parallel wedge and triangle counting
+
+Final Results:
+Analyzed vertices: 4
+Total wedges found: 2
+Total triangles found: 0
+Triangle-to-Wedge ratio: 0.0
+Global transitivity: 0.0
+==== Transitivity Metrics Calculation Complete ====
+
+
+----- Computing Diameter Metrics -----
+
+==== Starting Enhanced Diameter Calculation ====
+Cluster size: 4
+Using exact calculation for small cluster
+
+==== Starting Enhanced BFS ====
+Starting vertex: 12
+Cluster size: 4
+Created cluster array of size: 4
+
+==== Starting Enhanced BFS ====
+
+==== Starting Enhanced BFS ====
+Starting vertex: 13
+Cluster size: 4
+Starting vertex: 11
+Cluster size: 4
+
+==== Starting Enhanced BFS ====
+Created cluster array of size: 4
+Created cluster array of size: 4
+Created domain: {12, 13, 11, 3}
+Created domain: {12, 13, 11, 3}
+Starting vertex: 3
+Cluster size: 4
+Created domain: {12, 13, 11, 3}
+Created cluster array of size: 4
+Created domain: {12, 13, 11, 3}
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 12 at level 0
+Number of neighbors: 2
+  Found new vertex 13 at level 1
+  Found new vertex 3 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Processing vertex 13 at level 0
+Number of neighbors: 1
+  Found new vertex 12 at level 1
+Current frontier size: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 11 at level 0
+Number of neighbors: 1
+  Found new vertex 3 at level 1
+Processing vertex 12 at level 1
+Number of neighbors: 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+  Found new vertex 3 at level 2
+Current frontier size: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+Processing vertex 3 at level 1
+Number of neighbors: 2
+Processing vertex 3 at level 2
+Number of neighbors: 2
+  Found new vertex 12 at level 2
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 13 at level 1
+Number of neighbors: 1
+Processing vertex 3 at level 1
+Number of neighbors: 2
+  Found new vertex 11 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+  Found new vertex 11 at level 3
+Processing vertex 3 at level 0
+Number of neighbors: 2
+  Found new vertex 12 at level 1
+  Found new vertex 11 at level 1
+Processing vertex 11 at level 2
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Current frontier size: 1
+Processing vertex 12 at level 1
+Number of neighbors: 2
+Processing vertex 11 at level 3
+Number of neighbors: 1
+Processing vertex 12 at level 2
+Number of neighbors: 2
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+  Found new vertex 13 at level 3
+  Found new vertex 13 at level 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Processing vertex 11 at level 1
+Number of neighbors: 1
+Processing vertex 13 at level 3
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 13 at level 2
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+
+----- Computing Triangle Distribution Metrics -----
+
+----- Computing Path Metrics -----
+
+==== Starting Path Metrics Analysis ====
+Global transitivity: 0.0
+Local transitivity: 0.0
+Cluster density: 0.5
+
+Path Metrics Results:
+  Local/Global ratio: 0.0
+  Cohesion score: 0.25
+==== Path Metrics Analysis Complete ====
+
+
+----- Computing Eccentricity Metrics -----
+
+==== Starting Eccentricity Analysis ====
+Diameter: 3
+Created domain from cluster of size: 4
+
+==== Starting Enhanced BFS ====
+
+==== Starting Enhanced BFS ====
+Starting vertex: 13
+Cluster size: 4
+
+==== Starting Enhanced BFS ====
+Starting vertex: 11
+Cluster size: 4
+Starting vertex: 12
+Cluster size: 4
+
+==== Starting Enhanced BFS ====
+Created cluster array of size: 4
+Created cluster array of size: 4
+Starting vertex: 3
+Cluster size: 4
+Created domain: {12, 13, 11, 3}
+Created domain: {12, 13, 11, 3}
+Created cluster array of size: 4
+Created cluster array of size: 4
+Created domain: {12, 13, 11, 3}
+Created domain: {12, 13, 11, 3}
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 13 at level 0
+Number of neighbors: 1
+Processing vertex 11 at level 0
+Number of neighbors: 1
+  Found new vertex 12 at level 1
+Processing vertex 12 at level 0
+Number of neighbors: 2
+  Found new vertex 3 at level 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+  Found new vertex 13 at level 1
+Processing vertex 3 at level 0
+Number of neighbors: 2
+  Found new vertex 3 at level 1
+  Found new vertex 12 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+  Found new vertex 11 at level 1
+Processing vertex 13 at level 1
+Number of neighbors: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 2
+Processing vertex 3 at level 1
+Number of neighbors: 2
+Processing vertex 12 at level 1
+Number of neighbors: 2
+  Found new vertex 11 at level 2
+Processing vertex 12 at level 1
+Number of neighbors: 2
+  Found new vertex 13 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+  Found new vertex 3 at level 2
+Processing vertex 11 at level 2
+Number of neighbors: 1
+Processing vertex 11 at level 1
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+Current frontier size: 1
+Processing vertex 3 at level 2
+Number of neighbors: 2
+  Found new vertex 11 at level 3
+Processing vertex 3 at level 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Number of neighbors: 2
+Processing vertex 11 at level 3
+Number of neighbors: 1
+Processing vertex 13 at level 2
+Number of neighbors: 1
+  Found new vertex 12 at level 2
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 1
+Processing vertex 12 at level 2
+Number of neighbors: 2
+  Found new vertex 13 at level 3
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 1
+Processing vertex 13 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+Eccentricity Results:
+  Radius: 2
+  Number of center vertices: 2
+  Number of peripheral vertices: 2
+  Average eccentricity: 2.5
+==== Eccentricity Analysis Complete ====
+
+
+----- Computing Distribution Statistics -----
+
+==== Calculating Distribution Statistics ====
+Sample size: 4
+
+Distribution Statistics:
+  Mean: 1.5
+  Median: 1.5
+  Standard Deviation: 0.57735
+  Skewness: 0.0
+  Kurtosis: -2.4375
+  Key Percentiles:
+    25th: 1.0
+    50th: 1.0
+    75th: 2.0
+==== Distribution Statistics Complete ====
+
+
+Counting triangles for vertex 12
+Neighbors: {13, 3}
+Total triangles for vertex 12: 0
+
+Counting triangles for vertex 13
+Neighbors: {12}
+Total triangles for vertex 13: 0
+
+Counting triangles for vertex 11
+Neighbors: {3}
+Total triangles for vertex 11: 0
+
+Counting triangles for vertex 3
+Neighbors: {12, 11}
+Total triangles for vertex 3: 0
+
+==== Calculating Distribution Statistics ====
+Sample size: 4
+
+Distribution Statistics:
+  Mean: 0.0
+  Median: 0.0
+  Standard Deviation: 0.0
+  Skewness: nan
+  Kurtosis: nan
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+==== Distribution Statistics Complete ====
+
+
+----- Analysis Complete -----
+
+========== Cluster Analysis Report ==========
+Cluster Size: 4 vertices
+
+----- Connectivity Metrics -----
+Basic Connectivity:
+  Minimum Degree: 1
+  Maximum Degree: 2
+  Average Degree: 1.5
+  Total Internal Edges: 3
+  Edge Connectivity Lower Bound: 1 Mader's theorem bound
+  Cluster Volume: 8
+  Cluster CutEdges: 2
+
+Degree Distribution:
+  Degree Variance: 0.25
+  Degree Skewness: 0.0
+  Degree Second Moment: 10.0
+  Assortativity: -0.5
+
+----- Density Metrics -----
+Basic Density:
+  Density: 0.5
+  Sparsity: 0.5
+  Maximum Possible Edges: 6
+
+Clustering Metrics:
+  Triangle Count: 0
+  Global Clustering Coefficient: 0.0
+  Average Local Clustering Coefficient: 0.0
+
+----- Spectral Metrics -----
+  Conductance: 0.25
+  λ2 Lower Bound: 0.03125
+  λ2 Upper Bound: 0.5
+  λ2 Estimate: 0.265625
+
+----- Transitivity Metrics -----
+  Wedge Count: 2
+  Triangle-to-Wedge Ratio: 0.0
+  Global Transitivity: 0.0
+
+----- Triangle Distribution Metrics -----
+  Triangle Density: 0.0
+  Participation Rate: 0.0
+  Max Local Triangles: 0
+  Average Triangles Per Vertex: 0.0
+
+----- Diameter and Eccentricity Metrics -----
+  Diameter: 3
+  (Exact calculation)
+  Radius: 2
+  Number of Center Vertices: 2
+  Center Vertices: [12, 3]
+  Number of Peripheral Vertices: 2
+  Peripheral Vertices: [13, 11]
+  Average Eccentricity: 2.5
+
+----- Distribution Statistics -----
+Degree Distribution:
+  Mean: 1.5
+  Median: 1.5
+  Standard Deviation: 0.57735
+  Skewness: 0.0
+  Kurtosis: -2.4375
+  Key Percentiles:
+    25th: 1.0
+    50th: 1.0
+    75th: 2.0
+    90th: 2.0
+
+Triangle Distribution:
+  Mean: 0.0
+  Median: 0.0
+  Standard Deviation: 0.0
+  Skewness: nan
+  Kurtosis: nan
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+    90th: 0.0
+
+===========================================
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1933 DEBUG [Chapel] Processing cluster 2 which is a subcluster of 100.
+
+Analyzing cluster 2 (Original cluster: 100)
+Cluster vertices:{5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+
+========== Starting Cluster Analysis ==========
+Cluster size: 10
+
+----- Computing Basic Connectivity Metrics -----
+
+----- Computing Advanced Connectivity Metrics -----
+
+==== Starting Assortativity Calculation ====
+Cluster size: 10
+Created cluster array of size: 10
+Created domain with bounds: {0..9}
+Initialized arrays for calculations
+Starting local contributions calculation
+Sample calculation for first vertex:
+  Vertex: 5 Degree: 1
+  Number of neighbors: 1
+  Local contributions: 6.0, 1.0, 1.0
+
+Final calculations:
+Total edges (M): 10
+Numerator sum: 182.0
+Denominator1 sum: 356.0
+Denominator2 sum: 72.0
+Assortativity coefficient: -0.797521
+==== Assortativity Calculation Complete ====
+
+Using sample size: 10 for diameter and betweenness
+
+----- Computing Density and Clustering Metrics -----
+
+==== Starting Triangle and Clustering Analysis ====
+Cluster size: 10
+
+Processing vertex 5
+  Degree: 1
+  Neighbors: {0}
+
+Processing vertex 7
+  Degree: 1
+  Neighbors: {0}
+
+Processing vertex 9
+  Degree: 1
+
+Processing vertex 6
+  Degree: 1
+  Neighbors: {0}
+
+Processing vertex 2
+  Degree: 2
+  Neighbors: {1, 0}
+
+Processing vertex 10
+  Degree: 1
+  Neighbors: {1}
+
+Processing vertex 4
+  Degree: 1
+  Neighbors: {0}
+
+Processing vertex 0
+  Degree: 6
+  Neighbors: {5, 7, 1, 4, 6, 2}
+  Neighbors: {1}
+
+Processing vertex 1
+  Degree: 5
+  Neighbors: {8, 0, 2, 10, 9}
+
+Processing vertex 8
+  Degree: 1
+  Neighbors: {1}
+    Checking neighbor 8
+    U's neighbors: {1}
+    Checking neighbor 1
+    U's neighbors: {8, 0, 2, 10, 9}
+    Checking neighbor 5
+    U's neighbors: {0}
+      Found triangle: 2-1-0
+    Checking neighbor 0
+    U's neighbors: {5, 7, 1, 4, 6, 2}
+      Found triangle: 1-0-2
+    Checking neighbor 0
+    Checking neighbor 7
+    U's neighbors: {0}
+    U's neighbors: {5, 7, 1, 4, 6, 2}
+      Found triangle: 2-0-1
+    Checking neighbor 1
+    U's neighbors: {8, 0, 2, 10, 9}
+  Stats for vertex 2:
+    Raw triangles: 2
+    Local triangles (after division): 1
+    Possible triangles: 1
+    Local CC: 1.0
+      Found triangle: 0-1-2
+    Checking neighbor 4
+    U's neighbors: {0}
+    Checking neighbor 6
+    U's neighbors: {0}
+    Checking neighbor 2
+    U's neighbors: {1, 0}
+      Found triangle: 1-2-0
+    Checking neighbor 2
+    U's neighbors: {1, 0}
+      Found triangle: 0-2-1
+    Checking neighbor 10
+    U's neighbors: {1}
+  Stats for vertex 0:
+    Raw triangles: 2
+    Local triangles (after division): 1
+    Possible triangles: 15
+    Local CC: 0.0666667
+    Checking neighbor 9
+    U's neighbors: {1}
+  Stats for vertex 1:
+    Raw triangles: 2
+    Local triangles (after division): 1
+    Possible triangles: 10
+    Local CC: 0.1
+
+Final Results:
+Total triangles: 1
+Total wedges: 26
+Valid vertices: 3
+Participating vertices: 3
+Maximum triangles per vertex: 1
+Average local CC: 0.116667
+Global CC: 0.115385
+Triangle density: 0.1
+Participation rate: 0.3
+==== Triangle Analysis Complete ====
+
+
+----- Computing Spectral Metrics -----
+
+Graph Volume:44
+Cluster Analysis:
+Size: 10
+Cluster Volume: 22
+Cluster cutedges: 2
+Conductance: 0.0909091
+Spectral Bounds (λ2):
+==================== calculateSpectralBounds ======================
+
+----- Computing Triangle Centrality -----
+
+==== Starting Triangle Centrality Calculation ====
+Cluster size: 10
+Starting triangle counting phase
+Found triangle: 0-1-2
+
+Calculating neighbor triangle counts
+
+Calculating final centralities
+
+Triangle Centrality Results:
+Total triangles: 1
+Sample centralities:
+Vertex 5: 0.333333
+Vertex 7: 0.333333
+Vertex 8: 0.333333
+Vertex 1: 1.0
+Vertex 0: 1.0
+==== Triangle Centrality Calculation Complete ====
+
+
+----- Computing Transitivity Metrics -----
+
+==== Starting Transitivity Metrics Calculation ====
+Original cluster size: 10
+Pre-computing neighbor sets
+Starting parallel wedge and triangle counting
+
+Final Results:
+Analyzed vertices: 10
+Total wedges found: 26
+Total triangles found: 1
+Triangle-to-Wedge ratio: 0.0384615
+Global transitivity: 0.115385
+==== Transitivity Metrics Calculation Complete ====
+
+
+----- Computing Diameter Metrics -----
+
+==== Starting Enhanced Diameter Calculation ====
+Cluster size: 10
+Using exact calculation for small cluster
+
+==== Starting Enhanced BFS ====
+
+==== Starting Enhanced BFS ====
+Starting vertex: 7
+Cluster size: 10
+Starting vertex: 5
+Cluster size: 10
+Created cluster array of size: 10
+Created cluster array of size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+
+==== Starting Enhanced BFS ====
+Starting vertex: 9
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 4
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 0
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 10
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 6
+Cluster size: 10
+Created cluster array of size: 10
+Created cluster array of size: 10
+Created cluster array of size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+
+==== Starting Enhanced BFS ====
+Starting vertex: 2
+Created cluster array of size: 10
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Processing vertex 4 at level 0
+Number of neighbors: 1
+  Found new vertex 0 at level 1
+Cluster size: 10
+Current frontier size: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 0 at level 0
+Number of neighbors: 6
+  Found new vertex 5 at level 1
+  Found new vertex 7 at level 1
+Created cluster array of size: 10
+  Found new vertex 1 at level 1
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Processing vertex 10 at level 0
+Number of neighbors: 1
+  Found new vertex 4 at level 1
+  Found new vertex 6 at level 1
+  Found new vertex 2 at level 1
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 5 at level 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 6
+  Found new vertex 7 at level 2
+  Found new vertex 1 at level 2
+  Found new vertex 6 at level 2
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+  Found new vertex 2 at level 2
+Processing vertex 6 at level 0
+Number of neighbors: 1
+  Found new vertex 1 at level 1
+  Found new vertex 0 at level 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+Processing vertex 5 at level 1
+Number of neighbors: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Processing vertex 7 at level 1
+Number of neighbors: 1
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Current frontier size: 1
+Current frontier size: 1
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 5 at level 2
+  Found new vertex 7 at level 2
+  Found new vertex 1 at level 2
+  Found new vertex 4 at level 2
+Processing vertex 1 at level 1
+Number of neighbors: 5
+Processing vertex 1 at level 1
+Number of neighbors: 5
+  Found new vertex 8 at level 2
+  Found new vertex 10 at level 2
+  Found new vertex 9 at level 2
+Processing vertex 4 at level 1
+Number of neighbors: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Current frontier size: 1
+Processing vertex 6 at level 1
+Number of neighbors: 1
+  Found new vertex 2 at level 2
+Initialized frontier sets and depth array
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Starting BFS traversal
+
+Processing level 0
+Processing vertex 5 at level 0
+Number of neighbors: 1
+Current frontier size: 1
+  Found new vertex 0 at level 1
+
+==== Starting Enhanced BFS ====
+Starting vertex: 8
+Cluster size: 10
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 1
+Number of neighbors: 2
+Processing vertex 2 at level 0
+Number of neighbors: 2
+  Found new vertex 8 at level 2
+  Found new vertex 0 at level 2
+  Found new vertex 2 at level 2
+  Found new vertex 9 at level 2
+Processing vertex 1 at level 2
+Number of neighbors: 5
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 4
+  Found new vertex 8 at level 3
+  Found new vertex 10 at level 3
+  Found new vertex 9 at level 3
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 3
+  Found new vertex 1 at level 1
+Processing vertex 8 at level 2
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Current frontier size: 5
+  Found new vertex 0 at level 1
+Created cluster array of size: 10
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Processing vertex 7 at level 0
+Number of neighbors: 1
+Current frontier size: 1
+  Found new vertex 0 at level 1
+Processing vertex 0 at level 1
+Number of neighbors: 6
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+  Found new vertex 7 at level 2
+  Found new vertex 1 at level 2
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 4 at level 2
+  Found new vertex 6 at level 2
+  Found new vertex 2 at level 2
+  Found new vertex 5 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+  Found new vertex 1 at level 2
+  Found new vertex 4 at level 2
+  Found new vertex 6 at level 2
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Processing vertex 8 at level 2
+Number of neighbors: 1
+Processing vertex 0 at level 2
+Number of neighbors: 6
+  Found new vertex 5 at level 3
+  Found new vertex 7 at level 3
+  Found new vertex 4 at level 3
+  Found new vertex 6 at level 3
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 3
+Current frontier size: 2
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 1 at level 1
+Number of neighbors: 5
+Processing vertex 9 at level 2
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Created cluster array of size: 10
+  Found new vertex 8 at level 2
+Processing vertex 7 at level 2
+Number of neighbors: 1
+  Found new vertex 10 at level 2
+Processing vertex 2 at level 2
+Number of neighbors: 2
+  Found new vertex 9 at level 2
+Processing vertex 9 at level 2
+Number of neighbors: 1
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 5 at level 2
+  Found new vertex 7 at level 2
+  Found new vertex 4 at level 2
+  Found new vertex 6 at level 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 4
+Processing vertex 5 at level 3
+Number of neighbors: 1
+Processing vertex 7 at level 3
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 7
+Processing vertex 4 at level 3
+Number of neighbors: 1
+Processing vertex 6 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 8 at level 2
+Number of neighbors: 1
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Processing vertex 9 at level 2
+Number of neighbors: 1
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 4 at level 2
+Processing vertex 1 at level 2
+Number of neighbors: 5
+  Found new vertex 8 at level 3
+  Found new vertex 10 at level 3
+  Found new vertex 9 at level 3
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Processing vertex 9 at level 3
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+  Found new vertex 2 at level 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Current frontier size: 3
+Processing vertex 1 at level 2
+Number of neighbors: 5
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 9 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+  Found new vertex 8 at level 3
+  Found new vertex 10 at level 3
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Processing vertex 1 at level 2
+Number of neighbors: 5
+  Found new vertex 9 at level 3
+  Found new vertex 8 at level 3
+Processing vertex 4 at level 2
+Number of neighbors: 1
+  Found new vertex 10 at level 3
+Processing vertex 6 at level 2
+Number of neighbors: 1
+  Found new vertex 9 at level 3
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 3
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 3
+Number of neighbors: 1
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 9 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+
+BFS Complete:
+$$$ Maximum distance found: 3
+Processing vertex 10 at level 3
+Number of neighbors: 1
+==== Enhanced BFS Complete ====
+
+Processing vertex 9 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+==== Starting Enhanced BFS ====
+Starting vertex: 1
+Cluster size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created cluster array of size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Processing vertex 8 at level 0
+Number of neighbors: 1
+  Found new vertex 1 at level 1
+Current frontier size: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Processing vertex 1 at level 0
+Number of neighbors: 5
+Current frontier size: 1
+  Found new vertex 8 at level 1
+Processing vertex 1 at level 1
+Number of neighbors: 5
+  Found new vertex 0 at level 1
+  Found new vertex 0 at level 2
+  Found new vertex 2 at level 1
+  Found new vertex 10 at level 1
+  Found new vertex 9 at level 1
+  Found new vertex 2 at level 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 5
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 8 at level 1
+Number of neighbors: 1
+  Found new vertex 10 at level 2
+  Found new vertex 9 at level 2
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 5 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 4
+  Found new vertex 7 at level 2
+Processing vertex 0 at level 2
+Number of neighbors: 6
+  Found new vertex 5 at level 3
+  Found new vertex 7 at level 3
+  Found new vertex 4 at level 2
+  Found new vertex 4 at level 3
+  Found new vertex 6 at level 2
+  Found new vertex 6 at level 3
+Processing vertex 2 at level 1
+Number of neighbors: 2
+Processing vertex 2 at level 2
+Processing vertex 10 at level 1
+Number of neighbors: 1
+Number of neighbors: 2
+Processing vertex 9 at level 1
+Number of neighbors: 1
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 4
+Processing vertex 9 at level 2
+Number of neighbors: 1
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 4
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 5 at level 3
+Number of neighbors: 1
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Processing vertex 7 at level 3
+Number of neighbors: 1
+Processing vertex 4 at level 3
+Number of neighbors: 1
+Processing vertex 6 at level 2
+Processing vertex 6 at level 3
+Number of neighbors: 1
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 9 at level 0
+Number of neighbors: 1
+  Found new vertex 1 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 1 at level 1
+Number of neighbors: 5
+  Found new vertex 8 at level 2
+  Found new vertex 0 at level 2
+  Found new vertex 2 at level 2
+  Found new vertex 10 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 4
+Processing vertex 8 at level 2
+Number of neighbors: 1
+Processing vertex 0 at level 2
+Number of neighbors: 6
+  Found new vertex 5 at level 3
+  Found new vertex 7 at level 3
+  Found new vertex 4 at level 3
+  Found new vertex 6 at level 3
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 4
+Processing vertex 5 at level 3
+Number of neighbors: 1
+Processing vertex 7 at level 3
+Number of neighbors: 1
+Processing vertex 4 at level 3
+Number of neighbors: 1
+Processing vertex 6 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+----- Computing Triangle Distribution Metrics -----
+
+----- Computing Path Metrics -----
+
+==== Starting Path Metrics Analysis ====
+Global transitivity: 0.115385
+Local transitivity: 0.116667
+Cluster density: 0.222222
+
+Path Metrics Results:
+  Local/Global ratio: 1.01111
+  Cohesion score: 0.616667
+==== Path Metrics Analysis Complete ====
+
+
+----- Computing Eccentricity Metrics -----
+
+==== Starting Eccentricity Analysis ====
+Diameter: 3
+Created domain from cluster of size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 5
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 7
+Cluster size: 10
+Created cluster array of size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+
+==== Starting Enhanced BFS ====
+Starting vertex: 8
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Created cluster array of size: 10
+Starting vertex: 1
+Cluster size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+
+==== Starting Enhanced BFS ====
+Starting vertex: 0
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 4
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 9
+Cluster size: 10
+Created cluster array of size: 10
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Processing vertex 8 at level 0
+Number of neighbors: 1
+  Found new vertex 1 at level 1
+Created cluster array of size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 2
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 10
+Cluster size: 10
+
+==== Starting Enhanced BFS ====
+Starting vertex: 6
+Created cluster array of size: 10
+Created cluster array of size: 10
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Processing vertex 5 at level 0
+Number of neighbors: 1
+  Found new vertex 0 at level 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Created cluster array of size: 10
+Processing vertex 1 at level 0
+Number of neighbors: 5
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+  Found new vertex 8 at level 1
+Processing vertex 1 at level 1
+Number of neighbors: 5
+  Found new vertex 0 at level 1
+  Found new vertex 2 at level 1
+  Found new vertex 0 at level 2
+  Found new vertex 10 at level 1
+  Found new vertex 2 at level 2
+  Found new vertex 9 at level 1
+  Found new vertex 10 at level 2
+  Found new vertex 9 at level 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 5
+Processing vertex 8 at level 1
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Processing vertex 0 at level 1
+Number of neighbors: 6
+Current frontier size: 4
+  Found new vertex 5 at level 2
+Processing vertex 0 at level 2
+Number of neighbors: 6
+  Found new vertex 7 at level 2
+  Found new vertex 5 at level 3
+  Found new vertex 7 at level 3
+  Found new vertex 4 at level 3
+  Found new vertex 6 at level 3
+  Found new vertex 4 at level 2
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Processing vertex 9 at level 2
+Number of neighbors: 1
+  Found new vertex 6 at level 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 4
+Processing vertex 2 at level 1
+Number of neighbors: 2
+Processing vertex 5 at level 3
+Number of neighbors: 1
+Processing vertex 10 at level 1
+Number of neighbors: 1
+Processing vertex 7 at level 3
+Number of neighbors: 1
+Processing vertex 9 at level 1
+Number of neighbors: 1
+Processing vertex 4 at level 3
+Number of neighbors: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Processing vertex 6 at level 3
+Number of neighbors: 1
+Current frontier size: 4
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Processing vertex 5 at level 2
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Processing vertex 6 at level 2
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 7 at level 2
+  Found new vertex 1 at level 2
+  Found new vertex 4 at level 2
+  Found new vertex 6 at level 2
+  Found new vertex 2 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 1 at level 2
+Number of neighbors: 5
+  Found new vertex 8 at level 3
+  Found new vertex 10 at level 3
+  Found new vertex 9 at level 3
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Current frontier size: 3
+Processing vertex 7 at level 0
+Number of neighbors: 1
+  Found new vertex 0 at level 1
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 0 at level 1
+Number of neighbors: 6
+Processing vertex 9 at level 3
+  Found new vertex 5 at level 2
+Number of neighbors: 1
+  Found new vertex 1 at level 2
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+  Found new vertex 4 at level 2
+  Found new vertex 6 at level 2
+  Found new vertex 2 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+Processing vertex 9 at level 0
+Number of neighbors: 1
+  Found new vertex 1 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Created cluster array of size: 10
+Cluster size: 10
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Created cluster array of size: 10
+Processing vertex 4 at level 0
+Number of neighbors: 1
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+  Found new vertex 0 at level 1
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Processing vertex 1 at level 2
+Number of neighbors: 5
+  Found new vertex 8 at level 3
+  Found new vertex 10 at level 3
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Created cluster array of size: 10
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 5 at level 2
+  Found new vertex 7 at level 2
+  Found new vertex 1 at level 2
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+  Found new vertex 6 at level 2
+  Found new vertex 2 at level 2
+Created domain: {5, 7, 8, 1, 0, 4, 6, 2, 10, 9}
+Current frontier size: 1
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+Current frontier size: 1
+  Found new vertex 9 at level 3
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 3
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 9 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 1 at level 1
+Number of neighbors: 5
+Processing vertex 10 at level 0
+Number of neighbors: 1
+Processing vertex 2 at level 0
+Number of neighbors: 2
+Processing vertex 5 at level 2
+Number of neighbors: 1
+  Found new vertex 1 at level 1
+Processing vertex 7 at level 2
+Number of neighbors: 1
+  Found new vertex 8 at level 2
+  Found new vertex 0 at level 2
+  Found new vertex 2 at level 2
+  Found new vertex 10 at level 2
+Processing vertex 1 at level 2
+Number of neighbors: 5
+  Found new vertex 8 at level 3
+Processing vertex 0 at level 0
+Number of neighbors: 6
+  Found new vertex 1 at level 1
+  Found new vertex 10 at level 3
+  Found new vertex 5 at level 1
+  Found new vertex 7 at level 1
+  Found new vertex 1 at level 1
+  Found new vertex 4 at level 1
+  Found new vertex 6 at level 1
+  Found new vertex 2 at level 1
+  Found new vertex 0 at level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+  Found new vertex 9 at level 3
+Current frontier size: 6
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 4
+Initialized frontier sets and depth array
+Starting BFS traversal
+
+Processing level 0
+Current frontier size: 1
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Processing vertex 5 at level 1
+Number of neighbors: 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Processing vertex 7 at level 1
+Number of neighbors: 1
+Processing vertex 6 at level 0
+Number of neighbors: 1
+  Found new vertex 0 at level 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Completed level 1
+Current max distance: 1
+
+Processing level 1
+Current frontier size: 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 3
+Processing vertex 0 at level 1
+Number of neighbors: 6
+Processing vertex 1 at level 1
+Number of neighbors: 5
+  Found new vertex 8 at level 2
+  Found new vertex 10 at level 2
+  Found new vertex 9 at level 2
+Current frontier size: 2
+Processing vertex 4 at level 1
+Number of neighbors: 1
+Processing vertex 1 at level 1
+Number of neighbors: 5
+Processing vertex 8 at level 2
+Number of neighbors: 1
+  Found new vertex 5 at level 2
+  Found new vertex 7 at level 2
+  Found new vertex 8 at level 2
+Processing vertex 1 at level 1
+Number of neighbors: 5
+  Found new vertex 8 at level 2
+  Found new vertex 10 at level 2
+Processing vertex 6 at level 1
+Number of neighbors: 1
+Processing vertex 0 at level 2
+Number of neighbors: 6
+  Found new vertex 1 at level 2
+Processing vertex 2 at level 1
+Number of neighbors: 2
+  Found new vertex 9 at level 2
+  Found new vertex 4 at level 2
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 3
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 0 at level 1
+Number of neighbors: 6
+  Found new vertex 2 at level 2
+  Found new vertex 5 at level 3
+  Found new vertex 7 at level 3
+  Found new vertex 4 at level 3
+  Found new vertex 6 at level 3
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 8 at level 2
+Number of neighbors: 1
+  Found new vertex 5 at level 2
+Processing vertex 9 at level 3
+  Found new vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Current frontier size: 5
+  Found new vertex 4 at level 2
+  Found new vertex 0 at level 2
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 9 at level 2
+Number of neighbors: 1
+  Found new vertex 6 at level 2
+  Found new vertex 2 at level 2
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Processing vertex 1 at level 2
+Number of neighbors: 5
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+  Found new vertex 8 at level 3
+Current frontier size: 7
+  Found new vertex 10 at level 3
+Processing vertex 8 at level 2
+Number of neighbors: 1
+  Found new vertex 9 at level 2
+  Found new vertex 9 at level 3
+Completed level 2
+Current max distance: 2
+
+Processing level 2
+Processing vertex 10 at level 2
+Processing vertex 4 at level 2
+Number of neighbors: 1
+Number of neighbors: 1
+Current frontier size: 4
+Processing vertex 9 at level 2
+Number of neighbors: 1
+Processing vertex 8 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Processing vertex 5 at level 2
+Number of neighbors: 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 3
+Processing vertex 7 at level 2
+Number of neighbors: 1
+Processing vertex 0 at level 2
+Number of neighbors: 6
+Processing vertex 4 at level 2
+Number of neighbors: 1
+  Found new vertex 5 at level 3
+  Found new vertex 7 at level 3
+  Found new vertex 4 at level 3
+  Found new vertex 6 at level 3
+Processing vertex 8 at level 3
+Number of neighbors: 1
+Processing vertex 6 at level 2
+Number of neighbors: 1
+Processing vertex 2 at level 2
+Number of neighbors: 2
+Processing vertex 10 at level 3
+Number of neighbors: 1
+Processing vertex 9 at level 2
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 2
+==== Enhanced BFS Complete ====
+
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 4
+Processing vertex 10 at level 2
+Number of neighbors: 1
+Processing vertex 9 at level 3
+Processing vertex 5 at level 3
+Number of neighbors: 1
+Number of neighbors: 1
+Completed level 3
+Current max distance: 3
+
+Processing level 3
+Current frontier size: 4
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 7 at level 3
+Number of neighbors: 1
+Processing vertex 5 at level 3
+Number of neighbors: 1
+Processing vertex 4 at level 3
+Number of neighbors: 1
+Processing vertex 7 at level 3
+Number of neighbors: 1
+Processing vertex 6 at level 3
+Number of neighbors: 1
+Processing vertex 4 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+Processing vertex 6 at level 3
+Number of neighbors: 1
+
+BFS Complete:
+$$$ Maximum distance found: 3
+==== Enhanced BFS Complete ====
+
+
+Eccentricity Results:
+  Radius: 2
+  Number of center vertices: 3
+  Number of peripheral vertices: 7
+  Average eccentricity: 2.7
+==== Eccentricity Analysis Complete ====
+
+
+----- Computing Distribution Statistics -----
+
+==== Calculating Distribution Statistics ====
+Sample size: 10
+
+Distribution Statistics:
+  Mean: 2.0
+  Median: 1.0
+  Standard Deviation: 1.88562
+  Skewness: 1.2529
+  Kurtosis: -0.278906
+  Key Percentiles:
+    25th: 1.0
+    50th: 1.0
+    75th: 1.0
+==== Distribution Statistics Complete ====
+
+
+Counting triangles for vertex 5
+Neighbors: {0}
+Total triangles for vertex 5: 0
+
+Counting triangles for vertex 7
+Neighbors: {0}
+Total triangles for vertex 7: 0
+
+Counting triangles for vertex 8
+Neighbors: {1}
+Total triangles for vertex 8: 0
+
+Counting triangles for vertex 1
+Neighbors: {8, 0, 2, 10, 9}
+Found triangle: 1-2-3
+Total triangles for vertex 1: 1
+
+Counting triangles for vertex 0
+Neighbors: {5, 7, 1, 4, 6, 2}
+Found triangle: 0-1-2
+Total triangles for vertex 0: 1
+
+Counting triangles for vertex 4
+Neighbors: {0}
+Total triangles for vertex 4: 0
+
+Counting triangles for vertex 6
+Neighbors: {0}
+Total triangles for vertex 6: 0
+
+Counting triangles for vertex 2
+Neighbors: {1, 0}
+Total triangles for vertex 2: 0
+
+Counting triangles for vertex 10
+Neighbors: {1}
+Total triangles for vertex 10: 0
+
+Counting triangles for vertex 9
+Neighbors: {1}
+Total triangles for vertex 9: 0
+
+==== Calculating Distribution Statistics ====
+Sample size: 10
+
+Distribution Statistics:
+  Mean: 0.2
+  Median: 0.0
+  Standard Deviation: 0.421637
+  Skewness: 1.28072
+  Kurtosis: -0.3675
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+==== Distribution Statistics Complete ====
+
+
+----- Analysis Complete -----
+
+========== Cluster Analysis Report ==========
+Cluster Size: 10 vertices
+
+----- Connectivity Metrics -----
+Basic Connectivity:
+  Minimum Degree: 1
+  Maximum Degree: 6
+  Average Degree: 2.0
+  Total Internal Edges: 10
+  Edge Connectivity Lower Bound: 2 Mader's theorem bound
+  Cluster Volume: 22
+  Cluster CutEdges: 2
+
+Degree Distribution:
+  Degree Variance: 3.2
+  Degree Skewness: 1.46742
+  Degree Second Moment: 72.0
+  Assortativity: -0.797521
+
+----- Density Metrics -----
+Basic Density:
+  Density: 0.222222
+  Sparsity: 0.777778
+  Maximum Possible Edges: 45
+
+Clustering Metrics:
+  Triangle Count: 1
+  Global Clustering Coefficient: 0.115385
+  Average Local Clustering Coefficient: 0.116667
+
+----- Spectral Metrics -----
+  Conductance: 0.0909091
+  λ2 Lower Bound: 0.00413223
+  λ2 Upper Bound: 0.181818
+  λ2 Estimate: 0.0929752
+
+----- Transitivity Metrics -----
+  Wedge Count: 26
+  Triangle-to-Wedge Ratio: 0.0384615
+  Global Transitivity: 0.115385
+
+----- Triangle Distribution Metrics -----
+  Triangle Density: 0.1
+  Participation Rate: 0.3
+  Max Local Triangles: 1
+  Average Triangles Per Vertex: 0.1
+
+----- Diameter and Eccentricity Metrics -----
+  Diameter: 3
+  (Exact calculation)
+  Radius: 2
+  Number of Center Vertices: 3
+  Center Vertices: [1, 0, 2]
+  Number of Peripheral Vertices: 7
+  Peripheral Vertices: [5, 7, 8, 4, 6, 10, 9]
+  Average Eccentricity: 2.7
+
+----- Distribution Statistics -----
+Degree Distribution:
+  Mean: 2.0
+  Median: 1.0
+  Standard Deviation: 1.88562
+  Skewness: 1.2529
+  Kurtosis: -0.278906
+  Key Percentiles:
+    25th: 1.0
+    50th: 1.0
+    75th: 1.0
+    90th: 5.0
+
+Triangle Distribution:
+  Mean: 0.2
+  Median: 0.0
+  Standard Deviation: 0.421637
+  Skewness: 1.28072
+  Kurtosis: -0.3675
+  Key Percentiles:
+    25th: 0.0
+    50th: 0.0
+    75th: 0.0
+    90th: 1.0
+
+===========================================
+2024-11-30:14:36:30 [WellConnectedComponents] wcc Line 1941 INFO [Chapel] WCC found 0 clusters to be well-connected.
+2024-11-30:14:36:30 [WellConnectedComponentsMsg] wellConnectedComponentsMsg Line 57 INFO [Chapel] Well connected components took 0.018586 sec
+2024-11-30:14:36:30 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"0", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2024-11-30:14:36:30 [ServerDaemon] run Line 722 INFO [Chapel] <<< wellConnectedComponents took 0.020200967788696289 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after wellConnectedComponents command is 0% pct of max memory 973796994662
+2024-11-30:14:36:30 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2024-11-30:14:36:30 [ServerDaemon] run Line 601 INFO [Chapel] >>> shutdown 
+2024-11-30:14:36:30 [ServerDaemon] sendShutdownRequest Line 615 INFO [Chapel] <<< shutdown initiated by md724 took 0.00011301040649414062 sec
+2024-11-30:14:36:30 [ServerDaemon] run Line 1106 INFO [Chapel] requests = 68 responseCount = 68 elapsed sec = 3
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
+deinit SymEntry
