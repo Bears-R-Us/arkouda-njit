@@ -402,6 +402,7 @@ record connectivityMetrics {
     var ViecutInPartiotionSize: int;
     var ViecutOutPartitionSize: int;
 
+    var secondOrderAverageDegree: real;           // The average degree of a vertex's neighbors
 }
 
 record densityMetrics {
@@ -1378,8 +1379,14 @@ proc calculateBasicStats(in cluster: set(int)) throws {
 }
   /* Basic connectivity metrics */
     proc calculateBasicConnectivity(ref cluster: set(int)) throws {
-        var metrics: connectivityMetrics;
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n==== Starting Basic Connectivity Analysis ====");
+            writeln("Cluster size: ", cluster.size);
+        }
         
+        var metrics: connectivityMetrics;
+        metrics.n_vertices = cluster.size;
+
         // Handle empty or singleton clusters
         if cluster.size <= 1 {
             metrics.n_vertices = 0;
@@ -1390,7 +1397,7 @@ proc calculateBasicStats(in cluster: set(int)) throws {
             metrics.edgeConnectivityLowerBound = 0;
             return metrics;
         }
-        metrics.n_vertices = cluster.size;
+
         // Get basic statistics first
         var basicStats = calculateBasicStats(cluster);
 
@@ -1420,6 +1427,42 @@ proc calculateBasicStats(in cluster: set(int)) throws {
         // Calculate Mader's theorem bound
         metrics.edgeConnectivityLowerBound = ((metrics.avgDegree + 2) / 2): int;
         
+        // Calculate second-order average degree
+        var secondOrderSum: atomic real;
+        var validVertices: atomic int;
+
+        // To Oliver: we can combine these two foralls. I tried but I faced some correctness issues!
+        
+        forall v in cluster with (ref secondOrderSum, ref validVertices) {
+            var neighbors = neighborsSetGraphG1[v] & cluster;
+            if neighbors.size > 0 {  // Only consider vertices with neighbors
+                var neighborDegreeSum: atomic real;
+                
+                // Calculate sum of degrees of neighbors
+                forall n in neighbors with (ref neighborDegreeSum) {
+                    neighborDegreeSum.add((neighborsSetGraphG1[n] & cluster).size:real);
+                }
+                
+                secondOrderSum.add(neighborDegreeSum.read() / neighbors.size:real);
+                validVertices.add(1);
+            }
+        }
+        
+        metrics.secondOrderAverageDegree = if validVertices.read() > 0 then
+                                        secondOrderSum.read() / validVertices.read()
+                                        else 0.0;
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nConnectivity Analysis Results:");
+            writeln("  Vertices: ", metrics.n_vertices);
+            writeln("  Edges: ", metrics.totalInternalEdges);
+            writeln("  Min Degree: ", metrics.minDegree);
+            writeln("  Max Degree: ", metrics.maxDegree);
+            writeln("  Average Degree: ", metrics.avgDegree);
+            writeln("  Second-order Average Degree: ", metrics.secondOrderAverageDegree);
+            writeln("==== Basic Connectivity Analysis Complete ====\n");
+        }
+
         return metrics;
     }
 
@@ -1448,7 +1491,174 @@ proc calculateAdvancedConnectivity(ref cluster: set(int)) throws {
     return metrics;
 }
 
+/* Hybrid sampling approach combining multiple techniques */
+proc hybridSampleClusterVertices(ref cluster: set(int), sampleSize: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Hybrid Sampling ====");
+        writeln("Cluster size: ", cluster.size);
+        writeln("Target sample size: ", sampleSize);
+    }
 
+    // Return full cluster if it's small enough
+    if cluster.size <= 10000 {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Cluster size <= 10000, using full cluster");
+        }
+        return cluster;
+    }
+
+    // Calculate sample sizes for each method
+    const ffSize = (sampleSize * 0.4): int;     // 40% Forest Fire
+    const dwSize = (sampleSize * 0.4): int;     // 40% Degree-Weighted
+    const stratSize = sampleSize - ffSize - dwSize;  // 20% Stratified
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Sample size distribution:");
+        writeln("  Forest Fire: ", ffSize);
+        writeln("  Degree-Weighted: ", dwSize);
+        writeln("  Stratified: ", stratSize);
+    }
+
+    // Get Forest Fire sample
+    var ffSample = forestFireSample(cluster, ffSize);
+    
+    // Get Degree-Weighted sample from remaining vertices
+    var remainingAfterFF = cluster - ffSample;
+    var dwSample = sampleClusterVertices(remainingAfterFF, dwSize);
+    
+    // Get Stratified sample from remaining vertices
+    var remainingAfterDW = remainingAfterFF - dwSample;
+    var stratSample = stratifiedSample(remainingAfterDW, stratSize);
+
+    // Combine samples
+    var finalSample = ffSample | dwSample | stratSample;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nSampling Results:");
+        writeln("  Forest Fire sample size: ", ffSample.size);
+        writeln("  Degree-Weighted sample size: ", dwSample.size);
+        writeln("  Stratified sample size: ", stratSample.size);
+        writeln("  Final sample size: ", finalSample.size);
+        writeln("==== Hybrid Sampling Complete ====\n");
+    }
+
+    return finalSample;
+}
+
+/* Forest Fire sampling component */
+proc forestFireSample(ref cluster: set(int), sampleSize: int) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nStarting Forest Fire sampling");
+    }
+
+    var sampledVertices: set(int);
+    var queue: list(int);
+    var rng = new randomStream(real);
+    const forwardProb = 0.7;
+    const decayFactor = 0.3;
+
+    // Start from high-degree vertex
+    var startVertex = selectHighDegreeVertex(cluster);
+    queue.pushBack(startVertex);
+
+    while sampledVertices.size < sampleSize && queue.size > 0 {
+        var v = queue.pop();
+        if !sampledVertices.contains(v) {
+            sampledVertices.add(v);
+            
+            // Process neighbors
+            var neighbors = neighborsSetGraphG1[v] & cluster;
+            var burnProb = forwardProb;
+            for u in neighbors {
+                if rng.next() <= burnProb && !sampledVertices.contains(u) {
+                    queue.pushBack(u);
+                    burnProb *= decayFactor;
+                }
+            }
+        }
+    }
+
+    return sampledVertices;
+}
+
+/* Stratified sampling component */
+proc stratifiedSample(ref cluster: set(int), sampleSize: int) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nStarting Stratified sampling");
+    }
+
+    var sampledVertices: set(int);
+    var clusterArray = cluster.toArray();
+    
+    // Calculate degrees
+    var degrees: [clusterArray.domain] int;
+    forall i in clusterArray.domain {
+        degrees[i] = (neighborsSetGraphG1[clusterArray[i]] & cluster).size;
+    }
+    
+    // Create degree quartiles
+    var sortedDegrees = sort(degrees);
+    const q1 = sortedDegrees[(degrees.size/4):int];
+    const q2 = sortedDegrees[(degrees.size/2):int];
+    const q3 = sortedDegrees[(3*degrees.size/4):int];
+    
+    // Sample from each stratum
+    const strataSize = max(1, (sampleSize/4):int);
+    for stratum in 1..4 {
+        var strataVertices: set(int);
+        var (minDeg, maxDeg) = if stratum == 1 then (0, q1)
+                              else if stratum == 2 then (q1+1, q2)
+                              else if stratum == 3 then (q2+1, q3)
+                              else (q3+1, max(degrees));
+                              
+        // Collect vertices in this degree range
+        forall i in clusterArray.domain with (ref strataVertices) {
+            if degrees[i] >= minDeg && degrees[i] <= maxDeg {
+                strataVertices.add(clusterArray[i]);
+            }
+        }
+        
+        // Randomly sample from stratum
+        sampledVertices += randomSampleFromSet(strataVertices, min(strataSize, strataVertices.size));
+    }
+
+    return sampledVertices;
+}
+
+/* Helper function to select high-degree vertex */
+proc selectHighDegreeVertex(ref cluster: set(int)) {
+    var maxDegree = 0;
+    var highDegVertex = cluster.toArray()[0];
+    
+    for v in cluster {
+        var degree = (neighborsSetGraphG1[v] & cluster).size;
+        if degree > maxDegree {
+            maxDegree = degree;
+            highDegVertex = v;
+        }
+    }
+    
+    return highDegVertex;
+}
+
+/* Helper function for random sampling from a set */
+proc randomSampleFromSet(ref vertices: set(int), sampleSize: int) {
+    var sample: set(int);
+    var rng = new randomStream(real);
+    var vertexArray = vertices.toArray();
+    
+    var available = vertices;
+    while (sample.size < sampleSize && available.size > 0) {
+        var idx = (rng.next() * (available.size-1)): int;
+        var v = vertexArray[idx];
+        sample.add(v);
+        available.remove(v);
+    }
+    
+    return sample;
+}
+
+// Degree-Weighted Sampling technique
 /* Sampling function for large cluster analysis */
 proc sampleClusterVertices(ref cluster: set(int), sampleSize: int) {
     if cluster.size <= 10000 {
@@ -1802,7 +2012,7 @@ proc calculateAdvancedCore(ref cluster: set(int)) throws {
     }
 
     // Calculate hierarchical metrics
-    metrics = calculateHierarchicalMetrics(metrics, analysisCluster, shells, members);
+    metrics = calculateHierarchicalMetrics(metrics, analysisCluster, members);
 
     if logLevel == LogLevel.DEBUG {
         writeln("Calculating stability metrics");
@@ -2048,14 +2258,16 @@ proc calculateCorePeripheryMetrics(ref metrics: coreMetrics,
 
     return updatedMetrics;
 }
-/* Calculate comprehensive shell metrics with parallel processing and sampling */
-proc calculateShellMetrics(in metrics: coreMetrics,
-                         ref cluster: set(int, parSafe=false),  // Specify parSafe
-                         ref shellMembers: [] set(int, parSafe=true)) throws {  
+
+/* Calculate shell metrics with parallel processing and sampling */
+proc calculateShellMetrics(ref metrics: coreMetrics,
+                         ref cluster: set(int, parSafe=false),
+                         shellMembers: [] set(int, parSafe=true)) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Shell Metrics Calculation ====");
         writeln("Cluster size: ", cluster.size);
         writeln("Number of shells: ", metrics.coreNumber + 1);
+        writeln("shellMembers: ", shellMembers);
     }
 
     var updatedMetrics = metrics;
@@ -2074,187 +2286,176 @@ proc calculateShellMetrics(in metrics: coreMetrics,
         analysisCluster = sampleClusterVertices(cluster, sampleSize);
     }
 
-    // Arrays for parallel computation
-    var shellDensities: [0..metrics.coreNumber] atomic real;
-    var shellConnectivity: [0..metrics.coreNumber] atomic real;
-    var shellSizes: [0..metrics.coreNumber] atomic int;
+    // Arrays for parallel computation - now starting from 1
+    var shellDensities: [1..metrics.coreNumber+1] atomic real;
+    var shellConnectivity: [1..metrics.coreNumber+1] atomic real;
+    var shellSizes: [1..metrics.coreNumber+1] atomic int;
 
     if logLevel == LogLevel.DEBUG {
         writeln("Starting parallel shell analysis");
     }
 
-    // Calculate shell metrics in parallel
-    forall i in 0..metrics.coreNumber with (ref shellMembers) {
-        var currentShell = shellMembers[i];
-        shellSizes[i].write(currentShell.size);
-
+    // Calculate shell metrics in parallel - starting from 1
+    forall i in 1..metrics.coreNumber+1 with (ref shellMembers) {
+    //for i in 1..metrics.coreNumber+1 {
         if logLevel == LogLevel.DEBUG {
-            writeln("Processing shell ", i, " with size ", currentShell.size);
+            writeln("About to process shell ", i);
         }
 
-        // Calculate shell density if shell has more than one vertex
-        if currentShell.size > 1 {
-            var internalEdges: atomic int;
-            
-            // Count internal edges in parallel
-            forall v in currentShell with (ref internalEdges) {
-                var neighbors = neighborsSetGraphG1[v] & currentShell;
-                internalEdges.add(neighbors.size);
-            }
-            
-            var maxPossibleEdges = (currentShell.size * (currentShell.size - 1));
-            var density = if maxPossibleEdges > 0 then 
-                         (internalEdges.read() : real) / maxPossibleEdges
-                         else 0.0;
-            
-            shellDensities[i].write(density);
+        if i <= shellMembers.domain.high {
+            var currentShell = shellMembers[i];
+            shellSizes[i].write(currentShell.size);
 
             if logLevel == LogLevel.DEBUG {
-                writeln("Shell ", i, " density: ", density);
+                writeln("Processing shell ", i, " with size ", currentShell.size);
             }
 
-            // Calculate connectivity to next shell if it exists
-            if i < metrics.coreNumber {
-                var nextShell = shellMembers[i+1];
-                var crossEdges: atomic int;
+            // Calculate shell density if shell has more than one vertex
+            if currentShell.size > 1 {
+                var internalEdges: atomic int;
                 
-                // Count cross edges in parallel
-                forall v in currentShell with (ref crossEdges) {
-                    var nextShellNeighbors = neighborsSetGraphG1[v] & nextShell;
-                    crossEdges.add(nextShellNeighbors.size);
+                // Count internal edges in parallel
+                forall v in currentShell with (ref internalEdges) {
+                    var neighbors = neighborsSetGraphG1[v] & currentShell;
+                    internalEdges.add(neighbors.size);
+                }
+                
+                var maxPossibleEdges = (currentShell.size * (currentShell.size - 1));
+                if maxPossibleEdges > 0 {
+                    var density = (internalEdges.read() : real) / maxPossibleEdges;
+                    shellDensities[i].write(density);
+                } else {
+                    shellDensities[i].write(0.0);
                 }
 
-                var maxPossibleCross = currentShell.size * nextShell.size;
-                var connectivity = if maxPossibleCross > 0 then
-                                 (crossEdges.read() : real) / maxPossibleCross
-                                 else 0.0;
-                
-                shellConnectivity[i].write(connectivity);
-
-                if logLevel == LogLevel.DEBUG {
-                    writeln("Shell ", i, " to ", i+1, " connectivity: ", connectivity);
+                // Calculate connectivity to next shell if it exists
+                if i < metrics.coreNumber+1 && i+1 <= shellMembers.domain.high && shellMembers[i+1].size > 0 {
+                    var crossEdges: atomic int;
+                    forall v in currentShell with (ref crossEdges) {
+                        var nextShellNeighbors = neighborsSetGraphG1[v] & shellMembers[i+1];
+                        crossEdges.add(nextShellNeighbors.size);
+                    }
+                    
+                    var maxPossibleCross = currentShell.size * shellMembers[i+1].size;
+                    if maxPossibleCross > 0 {
+                        shellConnectivity[i].write((crossEdges.read():real) / maxPossibleCross);
+                    } else {
+                        shellConnectivity[i].write(0.0);
+                    }
                 }
             }
         }
     }
 
-    // Update metrics with computed values
-    forall i in 0..min(10, metrics.coreNumber) with(ref updatedMetrics){
-        updatedMetrics.shellDensities[i] = shellDensities[i].read();
-        updatedMetrics.shellConnectivity[i] = shellConnectivity[i].read();
-        updatedMetrics.shellDecomposition[i] = shellSizes[i].read();
-    }
-
-    // Calculate additional shell statistics
-    var totalShellSize: atomic int;
-    var nonEmptyShells: atomic int;
-    
-    forall i in 0..metrics.coreNumber with (ref totalShellSize, ref nonEmptyShells) {
-        if shellSizes[i].read() > 0 {
-            totalShellSize.add(shellSizes[i].read());
-            nonEmptyShells.add(1);
+    // Update metrics with computed values - adjusting for zero-based storage
+    forall i in 1..min(11, metrics.coreNumber+1) with(ref updatedMetrics){
+        if i <= shellMembers.domain.high {
+            updatedMetrics.shellDensities[i-1] = shellDensities[i].read();
+            updatedMetrics.shellConnectivity[i-1] = shellConnectivity[i].read();
+            updatedMetrics.shellDecomposition[i-1] = shellSizes[i].read();
         }
     }
 
     if logLevel == LogLevel.DEBUG {
-        writeln("\nShell Analysis Results:");
-        writeln("Total vertices in shells: ", totalShellSize.read());
-        writeln("Number of non-empty shells: ", nonEmptyShells.read());
-        writeln("Shell density range: ", 
-               min reduce [i in 0..metrics.coreNumber] shellDensities[i].read(), " to ",
-               max reduce [i in 0..metrics.coreNumber] shellDensities[i].read());
+        writeln("\nShell Metrics Results:");
+        for i in 1..metrics.coreNumber+1 {
+            if i <= shellMembers.domain.high && shellSizes[i].read() > 0 {
+                writeln("Shell ", i, ":");
+                writeln("  Size: ", shellSizes[i].read());
+                writeln("  Density: ", shellDensities[i].read());
+                if i < metrics.coreNumber+1 && i+1 <= shellMembers.domain.high {
+                    writeln("  Connectivity to next shell: ", shellConnectivity[i].read());
+                }
+            }
+        }
         writeln("==== Shell Metrics Calculation Complete ====\n");
     }
 
     return updatedMetrics;
 }
+
 /* Calculate hierarchical metrics with parallel processing and sampling */
 proc calculateHierarchicalMetrics(ref metrics: coreMetrics,
                                 ref cluster: set(int, parSafe=false),
-                                vertexShells: [] atomic int,
                                 shellMembers: [] set(int, parSafe=true)) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Hierarchical Metrics Calculation ====");
         writeln("Cluster size: ", cluster.size);
         writeln("Number of shells: ", metrics.coreNumber + 1);
+        writeln("Shell members domain: ", shellMembers.domain);
+        writeln("Shell members contents: ", shellMembers);
     }
 
     var updatedMetrics = metrics;
     
-    // Handle sampling for large clusters
-    var analysisCluster = cluster;
-    if cluster.size > 100000 {
-        const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
-                     else if cluster.size <= 1000000 then (cluster.size * 0.05): int
-                     else (cluster.size * 0.01): int;
-
-        if logLevel == LogLevel.DEBUG {
-            writeln("Large cluster detected, using sampling");
-            writeln("Sample size: ", sampleSize);
-        }
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
-    }
-
-    // Calculate hierarchy depth (number of non-empty shells)
+    // Calculate number of non-empty shells
     var nonEmptyShells: atomic int;
-    forall i in 0..metrics.coreNumber {
+    forall i in shellMembers.domain with (ref nonEmptyShells) {
         if shellMembers[i].size > 0 {
             nonEmptyShells.add(1);
         }
     }
     updatedMetrics.coreHierarchyDepth = nonEmptyShells.read();
 
-    // Calculate hierarchy balance
-    var expectedShellSize = analysisCluster.size: real / (metrics.coreNumber + 1): real;
-    var sizeVariance: atomic real;
-
     if logLevel == LogLevel.DEBUG {
-        writeln("Expected shell size: ", expectedShellSize);
-        writeln("Calculating shell size variations");
+        writeln("Non-empty shells count: ", updatedMetrics.coreHierarchyDepth);
     }
 
-    forall i in 0..metrics.coreNumber with (ref sizeVariance) {
-        var sizeDiff = shellMembers[i].size: real - expectedShellSize;
+    // Calculate hierarchy balance
+    var expectedShellSize = cluster.size:real / updatedMetrics.coreHierarchyDepth:real;
+    var sizeVariance: atomic real;
+
+    forall i in shellMembers.domain with (ref sizeVariance) {
+        var sizeDiff = shellMembers[i].size:real - expectedShellSize;
         sizeVariance.add(sizeDiff * sizeDiff);
     }
 
     // Calculate normalized hierarchy balance
-    updatedMetrics.hierarchyBalance = 1.0 - sqrt(sizeVariance.read()) / analysisCluster.size;
+    updatedMetrics.hierarchyBalance = 1.0 - sqrt(sizeVariance.read()) / cluster.size;
 
-    // Calculate core-degree correlation
     if logLevel == LogLevel.DEBUG {
-        writeln("Calculating core-degree correlation");
+        writeln("Expected shell size: ", expectedShellSize);
+        writeln("Size variance: ", sizeVariance.read());
+        writeln("Hierarchy balance: ", updatedMetrics.hierarchyBalance);
     }
 
+    // Calculate core-degree correlation
     // Arrays for correlation calculation
-    const clusterDomain: domain(int, parSafe=true) = analysisCluster.toArray();
     var sumX: atomic real;  // sum of degrees
     var sumY: atomic real;  // sum of shell numbers
     var sumXY: atomic real; // sum of products
     var sumX2: atomic real; // sum of squared degrees
     var sumY2: atomic real; // sum of squared shell numbers
-    var n = analysisCluster.size;
+    var validPairs: atomic int;  // count valid vertex-shell pairs
 
-    forall v in analysisCluster with (ref sumX, ref sumY, ref sumXY, ref sumX2, ref sumY2) {
-        var degree = (neighborsSetGraphG1[v] & analysisCluster).size: real;
-        var shell = vertexShells[v].read(): real;
-
-        sumX.add(degree);
-        sumY.add(shell);
-        sumXY.add(degree * shell);
-        sumX2.add(degree * degree);
-        sumY2.add(shell * shell);
+    forall i in shellMembers.domain {
+        forall v in shellMembers[i] with (ref sumX, ref sumY, ref sumXY, ref sumX2, ref sumY2, ref validPairs) {
+            var degree = (neighborsSetGraphG1[v] & cluster).size;
+            var shellNum = i;
+            
+            sumX.add(degree:real);
+            sumY.add(shellNum:real);
+            sumXY.add(degree:real * shellNum:real);
+            sumX2.add(degree:real * degree:real);
+            sumY2.add(shellNum:real * shellNum:real);
+            validPairs.add(1);
+        }
     }
 
     // Calculate correlation coefficient
-    var numerator = n * sumXY.read() - sumX.read() * sumY.read();
-    var denominatorX = n * sumX2.read() - sumX.read() * sumX.read();
-    var denominatorY = n * sumY2.read() - sumY.read() * sumY.read();
-    var denominator = sqrt(denominatorX * denominatorY);
+    var n = validPairs.read():real;
+    if n > 1 {
+        var numerator = n * sumXY.read() - sumX.read() * sumY.read();
+        var denominatorX = n * sumX2.read() - sumX.read() * sumX.read();
+        var denominatorY = n * sumY2.read() - sumY.read() * sumY.read();
+        var denominator = sqrt(denominatorX * denominatorY);
 
-    updatedMetrics.coreDegreeCorrelation = if denominator != 0.0 then
-                                          numerator / denominator
-                                          else 0.0;
+        updatedMetrics.coreDegreeCorrelation = if denominator != 0.0 then
+                                              numerator / denominator
+                                              else 0.0;
+    } else {
+        updatedMetrics.coreDegreeCorrelation = 0.0;
+    }
 
     if logLevel == LogLevel.DEBUG {
         writeln("\nHierarchical Analysis Results:");
@@ -2266,6 +2467,8 @@ proc calculateHierarchicalMetrics(ref metrics: coreMetrics,
 
     return updatedMetrics;
 }
+
+
 /* Calculate quality metrics with parallel processing and sampling */
 proc calculateQualityMetrics(metrics: coreMetrics,
                            ref cluster: set(int),
@@ -2401,7 +2604,8 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
     }
 
     // Run stability trials in parallel
-    forall t in 1..trials with (ref analysisCluster) {
+    // forall t in 1..trials with (ref analysisCluster) {
+    for t in 1..trials {
         var trialCluster: set(int) = analysisCluster;
         var removedVertices = sampleClusterVertices(analysisCluster, removalSize);
         trialCluster -= removedVertices;
@@ -2423,7 +2627,8 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
     }
 
     // Calculate persistence and overlap between consecutive cores
-    forall k in 0..min(10, maxShell) with (ref updatedMetrics, ref analysisCluster) {
+    // forall k in 0..min(10, maxShell) with (ref updatedMetrics, ref analysisCluster) {
+    for k in 0..min(10, maxShell) {
         var kCore = getKCore(analysisCluster, k, vertexShells);
         var nextKCore = getKCore(analysisCluster, k+1, vertexShells);
 
@@ -2458,6 +2663,7 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
 
     return updatedMetrics;
 }
+
 /* Extract k-core from shell decomposition */
 proc getKCore(in cluster: set(int, parSafe=false), 
               k: int, 
@@ -2687,6 +2893,7 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
     writeln("  Minimum Degree: ", metrics.connectivity.minDegree);
     writeln("  Maximum Degree: ", metrics.connectivity.maxDegree);
     writeln("  Average Degree: ", metrics.connectivity.avgDegree);
+    writeln("  Second-order Average Degree: ", metrics.connectivity.secondOrderAverageDegree);
     writeln("  Edge Connectivity Lower Bound: ", metrics.connectivity.edgeConnectivityLowerBound, " Mader's theorem bound");
     writeln("  Cluster Volume: ", metrics.connectivity.clusterVolume);
     writeln("  Cluster CutEdges: ", metrics.connectivity.clusterCutEdges);
