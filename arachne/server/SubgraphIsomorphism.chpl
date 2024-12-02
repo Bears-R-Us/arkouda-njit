@@ -207,9 +207,6 @@ module SubgraphIsomorphism {
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
 
-    // TODO: ADD THIS AS A PARAMETER TO THE ARACHNE API.
-    var noVertexAttributes = true;
-
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
@@ -240,6 +237,10 @@ module SubgraphIsomorphism {
     var subgraphNodeAttributes = g2.getNodeAttributes();
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributes = g2.getEdgeAttributes();
+
+    // TODO: ADD THIS AS A PARAMETER TO THE ARACHNE API. Currently, it is a way to ensure that the
+    //       edges are checked for attributes if no vertex attributes exist.
+    var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     
     // Global array to keep track of all isomorphic mappings.
     var allmappings: list(int, parSafe=true);
