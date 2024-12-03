@@ -435,7 +435,8 @@ record spectralMetrics {
 
 /* Enhanced Record definitions for storing metrics */
 record clusterMetricsRecord {
-    var key: int;
+    var keyID: int;
+    var parentID: int;
     var connectivity: connectivityMetrics;
     var density: densityMetrics;
     var spectral: spectralMetrics;
@@ -468,14 +469,19 @@ record triangleCentralityMetrics {
 
 
 /* Main analysis function for cluster metrics */
-proc analyzeCluster(ref cluster: set(int), clusterId: int, ref runConfig: MetricsConfig) throws {
+proc analyzeCluster(ref cluster: set(int), clusterId: int, parentId: int, ref runConfig: MetricsConfig) throws {
    // Validate configuration first
     runConfig.validate();
     writeln("runConfig: ", runConfig);
     var metrics = new clusterMetricsRecord();
     
+    metrics.keyID = clusterId;
+    metrics.parentID = parentId;
+    
     if logLevel == LogLevel.DEBUG {
         writeln("\n========== Starting Cluster Analysis ==========");
+        writeln("Cluster ID: ", metrics.keyID);
+        writeln("Parent ID: ", metrics.parentID);
         writeln("Cluster size: ", cluster.size);
     }
     
@@ -1184,7 +1190,7 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
             writeln("Cluster size > 10000, using sampling");
             writeln("Calculated sample size: ", sampleSize);
         }
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
+        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
     }
 
     var metrics = new transitivityMetrics();
@@ -1480,7 +1486,7 @@ proc calculateAdvancedConnectivity(ref cluster: set(int)) throws {
     metrics = calculateAssortativity(cluster, basicStats, metrics);
     
     // For very large clusters, use sampling for expensive computations
-    var sampleSet = if cluster.size > 10000 then sampleClusterVertices(cluster, SAMPLE_SIZE)
+    var sampleSet = if cluster.size > 10000 then hybridSampleClusterVertices(cluster, SAMPLE_SIZE)
                                               else cluster;
     
     // Calculate diameter and betweenness (placeholder - need to implement)
@@ -1490,8 +1496,51 @@ proc calculateAdvancedConnectivity(ref cluster: set(int)) throws {
     
     return metrics;
 }
+/* FIFO Queue implementation using two lists for efficiency */
+// To Oliver: I needed a queue then I wrote this . is there any better way or any queue in Chaple!?
+record Queue {
+    var inStack: list(int);  // For pushing
+    var outStack: list(int); // For popping
+    
+    proc init() {
+        this.inStack = new list(int);
+        this.outStack = new list(int);
+    }
+    
+    /* Add element to queue */
+    proc enqueue(x: int) {
+        inStack.pushBack(x);
+    }
+    
+    /* Remove and return first element */
+    proc dequeue(): int {
+        // If outStack is empty, transfer elements from inStack
+        if outStack.size == 0 {
+            // Transfer elements in reverse order
+            while inStack.size > 0 {
+                outStack.pushBack(inStack.popBack());
+            }
+        }
+        
+        if outStack.size == 0 {
+            return -1;  // Queue is empty
+        }
+        
+        return outStack.popBack();
+    }
+    
+    /* Get queue size */
+    proc size: int { 
+        return inStack.size + outStack.size; 
+    }
+    
+    /* Check if queue is empty */
+    proc isEmpty: bool { 
+        return size == 0; 
+    }
+}
 
-/* Hybrid sampling approach combining multiple techniques */
+/* Hybrid sampling combining multiple techniques */
 proc hybridSampleClusterVertices(ref cluster: set(int), sampleSize: int) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Hybrid Sampling ====");
@@ -1507,123 +1556,232 @@ proc hybridSampleClusterVertices(ref cluster: set(int), sampleSize: int) throws 
         return cluster;
     }
 
-    // Calculate sample sizes for each method
-    const ffSize = (sampleSize * 0.4): int;     // 40% Forest Fire
-    const dwSize = (sampleSize * 0.4): int;     // 40% Degree-Weighted
-    const stratSize = sampleSize - ffSize - dwSize;  // 20% Stratified
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("Sample size distribution:");
-        writeln("  Forest Fire: ", ffSize);
-        writeln("  Degree-Weighted: ", dwSize);
-        writeln("  Stratified: ", stratSize);
-    }
-
-    // Get Forest Fire sample
-    var ffSample = forestFireSample(cluster, ffSize);
-    
-    // Get Degree-Weighted sample from remaining vertices
-    var remainingAfterFF = cluster - ffSample;
-    var dwSample = sampleClusterVertices(remainingAfterFF, dwSize);
-    
-    // Get Stratified sample from remaining vertices
-    var remainingAfterDW = remainingAfterFF - dwSample;
-    var stratSample = stratifiedSample(remainingAfterDW, stratSize);
-
-    // Combine samples
-    var finalSample = ffSample | dwSample | stratSample;
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("\nSampling Results:");
-        writeln("  Forest Fire sample size: ", ffSample.size);
-        writeln("  Degree-Weighted sample size: ", dwSample.size);
-        writeln("  Stratified sample size: ", stratSample.size);
-        writeln("  Final sample size: ", finalSample.size);
-        writeln("==== Hybrid Sampling Complete ====\n");
-    }
-
-    return finalSample;
-}
-
-/* Forest Fire sampling component */
-proc forestFireSample(ref cluster: set(int), sampleSize: int) {
-    if logLevel == LogLevel.DEBUG {
-        writeln("\nStarting Forest Fire sampling");
-    }
-
     var sampledVertices: set(int);
-    var queue: list(int);
+    var availableNodes: set(int) = cluster;  // Track available nodes
+    var clusterArray = cluster.toArray();
+    var clusterDomain: domain(int, parSafe=true) = clusterArray;
+    
+    // Cache neighbor information
+    if logLevel == LogLevel.DEBUG {
+        writeln("Pre-computing neighbor cache...");
+    }
+    var neighborCache: [clusterDomain] set(int);
+    var degrees: [clusterDomain] int;
+    
+    // Pre-compute neighbors and degrees
+    forall v in clusterDomain {
+        neighborCache[v] = neighborsSetGraphG1[v] & cluster;
+        degrees[v] = neighborCache[v].size;
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Vertex ", v, " degree: ", degrees[v]);
+        }
+    }
+
+    // Calculate target sizes for each method
+    const ffSize = (sampleSize * 0.4): int;
+    const dwSize = (sampleSize * 0.4): int;
+    const stratSize = sampleSize - ffSize - dwSize;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nSample size distribution:");
+        writeln("  Forest Fire target: ", ffSize);
+        writeln("  Degree-Weighted target: ", dwSize);
+        writeln("  Stratified target: ", stratSize);
+    }
+
+    // 1. Forest Fire sampling phase
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nStarting Forest Fire sampling phase");
+    }
+
+    var queue = new Queue();
+    var startVertex = selectHighDegreeVertex(availableNodes, neighborCache);
+    queue.enqueue(startVertex);
     var rng = new randomStream(real);
-    const forwardProb = 0.7;
-    const decayFactor = 0.3;
-
-    // Start from high-degree vertex
-    var startVertex = selectHighDegreeVertex(cluster);
-    queue.pushBack(startVertex);
-
-    while sampledVertices.size < sampleSize && queue.size > 0 {
-        var v = queue.pop();
-        if !sampledVertices.contains(v) {
+    
+    while sampledVertices.size < ffSize && !queue.isEmpty {
+        var v = queue.dequeue();
+        if availableNodes.contains(v) {
             sampledVertices.add(v);
+            availableNodes.remove(v);
             
-            // Process neighbors
-            var neighbors = neighborsSetGraphG1[v] & cluster;
-            var burnProb = forwardProb;
+            // Process neighbors with decaying probability
+            var neighbors = neighborCache[v] & availableNodes;
+            var burnProb = 0.7;  // Initial burn probability
+            
+            if logLevel == LogLevel.DEBUG {
+                writeln("  Processing vertex ", v, " with ", neighbors.size, " available neighbors");
+            }
+
             for u in neighbors {
-                if rng.next() <= burnProb && !sampledVertices.contains(u) {
-                    queue.pushBack(u);
-                    burnProb *= decayFactor;
+                if rng.next() <= burnProb {
+                    queue.enqueue(u);
+                    burnProb *= 0.3;  // Decay probability
                 }
             }
         }
     }
 
-    return sampledVertices;
-}
-
-/* Stratified sampling component */
-proc stratifiedSample(ref cluster: set(int), sampleSize: int) {
     if logLevel == LogLevel.DEBUG {
-        writeln("\nStarting Stratified sampling");
+        writeln("Forest Fire phase complete, sampled ", sampledVertices.size, " vertices");
     }
 
-    var sampledVertices: set(int);
-    var clusterArray = cluster.toArray();
-    
-    // Calculate degrees
-    var degrees: [clusterArray.domain] int;
-    forall i in clusterArray.domain {
-        degrees[i] = (neighborsSetGraphG1[clusterArray[i]] & cluster).size;
+    // 2. Degree-weighted sampling phase
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nStarting Degree-Weighted sampling phase");
     }
-    
-    // Create degree quartiles
-    var sortedDegrees = sort(degrees);
-    const q1 = sortedDegrees[(degrees.size/4):int];
-    const q2 = sortedDegrees[(degrees.size/2):int];
-    const q3 = sortedDegrees[(3*degrees.size/4):int];
-    
-    // Sample from each stratum
-    const strataSize = max(1, (sampleSize/4):int);
-    for stratum in 1..4 {
-        var strataVertices: set(int);
-        var (minDeg, maxDeg) = if stratum == 1 then (0, q1)
-                              else if stratum == 2 then (q1+1, q2)
-                              else if stratum == 3 then (q2+1, q3)
-                              else (q3+1, max(degrees));
-                              
-        // Collect vertices in this degree range
-        forall i in clusterArray.domain with (ref strataVertices) {
-            if degrees[i] >= minDeg && degrees[i] <= maxDeg {
-                strataVertices.add(clusterArray[i]);
-            }
+
+    if sampledVertices.size < ffSize + dwSize {
+        // Calculate weights based on degrees
+        var availableArray = availableNodes.toArray();
+        var weights: [availableArray.domain] real;
+        var maxDegree = max reduce [v in availableNodes] neighborCache[v].size;
+        
+        forall i in availableArray.domain {
+            var v = availableArray[i];
+            weights[i] = sqrt(neighborCache[v].size: real / maxDegree: real);
         }
         
-        // Randomly sample from stratum
-        sampledVertices += randomSampleFromSet(strataVertices, min(strataSize, strataVertices.size));
+        // Normalize weights
+        var totalWeight = + reduce weights;
+        weights /= totalWeight;
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Calculated weights for ", availableNodes.size, " vertices");
+        }
+        
+        // Sample vertices based on weights
+        while sampledVertices.size < ffSize + dwSize && availableNodes.size > 0 {
+            var r = rng.next();
+            var cumSum = 0.0;
+            var selected = -1;
+            
+            for i in availableArray.domain {
+                cumSum += weights[i];
+                if r <= cumSum {
+                    selected = availableArray[i];
+                    break;
+                }
+            }
+            
+            if selected != -1 {
+                sampledVertices.add(selected);
+                availableNodes.remove(selected);
+                if logLevel == LogLevel.DEBUG {
+                    writeln("  Selected vertex ", selected, " with degree ", neighborCache[selected].size);
+                }
+            }
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Degree-Weighted phase complete, total sampled: ", sampledVertices.size);
+    }
+
+    // 3. Stratified sampling phase
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nStarting Stratified sampling phase");
+    }
+
+    if sampledVertices.size < sampleSize {
+        var remainingSize = sampleSize - sampledVertices.size;
+        var availableDegrees = [v in availableNodes] neighborCache[v].size;
+        var sortedDegrees = availableDegrees;
+        sort(sortedDegrees);
+
+        if sortedDegrees.size == 0 {
+            if logLevel == LogLevel.DEBUG {
+                writeln("Warning: No degrees to calculate quartiles");
+            }
+            return sampledVertices;  // Return what we have so far
+        }
+
+        // Calculate quartile indices with safety checks
+        const q1idx = max(0, min((availableDegrees.size/4):int, sortedDegrees.size-1));
+        const q2idx = max(0, min((availableDegrees.size/2):int, sortedDegrees.size-1));
+        const q3idx = max(0, min((3*availableDegrees.size/4):int, sortedDegrees.size-1));
+
+        // Now safely access the array
+        const q1 = if sortedDegrees.size > 0 then sortedDegrees[q1idx] else 0;
+        const q2 = if sortedDegrees.size > 0 then sortedDegrees[q2idx] else 0;
+        const q3 = if sortedDegrees.size > 0 then sortedDegrees[q3idx] else 0;
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Degree quartiles: ", q1, ", ", q2, ", ", q3);
+        }
+
+        // Calculate maxDegree before starting stratum processing
+        var maxDegree = max reduce availableDegrees;
+
+        // Sample from each stratum
+        const strataSize = max(1, (remainingSize/4):int);
+        for stratum in 1..4 {
+            var strataVertices: set(int);
+            var (minDeg, maxDeg) = if stratum == 1 then (0, q1)
+                                  else if stratum == 2 then (q1+1, q2)
+                                  else if stratum == 3 then (q2+1, q3)
+                                  else (q3+1, maxDegree);
+            
+            // Collect vertices in this degree range
+            for v in availableNodes {
+                var deg = neighborCache[v].size;
+                if deg >= minDeg && deg <= maxDeg {
+                    strataVertices.add(v);
+                }
+            }
+            
+            if logLevel == LogLevel.DEBUG {
+                writeln("  Stratum ", stratum, " has ", strataVertices.size, " vertices");
+            }
+
+            // Randomly sample from stratum
+            var strataArray = strataVertices.toArray();
+            var toSelect = min(strataSize, strataVertices.size);
+            var used: [strataArray.domain] bool;  // Track which elements are used
+
+            for i in 1..toSelect {
+                if strataArray.size > 0 {
+                    var idx = -1;
+                    do {
+                        idx = (rng.next() * (strataArray.size-1)): int;
+                    } while used[idx];  // Keep trying until we find unused index
+                    
+                    used[idx] = true;
+                    var selected = strataArray[idx];
+                    sampledVertices.add(selected);
+                    availableNodes.remove(selected);
+                }
+            }
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nFinal Sampling Results:");
+        writeln("  Total vertices sampled: ", sampledVertices.size);
+        writeln("  Remaining available vertices: ", availableNodes.size);
+        writeln("==== Hybrid Sampling Complete ====\n");
     }
 
     return sampledVertices;
 }
+
+/* Helper function to select high-degree vertex */
+proc selectHighDegreeVertex(ref vertices: set(int), ref neighborCache: [?d] set(int)) {
+    var maxDegree = 0;
+    var highDegVertex = vertices.toArray()[0];
+    
+    for v in vertices {
+        var degree = neighborCache[v].size;
+        if degree > maxDegree {
+            maxDegree = degree;
+            highDegVertex = v;
+        }
+    }
+    
+    return highDegVertex;
+}
+
+
 
 /* Helper function to select high-degree vertex */
 proc selectHighDegreeVertex(ref cluster: set(int)) {
@@ -1639,92 +1797,6 @@ proc selectHighDegreeVertex(ref cluster: set(int)) {
     }
     
     return highDegVertex;
-}
-
-/* Helper function for random sampling from a set */
-proc randomSampleFromSet(ref vertices: set(int), sampleSize: int) {
-    var sample: set(int);
-    var rng = new randomStream(real);
-    var vertexArray = vertices.toArray();
-    
-    var available = vertices;
-    while (sample.size < sampleSize && available.size > 0) {
-        var idx = (rng.next() * (available.size-1)): int;
-        var v = vertexArray[idx];
-        sample.add(v);
-        available.remove(v);
-    }
-    
-    return sample;
-}
-
-// Degree-Weighted Sampling technique
-/* Sampling function for large cluster analysis */
-proc sampleClusterVertices(ref cluster: set(int), sampleSize: int) {
-    if cluster.size <= 10000 {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Cluster size <= 10000, using full cluster");
-        }
-        return cluster;
-    }
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("Starting sampling for cluster of size ", cluster.size);
-        writeln("Target sample size: ", sampleSize);
-    }
-
-    var sampledVertices: set(int);
-    var clusterArray = cluster.toArray();
-    var rng = new randomStream(real);
-    
-    // Calculate vertex weights based on degree within the cluster
-    var weights: [clusterArray.domain] real;
-    var maxDegree = max reduce [v in cluster] (neighborsSetGraphG1[v] & cluster).size;
-
-    forall i in clusterArray.domain {
-        var vertex = clusterArray[i];
-        var degree = (neighborsSetGraphG1[vertex] & cluster).size;  // Degree within cluster
-        weights[i] = sqrt(degree: real / maxDegree: real);
-    }
-    
-    // Normalize weights
-    var totalWeight = + reduce weights;
-    weights /= totalWeight;
-    
-    // Perform weighted sampling
-    var available = cluster;
-    while (sampledVertices.size < sampleSize && available.size > 0) {
-        var r = rng.next();
-        var cumSum = 0.0;
-        
-        for i in clusterArray.domain {
-            var vertex = clusterArray[i];
-            if available.contains(vertex) {
-                cumSum += weights[i];
-                if r <= cumSum {
-                    sampledVertices.add(vertex);
-                    available.remove(vertex);
-                    break;
-                }
-            }
-        }
-    }
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("Sampling complete. Selected ", sampledVertices.size, " vertices");
-        writeln("Sample average degree: ", 
-                (+ reduce [v in sampledVertices] neighborsSetGraphG1[v].size) / sampledVertices.size);
-    }
-    
-    return sampledVertices;
-}
-
-
-/* Comparator for sorting vertices by degree */
-record DegreeComparator {
-    proc compare(a: (int, int), b: (int, int)): int {
-        return a(1) - b(1);  // Sort by degree (second element of tuple)
-    }
 }
 
 
@@ -1972,7 +2044,7 @@ proc calculateAdvancedCore(ref cluster: set(int)) throws {
             writeln("Large cluster detected, using sampling");
             writeln("Sample size: ", sampleSize);
         }
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
+        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
     }
     
     // Get basic core decomposition first
@@ -2095,7 +2167,7 @@ proc calculateShellDecomposition(ref cluster: set(int)) throws {
     
     var maxDegree = max reduce [v in clusterDomain] degrees[v].read();
     var shellMembers: [1..maxDegree+1] set(int, parSafe=true);  // 1-based shell numbering
-    var remainingVertices: set(int) = cluster;
+    var remainingVertices: set(int, parSafe=true) = cluster;
     
     if logLevel == LogLevel.DEBUG {
         writeln("\nInitial degrees:");
@@ -2199,7 +2271,7 @@ proc calculateCorePeripheryMetrics(ref metrics: coreMetrics,
         const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int     
                      else if cluster.size <= 1000000 then (cluster.size * 0.05): int   
                      else (cluster.size * 0.01): int;                                  
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
+        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
     }
 
     var updatedMetrics = metrics;
@@ -2283,7 +2355,7 @@ proc calculateShellMetrics(ref metrics: coreMetrics,
             writeln("Large cluster detected, using sampling");
             writeln("Sample size: ", sampleSize);
         }
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
+        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
     }
 
     // Arrays for parallel computation - now starting from 1
@@ -2494,7 +2566,7 @@ proc calculateQualityMetrics(metrics: coreMetrics,
             writeln("Large cluster detected, using sampling");
             writeln("Sample size: ", sampleSize);
         }
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
+        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
     }
 
     // Atomic counters for parallel computation
@@ -2576,7 +2648,7 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
     }
 
     var updatedMetrics = metrics;
-    const trials = 10;
+    const trials = 10; // To Oliver: I just made it 10 no reason at all. we should investigate on number!
     const maxShell = metrics.coreNumber;
 
     // Handle sampling for large clusters
@@ -2590,7 +2662,7 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
             writeln("Large cluster detected, using sampling");
             writeln("Sample size: ", sampleSize);
         }
-        analysisCluster = sampleClusterVertices(cluster, sampleSize);
+        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
     }
 
     // Calculate core stability through random vertex removal
@@ -2604,10 +2676,10 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
     }
 
     // Run stability trials in parallel
-    // forall t in 1..trials with (ref analysisCluster) {
-    for t in 1..trials {
+    forall t in 1..trials with (ref analysisCluster) {// To Oliver: I don't know why I didn't bring back FORALL. check it
+    //for t in 1..trials {
         var trialCluster: set(int) = analysisCluster;
-        var removedVertices = sampleClusterVertices(analysisCluster, removalSize);
+        var removedVertices = hybridSampleClusterVertices(analysisCluster, removalSize);
         trialCluster -= removedVertices;
         
         var trialMetrics = calculateCoreNumbers(trialCluster);
@@ -2627,8 +2699,8 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
     }
 
     // Calculate persistence and overlap between consecutive cores
-    // forall k in 0..min(10, maxShell) with (ref updatedMetrics, ref analysisCluster) {
-    for k in 0..min(10, maxShell) {
+    forall k in 0..min(10, maxShell) with (ref updatedMetrics, ref analysisCluster) {
+    //for k in 0..min(10, maxShell) {
         var kCore = getKCore(analysisCluster, k, vertexShells);
         var nextKCore = getKCore(analysisCluster, k+1, vertexShells);
 
@@ -3221,8 +3293,9 @@ record MetricsConfig {
         // conf.computeBasicConnectivity=true;
         // conf.computeTriangleDistribution=true;
         // conf.getAllMetrics();
+        var parent = newClusterIdToOriginalClusterId[key];
         conf.getCoreMetrics();
-        analyzeCluster(clusterToAdd, key, conf);
+        analyzeCluster(clusterToAdd, key, parent, conf);
       }
       if outputType == "post" then writeClustersToFile();
       
