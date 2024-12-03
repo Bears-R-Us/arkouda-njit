@@ -491,7 +491,7 @@ proc analyzeCluster(ref cluster: set(int), clusterId: int, parentId: int, ref ru
             writeln("Empty or singleton cluster detected. Initializing empty metrics.");
         }
         metrics = initializeEmptyMetrics();
-        printClusterAnalysis(metrics, cluster.size);
+        printClusterAnalysis(metrics, cluster.size, clusterId, parentId);
         return metrics;
     }
 
@@ -621,7 +621,7 @@ proc analyzeCluster(ref cluster: set(int), clusterId: int, parentId: int, ref ru
     }
 
 
-        printClusterAnalysis(metrics, cluster.size);
+        printClusterAnalysis(metrics, cluster.size, clusterId, parentId);
     
     return metrics;
 }
@@ -2153,109 +2153,139 @@ proc calculateShellDecomposition(ref cluster: set(int)) throws {
         }
     }
 
-    // Convert cluster to array and create proper domain
+    // Create domain and arrays for tracking degrees
     var clusterArray = cluster.toArray();
     var clusterDomain: domain(int, parSafe=true) = clusterArray;
-    var vertexShells: [clusterDomain] atomic int;
     var degrees: [clusterDomain] atomic int;
-    
-    // Initialize degrees and shells
-    forall v in clusterDomain with (ref cluster){
-        degrees[v].write(calculateClusterDegree(cluster, v));
-        vertexShells[v].write(-1);  // -1 indicates unprocessed
-    }
-    
-    var maxDegree = max reduce [v in clusterDomain] degrees[v].read();
-    var shellMembers: [1..maxDegree+1] set(int, parSafe=true);  // 1-based shell numbering
+    var vertexShells: [clusterDomain] atomic int;
     var remainingVertices: set(int, parSafe=true) = cluster;
     
     if logLevel == LogLevel.DEBUG {
-        writeln("\nInitial degrees:");
-        for v in clusterDomain {
-            writeln("Vertex ", v, ": ", degrees[v].read());
+        writeln("\nCreated arrays and domain with size: ", clusterDomain.size);
+    }
+    
+    // Initialize degrees
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nInitializing degrees...");
+    }
+
+    forall v in clusterDomain {
+        var clusterNeighbors = neighborsSetGraphG1[v] & cluster;
+        degrees[v].write(clusterNeighbors.size);
+        vertexShells[v].write(-1);  // -1 indicates unprocessed
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("Vertex ", v, ": ", degrees[v].read(), " neighbors in cluster");
         }
-        writeln("\nMaximum degree: ", maxDegree);
+    }
+    
+    var maxDegree = max reduce [v in clusterDomain] degrees[v].read();
+    var shellMembers: [1..maxDegree+1] set(int, parSafe=true);
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nDegree initialization complete");
+        writeln("Maximum degree: ", maxDegree);
         writeln("Starting shell identification");
     }
 
-    // Shell decomposition
-    var k = 1;  // Start with shell 1
+    var k = 1;
     while remainingVertices.size > 0 {
-        var currentShell: set(int, parSafe=true);
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nProcessing shell ", k);
+            writeln("Remaining vertices: ", remainingVertices.size);
+        }
+
         var processedInIteration: bool;
-        
         do {
             processedInIteration = false;
             var toProcess: set(int, parSafe=true);
             
             // Find vertices with minimum degree k
             forall v in remainingVertices with (ref toProcess) {
-                if degrees[v].read() <= k {
+                var currentDegree = degrees[v].read();
+                if currentDegree <= k {
                     toProcess.add(v);
+                    if logLevel == LogLevel.DEBUG {
+                        writeln("  Vertex ", v, " identified for processing (degree: ", currentDegree, ")");
+                    }
                 }
             }
             
             if toProcess.size > 0 {
                 processedInIteration = true;
                 
+                if logLevel == LogLevel.DEBUG {
+                    writeln("\n  Processing ", toProcess.size, " vertices in current iteration");
+                }
+                
                 // Process identified vertices
-                forall v in toProcess with (ref currentShell, ref remainingVertices) {
-                    currentShell.add(v);
+                forall v in toProcess with (ref remainingVertices) {
                     vertexShells[v].write(k);
                     remainingVertices.remove(v);
+                    shellMembers[k].add(v);
                     
                     // Update neighbor degrees
-                    var neighbors = neighborsSetGraphG1[v] & remainingVertices;
-                    for u in neighbors {
-                        degrees[u].sub(1);
+                    var validNeighbors = neighborsSetGraphG1[v] & remainingVertices & cluster;
+                    
+                    if logLevel == LogLevel.DEBUG {
+                        writeln("  Processing vertex ", v);
+                        writeln("    Valid neighbors to update: ", validNeighbors);
+                    }
+                    
+                    for u in validNeighbors {
+                        if clusterDomain.contains(u) {
+                            var oldDegree = degrees[u].read();
+                            degrees[u].sub(1);
+                            var newDegree = degrees[u].read();
+                            
+                            if logLevel == LogLevel.DEBUG {
+                                writeln("    Updated neighbor ", u, " degree: ", oldDegree, " -> ", newDegree);
+                            }
+                        } else {
+                            if logLevel == LogLevel.DEBUG {
+                                writeln("    Warning: Neighbor ", u, " not in cluster domain - skipping");
+                            }
+                        }
                     }
                 }
                 
                 if logLevel == LogLevel.DEBUG {
-                    writeln("  Processed vertices in iteration for k=", k, ": ", toProcess);
+                    writeln("\n  Shell ", k, " current size: ", shellMembers[k].size);
                 }
             }
         } while processedInIteration;
 
-        if currentShell.size > 0 {
-            shellMembers[k] = currentShell;
-            if logLevel == LogLevel.DEBUG {
+        if logLevel == LogLevel.DEBUG {
+            if shellMembers[k].size > 0 {
                 writeln("\nShell ", k, ":");
-                writeln("  Vertices: ", currentShell);
-                writeln("  Size: ", currentShell.size);
+                writeln("  Vertices: ", shellMembers[k]);
+                writeln("  Size: ", shellMembers[k].size);
             }
-            k += 1;
-        } else {
-            k += 1;
-            if k > maxDegree + 1 then break;
+        }
+
+        k += 1;
+        if k > maxDegree + 1 {
+            if logLevel == LogLevel.DEBUG {
+                writeln("\nReached maximum possible shell number (", maxDegree + 1, ")");
+            }
+            break;
         }
     }
 
     if logLevel == LogLevel.DEBUG {
-        writeln("\nFinal Shell Decomposition:");
+        writeln("\nShell decomposition complete");
+        writeln("Total shells found: ", k-1);
+        writeln("Final shell distribution:");
         for i in 1..k-1 {
             if shellMembers[i].size > 0 {
-                writeln("Shell ", i, ":");
-                writeln("  Vertices: ", shellMembers[i]);
-                writeln("  Size: ", shellMembers[i].size);
-                writeln("  Internal edges: ", + reduce [v in shellMembers[i]] 
-                    (neighborsSetGraphG1[v] & shellMembers[i]).size / 2);
+                writeln("Shell ", i, ": ", shellMembers[i]);
             }
         }
-        
-        writeln("\nVertex shell assignments:");
-        for v in clusterDomain {
-            writeln("Vertex ", v, ": shell ", vertexShells[v].read());
-        }
-        
-        writeln("\nShell Decomposition Complete");
-        writeln("Total shells found: ", k-1);
         writeln("==== Shell Decomposition Complete ====\n");
     }
 
     return (vertexShells, shellMembers);
 }
-
 /* Core-Periphery metrics calculation */
 proc calculateCorePeripheryMetrics(ref metrics: coreMetrics, 
                                  ref cluster: set(int, parSafe=false),
@@ -2334,7 +2364,7 @@ proc calculateCorePeripheryMetrics(ref metrics: coreMetrics,
 /* Calculate shell metrics with parallel processing and sampling */
 proc calculateShellMetrics(ref metrics: coreMetrics,
                          ref cluster: set(int, parSafe=false),
-                         shellMembers: [] set(int, parSafe=true)) throws {
+                         ref shellMembers: [] set(int, parSafe=true)) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Shell Metrics Calculation ====");
         writeln("Cluster size: ", cluster.size);
@@ -2953,9 +2983,11 @@ proc calculateViecutMincut(ref cluster: set(int), in metrics: connectivityMetric
 }
 
 
-proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
+proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clusterId: int, parentId: int) throws{
     writeln("\n========== Cluster Analysis Report ==========");
     writeln("Cluster Size: ", clusterSize, " vertices");
+    writeln("Cluster id: ",clusterId);
+    writeln("Parent id: ", parentId);
     
     writeln("\n----- Connectivity Metrics -----");
     writeln("Basic Connectivity:");
@@ -3136,6 +3168,107 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int) {
             metrics.core.coreNumber);
 
     writeln("\n===========================================");
+/*
+
+    ////////////////////////////////////// .csv part///////////////////////////
+    var csvFilename = outputPath + "cluster_metrics.csv";
+    var csvFile = open(csvFilename, ioMode.a);  // Open in append mode, creates if doesn't exist?!
+    var csvWriter = csvFile.writer(locking=true);
+
+
+    // Write header if new file
+    if csvFile.size == 0 {
+        csvWriter.writeln("cluster_id,parent_id,cluster_size," +
+            // Connectivity Metrics
+            "n_vertices,total_internal_edges,min_degree,max_degree,avg_degree,second_order_avg_degree," +
+            "edge_connectivity_lower_bound,cluster_volume,cluster_cut_edges,degree_variance,degree_skewness," +
+            "degree_second_moment,assortativity," +
+            // Density Metrics
+            "density,sparsity,max_possible_edges,triangle_count,global_clustering_coeff," +
+            "avg_local_clustering_coeff,triangle_density,participation_rate,max_local_triangles," +
+            "avg_triangles_per_vertex," +
+            // Spectral Metrics
+            "conductance,lambda2_lower,lambda2_upper,lambda2_estimate," +
+            // Transitivity Metrics
+            "wedge_count,triangle_to_wedge_ratio,global_transitivity," +
+            // Diameter and Eccentricity
+            "diameter,exact_diameter,diameter_lower_bound,diameter_upper_bound," +
+            "radius,center_vertices_count,peripheral_vertices_count,avg_eccentricity," +
+            // Distribution Statistics
+            "degree_dist_mean,degree_dist_median,degree_dist_std,degree_dist_skewness,degree_dist_kurtosis," +
+            "degree_dist_p25,degree_dist_p50,degree_dist_p75,degree_dist_p90," +
+            "triangle_dist_mean,triangle_dist_median,triangle_dist_std,triangle_dist_skewness,triangle_dist_kurtosis," +
+            "triangle_dist_p25,triangle_dist_p50,triangle_dist_p75,triangle_dist_p90," +
+            // MinCut Metrics
+            "viecut_mincut,viecut_in_partition_size,viecut_out_partition_size," +
+            // Core Metrics
+            "core_number,core_size,core_density,max_core_size,core_periphery_score,core_strength," +
+            "periphery_size,core_hierarchy_depth,core_degree_correlation,hierarchy_balance," +
+            "core_cohesion,core_separation,core_compactness,core_stability,avg_core_persistence," +
+            "avg_shell_density,avg_shell_connectivity");
+    }
+
+    // Calculate averages for array metrics
+    var avgCorePersistence = if metrics.core.coreNumber > 0 then
+                            (+ reduce metrics.core.corePersistence[0..#min(metrics.core.coreNumber + 1, 11)]) / 
+                            (metrics.core.coreNumber + 1)
+                            else 0.0;
+    var avgShellDensity = if metrics.core.coreNumber > 0 then
+                         (+ reduce metrics.core.shellDensities[0..#min(metrics.core.coreNumber + 1, 11)]) / 
+                         (metrics.core.coreNumber + 1)
+                         else 0.0;
+    var avgShellConnectivity = if metrics.core.coreNumber > 0 then
+                              (+ reduce metrics.core.shellConnectivity[0..#min(metrics.core.coreNumber, 11)]) / 
+                              metrics.core.coreNumber
+                              else 0.0;
+
+try {
+        // Write metrics line
+        csvWriter.writef("%i,%i,%i,", clusterId, parentId, clusterSize);
+
+        // Connectivity Metrics
+        csvWriter.writef("%i,%i,%i,%i,%.6dr,%.6dr,%i,%i,%i,%.6dr,%.6dr,%.6dr,%.6dr,",
+            metrics.connectivity.n_vertices,
+            metrics.connectivity.totalInternalEdges,
+            metrics.connectivity.minDegree,
+            metrics.connectivity.maxDegree,
+            metrics.connectivity.avgDegree,
+            metrics.connectivity.secondOrderAverageDegree,
+            metrics.connectivity.edgeConnectivityLowerBound,
+            metrics.connectivity.clusterVolume,
+            metrics.connectivity.clusterCutEdges,
+            metrics.connectivity.degreeVariance,
+            metrics.connectivity.degreeSkewness,
+            metrics.connectivity.degreeSecondMoment,
+            metrics.connectivity.assortativity);
+
+        // Density Metrics
+        csvWriter.writef("%.6dr,%.6dr,%i,%i,%.6dr,%.6dr,%.6dr,%.6dr,%i,%.6dr,",
+            metrics.density.density,
+            metrics.density.sparsity,
+            metrics.density.maxPossibleEdges,
+            metrics.density.triangleCount,
+            metrics.density.globalClusteringCoeff,
+            metrics.density.avgLocalClusteringCoeff,
+            metrics.density.triangleDensity,
+            metrics.density.participationRate,
+            metrics.density.maxLocalTriangles,
+            metrics.density.avgTrianglesPerVertex);
+
+        // ... Continue with all other metrics in similar format ...
+
+        // End the line
+        csvWriter.writeln();
+    } catch e {
+        writeln("Error writing to CSV: ", e.message());
+    }
+
+    // Close file
+    csvWriter.close();
+    csvFile.close();
+
+*/
+
 }
 /* Configuration record for controlling metric calculations */
 record MetricsConfig {
@@ -3295,7 +3428,7 @@ record MetricsConfig {
         // conf.getAllMetrics();
         var parent = newClusterIdToOriginalClusterId[key];
         conf.getCoreMetrics();
-        analyzeCluster(clusterToAdd, key, parent, conf);
+        if clusterToAdd.size > 10000 then analyzeCluster(clusterToAdd, key, parent, conf);
       }
       if outputType == "post" then writeClustersToFile();
       
