@@ -324,11 +324,13 @@ module WellConnectedComponents {
         
         // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
         if cluster1.size > postFilterMinSize {
+          //@Min requests to remove this line
           //var inPartition = removeDegreeOne(cluster1);
           var inPartition = cluster1;
           wccRecursiveChecker(inPartition, id, depth+1);
         }
         if cluster2.size > postFilterMinSize {
+          //@Min requests to remove this line
           //var outPartition = removeDegreeOne(cluster2);
           var outPartition = cluster2;
           wccRecursiveChecker(outPartition, id, depth+1);
