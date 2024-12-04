@@ -3417,7 +3417,7 @@ record MetricsConfig {
       for key in newClusters.keysToArray() {
         ref clusterToAdd = newClusters[key];
         if logLevel == LogLevel.DEBUG {
-          var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
+          var outMsg = "Processing cluster " + key:string + " with size: " +newClusters[key].size:string +" which is a subcluster of " 
                     + newClusterIdToOriginalClusterId[key]:string + ".";
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
@@ -3429,6 +3429,7 @@ record MetricsConfig {
         var parent = newClusterIdToOriginalClusterId[key];
         conf.getCoreMetrics();
         if clusterToAdd.size > 10000 then analyzeCluster(clusterToAdd, key, parent, conf);
+        else writeln(" size is :", clusterToAdd.size);
       }
       if outputType == "post" then writeClustersToFile();
       
