@@ -429,8 +429,10 @@ def diameter(graph: Graph) -> int:
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
                          semantic_check:str = None,
                          size_limit:int = None,
+                         time_limit:int = 30,
                          return_isos_as:str = "vertices",
-                         algorithm_type:str = "ps") -> Union[pdarray,Tuple]:
+                         algorithm_type:str = "ps",
+                         print_progress_interval:int = 2) -> Union[pdarray,Tuple]:
     """
     Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
     are isomorphic to the subgraph. Uses parallel implementation of the VF2 algorithm 
@@ -447,6 +449,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         checking is performed. If `"and"` then all attributes must match for every vertex and edge 
         in both the graph and subgraph. If `"or"` then at least one attribute must match for every 
         vertex and edge in both the graph and subgraph.
+    time_limit : int
+        Enables a time limit to return whatever motifs have been found up to that minute.
     size_limit : int
         Caps the number of isomorphisms returned. If `None` then no size limit is enforced. Due to
         the highly parallel nature of subgraph isomorphism, the actual returned number of 
@@ -466,6 +470,9 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         by `ps` is a paralell and scalable version of the original VF2 algorithm. The version `si`
         is experimental and creates original states based off existing edges only. Experiments show
         that `si` outperforms `ps` for large graphs.
+    print_progress_interval : int
+        Maintains how often the progress should be printed server-side for how many patterns have
+        been found.
 
     Returns
     -------
@@ -490,9 +497,11 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
     args = { "MainGraphName":graph.name,
              "SubGraphName":subgraph.name,
              "SemanticCheckType": str(semantic_check).lower(),
-             "TrackSize": str(size_limit).lower(),
+             "SizeLimit": str(size_limit).lower(),
+             "TimeLimit": time_limit,
              "ReturnIsosAs": return_isos_as,
-             "AlgorithmType": algorithm_type }
+             "AlgorithmType": algorithm_type,
+             "PrintProgressInterval": print_progress_interval }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     returned_vals = (cast(str, rep_msg).split('+'))

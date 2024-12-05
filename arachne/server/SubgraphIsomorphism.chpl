@@ -15,6 +15,7 @@ module SubgraphIsomorphism {
   // Arachne modules.
   use GraphArray;
   use Utils;
+  use SubgraphIsomorphismMsg;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -198,7 +199,8 @@ module SubgraphIsomorphism {
   /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
   searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
   array that maps the isomorphic vertices of `g1` to those of `g2`.*/
-  proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, sizeLimit: string, 
+  proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
+              sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
     var numIso: int = 0;
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
@@ -206,6 +208,9 @@ module SubgraphIsomorphism {
     var semanticOrCheck = if semanticCheckType == "or" then true else false;
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
+    var limitTime:bool = if timeLimit > 0 then true else false;
+    var stopper:atomic bool = false;
+    timeLimit *= 60;
 
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -238,12 +243,15 @@ module SubgraphIsomorphism {
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributes = g2.getEdgeAttributes();
 
-    // TODO: ADD THIS AS A PARAMETER TO THE ARACHNE API. Currently, it is a way to ensure that the
-    //       edges are checked for attributes if no vertex attributes exist.
+    // If there are no vertex attributes, then check the edge attributes instead.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     
     // Global array to keep track of all isomorphic mappings.
     var allmappings: list(int, parSafe=true);
+
+    // Timer for print-outs during execution.
+    var timer:stopwatch;
+    timer.start();
 
     /* Pick the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
     proc vertexPicker() throws {
@@ -552,23 +560,52 @@ module SubgraphIsomorphism {
       return candidates;
     } // end of getCandidatePairsOpti
 
+    /* Print the progress when this function is called and X minutes have passed. */
+    var lastPrintedMinute: atomic int;
+    proc printProgress() throws {
+      const elapsedMinutes = timer.elapsed() / 60;
+      const currentMinute = elapsedMinutes:int / printProgressInterval;
+
+      if currentMinute > lastPrintedMinute.read() {
+        if lastPrintedMinute.compareAndSwap(currentMinute - 1, currentMinute) {
+          var outMsg = "Motifs found so far: " + numIsoAtomic.read():string;
+          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        }
+      }
+    }
+
     /* Perform the vf2 recursive steps returning all found isomorphisms.*/
     proc vf2Helper(state: owned State, depth: int) throws {
+      // Prints the progress every X number of minutes.
+      printProgress();
+      
       // Base case: the depth is equivalent to the number of vertices in the subgraph.
       if depth == g2.n_vertices {
         allmappings.pushBack(state.core);
-        if limitSize then numIsoAtomic.add(1);
+        numIsoAtomic.add(1);
         return;
       }
 
-      if limitSize then if numIsoAtomic.read() >= matchLimit then return;
+      // Stop execution if flagged.
+      if stopper.read() then return;
+
+      // Early termination checks for both time and size limits, if enabled.
+      if limitSize && numIsoAtomic.read() >= matchLimit {
+        stopper.testAndSet();
+        return;
+      }
+      if limitTime && timer.elapsed():int >= timeLimit {
+        stopper.testAndSet();
+        return;
+      }
 
       // Generate candidate pairs (n1, n2) for mapping
       var candidatePairs = getCandidatePairsOpti(state);
 
       // Iterate in parallel over candidate pairs
-      // forall (n1, n2) in candidatePairs with (ref state) {
-      for (n1, n2) in candidatePairs {
+      forall (n1, n2) in candidatePairs with (ref state) {
+        if stopper.read() then continue;
+
         if isFeasible(n1, n2, state) {
           // Work on a clone, not the original state.
           var newState = state.clone();
@@ -586,6 +623,8 @@ module SubgraphIsomorphism {
     /* Executes VF2SIFromVertices. */
     proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph, const ref vertexFlagger) throws {
       forall edgeIndex in 0..mG1-1 {
+        if stopper.read() then continue;
+
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
           var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
@@ -597,6 +636,8 @@ module SubgraphIsomorphism {
     /* Executes VF2SIFromEdges. */
     proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph, const ref edgeFlagger) throws {
       forall edgeIndex in 0..mG1-1 {
+        if stopper.read() then continue;
+
         if edgeFlagger[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
           var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
@@ -621,6 +662,7 @@ module SubgraphIsomorphism {
       VF2SIFromVertices(g1,g2,edgeFlagger);
     }
     else VF2PS(g1, g2);
+    timer.stop();
 
     var allMappingsArray = makeDistArray(allmappings.toArray());
     var isoArr = nodeMapGraphG1[allMappingsArray]; // Map vertices back to original values.
