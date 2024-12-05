@@ -484,7 +484,7 @@ class PropGraph(ar.DiGraph):
         internal_indices = ak.find([src,dst], [edges[0],edges[1]])
 
         args = { "GraphName" : self.name,
-                "InputIndicesName" : internal_indices.name,
+                 "InputIndicesName" : internal_indices.name,
                  "ColumnNames" : "+".join(columns),
                  "PropertyArrayNames" : "+".join(column_ids),
                  "PropertyArrayTypes" : "+".join(edge_property_object_types)
