@@ -426,108 +426,92 @@ module SubgraphIsomorphism {
 
       return true;
     } // end of addToTinToutMVE
-proc isFeasible(n1: int, n2: int, state: State) throws {
-    var termout1, termout2, termin1, termin2, new1, new2: int = 0;
-    
-    // Check semantic feasibility first (node attributes)
-    if semanticAndCheck {
+
+  proc isFeasible_iso(n1: int, n2: int, state: State) throws {
+     var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
+      
+      // Process the out-neighbors of g2.
+      var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
+      for Out2 in getOutN2 {
+        if state.core(Out2) != -1 {
+          var Out1 = state.core(Out2);
+          var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
+          var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
+
+          if eid1 == -1 || eid2 == -1 then return false;
+
+          if semanticAndCheck {
+            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) then
+              return false;
+          } else if semanticOrCheck {
+            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) then
+              return false;
+          } else { }
+        } else {
+          if state.Tin2.contains(Out2) then termin2 += 1;
+          if state.Tout2.contains(Out2) then termout2 += 1;
+          if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;
+        }
+      }
+        
+      // Process the in-neighbors of g2. 
+      var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
+      for In2 in getInN2 {
+        if state.core[In2] != -1 {
+          var In1 = state.core(In2);
+          var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
+          var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
+
+          if eid1 == -1 || eid2 == -1 then return false;
+
+          if semanticAndCheck {
+            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) then
+              return false;
+          } else if semanticOrCheck {
+            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) then
+              return false;
+          } else { }
+        } else {
+          if state.Tin2.contains(In2) then termin2 += 1;
+          if state.Tout2.contains(In2) then termout2 += 1;
+          if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
+        }
+      }
+        
+      // Process the out-neighbors of g1. 
+      var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+      for Out1 in getOutN1 {
+        if !state.isMappedn1(Out1) {
+          if state.Tin1.contains(Out1) then termin1 += 1;
+          if state.Tout1.contains(Out1) then termout1 += 1;
+          if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
+        }
+      }
+        
+      // Process the in-neighbors of g2.
+      var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+      for In1 in getInN1 {
+        if !state.isMappedn1(In1) {
+          if state.Tin1.contains(In1) then termin1 += 1;
+          if state.Tout1.contains(In1) then termout1 += 1;
+          if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
+        }
+      }
+
+      if !(termin2 == termin1 && termout2 == termout1 && 
+          (termin2 + termout2 + new2) == (termin1 + termout1 + new1)
+        ) then return false;
+
+      if semanticAndCheck {
         if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "and", st) 
-            then return false;
-    } else if semanticOrCheck {
+          then return false;
+      } else if semanticOrCheck {
         if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "or", st)
-            then return false;
-    }
+          then return false;
+      } else { }
 
-    // Process out-edges of n1
-    var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-    for Out1 in getOutN1 {
-        if state.isMappedn1(Out1) {
-            // Find corresponding vertex in G2
-            var Out2 = -1;
-            for i in state.D_core do
-                if state.core[i] == Out1 then Out2 = i;
-            
-            // Check if corresponding edge exists in G2
-            var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
-            if eid2 == -1 then return false;
-            
-            // Check edge attributes if they exist
-            var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
-            if semanticAndCheck {
-                if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st)
-                    then return false;
-            } else if semanticOrCheck {
-                if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st)
-                    then return false;
-            }
-        } else {
-            if state.Tin1.contains(Out1) then termin1 += 1;
-            if state.Tout1.contains(Out1) then termout1 += 1;
-            if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
-        }
-    }
-
-    // Process in-edges of n1
-    var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-    for In1 in getInN1 {
-        if state.isMappedn1(In1) {
-            // Find corresponding vertex in G2
-            var In2 = -1;
-            for i in state.D_core do
-                if state.core[i] == In1 then In2 = i;
-            
-            // Check if corresponding edge exists in G2
-            var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
-            if eid2 == -1 then return false;
-            
-            // Check edge attributes if they exist
-            var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
-            if semanticAndCheck {
-                if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st)
-                    then return false;
-            } else if semanticOrCheck {
-                if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st)
-                    then return false;
-            }
-        } else {
-            if state.Tin1.contains(In1) then termin1 += 1;
-            if state.Tout1.contains(In1) then termout1 += 1;
-            if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
-        }
-    }
-
-    // Process out-edges of n2
-    var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
-    for Out2 in getOutN2 {
-        if state.isMappedn2(Out2) {
-            var Out1 = state.core[Out2];
-            var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
-            if eid1 == -1 then return false;
-        } else {
-            if state.Tin2.contains(Out2) then termin2 += 1;
-            if state.Tout2.contains(Out2) then termout2 += 1;
-            if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;
-        }
-    }
-
-    // Process in-edges of n2
-    var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
-    for In2 in getInN2 {
-        if state.isMappedn2(In2) {
-            var In1 = state.core[In2];
-            var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
-            if eid1 == -1 then return false;
-        } else {
-            if state.Tin2.contains(In2) then termin2 += 1;
-            if state.Tout2.contains(In2) then termout2 += 1;
-            if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
-        }
-    }
-
-    // Check terminal set sizes - must be exactly equal
-    return termin1 == termin2 && termout1 == termout2 && new1 == new2;
-}
-
+      return true;
+    } // end of isFeasible_iso
 
     /* Check to see if the mapping of n1 from g1 to n2 from g2 is feasible. */
     proc isFeasible(n1: int, n2: int, state: State) throws {
