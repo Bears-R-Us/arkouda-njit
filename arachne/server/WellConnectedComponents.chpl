@@ -3337,6 +3337,7 @@ record MetricsConfig {
         this.computeDegreeDistribution = true;
         this.computeTriangleDistribution = true;
         this.computeCoreMetrics = true;
+        this.computeTriangleCentrality = true;
         // this.computePathDistribution = true;
         return;
     }
@@ -3425,9 +3426,9 @@ record MetricsConfig {
         var conf = new MetricsConfig();
         // conf.computeBasicConnectivity=true;
         // conf.computeTriangleDistribution=true;
-        // conf.getAllMetrics();
+        conf.getAllMetrics();
         var parent = newClusterIdToOriginalClusterId[key];
-        conf.getCoreMetrics();
+        //conf.getCoreMetrics();
         if clusterToAdd.size > 10000 then analyzeCluster(clusterToAdd, key, parent, conf);
         else writeln(" size is :", clusterToAdd.size);
       }
