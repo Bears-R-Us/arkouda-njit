@@ -477,30 +477,51 @@ module SubgraphIsomorphism {
           if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
         }
       }
-        
+
       // Process the out-neighbors of g1. 
       var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
       for Out1 in getOutN1 {
-        if !state.isMappedn1(Out1) {
+        if state.isMappedn1(Out1) {
+          //////////////////////////////////////////////Oliver I found the place so, what should be here?
+          // Find corresponding vertex in g2
+          var Out2 = -1;
+          for i in state.D_core do
+              if state.core[i] == Out1 then Out2 = i;
+          // So Out1 is mapped to Out2
+          // Check if such edge exists in g2 or not
+          var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
+          if eid2 == -1 then return false;
+
+        }
+        else{// it means out1 is NOT already mapped
           if state.Tin1.contains(Out1) then termin1 += 1;
           if state.Tout1.contains(Out1) then termout1 += 1;
           if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
         }
       }
         
-      // Process the in-neighbors of g2.
+      // Process the in-neighbors of g1.
       var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
       for In1 in getInN1 {
-        if !state.isMappedn1(In1) {
+        if state.isMappedn1(In1) {
+          //////////////////////////////////////////////Oliver I found the place so, what should be here?
+          // Find corresponding vertex in g2
+          var In2 = -1;
+          for i in state.D_core do
+            if state.core[i] == In1 then In2 = i;
+          
+          var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
+          if eid2 == -1 then return false;
+        }
+        else{
           if state.Tin1.contains(In1) then termin1 += 1;
           if state.Tout1.contains(In1) then termout1 += 1;
           if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
         }
       }
 
-      if !(termin2 == termin1 && termout2 == termout1 && 
-          (termin2 + termout2 + new2) == (termin1 + termout1 + new1)
-        ) then return false;
+      if !(termin2 == termin1 && termout2 == termout1 && new2 == new1) 
+        then return false;
 
       if semanticAndCheck {
         if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "and", st) 
@@ -514,7 +535,7 @@ module SubgraphIsomorphism {
     } // end of isFeasible_iso
 
     /* Check to see if the mapping of n1 from g1 to n2 from g2 is feasible. */
-    proc isFeasible(n1: int, n2: int, state: State) throws {
+    proc isFeasible_mono(n1: int, n2: int, state: State) throws {
       var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
       
       // Process the out-neighbors of g2.
@@ -575,7 +596,7 @@ module SubgraphIsomorphism {
         }
       }
         
-      // Process the in-neighbors of g2.
+      // Process the in-neighbors of g1.
       var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
       for In1 in getInN1 {
         if !state.isMappedn1(In1) {

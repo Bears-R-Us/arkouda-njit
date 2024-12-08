@@ -27,30 +27,6 @@ module MotifCounting {
   use SegmentedString;
   use SymArrayDmap;
 
-/* Class to represent and manage subgraph operations */
-class SubGraph {
-    var n: int;                    // Number of vertices
-    var adjMatrix: [0..<n, 0..<n] bool; // Adjacency matrix representation
-    var vertexMap: [0..<n] int;    // Maps local vertex IDs to original graph IDs
-    
-    /* Initialize from vertex list and edge information */
-    proc init(vertices: list(int), n: int,
-             const ref srcNodes, const ref dstNodes,
-             const ref segGraph, const ref segR) {
-        this.n = n;
-        this.adjMatrix = false;
-        this.vertexMap = -1;
-        
-        // Build vertex mapping and adjacency matrix
-        complete();
-    }
-    
-    /* Get canonical label for this subgraph */
-    proc getCanonicalLabel(): string {
-        // Implementation of canonical labeling
-        return "";  // Placeholder
-    }
-}
 
 /* Class to track and analyze motifs */
 class KavoshState {
@@ -142,6 +118,9 @@ class KavoshState {
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
 
 
+
+        // Execute Kavosh algorithm
+        Kavosh();
         
 
 /* Get valid neighbors for vertex while respecting visited status */
@@ -390,8 +369,6 @@ proc processComposition(v: int, comp: list(int), level: int,
         // Print results
         motifTracker.printMotifStats();
     }
-        // Execute Kavosh algorithm
-        Kavosh();
-        
+
   } //end of runMotifCounting
 }
