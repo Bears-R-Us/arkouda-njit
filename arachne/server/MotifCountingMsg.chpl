@@ -1,4 +1,4 @@
-module SubgraphIsomorphismMsg {
+module MotifCountingMsg {
   // Chapel modules.
   use Reflection;
   use Map;
@@ -36,7 +36,7 @@ module SubgraphIsomorphismMsg {
   
   :returns: MsgTuple
   */
-  proc subgraphIsomorphismMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+  proc motifCountingMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     param pn = Reflection.getRoutineName();
     var repMsg, outMsg:string;
 
@@ -68,10 +68,10 @@ module SubgraphIsomorphismMsg {
       }
 
       timer.start();
-      var isos = runVF2(g,h,semanticCheckType,sizeLimit,timeLimit,
+      var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
                         printProgressInterval,algorithmType,returnIsosAs,st);
       timer.stop();
-      outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
+      outMsg = "Kavosh%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
       if returnIsosAs == "vertices" {
         var isosAsVerticesName = st.nextName();
@@ -126,12 +126,12 @@ module SubgraphIsomorphismMsg {
 
       return new MsgTuple(repMsg, MsgType.NORMAL);
     } else {
-      var errorMsg = notImplementedError(pn, "subgraph isomorphism for undirected graphs");
+      var errorMsg = notImplementedError(pn, "Motif Counting for directed graphs");
       siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
       return new MsgTuple(errorMsg, MsgType.ERROR);
     }
-  } // end of subgraphIsomorphismMsg
+  } // end of motifCountingMsg
 
   use CommandMap;
-  registerFunction("subgraphIsomorphism", subgraphIsomorphismMsg, getModuleName());
+  registerFunction("motifCounting", motifCountingMsg, getModuleName());
 } // end of module
