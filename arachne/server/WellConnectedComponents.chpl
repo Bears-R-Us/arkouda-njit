@@ -3429,7 +3429,7 @@ record MetricsConfig {
         conf.getAllMetrics();
         var parent = newClusterIdToOriginalClusterId[key];
         //conf.getCoreMetrics();
-        if clusterToAdd.size > 10000 then analyzeCluster(clusterToAdd, key, parent, conf);
+        if clusterToAdd.size > 1 then analyzeCluster(clusterToAdd, key, parent, conf);
         else writeln(" size is :", clusterToAdd.size);
       }
       if outputType == "post" then writeClustersToFile();
