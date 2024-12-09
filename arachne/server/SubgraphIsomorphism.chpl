@@ -16,6 +16,7 @@ module SubgraphIsomorphism {
   use GraphArray;
   use Utils;
   use SubgraphIsomorphismMsg;
+  use MotifCountingMsg;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -535,7 +536,7 @@ module SubgraphIsomorphism {
     } // end of isFeasible_iso
 
     /* Check to see if the mapping of n1 from g1 to n2 from g2 is feasible. */
-    proc isFeasible_mono(n1: int, n2: int, state: State) throws {
+    proc isFeasible(n1: int, n2: int, state: State) throws {
       var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
       
       // Process the out-neighbors of g2.
