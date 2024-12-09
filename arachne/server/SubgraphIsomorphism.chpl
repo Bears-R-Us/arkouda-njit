@@ -243,8 +243,9 @@ module SubgraphIsomorphism {
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributes = g2.getEdgeAttributes();
 
-    // If there are no vertex attributes, then check the edge attributes instead.
+    // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
+    var noEdgeAttributes = if subgraphEdgeAttributes.size == 0 then true else false;
     
     // Global array to keep track of all isomorphic mappings.
     var allmappings: list(int, parSafe=true);
@@ -256,18 +257,18 @@ module SubgraphIsomorphism {
     /* Pick the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
     proc vertexPicker() throws {
       var vertexFlagger: [0..<g1.n_vertices] bool = false;
-      var Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
-      var Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+      var Tin_0 = segRG2[1] - segRG2[0];
+      var Tout_0 = segGraphG2[1] - segGraphG2[0];
 
       forall v in 0..<g1.n_vertices {
-        var inNeighborsg1 = dstRG1[segRG1[v]..<segRG1[v+1]];            
-        var outNeighborsg1 = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+        var inNeighborsg1 = segRG1[v+1] - segRG1[v];            
+        var outNeighborsg1 = segGraphG1[v+1] - segGraphG1[v];
 
         if semanticAndCheck {
-          if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, "and", st) && (inNeighborsg1.size >= Tin_0.size) && (outNeighborsg1.size >= Tout_0.size)
+          if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, "and", st) && (inNeighborsg1 >= Tin_0) && (outNeighborsg1 >= Tout_0)
             then vertexFlagger[v] = true;
         } else if semanticOrCheck {
-          if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, "or", st) && (inNeighborsg1.size >= Tin_0.size) && (outNeighborsg1.size >= Tout_0.size)
+          if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, "or", st) && (inNeighborsg1 >= Tin_0) && (outNeighborsg1 >= Tout_0)
             then vertexFlagger[v] = true;
         } else { vertexFlagger[v] = true; }
       }
@@ -275,34 +276,40 @@ module SubgraphIsomorphism {
       return vertexFlagger;
     }
 
-    /* Pick the edges from the host graph that can be mapped to the first edge of the data graph. */
+    /* Pick the edges from the host graph that can be mapped to edge 0 of the data graph. */
     proc edgePicker() throws {
       var edgeFlagger: [0..<g1.n_edges] bool = false;
-      var Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
-      var Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
 
-      var Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
-      var Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
+      // Get the first edge of the subgraph. Since the edge list is pre-sorted, then the first edge
+      // will always be at index 0.
+      var uSubgraph = srcNodesG2[0];
+      var vSubgraph = dstNodesG2[0];
 
-      var subgraphEdgeId = getEdgeId(0, 1, dstNodesG2, segGraphG2);
+      // Get in-degree and out-degree for source vertex of first edge.
+      var Tin_uSubgraph = segRG2[uSubgraph+1] - segRG2[uSubgraph];
+      var Tout_uSubgraph = segGraphG2[uSubgraph+1] - segGraphG2[uSubgraph];
+
+      // Get in-degree and out-degree for destination vertex of first edge.
+      var Tin_vSubgraph = segRG2[vSubgraph+1] - segRG2[vSubgraph];
+      var Tout_vSubgraph = segGraphG2[vSubgraph+1] - segGraphG2[vSubgraph];
 
       forall e in 0..<g1.n_edges {
         var u = srcNodesG1[e];
         var v = dstNodesG1[e];
 
-        var Tin_u = dstRG1[segRG1[u]..<segRG1[u+1]];            
-        var Tout_u = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+        var Tin_u = segRG1[u+1] - segRG1[u];
+        var Tout_u = segGraphG1[u+1] - segGraphG1[u];
 
-        var Tin_v = dstRG1[segRG1[v]..<segRG1[v+1]];            
-        var Tout_v = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+        var Tin_v = segRG1[v+1] - segRG1[v];
+        var Tout_v = segGraphG1[v+1] - segGraphG1[v];
 
         if semanticAndCheck {
-          if doAttributesMatch(e, subgraphEdgeId, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) && (Tin_u.size >= Tin_0.size) && (Tout_u.size >= Tout_0.size) && (Tin_v.size >= Tin_1.size) && (Tout_v.size >= Tout_1.size)
-            then edgeFlagger[v] = true;
+          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
+            then edgeFlagger[e] = true;
         } else if semanticOrCheck {
-          if doAttributesMatch(e, subgraphEdgeId, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) && (Tin_u.size >= Tin_0.size) && (Tout_u.size >= Tout_0.size) && (Tin_v.size >= Tin_1.size) && (Tout_v.size >= Tout_1.size)
-            then edgeFlagger[v] = true;
-        } else { edgeFlagger[v] = true; }
+          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
+            then edgeFlagger[e] = true;
+        } else { edgeFlagger[e] = true; }
       }
 
       return edgeFlagger;
@@ -627,8 +634,8 @@ module SubgraphIsomorphism {
 
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
-          var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-          if edgechecked then vf2Helper(initialState, 2);
+          var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          if edgeChecked then vf2Helper(initialState, 2);
         }
       }
     } // end of VF2SIFrom Vertices
@@ -638,10 +645,10 @@ module SubgraphIsomorphism {
       forall edgeIndex in 0..mG1-1 {
         if stopper.read() then continue;
 
-        if edgeFlagger[edgeIndex] {
+        if edgeFlagger[edgeIndex] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
-          var edgechecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-          if edgechecked then vf2Helper(initialState, 2);
+          var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          if edgeChecked then vf2Helper(initialState, 2);
         }
       }
     } // end of VF2SIFromEdges
@@ -654,14 +661,39 @@ module SubgraphIsomorphism {
 
     // Call out to one of the vf2 procedures.
     if algType == "ps" then VF2PS(g1, g2);
-    else if algType == "si" {
-      var vertexFlagger = vertexPicker();
-      VF2SIFromVertices(g1,g2,vertexFlagger);
-    } else if algType == "si" && noVertexAttributes == true {
-      var edgeFlagger = edgePicker();
-      VF2SIFromVertices(g1,g2,edgeFlagger);
+
+    if algType == "si" {
+      var pickerTimer:stopwatch;
+      if noEdgeAttributes && !noVertexAttributes { // Graph only has vertex attributes.
+        pickerTimer.start();
+        var vertexFlagger = vertexPicker();
+        var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
+        pickerTimer.reset();
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        VF2SIFromVertices(g1,g2,vertexFlagger);
+      } else if !noEdgeAttributes && noVertexAttributes { // Graph only has edge attributes.
+        pickerTimer.start();
+        var edgeFlagger = edgePicker();
+        var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
+        pickerTimer.reset();
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        VF2SIFromEdges(g1,g2,edgeFlagger);
+      } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
+        pickerTimer.start();
+        var vertexFlagger = vertexPicker();
+        var edgeFlagger = edgePicker();
+        forall (f,i) in zip(edgeFlagger,edgeFlagger.domain) {
+          if !(f && vertexFlagger[srcNodesG1[i]] && srcNodesG1[i] != dstNodesG1[i]) then f = false;
+        }
+        var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
+        pickerTimer.reset();
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        VF2SIFromEdges(g1,g2,edgeFlagger);
+      } else { // Graph has no attributes.
+        var edgeFlagger: [0..<g1.n_edges] bool = true;
+        VF2SIFromEdges(g1,g2,edgeFlagger);
+      }
     }
-    else VF2PS(g1, g2);
     timer.stop();
 
     var allMappingsArray = makeDistArray(allmappings.toArray());
