@@ -15,7 +15,8 @@ module MotifCounting {
   // Arachne modules.
   use GraphArray;
   use Utils;
-  use SubgraphIsomorphismMsg;
+//   use SubgraphIsomorphismMsg;
+  use MotifCountingMsg;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -29,25 +30,26 @@ module MotifCounting {
 
 
   /* State tracking class - declared at module level since it's referenced in multiple procs */
+  /* In KavoshState class */
   class KavoshState {
-    var n: int;              
-    var k: int;              
-    var visited: [0..<n] bool;
-    var pattern: list(int);   
-    var motifCounts: map(string, atomic int);
-    
-    proc init(n: int, k: int) {
-      this.n = n;
-      this.k = k;
-      this.visited = false;
-      this.pattern = new list(int);
-      this.motifCounts = new map(string, atomic int);
-    }
-    
-    proc reset() {
-      this.visited = false;
-      this.pattern.clear();
-    }
+      var n: int;              
+      var k: int;              
+      var visited: [0..<n] bool;
+      var pattern: list(int);   
+      var motifCounts: map(string, atomic int);  // Map of motif label to atomic counter
+      
+      proc init(n: int, k: int) {
+          this.n = n;
+          this.k = k;
+          this.visited = false;
+          this.pattern = new list(int);
+          this.motifCounts = new map(string, atomic int);
+      }
+      
+      proc reset() {
+          this.visited = false;
+          this.pattern.clear();
+      }
   }
 
   proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
@@ -105,17 +107,17 @@ module MotifCounting {
  * References paper section: "Here, by using the 'revolving door ordering' algorithm
  * all combinations containing ki vertices from the ni vertices are selected."
  */
-proc generateCombinations(domain: domain(int), k: int): list(list(int)) {
+proc generateCombinations(domaina: domain(int), k: int): list(list(int)) {
     if logLevel == LogLevel.DEBUG {
-        writeln("Generating combinations: n=", domain.size, " k=", k);
+        writeln("Generating combinations: n=", domaina.size, " k=", k);
     }
     
     var combinations = new list(list(int));
-    var elements: [1..domain.size] int;
+    var elements: [1..domaina.size] int;
     var idx = 1;
     
     // Convert domain to array for indexing
-    for x in domain {
+    for x in domaina {
         elements[idx] = x;
         idx += 1;
     }
@@ -251,8 +253,8 @@ proc generateCombinations(domain: domain(int), k: int): list(list(int)) {
       }
       
       // Get canonical label and update counts
-      var label = generateCanonicalLabel(adjMatrix);
-      state.motifCounts[label].add(1);
+      var labela = generateCanonicalLabel(adjMatrix);
+      state.motifCounts[labela].add(1);
     }
 
     /* Local procedure for composition-based enumeration */
@@ -354,7 +356,15 @@ proc enumeratePattern(v: int, pattern: list(int), currentDepth: int, state: Kavo
         }
     }
 }
-
+proc updateMotifCount(labela: string, ref state: KavoshState) {
+    if !state.motifCounts.contains(labela) {
+        var newCount: atomic int;
+        newCount.write(1);
+        state.motifCounts[labela] = newCount;
+    } else {
+        state.motifCounts[labela].add(1);
+    }
+}
 /* Process found subgraph patterns */
 proc processSubgraph(state: KavoshState) {
     if logLevel == LogLevel.DEBUG {
@@ -381,14 +391,10 @@ proc processSubgraph(state: KavoshState) {
     }
 
     // Get canonical labeling
-    var label = generateCanonicalLabel(adjMatrix);
+    var labela = generateCanonicalLabel(adjMatrix);
 
-    // Update motif counts atomically
-    if !state.motifCounts.contains(label) {
-        state.motifCounts[label] = new atomic int(1);
-    } else {
-        state.motifCounts[label].add(1);
-    }
+    // Update count atomically
+    updateMotifCount(labela, state);
 }
 /* 
  * Enumerate vertices according to composition pattern.
@@ -481,11 +487,8 @@ proc processFoundMotif(state: KavoshState) throws {
     var labela = generateCanonicalLabel(adjMatrix);
     
     // Update counts atomically
-    if !state.motifCounts.contains(labela) {
-        state.motifCounts[labela] = new atomic int(1);
-    } else {
-        state.motifCounts[labela].add(1);
-    }
+    // Update count atomically
+    updateMotifCount(labela, state);
 }
 /* 
  * Generate canonical label for directed subgraph using NAUTY-like approach.
@@ -504,17 +507,17 @@ proc generateCanonicalLabel(adjMatrix: [] bool): string throws {
     proc tryPermutation(depth: int) throws {
         if depth == n {
             // Generate label for this permutation
-            var label: string;
+            var labela: string;
             for i in 0..<n {
                 for j in 0..<n {
                     // Preserve edge direction in label
-                    label += if adjMatrix[permutation[i], permutation[j]] then "1" else "0";
+                    labela += if adjMatrix[permutation[i], permutation[j]] then "1" else "0";
                 }
             }
             
             // Update max label if this is larger
-            if maxLabel == "" || label > maxLabel {
-                maxLabel = label;
+            if maxLabel == "" || labela > maxLabel {
+                maxLabel = labela;
             }
             return;
         }

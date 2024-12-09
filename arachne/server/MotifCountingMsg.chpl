@@ -6,7 +6,8 @@ module MotifCountingMsg {
   
   // Arachne modules.
   use GraphArray;
-  use SubgraphIsomorphism; 
+  // use SubgraphIsomorphism; 
+  use MotifCounting;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -21,7 +22,7 @@ module MotifCountingMsg {
   // Server message logger. 
   private config const logLevel = ServerConfig.logLevel;
   private config const logChannel = ServerConfig.logChannel;
-  const siLogger = new Logger(logLevel, logChannel);
+  const siLogger_motif = new Logger(logLevel, logChannel);
 
   /**
   Parses message from Python and invokes the kernel to find subgraphs from G that are isomorphic
@@ -63,7 +64,7 @@ module MotifCountingMsg {
     if g.isDirected() {
       if algorithmType != "ps" && algorithmType != "si" {
         var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
-        siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+        siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
         return new MsgTuple(errorMsg, MsgType.ERROR);
       }
 
@@ -118,16 +119,16 @@ module MotifCountingMsg {
                + "+ created " + st.attrib(isosAsEdgesDstName);
       } else {
         var errorMsg = notImplementedError(pn, "return_isos_as type");
-        siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+        siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
         return new MsgTuple(errorMsg, MsgType.ERROR);
       }
-      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      siLogger_motif.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      siLogger_motif.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
       return new MsgTuple(repMsg, MsgType.NORMAL);
     } else {
       var errorMsg = notImplementedError(pn, "Motif Counting for directed graphs");
-      siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+      siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
       return new MsgTuple(errorMsg, MsgType.ERROR);
     }
   } // end of motifCountingMsg
