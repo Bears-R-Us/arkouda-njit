@@ -27,10 +27,10 @@ module MotifCounting {
   use SegStringSort;
   use SegmentedString;
   use SymArrayDmap;
+  use Logging;
 
 
   /* State tracking class - declared at module level since it's referenced in multiple procs */
-  /* In KavoshState class */
   class KavoshState {
       var n: int;              
       var k: int;              
@@ -99,6 +99,12 @@ module MotifCounting {
     // If there are no vertex attributes, then check the edge attributes instead.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
 
+  // Run integrated motif finding
+    var motifResults = findMotifs();
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Motif Finding Complete ====");
+    }
 
 
 /* 
@@ -284,74 +290,112 @@ proc generateCombinations(domaina: domain(int), k: int): list(list(int)) {
           
           // Remove vertices
           for u in combo {
-            state.pattern.removeLast();
+            state.pattern.popBack();
             state.visited[u] = false;
           }
         }
       }
     }
-/* Core enumeration procedure for processing vertices by composition pattern */
-proc enumeratePattern(v: int, pattern: list(int), currentDepth: int, state: KavoshState) {
+
+/* 
+ * Enumerate vertices according to composition pattern.
+ * Called by Kavosh() for each composition to build motifs.
+ */
+proc enumeratePattern(v: int, pattern: list(int), depth: int, state: KavoshState) throws {
     if logLevel == LogLevel.DEBUG {
-        writeln("Processing vertex ", v, " at depth ", currentDepth);
+        writeln("Enumerating pattern at depth ", depth, " from vertex ", v);
     }
 
-    if currentDepth == pattern.size {
-        // Found complete pattern - process it
-        processSubgraph(state);
+    // Base case: found complete pattern
+    if depth == pattern.size {
+        processFoundMotif(state);
         return;
     }
 
     // Get neighbors using segment-based access for directed graph
-    var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];
+    var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];      
     var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
 
-    // Build valid neighbor set respecting direction
-    var validNeighbors: domain(int);
+    if logLevel == LogLevel.DEBUG {
+        writeln("  Found ", inNeighbors.size, " in-neighbors and ", outNeighbors.size, " out-neighbors");
+    }
+
+    // Build valid neighbor set respecting graph direction and validation
+    var validNbrs: domain(int);
     
-    // Check outgoing neighbors
+    // Process outgoing neighbors
     for nbr in outNeighbors {
         if !state.visited[nbr] {
-            validNeighbors.add(nbr);
+            // Validate vertex for next level
+            if validateVertex(nbr, depth, state) {
+                validNbrs.add(nbr);
+                if logLevel == LogLevel.DEBUG {
+                    writeln("  Added valid out-neighbor: ", nbr);
+                }
+            }
         }
     }
 
-    // Check incoming neighbors 
+    // Process incoming neighbors 
     for nbr in inNeighbors {
         if !state.visited[nbr] {
-            validNeighbors.add(nbr);
+            // Validate vertex for next level
+            if validateVertex(nbr, depth, state) {
+                validNbrs.add(nbr);
+                if logLevel == LogLevel.DEBUG {
+                    writeln("  Added valid in-neighbor: ", nbr);
+                }
+            }
         }
     }
 
     // Get required number of vertices for this level
-    var k = pattern[currentDepth];
+    var k = pattern[depth];
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("  Need ", k, " vertices at depth ", depth);
+        writeln("  Have ", validNbrs.size, " valid neighbors to choose from");
+    }
 
     // Only proceed if we have enough valid neighbors
-    if validNeighbors.size >= k {
+    if validNbrs.size >= k {
         // Generate combinations using revolving door ordering
-        var combinations = generateCombinations(validNeighbors, k);
+        var combinations = generateCombinations(validNbrs, k);
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Generated ", combinations.size, " combinations");
+        }
 
         // Process each combination
         for combo in combinations {
-            // Track which vertices we're adding for backtracking
+            // Track vertices for backtracking
             var addedVertices: list(int);
 
-            // Add all vertices in combination to pattern
+            // Add vertices in combination
             for u in combo {
-                state.pattern.append(u);
+                state.pattern.pushBack(u);
                 state.visited[u] = true;
-                addedVertices.append(u);
+                addedVertices.pushBack(u);
+                
+                if logLevel == LogLevel.DEBUG {
+                    writeln("    Added vertex ", u, " to pattern");
+                }
             }
 
-            // Recursively process from each vertex in combination
+            // Recurse on each vertex in combination
             for u in combo {
-                enumeratePattern(u, pattern, currentDepth + 1, state);
+                enumeratePattern(u, pattern, depth + 1, state);
+                if stopper.read() then break;  // Check for early termination
             }
 
-            // Backtrack - remove vertices added from this combination
+            // Backtrack - remove added vertices
             for u in addedVertices {
-                state.pattern.removeLast();
+                state.pattern.popBack();
                 state.visited[u] = false;
+            }
+
+            if logLevel == LogLevel.DEBUG {
+                writeln("    Backtracked combination at depth ", depth);
             }
         }
     }
@@ -396,73 +440,12 @@ proc processSubgraph(state: KavoshState) {
     // Update count atomically
     updateMotifCount(labela, state);
 }
-/* 
- * Enumerate vertices according to composition pattern.
- * Called by Kavosh() for each composition to build motifs.
- */
-proc enumeratePattern(v: int, pattern: list(int), depth: int, state: KavoshState) throws {
-    if logLevel == LogLevel.DEBUG {
-        writeln("Enumerating at depth ", depth, " from vertex ", v);
-    }
 
-    // Base case: found complete pattern
-    if depth == pattern.size {
-        processFoundMotif(state);
-        return;
-    }
-
-    // Get neighbors of current vertex
-    var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];      
-    var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-
-    // Build valid neighbor set
-    var validNbrs: domain(int);
-    
-    // Add unvisited outgoing neighbors
-    for nbr in outNeighbors {
-        if !state.visited[nbr] {
-            validNbrs.add(nbr);
-        }
-    }
-
-    // Add unvisited incoming neighbors
-    for nbr in inNeighbors {
-        if !state.visited[nbr] {
-            validNbrs.add(nbr);
-        }
-    }
-
-    var needed = pattern[depth];
-    if validNbrs.size >= needed {
-        // Generate combinations using revolving door
-        var combinations = generateCombinations(validNbrs, needed);
-        
-        // Process each combination
-        for combo in combinations {
-            // Mark vertices in combination
-            for u in combo {
-                state.pattern.pushBack(u);
-                state.visited[u] = true;
-            }
-            
-            // Recurse on each vertex in combination
-            for u in combo {
-                enumeratePattern(u, pattern, depth+1, state);
-            }
-            
-            // Unmark vertices (backtrack)
-            for u in combo {
-                state.pattern.removeLast();  
-                state.visited[u] = false;
-            }
-        }
-    }
-}
 /* 
  * Process a found motif pattern by generating its canonical label 
  * and updating counts.
  */
-proc processFoundMotif(state: KavoshState) throws {
+proc processFoundMotif(ref state: KavoshState) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("Found motif pattern: ", state.pattern);
     }
@@ -486,121 +469,715 @@ proc processFoundMotif(state: KavoshState) throws {
     // Get canonical label (will implement next)
     var labela = generateCanonicalLabel(adjMatrix);
     
-    // Update counts atomically
     // Update count atomically
     updateMotifCount(labela, state);
 }
+
 /* 
- * Generate canonical label for directed subgraph using NAUTY-like approach.
- * Based on: "Classification is another major subtasks of motif finding algorithms.
- * In Kavosh, NAUTY algorithm which is the best known tool for this subtask is used."
+ * NAUTY-like canonical labeling for directed graphs.
+ * Takes adjacency matrix and generates unique identifier.
  */
 proc generateCanonicalLabel(adjMatrix: [] bool): string throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Generating canonical label for pattern");
+    }
+
     var n = adjMatrix.domain.dim(0).size;
     
-    // Track vertex permutations
-    var maxLabel: string;
-    var permutation: [0..<n] int;
-    var used: [0..<n] bool;
+    // Track best labeling found
+    var maxLabel: string = "";
+    var bestPerm: [0..<n] int;
+    var currentPerm: [0..<n] int;
+    var visited: [0..<n] bool = false;
     
-    // Helper to try a permutation
-    proc tryPermutation(depth: int) throws {
+    // For orbit optimization
+    var inDegrees: [0..<n] int;
+    var outDegrees: [0..<n] int;
+    
+    // Calculate degrees for orbit partitioning
+    for i in 0..<n {
+        var inDeg = 0;
+        var outDeg = 0;
+        for j in 0..<n {
+            if adjMatrix[j,i] then inDeg += 1;
+            if adjMatrix[i,j] then outDeg += 1;
+        }
+        inDegrees[i] = inDeg;
+        outDegrees[i] = outDeg;
+    }
+    
+    // Get initial vertex ordering based on degrees
+    var vertexOrder = getVertexOrdering(inDegrees, outDegrees);
+    
+    // Try permutations following vertex ordering
+    proc tryPermutations(depth: int) throws {
         if depth == n {
-            // Generate label for this permutation
-            var labela: string;
-            for i in 0..<n {
-                for j in 0..<n {
-                    // Preserve edge direction in label
-                    labela += if adjMatrix[permutation[i], permutation[j]] then "1" else "0";
-                }
-            }
-            
-            // Update max label if this is larger
+            var labela = generateLabel(currentPerm, adjMatrix);
             if maxLabel == "" || labela > maxLabel {
                 maxLabel = labela;
+                bestPerm = currentPerm;
             }
             return;
         }
         
-        // Generate degrees for unused vertices
-        var degrees: [0..<n] (int, int, int); // (inDegree, outDegree, vertex)
-        var idx = 0;
-        
-        for v in 0..<n {
-            if !used[v] {
-                var inDeg = 0;
-                var outDeg = 0;
-                
-                // Count edges involving vertex v
-                for i in 0..<n {
-                    if adjMatrix[i,v] then inDeg += 1;
-                    if adjMatrix[v,i] then outDeg += 1;
-                }
-                
-                degrees[idx] = (inDeg, outDeg, v);
-                idx += 1;
-            }
-        }
-        
-        // Sort vertices by (inDegree, outDegree) for canonical ordering
-        QuickSort(degrees[0..<idx]);
-        
-        // Try each unused vertex in sorted order
-        for i in 0..<idx {
-            var v = degrees[i][2];
-            if !used[v] {
-                permutation[depth] = v;
-                used[v] = true;
-                tryPermutation(depth + 1);
-                used[v] = false;
+        // Try vertices in degree-based order
+        for i in vertexOrder {
+            if !visited[i] {
+                visited[i] = true;
+                currentPerm[depth] = i;
+                tryPermutations(depth + 1);
+                visited[i] = false;
             }
         }
     }
     
-    // Sort vertices by degree first
-    proc QuickSort(arr: [] (int, int, int)) {
-        proc partition(arr: [] (int, int, int), low: int, high: int) {
-            var pivot = arr[high];
-            var i = low - 1;
-            
-            for j in low..high-1 {
-                // Compare tuples lexicographically
-                if (arr[j][0] > pivot[0]) || 
-                   (arr[j][0] == pivot[0] && arr[j][1] > pivot[1]) {
-                    i += 1;
-                    var temp = arr[i];
-                    arr[i] = arr[j];
-                    arr[j] = temp;
-                }
-            }
-            
-            var temp = arr[i+1];
-            arr[i+1] = arr[high];
-            arr[high] = temp;
-            return i + 1;
-        }
-        
-        proc quickSortHelper(arr: [] (int, int, int), low: int, high: int) {
-            if low < high {
-                var pi = partition(arr, low, high);
-                quickSortHelper(arr, low, pi-1);
-                quickSortHelper(arr, pi+1, high);
-            }
-        }
-        
-        quickSortHelper(arr, arr.domain.low, arr.domain.high);
-    }
-    
-    // Initialize state
-    for i in 0..<n {
-        permutation[i] = i;
-        used[i] = false;
-    }
-    
-    // Try all permutations
-    tryPermutation(0);
-    
+    // Generate canonical form
+    tryPermutations(0);
     return maxLabel;
+}
+/* Generate random networks preserving degree sequence */
+proc generateRandomNetworks(numNetworks: int) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Generating ", numNetworks, " random networks");
+    }
+
+    // Store original graph edges
+    var edges: list((int,int));
+    for v in 0..<g1.n_vertices {
+        var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+        for u in outNeighbors {
+            edges.pushBack((v,u));
+        }
+    }
+
+    // Generate each random network
+    for i in 1..numNetworks {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Generating random network ", i);
+        }
+
+        // Create copy of edges to shuffle
+        var randomEdges = edges;
+        
+        // Perform edge switches to randomize
+        var numSwitches = 100 * edges.size; // As specified in paper
+        for j in 1..numSwitches {
+            // Select two random edges
+            var idx1 = rand.getNext(0, edges.size-1);
+            var idx2 = rand.getNext(0, edges.size-1);
+            
+            var edge1 = randomEdges[idx1];
+            var edge2 = randomEdges[idx2];
+
+            // Try to switch while preserving degrees
+            if edge1[1] != edge2[1] && edge1[0] != edge2[0] {
+                // Check if new edges already exist
+                if !edgeExists(edge1[0], edge2[1]) && 
+                   !edgeExists(edge2[0], edge1[1]) {
+                    // Perform switch
+                    randomEdges[idx1] = (edge1[0], edge2[1]);
+                    randomEdges[idx2] = (edge2[0], edge1[1]);
+                }
+            }
+        }
+
+        // Build random graph and find its motifs
+        var randomGraph = buildGraphFromEdges(randomEdges);
+        var randomMotifs = runKavosh(/* params for random graph */);
+        
+        // Store motif counts for significance calculation
+        updateRandomMotifCounts(randomMotifs);
+    }
+}
+/* Calculate motif significance metrics */
+proc calculateMotifSignificance(originalMotifs: map(string, atomic int), 
+                              randomMotifs: [?d] map(string, atomic int)) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Calculating motif significance metrics");
+    }
+
+    // Store significance results
+    var zScores: map(string, real);
+    var pValues: map(string, real);
+    var frequencies: map(string, int);
+
+    // Calculate for each motif pattern found in original graph
+    for (pattern, count) in originalMotifs {
+        var origCount = count.read();
+        frequencies[pattern] = origCount;
+
+        // Calculate mean and std dev from random networks
+        var randomCounts: [0..#randomMotifs.size] real;
+        for i in 0..#randomMotifs.size {
+            if randomMotifs[i].contains(pattern) {
+                randomCounts[i] = randomMotifs[i][pattern].read():real;
+            }
+        }
+
+        var meanRandom = calculateMean(randomCounts);
+        var stdRandom = calculateStdDev(randomCounts, meanRandom);
+
+        // Calculate Z-score: (Nreal - <Nrand>)/std(Nrand)
+        var zscore = 0.0;
+        if stdRandom != 0.0 {
+            zscore = (origCount - meanRandom) / stdRandom;
+        }
+        zScores[pattern] = zscore;
+
+        // Calculate P-value: number of random networks where motif appears more often
+        var moreFrequent = 0;
+        for counts in randomCounts {
+            if counts >= origCount then moreFrequent += 1;
+        }
+        pValues[pattern] = moreFrequent:real / randomMotifs.size:real;
+    }
+
+    return (frequencies, zScores, pValues);
+}
+
+/* Calculate mean of array */
+proc calculateMean(arr: [] real): real {
+    var sum = 0.0;
+    for x in arr do sum += x;
+    return sum / arr.size:real;
+}
+
+/* Calculate standard deviation */
+proc calculateStdDev(arr: [] real, mean: real): real {
+    var sumSquares = 0.0;
+    for x in arr {
+        var diff = x - mean;
+        sumSquares += diff * diff;
+    }
+    return sqrt(sumSquares / (arr.size:real - 1));
+}
+
+/* Determine if subgraph is a motif based on significance thresholds */
+proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
+    // Following paper's criteria:
+    // 1. Frequency must be above minimum threshold
+    const minFreq = 4; // As specified in paper
+    
+    // 2. P-value must be below significance threshold
+    const pValueThreshold = 0.01; // As specified in paper
+    
+    // 3. Z-score must be above minimum threshold
+    const minZScore = 1.0; // As specified in paper
+
+    return freq >= minFreq && 
+           pvalue < pValueThreshold && 
+           zscore > minZScore;
+}
+
+/* Print motif analysis results */
+proc printMotifResults(frequencies: map(string, int),
+                      zScores: map(string, real),
+                      pValues: map(string, real)) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Motif Analysis Results ====");
+        for pattern in frequencies.keys() {
+            var freq = frequencies[pattern];
+            var zscore = zScores[pattern];
+            var pvalue = pValues[pattern];
+            
+            if isMotif(pattern, freq, zscore, pvalue) {
+                writeln("Found motif pattern: ", pattern);
+                writeln("  Frequency: ", freq);
+                writeln("  Z-score: ", zscore);
+                writeln("  P-value: ", pvalue);
+                writeln();
+            }
+        }
+    }
+}
+/* Generate random graphs while preserving degree sequence */
+proc generateRandomGraphs(numGraphs: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Generating ", numGraphs, " random graphs ====");
+    }
+
+    // Initialize degree tracking
+    var degrees: [0..<g1.n_vertices] (int,int); // (inDegree, outDegree)
+    
+    // Calculate initial degrees
+    for v in 0..<g1.n_vertices {
+        var inDeg = segRG1[v+1] - segRG1[v];
+        var outDeg = segGraphG1[v+1] - segGraphG1[v];
+        degrees[v] = (inDeg, outDeg);
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Initial degree sequence calculated");
+    }
+
+    // Store original edges
+    var edges: list((int,int));
+    for v in 0..<g1.n_vertices {
+        var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+        for u in outNeighbors {
+            edges.pushBack((v,u));
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Original graph has ", edges.size, " edges");
+    }
+
+    // Initialize array for random graph results
+    var randomResults: [0..#numGraphs] map(string, atomic int);
+
+    // Generate each random network
+    forall i in 0..#numGraphs {
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nGenerating random graph ", i+1);
+        }
+
+        // Create copy of edges to shuffle
+        var randomEdges = new list((int,int));
+        for e in edges do randomEdges.pushBack(e);
+
+        // Track current degrees for this random graph
+        var currentDegrees = degrees;
+
+        // Number of edge switches (100|E| as per paper)
+        var numSwitches = 100 * edges.size;
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Performing ", numSwitches, " edge switches");
+        }
+
+        // Perform edge switches
+        for j in 1..numSwitches {
+            // Select two random edges
+            var idx1 = rand.getNext(0, randomEdges.size-1);
+            var idx2 = rand.getNext(0, randomEdges.size-1);
+            
+            var edge1 = randomEdges[idx1];
+            var edge2 = randomEdges[idx2];
+
+            // Validate edge switch
+            if validateEdgeSwitch(edge1, edge2, currentDegrees) {
+                // Perform switch: (s1,d1), (s2,d2) -> (s1,d2), (s2,d1)
+                randomEdges[idx1] = (edge1(0), edge2(1));
+                randomEdges[idx2] = (edge2(0), edge1(1));
+                
+                if logLevel == LogLevel.DEBUG && j % (numSwitches/10) == 0 {
+                    writeln("    Completed ", (j*100)/numSwitches, "% of switches");
+                }
+
+                // Update degree tracking
+                // Decrement old degrees
+                currentDegrees[edge1(0)] = (currentDegrees[edge1(0)][0], 
+                                          currentDegrees[edge1(0)][1] - 1);
+                currentDegrees[edge2(0)] = (currentDegrees[edge2(0)][0], 
+                                          currentDegrees[edge2(0)][1] - 1);
+                currentDegrees[edge1(1)] = (currentDegrees[edge1(1)][0] - 1, 
+                                          currentDegrees[edge1(1)][1]);
+                currentDegrees[edge2(1)] = (currentDegrees[edge2(1)][0] - 1, 
+                                          currentDegrees[edge2(1)][1]);
+
+                // Increment new degrees
+                currentDegrees[edge1(0)] = (currentDegrees[edge1(0)][0], 
+                                          currentDegrees[edge1(0)][1] + 1);
+                currentDegrees[edge2(0)] = (currentDegrees[edge2(0)][0], 
+                                          currentDegrees[edge2(0)][1] + 1);
+                currentDegrees[edge2(1)] = (currentDegrees[edge2(1)][0] + 1, 
+                                          currentDegrees[edge2(1)][1]);
+                currentDegrees[edge1(1)] = (currentDegrees[edge1(1)][0] + 1, 
+                                          currentDegrees[edge1(1)][1]);
+            }
+        }
+
+        // Convert edge list to graph format and analyze
+        var (randomSrc, randomDst, randomSeg) = buildRandomGraph(randomEdges);
+        var randomState = new KavoshState(g1.n_vertices, g2.n_vertices);
+        runKavoshOnRandom(randomState, randomSrc, randomDst, randomSeg);
+        
+        // Store results
+        randomResults[i] = randomState.motifCounts;
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Completed random graph ", i+1);
+            writeln("  Found ", randomState.motifCounts.size, " patterns");
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nRandom graph generation complete");
+    }
+
+    return randomResults;
+}
+
+/* Check if an edge switch is valid */
+proc isValidSwitch(src1: int, dst1: int, src2: int, dst2: int, 
+                         edges: list((int,int))): bool {
+    // Cannot switch if vertices are same
+    if src1 == src2 || dst1 == dst2 || src1 == dst2 || src2 == dst1 then
+        return false;
+
+    // Check if new edges would create self-loops
+    if src1 == dst2 || src2 == dst1 then
+        return false;
+
+    // Check if new edges already exist
+    var newEdge1 = (src1, dst2);
+    var newEdge2 = (src2, dst1);
+
+    for e in edges {
+        if e == newEdge1 || e == newEdge2 then
+            return false;
+    }
+
+    return true;
+}
+
+/* Build random graph from edge list for comparison */
+proc buildRandomGraph(edges: list((int,int))) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Building random graph from ", edges.size, " edges");
+    }
+    
+    var n = g1.n_vertices;  // Use same number of vertices as original
+    var m = edges.size;
+    
+    // Create arrays for graph representation
+    var srcNodes: [0..#m] int;
+    var dstNodes: [0..#m] int;
+    var segments: [0..#(n+1)] int;
+    
+    // Initialize segments
+    segments.fill(0);
+    
+    // Count outgoing edges per vertex
+    for (src, _) in edges {
+        segments[src+1] += 1;
+    }
+    
+    // Compute segment offsets
+    for i in 1..n {
+        segments[i] += segments[i-1];
+    }
+    
+    // Fill src/dst arrays maintaining edge order
+    var counts: [0..#n] int;
+    for (src, dst) in edges {
+        var idx = segments[src] + counts[src];
+        srcNodes[idx] = src;
+        dstNodes[idx] = dst;
+        counts[src] += 1;
+    }
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Built random graph with ", n, " vertices and ", m, " edges");
+    }
+    
+    return (srcNodes, dstNodes, segments);
+}
+
+/* Run Kavosh on random graph */
+proc runKavoshOnRandom(state: KavoshState, 
+                             srcNodes: [] int,
+                             dstNodes: [] int,
+                             segments: [] int) {
+    // Similar to main Kavosh but using provided arrays
+    forall v in 0..<state.n {
+        state.reset();
+        state.visited[v] = true;
+        state.pattern.pushBack(v);
+
+        var compositions = generateCompositions(state.k-1);
+        for comp in compositions {
+            enumeratePatternRandom(v, comp, 0, state, srcNodes, dstNodes, segments);
+        }
+
+        state.visited[v] = false;
+        state.pattern.popBack();
+    }
+}
+
+/* Pattern enumeration for random graphs */
+proc enumeratePatternRandom(v: int, pattern: list(int), depth: int,
+                          ref state: KavoshState,
+                          const ref srcNodes: [] int,
+                          const ref dstNodes: [] int,
+                          const ref segments: [] int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Random enumeration at depth ", depth, " from vertex ", v);
+    }
+
+    // Base case: found complete pattern
+    if depth == pattern.size {
+        processFoundMotif(state);
+        return;
+    }
+
+    // Get neighbors from random graph structure
+    var validNbrs: domain(int);
+    
+    // Get outgoing neighbors
+    var outStart = segments[v];
+    var outEnd = if v < segments.domain.high then segments[v+1] else dstNodes.size;
+    
+    // Add valid unvisited neighbors
+    for i in outStart..<outEnd {
+        var nbr = dstNodes[i];
+        if !state.visited[nbr] {
+            validNbrs.add(nbr);
+            if logLevel == LogLevel.DEBUG {
+                writeln("  Added valid neighbor: ", nbr);
+            }
+        }
+    }
+
+    // Required vertices for this level
+    var k = pattern[depth];
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("  Need ", k, " vertices at depth ", depth);
+        writeln("  Have ", validNbrs.size, " valid neighbors");
+    }
+
+    // Process if enough valid neighbors exist
+    if validNbrs.size >= k {
+        var combinations = generateCombinations(validNbrs, k);
+        
+        for combo in combinations {
+            // Track added vertices for backtracking
+            var addedVertices: list(int);
+
+            // Add vertices
+            for u in combo {
+                state.pattern.pushBack(u);
+                state.visited[u] = true;
+                addedVertices.pushBack(u);
+                
+                if logLevel == LogLevel.DEBUG {
+                    writeln("    Added vertex ", u);
+                }
+            }
+            
+            // Recurse on each vertex
+            for u in combo {
+                enumeratePatternRandom(u, pattern, depth+1,
+                                     state, srcNodes, dstNodes, segments);
+            }
+            
+            // Backtrack
+            for u in addedVertices {
+                state.pattern.popBack();
+                state.visited[u] = false;
+            }
+
+            if logLevel == LogLevel.DEBUG {
+                writeln("    Backtracked at depth ", depth);
+            }
+        }
+    }
+}
+
+/* Main result structure to hold motif analysis data */
+class MotifAnalysisResults {
+    var frequencies: map(string, int);        // Original graph frequencies
+    var zScores: map(string, real);          // Z-scores for each motif
+    var pValues: map(string, real);          // P-values for each motif
+    var significantMotifs: list(string);     // Patterns that are motifs
+    
+    proc init() {
+        this.frequencies = new map(string, int);
+        this.zScores = new map(string, real);
+        this.pValues = new map(string, real);
+        this.significantMotifs = new list(string);
+    }
+}
+
+/* Main execution procedure - integrates all components */
+proc findMotifs() throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting Motif Finding ====");
+    }
+    
+    var timer = new stopwatch();
+    timer.start();
+
+    // 1. Run Kavosh on original graph
+    if logLevel == LogLevel.DEBUG {
+        writeln("Analyzing original graph...");
+    }
+    runKavosh();
+    var originalMotifs = state.motifCounts;
+
+    // 2. Generate random graphs and analyze them
+    if logLevel == LogLevel.DEBUG {
+        writeln("Generating and analyzing random graphs...");
+    }
+    const numRandomGraphs = 1000; // As specified in paper
+    var randomResults = generateRandomGraphs(numRandomGraphs);
+
+    // 3. Calculate significance
+    if logLevel == LogLevel.DEBUG {
+        writeln("Calculating motif significance...");
+    }
+    var (frequencies, zScores, pValues) = 
+        calculateMotifSignificance(originalMotifs, randomResults);
+
+    // 4. Identify significant motifs
+    var results = new MotifAnalysisResults();
+    results.frequencies = frequencies;
+    results.zScores = zScores;
+    results.pValues = pValues;
+
+    // Store significant motifs based on criteria
+    for pattern in frequencies.keys() {
+        var freq = frequencies[pattern];
+        var zscore = zScores[pattern];
+        var pvalue = pValues[pattern];
+        
+        if isMotif(pattern, freq, zscore, pvalue) {
+            results.significantMotifs.pushBack(pattern);
+        }
+    }
+
+    timer.stop();
+
+    // 5. Report results
+    reportResults(results, timer.elapsed());
+
+    return results;
+}
+
+/* Comprehensive result reporting */
+proc reportResults(results: MotifAnalysisResults, time: real) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("\n======= Motif Analysis Results =======");
+        writeln("Total execution time: ", time, " seconds");
+        writeln("Found ", results.significantMotifs.size, " significant motifs");
+        writeln("\nSignificant Motifs Details:");
+        
+        for pattern in results.significantMotifs {
+            writeln("\nMotif Pattern: ", pattern);
+            writeln("  Frequency: ", results.frequencies[pattern]);
+            writeln("  Z-score: ", results.zScores[pattern]);
+            writeln("  P-value: ", results.pValues[pattern]);
+            
+            // Convert pattern to adjacency matrix for visualization
+            var n = sqrt(pattern.length): int;  // Pattern is flattened matrix
+            writeln("\n  Adjacency Matrix:");
+            for i in 0..<n {
+                write("  ");
+                for j in 0..<n {
+                    write(pattern[i*n + j], " ");
+                }
+                writeln();
+            }
+        }
+        writeln("\n=====================================");
+    }
+}
+/* 
+ * Generate vertex ordering based on degrees for orbit optimization.
+ * Returns array of vertex indices ordered by (inDegree, outDegree).
+ */
+proc getVertexOrdering(inDegrees: [] int, outDegrees: [] int): [] int {
+    var n = inDegrees.size;
+    var order: [0..<n] int;
+    var ranks: [0..<n] (int, int, int); // (inDegree, outDegree, vertex)
+    
+    // Create ranking tuples
+    for i in 0..<n {
+        ranks[i] = (inDegrees[i], outDegrees[i], i);
+    }
+    
+    // Sort by degrees
+    sort(ranks);
+    
+    // Extract vertex order
+    for i in 0..<n {
+        order[i] = ranks[i][2];
+    }
+    
+    return order;
+}
+
+/* 
+ * Generate string label from permutation and adjacency matrix.
+ * Format ensures unique representation for isomorphic graphs.
+ */
+proc generateLabel(perm: [] int, adjMatrix: [] bool): string {
+    var n = perm.size;
+    var labela: string;
+    
+    // Build label string following permutation
+    for i in 0..<n {
+        for j in 0..<n {
+            labela += if adjMatrix[perm[i], perm[j]] then "1" else "0";
+        }
+    }
+    
+    return labela;
+}
+
+/* 
+ * Validate vertex for next level processing.
+ * Ensures proper vertex selection based on graph structure.
+ */
+proc validateVertex(v: int, level: int, const ref state: KavoshState): bool {
+    // Get current vertex neighbors
+    var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+    var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];
+    
+    // Check connectivity constraints
+    var hasUpperConnection = false;
+    var hasLowerConnection = false;
+    
+    // Check connections to previous level
+    for u in inNeighbors {
+        if state.pattern.find(u) != -1 {
+            hasUpperConnection = true;
+            break;
+        }
+    }
+    
+    // Check potential for next level connections
+    for u in outNeighbors {
+        if !state.visited[u] {
+            hasLowerConnection = true;
+            break;
+        }
+    }
+    
+    return hasUpperConnection && hasLowerConnection;
+}
+
+/* 
+ * Enhanced edge validity checking for random graphs.
+ * Ensures degree sequence preservation.
+ */
+proc validateEdgeSwitch(edge1: (int,int), edge2: (int,int), 
+                       const ref degrees: [?d] (int,int)): bool {
+    var (src1, dst1) = edge1;
+    var (src2, dst2) = edge2;
+    
+    // Check for direct overlap
+    if src1 == src2 || dst1 == dst2 || src1 == dst2 || src2 == dst1 {
+        return false;
+    }
+    
+    // Check degree preservation
+    var oldSrc1Out = degrees[src1][1];
+    var oldDst1In = degrees[dst1][0];
+    var oldSrc2Out = degrees[src2][1];
+    var oldDst2In = degrees[dst2][0];
+    
+    // Simulate switch
+    var newSrc1Out = oldSrc1Out;
+    var newDst1In = oldDst1In - 1;
+    var newSrc2Out = oldSrc2Out;
+    var newDst2In = oldDst2In - 1;
+    
+    // Check if degrees remain valid
+    return newSrc1Out >= 0 && newDst1In >= 0 && 
+           newSrc2Out >= 0 && newDst2In >= 0;
 }
 /* Main execution procedure using these functions */
 proc Kavosh(n: int, k: int) throws {
@@ -609,70 +1186,142 @@ proc Kavosh(n: int, k: int) throws {
     }
 
     var state = new KavoshState(n, k);
-    var timer = new stopwatch();
-    timer.start();
     
     // Process each vertex as root
     forall v in 0..<n with (ref state) {
-        // Stop if time limit exceeded
-        if limitTime && timer.elapsed():int >= timeLimit {
-            stopper.testAndSet();
-            continue;
-        }
-        
-        // Stop if size limit reached
-        if limitSize && state.motifCounts.size >= matchLimit {
-            stopper.testAndSet();
-            continue; 
-        }
-
-        if logLevel == LogLevel.DEBUG && v % 1000 == 0 {
-            writeln("Processing root vertex ", v);
-        }
-
         state.reset();
         state.visited[v] = true;
         state.pattern.pushBack(v);
 
-        // Generate compositions for (k-1) remaining vertices
+        // Generate compositions
         var compositions = generateCompositions(k-1);
         
-        // Process each composition pattern
+        // Process patterns
         for comp in compositions {
-            if stopper.read() then break;
             enumeratePattern(v, comp, 0, state);
         }
 
         state.visited[v] = false;
-        state.pattern.removeLast();
+        state.pattern.popBack();
     }
 
-    timer.stop();
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("Kavosh completed in ", timer.elapsed(), " seconds");
-        writeln("Found ", state.motifCounts.size, " distinct motifs");
-    }
-
-    return state; // Return results for significance calculation
+    return state.motifCounts;
 }
-/* Wrapper function to prepare and execute Kavosh */
-proc runKavosh() {
-    if logLevel == LogLevel.DEBUG {
-        writeln("\n==== Starting Kavosh wrapper ====");
-    }
-    // Initialize state tracking
-    var n = g1.n_vertices;
-    var k = g2.n_vertices; // Use subgraph size as motif size
+    /* 
+    * Wrapper function that orchestrates the entire motif finding process.
+    * Called from runMotifCounting after graph data is extracted.
+    */
+    proc runKavosh() throws {
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n==== Starting Kavosh wrapper ====");
+            writeln("Graph info - Vertices: ", g1.n_vertices, " Edges: ", srcNodesG1.size);
+            writeln("Motif size to find: ", g2.n_vertices);
+        }
 
-    
-    // Call the main algorithm
-    Kavosh(n, k);
-    
+        var timer = new stopwatch();
+        timer.start();
+        
+        // Initialize parameters for the core algorithm
+        var n = g1.n_vertices;  // Size of main graph
+        var k = g2.n_vertices;  // Size of motifs to find (from subgraph)
 
-}
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n-- Phase 1: Running core Kavosh algorithm on original graph");
+        }
+        
+        // Run main Kavosh algorithm on original graph
+        var originalMotifs = Kavosh(n, k);
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Found ", originalMotifs.size, " different subgraph patterns");
+            writeln("\nPattern counts in original graph:");
+            for (pattern, count) in originalMotifs {
+                writeln("  Pattern: ", pattern, " Count: ", count.read());
+            }
+        }
+
+        // Early termination check
+        if limitTime && timer.elapsed():int >= timeLimit {
+            if logLevel == LogLevel.DEBUG {
+                writeln("Time limit reached after original graph analysis");
+            }
+            stopper.testAndSet();
+            return originalMotifs;
+        }
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n-- Phase 2: Generating and analyzing random graphs");
+        }
+
+        // Generate and analyze random graphs for comparison
+        const numRandomGraphs = 1000;  // As specified in paper
+        var randomResults = generateRandomGraphs(numRandomGraphs);
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Generated and analyzed ", numRandomGraphs, " random graphs");
+            writeln("Time elapsed: ", timer.elapsed(), " seconds");
+        }
+
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n-- Phase 3: Calculating significance metrics");
+        }
+
+        // Calculate statistical significance
+        var (frequencies, zScores, pValues) = 
+            calculateMotifSignificance(originalMotifs, randomResults);
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Completed significance calculations");
+            writeln("Time elapsed: ", timer.elapsed(), " seconds");
+        }
+
+        // Organize results
+        var results = new MotifAnalysisResults();
+        results.frequencies = frequencies;
+        results.zScores = zScores;
+        results.pValues = pValues;
+
+        // Identify significant motifs
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n-- Phase 4: Identifying significant motifs");
+        }
+
+        for pattern in frequencies.keys() {
+            var freq = frequencies[pattern];
+            var zscore = zScores[pattern];
+            var pvalue = pValues[pattern];
+            
+            if isMotif(pattern, freq, zscore, pvalue) {
+                results.significantMotifs.pushBack(pattern);
+                
+                if logLevel == LogLevel.DEBUG {
+                    writeln("\nFound significant motif:");
+                    writeln("  Pattern: ", pattern);
+                    writeln("  Frequency: ", freq);
+                    writeln("  Z-score: ", zscore);
+                    writeln("  P-value: ", pvalue);
+                }
+            }
+        }
+
+        timer.stop();
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n==== Kavosh Analysis Complete ====");
+            writeln("Total execution time: ", timer.elapsed(), " seconds");
+            writeln("Found ", results.significantMotifs.size, " significant motifs");
+            writeln("Processed ", frequencies.size, " total patterns");
+        }
+
+        return results;
+    }// end of runKavosh 
 
     // Execute Kavosh algorithm
     runKavosh(); // Using subgraph size as motif size
+      var tempArr: [0..0] int;
+      var srcPerIso = makeDistArray(2*2, int);
+      var dstPerIso = makeDistArray(2*2, int);
+      return (srcPerIso, dstPerIso, tempArr, tempArr);
   }
 }
