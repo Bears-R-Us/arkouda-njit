@@ -277,7 +277,7 @@ module SubgraphIsomorphism {
     }
 
     /* Pick the edges from the host graph that can be mapped to edge 0 of the data graph. */
-    proc edgePicker() throws {
+    proc edgePicker(checkVertices:bool = false) throws {
       var edgeFlagger: [0..<g1.n_edges] bool = false;
 
       // Get the first edge of the subgraph. Since the edge list is pre-sorted, then the first edge
@@ -299,6 +299,16 @@ module SubgraphIsomorphism {
 
         var Tin_u = segRG1[u+1] - segRG1[u];
         var Tout_u = segGraphG1[u+1] - segGraphG1[u];
+
+        if checkVertices {
+          if semanticAndCheck {
+            if !(doAttributesMatch(u, uSubgraph, graphNodeAttributes, subgraphNodeAttributes, "and", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph))
+              then continue;
+          } else if semanticOrCheck {
+            if !(doAttributesMatch(u, uSubgraph, graphNodeAttributes, subgraphNodeAttributes, "or", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph))
+              then continue;
+          } else { /* Do nothing. */ }
+        }
 
         var Tin_v = segRG1[v+1] - segRG1[v];
         var Tout_v = segGraphG1[v+1] - segGraphG1[v];
@@ -680,11 +690,7 @@ module SubgraphIsomorphism {
         VF2SIFromEdges(g1,g2,edgeFlagger);
       } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
         pickerTimer.start();
-        var vertexFlagger = vertexPicker();
-        var edgeFlagger = edgePicker();
-        forall (f,i) in zip(edgeFlagger,edgeFlagger.domain) {
-          if !(f && vertexFlagger[srcNodesG1[i]] && srcNodesG1[i] != dstNodesG1[i]) then f = false;
-        }
+        var edgeFlagger = edgePicker(true);
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
