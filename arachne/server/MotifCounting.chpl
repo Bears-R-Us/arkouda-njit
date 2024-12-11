@@ -43,15 +43,22 @@ class KavoshState {
     var maxPatternSize: atomic int = 0;
     
     proc init(n: int, k: int) {
+      if logLevel == LogLevel.DEBUG {
+        writeln("Initializing KavoshState: n=", n, " k=", k);
+      }
         this.n = n;
         this.k = k;
         this.visited = false;
         this.pattern = new list(int);
         this.motifCounts = new map(string, atomic int);
 
+        this.pattern.pushBack(-1);  // TEST
+        this.pattern.popBack();     
+
         if logLevel == LogLevel.DEBUG {
-            writeln("Initialized KavoshState for graph with ", n, " vertices");
-            writeln("Looking for motifs of size ", k);
+          writeln("Initialized KavoshState for graph with ", n, " vertices");
+          writeln("Looking for motifs of size ", k);
+          writeln("pattern after push and pop of -1 ", pattern);
         }
     }
     
@@ -178,13 +185,19 @@ class KavoshState {
     * and updating counts.
     */
     proc processFoundMotif(ref state: KavoshState) throws {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Processing pattern of size ", state.pattern.size);
-        }
-
+      if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting processFoundMotif ====");
+        writeln("Processing pattern of size ", state.pattern.size);
+        writeln("Current pattern: ", state.pattern);  // Add this
+        writeln("Expected size: ", state.k);          // Add this
+      }
+      if state.pattern.size != state.k {
+          writeln("Warning: Pattern size mismatch");
+          return;
+      }
         // Build adjacency matrix only for the pattern size
-        var n = state.pattern.size;
-        var adjMatrix: [0..<n, 0..<n] bool = false;
+      var n = state.pattern.size;
+      var adjMatrix: [0..<n, 0..<n] bool = false;
 
         // Fill adjacency matrix efficiently
         for (i, v) in zip(0..<n, state.pattern) {
@@ -309,108 +322,163 @@ class KavoshState {
         
         return order;
     }// End of getVertexOrdering
+
     /* 
-    * Enumerate vertices according to composition pattern.
+    * Core enumeration function that builds motif patterns according to specified depth.
     * Called by Kavosh() for each composition to build motifs.
     */
     proc enumeratePattern(v: int, pattern: list(int), depth: int, ref state: KavoshState) throws {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Enumerating pattern at depth ", depth, " from vertex ", v);
-        }
+      if logLevel == LogLevel.DEBUG {
+          writeln("\n==== Starting enumeratePattern ====");
+          writeln("Depth: ", depth, ", Vertices needed at this depth: ", pattern[depth]);
+          writeln("Current pattern size: ", state.pattern.size);
+          writeln("Target size: ", state.k);
+          writeln("Processing vertex: ", v);
+          writeln("Current pattern: ", state.pattern);
+      }
 
-        // Base case: found complete pattern
-        if depth == pattern.size {
-            processFoundMotif(state);
-            return;
-        }
+      // Check if we've reached target size
+      if state.pattern.size == state.k {
+          if logLevel == LogLevel.DEBUG {
+              writeln("Found complete pattern of size ", state.k);
+          }
+          processFoundMotif(state);
+          return;
+      }
 
-        // Get neighbors using segment-based access for directed graph
-        var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];      
-        var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+      // Check if we've gone too far
+      if depth >= pattern.size {
+          if logLevel == LogLevel.DEBUG {
+              writeln("Reached max depth without complete pattern");
+          }
+          return;
+      }
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("  Found ", inNeighbors.size, " in-neighbors and ", outNeighbors.size, " out-neighbors");
-        }
+      // Get neighbors using segment-based access for directed graph
+      var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];      
+      var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
 
-        // Build valid neighbor set respecting graph direction and validation
-        var validNbrs: domain(int, parSafe=true);
-        
-        // Process outgoing neighbors
-        for nbr in outNeighbors {
-            if !state.visited[nbr] {
-                // Validate vertex for next level
-                if validateVertex(nbr, depth, state) {
-                    validNbrs.add(nbr);
-                    if logLevel == LogLevel.DEBUG {
-                        writeln("  Added valid out-neighbor: ", nbr);
-                    }
-                }
-            }
-        }
+      if logLevel == LogLevel.DEBUG {
+          writeln("  Found ", inNeighbors.size, " in-neighbors and ", outNeighbors.size, " out-neighbors");
+      }
 
-        // Process incoming neighbors 
-        for nbr in inNeighbors {
-            if !state.visited[nbr] {
-                // Validate vertex for next level
-                if validateVertex(nbr, depth, state) {
-                    validNbrs.add(nbr);
-                    if logLevel == LogLevel.DEBUG {
-                        writeln("  Added valid in-neighbor: ", nbr);
-                    }
-                }
-            }
-        }
+      // Build valid neighbor set respecting graph direction
+      var validNbrs: domain(int, parSafe=true);
+      
+      // Process outgoing neighbors
+      for nbr in outNeighbors {
+          if !state.visited[nbr] {
+              if validateVertex(nbr, depth, state) {
+                  validNbrs.add(nbr);
+                  if logLevel == LogLevel.DEBUG {
+                      writeln("  Added valid out-neighbor: ", nbr);
+                  }
+              }
+          }
+      }
 
-        // Get required number of vertices for this level
-        var k = pattern[depth];
-        
-        if logLevel == LogLevel.DEBUG {
-            writeln("  Need ", k, " vertices at depth ", depth);
-            writeln("  Have ", validNbrs.size, " valid neighbors to choose from");
-        }
+      // Process incoming neighbors 
+      for nbr in inNeighbors {
+          if !state.visited[nbr] {
+              if validateVertex(nbr, depth, state) {
+                  validNbrs.add(nbr);
+                  if logLevel == LogLevel.DEBUG {
+                      writeln("  Added valid in-neighbor: ", nbr);
+                  }
+              }
+          }
+      }
 
-        // Only proceed if we have enough valid neighbors
-        if validNbrs.size >= k {
-            // Generate combinations using revolving door ordering
-            var combinations = generateCombinations(validNbrs, k);
+      // Get required number of vertices for this level
+      var k = pattern[depth];
+      
+      if logLevel == LogLevel.DEBUG {
+          writeln("  Need ", k, " vertices at depth ", depth);
+          writeln("  Have ", validNbrs.size, " valid neighbors to choose from");
+      }
 
-            if logLevel == LogLevel.DEBUG {
-                writeln("  Generated ", combinations.size, " combinations");
-            }
+      // Only proceed if we have enough valid neighbors
+      if validNbrs.size >= k {
+          if logLevel == LogLevel.DEBUG {
+              writeln("  About to generate combinations of size ", k);
+          }
 
-            // Process each combination
-            for combo in combinations {
-                // Track vertices for backtracking
-                var addedVertices: list(int);
+          var combinations = generateCombinations(validNbrs, k);
 
-                // Add vertices in combination
-                for u in combo {
-                    state.pattern.pushBack(u);
-                    state.visited[u] = true;
-                    addedVertices.pushBack(u);
-                    
-                    if logLevel == LogLevel.DEBUG {
-                        writeln("    Added vertex ", u, " to pattern");
-                    }
-                }
+          if logLevel == LogLevel.DEBUG {
+              writeln("  Generated combinations: ", combinations);
+          }
 
-                // Recurse on each vertex in combination
-                for u in combo {
-                    enumeratePattern(u, pattern, depth + 1, state);
-                    if stopper.read() then break;  // Check for early termination
-                }
+          // Process each combination
+          for combo in combinations {
+              // Track vertices for backtracking
+              var addedVertices: list(int);
+              var initialSize = state.pattern.size;
 
-                // Backtrack - remove added vertices
-                for u in addedVertices {
-                    state.pattern.popBack();
-                    state.visited[u] = false;
-                }
+              try {
+                  // Add vertices in combination
+                  for u in combo {
+                      if !state.visited[u] {
+                          state.pattern.pushBack(u);
+                          state.visited[u] = true;
+                          addedVertices.pushBack(u);
+                          
+                          if logLevel == LogLevel.DEBUG {
+                              writeln("    Added vertex ", u);
+                              writeln("    Current pattern: ", state.pattern);
+                          }
+                      } else {
+                          if logLevel == LogLevel.DEBUG {
+                              writeln("Warning: Attempted to add already visited vertex ", u);
+                          }
+                      }
+                  }
 
-                if logLevel == LogLevel.DEBUG {
-                    writeln("    Backtracked combination at depth ", depth);
-                }
-            }
-        }
+                  // Only recurse if we added vertices successfully
+                  if addedVertices.size == k {
+                      // Process from each added vertex
+                      for u in addedVertices {
+                          enumeratePattern(u, pattern, depth + 1, state);
+                          if stopper.read() then break;
+                      }
+                  } else {
+                      if logLevel == LogLevel.DEBUG {
+                          writeln("Warning: Failed to add all vertices in combination");
+                      }
+                  }
+
+                  // Backtrack - remove added vertices
+                  while state.pattern.size > initialSize {
+                      var u = state.pattern.popBack();
+                      state.visited[u] = false;
+                      if logLevel == LogLevel.DEBUG {
+                          writeln("    Removed vertex ", u);
+                          writeln("    Pattern after removal: ", state.pattern);
+                      }
+                  }
+
+              } catch e {
+                  writeln("Error processing combination: ", e.message());
+                  // Ensure cleanup
+                  for u in addedVertices {
+                      state.pattern.popBack();
+                      state.visited[u] = false;
+                  }
+              }
+
+              if logLevel == LogLevel.DEBUG {
+                  writeln("    After processing combination: ", combo);
+                  writeln("    Pattern size: ", state.pattern.size);
+                  writeln("    Current pattern: ", state.pattern);
+              }
+          }
+      }
+
+      if logLevel == LogLevel.DEBUG {
+          writeln("==== Completed enumeratePattern at depth ", depth, " ====");
+          writeln("Final pattern: ", state.pattern);
+      }
+
     }// End of enumeratePattern
 
     /* 
@@ -582,7 +650,8 @@ class KavoshState {
       var state = new KavoshState(n, k);
         
       // Process each vertex as root
-      forall v in 0..<n with (ref state) {
+      //forall v in 0..<n with (ref state) {
+      for v in 0..<n {
         state.reset();
         state.visited[v] = true;
         state.pattern.pushBack(v);
