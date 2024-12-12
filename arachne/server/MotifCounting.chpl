@@ -35,42 +35,88 @@ class KavoshState {
     var n: int;              // Number of vertices
     var k: int;              // Motif size
     var visited: [0..<n] bool;
-    var pattern: list(int);   
+    var pattern: [0..<k] int;  // Fixed-size array instead of list
+    var patternSize: int;      // Track current size
     var motifCounts: map(string, atomic int);
     
     // Track memory usage
     var totalPatterns: atomic int = 0;
     var maxPatternSize: atomic int = 0;
-    
+
+    // Statistics tracking
+    var patternStats = new map(string, (int, real, real)); // (frequency, zscore, pvalue)
+ 
     proc init(n: int, k: int) {
-      if logLevel == LogLevel.DEBUG {
-        writeln("Initializing KavoshState: n=", n, " k=", k);
-      }
+        if logLevel == LogLevel.DEBUG {
+            writeln("Initializing KavoshState: n=", n, " Looking for motifs of size k=", k);
+        }
         this.n = n;
         this.k = k;
         this.visited = false;
-        this.pattern = new list(int);
+        this.pattern = -1;     // Initialize with invalid vertex values
+        this.patternSize = 0;
         this.motifCounts = new map(string, atomic int);
+    }
 
-        this.pattern.pushBack(-1);  // TEST
-        this.pattern.popBack();     
-
+    proc reset() {
         if logLevel == LogLevel.DEBUG {
-          writeln("Initialized KavoshState for graph with ", n, " vertices");
-          writeln("Looking for motifs of size ", k);
-          writeln("pattern after push and pop of -1 ", pattern);
+            writeln("Resetting KavoshState");
+        }
+        this.visited = false;
+        this.pattern = -1;
+        this.patternSize = 0;
+    }
+
+    /* Add vertex to pattern */
+    proc addToPattern(v: int) {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Adding vertex ", v, " to pattern at position ", this.patternSize);
+        }
+        if this.patternSize < k {
+            this.pattern[this.patternSize] = v;
+            this.patternSize += 1;
+            updateMemoryStats();
         }
     }
-    
-    proc reset() {
-        this.visited = false;
-        this.pattern.clear();
+
+    /* Remove last vertex from pattern */
+    proc removeFromPattern() {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Removing last vertex from pattern at position ", this.patternSize-1);
+        }
+        if this.patternSize > 0 {
+            this.pattern[this.patternSize-1] = -1;
+            this.patternSize -= 1;
+        }
     }
 
     /* Track memory usage */
     proc updateMemoryStats() {
         totalPatterns.add(1);
         maxPatternSize.write(max(maxPatternSize.read(), pattern.size));
+    }
+
+    /* Update statistics */
+    proc updateStats(pattern: string, freq: int, zscore: real, pvalue: real) {
+        patternStats[pattern] = (freq, zscore, pvalue);
+    }
+
+    /* Print statistics */
+    proc printStats() {
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n==== Pattern Statistics ====");
+            writeln("Total unique patterns: ", motifCounts.size);
+            writeln("\nSignificant Motifs:");
+            for pattern in patternStats.keys() {
+                var (freq, zscore, pvalue) = patternStats[pattern];
+                if isMotif(pattern, freq, zscore, pvalue) {
+                    writeln("Pattern: ", pattern);
+                    writeln("  Frequency: ", freq);
+                    writeln("  Z-score: ", zscore);
+                    writeln("  P-value: ", pvalue);
+                }
+            }
+        }
     }
 
     /* Clean up resources */
@@ -84,6 +130,26 @@ class KavoshState {
     }
 }
 
+/* Identify if a pattern is a motif based on statistical criteria */
+proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
+    // Criteria from the paper
+    const minFreq = 4;              // Minimum frequency threshold
+    const pValueThreshold = 0.01;    // Maximum p-value threshold
+    const minZScore = 1.0;          // Minimum z-score threshold
+
+    var isSignificant = freq >= minFreq && 
+                       pvalue < pValueThreshold && 
+                       zscore > minZScore;
+
+    if logLevel == LogLevel.DEBUG && isSignificant {
+        writeln("Found significant motif:");
+        writeln("  Frequency: ", freq, " (threshold: ", minFreq, ")");
+        writeln("  Z-score: ", zscore, " (threshold: ", minZScore, ")");
+        writeln("  P-value: ", pvalue, " (threshold: ", pValueThreshold, ")");
+    }
+
+    return isSignificant;
+}
   proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
               sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
@@ -139,6 +205,10 @@ class KavoshState {
     proc generateCompositions(n: int): list(list(int)) {
       var compositions: list(list(int));
       
+      if logLevel == LogLevel.DEBUG {
+        writeln("\n==== Starting generateCompositions ====");
+      }
+
       proc compositionHelper(remaining: int, maxFirst: int, current: list(int)) {
         if remaining == 0 {
           compositions.pushBack(current);
@@ -154,6 +224,11 @@ class KavoshState {
       }
       
       compositionHelper(n, n, new list(int));
+      
+      if logLevel == LogLevel.DEBUG {
+        writeln("\nEnd of generateCompositions. Compositions are: ", compositions);
+      }
+
       return compositions;
     }// End of generateCompositions
 
@@ -186,33 +261,43 @@ class KavoshState {
     */
     proc processFoundMotif(ref state: KavoshState) throws {
       if logLevel == LogLevel.DEBUG {
-        writeln("\n==== Starting processFoundMotif ====");
-        writeln("Processing pattern of size ", state.pattern.size);
-        writeln("Current pattern: ", state.pattern);  // Add this
-        writeln("Expected size: ", state.k);          // Add this
+          writeln("\n==== Starting processFoundMotif ====");
+          writeln("Processing pattern of size ", state.patternSize);
+          writeln("Current pattern: ", state.pattern[0..<state.patternSize]);  
+          writeln("Expected size: ", state.k);          
       }
-      if state.pattern.size != state.k {
+
+      if state.patternSize != state.k {
           writeln("Warning: Pattern size mismatch");
           return;
       }
-        // Build adjacency matrix only for the pattern size
-      var n = state.pattern.size;
+
+      // Build adjacency matrix only for the pattern size
+      var n = state.patternSize;
       var adjMatrix: [0..<n, 0..<n] bool = false;
 
-        // Fill adjacency matrix efficiently
-        for (i, v) in zip(0..<n, state.pattern) {
-            var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-            for nbr in outNeighbors {
-                var idx = state.pattern.find(nbr);
-                if idx != -1 {
-                    adjMatrix[i, idx] = true;
-                }
-            }
-        }
+      // Fill adjacency matrix efficiently
+      for i in 0..<n {
+          var v = state.pattern[i];
+          var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+          for nbr in outNeighbors {
+              // Search for nbr in pattern array
+              for j in 0..<n {
+                  if state.pattern[j] == nbr {
+                      adjMatrix[i, j] = true;
+                      if logLevel == LogLevel.DEBUG {
+                          writeln("adjMatrix[",i,", ",j,"] = ", adjMatrix[i, j]);
+                      }
+                      break;
+                  }
+              }
+          }
+      }
 
-        var labela = generateCanonicalLabel(adjMatrix);
-        updateMotifCount(labela, state);
-        state.updateMemoryStats();
+      // Use pre-allocated canonical label generation
+      var labela = generateCanonicalLabel(adjMatrix);
+      updateMotifCount(labela, state);
+      state.updateMemoryStats();
     }// End of processFoundMotif
 
 
@@ -327,23 +412,25 @@ class KavoshState {
     * Core enumeration function that builds motif patterns according to specified depth.
     * Called by Kavosh() for each composition to build motifs.
     */
-    proc enumeratePattern(v: int, pattern: list(int), depth: int, ref state: KavoshState) throws {
+    proc enumeratePattern(v: int, ref pattern: list(int), depth: int, ref state: KavoshState) throws {
       if logLevel == LogLevel.DEBUG {
           writeln("\n==== Starting enumeratePattern ====");
-          writeln("Depth: ", depth, ", Vertices needed at this depth: ", pattern[depth]);
-          writeln("Current pattern size: ", state.pattern.size);
+          var verticesNeeded = if depth < pattern.size then pattern[depth] else -1;
+          writeln("Depth: ", depth, ", Vertices needed at this depth: ", verticesNeeded);
+          writeln("Current pattern size: ", state.patternSize);
           writeln("Target size: ", state.k);
           writeln("Processing vertex: ", v);
-          writeln("Current pattern: ", state.pattern);
+          writeln("Current pattern vertices: ", state.pattern[0..<state.patternSize]);
+          writeln("Current composition pattern: ", pattern, "\n");
       }
 
       // Check if we've reached target size
-      if state.pattern.size == state.k {
-          if logLevel == LogLevel.DEBUG {
-              writeln("Found complete pattern of size ", state.k);
-          }
-          processFoundMotif(state);
-          return;
+      if state.patternSize == state.k {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Found complete pattern of size ", state.k);
+        }
+        processFoundMotif(state);
+        return;
       }
 
       // Check if we've gone too far
@@ -364,6 +451,7 @@ class KavoshState {
 
       // Build valid neighbor set respecting graph direction
       var validNbrs: domain(int, parSafe=true);
+      
       
       // Process outgoing neighbors
       for nbr in outNeighbors {
@@ -405,27 +493,22 @@ class KavoshState {
 
           var combinations = generateCombinations(validNbrs, k);
 
-          if logLevel == LogLevel.DEBUG {
-              writeln("  Generated combinations: ", combinations);
-          }
-
           // Process each combination
           for combo in combinations {
-              // Track vertices for backtracking
-              var addedVertices: list(int);
-              var initialSize = state.pattern.size;
+              var initialSize = state.patternSize;
+              var addedCount = 0;
 
               try {
                   // Add vertices in combination
                   for u in combo {
                       if !state.visited[u] {
-                          state.pattern.pushBack(u);
+                          state.addToPattern(u);  // Using new method
                           state.visited[u] = true;
-                          addedVertices.pushBack(u);
+                          addedCount += 1;
                           
                           if logLevel == LogLevel.DEBUG {
                               writeln("    Added vertex ", u);
-                              writeln("    Current pattern: ", state.pattern);
+                              writeln("    Current pattern: ", state.pattern[0..<state.patternSize]);
                           }
                       } else {
                           if logLevel == LogLevel.DEBUG {
@@ -435,9 +518,21 @@ class KavoshState {
                   }
 
                   // Only recurse if we added vertices successfully
-                  if addedVertices.size == k {
+                  if addedCount == k {
+                      if logLevel == LogLevel.DEBUG {
+                          writeln("\n********************************");
+                          writeln("Before recursion:");
+                          writeln("Added vertices count: ", addedCount);
+                          writeln("Pattern: ", pattern);
+                          writeln("Depth + 1: ", depth+1);
+                          writeln("State: ", state);
+                          writeln("********************************\n");
+                      }
+
                       // Process from each added vertex
-                      for u in addedVertices {
+                      var currentSize = state.patternSize;
+                      for i in (currentSize-addedCount)..<currentSize {
+                          var u = state.pattern[i];
                           enumeratePattern(u, pattern, depth + 1, state);
                           if stopper.read() then break;
                       }
@@ -448,35 +543,37 @@ class KavoshState {
                   }
 
                   // Backtrack - remove added vertices
-                  while state.pattern.size > initialSize {
-                      var u = state.pattern.popBack();
-                      state.visited[u] = false;
+                  while state.patternSize > initialSize {
+                      var lastVertex = state.pattern[state.patternSize-1];
+                      state.removeFromPattern();
+                      state.visited[lastVertex] = false;
                       if logLevel == LogLevel.DEBUG {
-                          writeln("    Removed vertex ", u);
-                          writeln("    Pattern after removal: ", state.pattern);
+                          writeln("    Removed vertex ", lastVertex);
+                          writeln("    Pattern after removal: ", state.pattern[0..<state.patternSize]);
                       }
                   }
 
               } catch e {
                   writeln("Error processing combination: ", e.message());
                   // Ensure cleanup
-                  for u in addedVertices {
-                      state.pattern.popBack();
-                      state.visited[u] = false;
+                  while state.patternSize > initialSize {
+                      var lastVertex = state.pattern[state.patternSize-1];
+                      state.removeFromPattern();
+                      state.visited[lastVertex] = false;
                   }
               }
 
               if logLevel == LogLevel.DEBUG {
                   writeln("    After processing combination: ", combo);
-                  writeln("    Pattern size: ", state.pattern.size);
-                  writeln("    Current pattern: ", state.pattern);
+                  writeln("    Pattern size: ", state.patternSize);
+                  writeln("    Current pattern: ", state.pattern[0..<state.patternSize]);
               }
           }
       }
 
       if logLevel == LogLevel.DEBUG {
           writeln("==== Completed enumeratePattern at depth ", depth, " ====");
-          writeln("Final pattern: ", state.pattern);
+          writeln("Final pattern: ", state.pattern[0..<state.patternSize]);
       }
 
     }// End of enumeratePattern
@@ -487,35 +584,72 @@ class KavoshState {
     */
 
     proc validateVertex(v: int, level: int, const ref state: KavoshState): bool throws{
+      if logLevel == LogLevel.DEBUG {
+          writeln("\n==== Starting validateVertex ====");
+          writeln("Validating vertex ", v, " at level ", level);
+          writeln("Current pattern: ", state.pattern[0..<state.patternSize]);
+      }
+
+      // Base case: level 0 just checks if vertex is unvisited
+      // For first level (level 0), all unvisited vertices are valid
+      if level == 0 {
         if logLevel == LogLevel.DEBUG {
-            writeln("Validating vertex ", v, " at level ", level);
+            writeln("Level 0 check: returning ", !state.visited[v]);
         }
+        return !state.visited[v];
+      }
 
-        // For first level (level 0), all unvisited vertices are valid
-        if level == 0 {
-            if logLevel == LogLevel.DEBUG {
-                writeln("Level 0: returning true for unvisited vertex");
+
+      // Must have connection to at least one previous pattern vertex
+      var hasConnection = false;
+
+      // Check outgoing edges
+      var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+      if logLevel == LogLevel.DEBUG {
+          writeln("Checking outgoing edges from ", v, ": ", outNeighbors);
+      }
+
+      for dest in outNeighbors {
+        for j in 0..<state.patternSize {
+            if dest == state.pattern[j] {
+              hasConnection = true;
+              if logLevel == LogLevel.DEBUG {
+                writeln("Found outgoing connection: ", v, " -> ", dest);
+              }
+              break;
             }
-            return !state.visited[v];
+          }
+          if hasConnection then break;
+      }
+
+      // Check incoming edges if no outgoing connection found
+      if !hasConnection {
+          var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];
+          if logLevel == LogLevel.DEBUG {
+              writeln("Checking incoming edges to ", v, ": ", inNeighbors);
+          }
+
+          for src in inNeighbors {
+              for j in 0..<state.patternSize {
+                  if src == state.pattern[j] {
+                      hasConnection = true;
+                      if logLevel == LogLevel.DEBUG {
+                          writeln("Found incoming connection: ", src, " -> ", v);
+                      }
+                      break;
+                  }
+              }
+              if hasConnection then break;
+          }
+      }
+
+      var result = hasConnection && !state.visited[v];
+      if logLevel == LogLevel.DEBUG {
+            writeln("Final validation result for vertex ", v, ": ", result);
+            writeln("==== Completed validateVertex ====\n");
         }
 
-        // Must have connection to at least one previous pattern vertex
-        var hasConnection = false;
-        for u in state.pattern {
-            // Check both directions
-            if getEdgeId(u, v, dstNodesG1, segGraphG1) != -1 || 
-              getEdgeId(v, u, dstNodesG1, segGraphG1) != -1 {
-                hasConnection = true;
-                break;
-            }
-        }
-
-        if logLevel == LogLevel.DEBUG {
-            writeln("  Vertex ", v, " has connection to pattern: ", hasConnection);
-            writeln("  Vertex ", v, " visited status: ", state.visited[v]);
-        }
-
-        return hasConnection && !state.visited[v];
+        return result;
     }// End of validateVertex
 
     /* 
@@ -527,7 +661,8 @@ class KavoshState {
 
     proc generateCombinations(domaina: domain(int, parSafe=true), k: int): list(list(int)) {
       if logLevel == LogLevel.DEBUG {
-          writeln("Generating combinations: n=", domaina.size, " k=", k);
+        writeln("\n==== Starting generateCombinations ====");
+        writeln("Generating combinations: n=", domaina.size, " k=", k);
       }
       
       var combinations = new list(list(int));
@@ -652,9 +787,12 @@ class KavoshState {
       // Process each vertex as root
       //forall v in 0..<n with (ref state) {
       for v in 0..<n {
-        state.reset();
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nProcessing root vertex: ", v);
+        }
+
         state.visited[v] = true;
-        state.pattern.pushBack(v);
+        state.addToPattern(v);
 
         // Generate compositions
         var compositions = generateCompositions(k-1);
@@ -665,7 +803,13 @@ class KavoshState {
         }
 
         state.visited[v] = false;
-        state.pattern.popBack();
+        state.removeFromPattern();
+      }
+
+      if logLevel == LogLevel.DEBUG {
+          writeln("\nAt the end of Kavosh. state is: ", state);
+          writeln("Total patterns found: ", state.totalPatterns.read());
+          writeln("Max pattern size reached: ", state.maxPatternSize.read());
       }
 
       return state.motifCounts;
@@ -673,9 +817,24 @@ class KavoshState {
 
     // Execute core algorithm
     var n = g1.n_vertices;
-    var k = g2.n_vertices;
+    var k = 3; // Oliver: This should be as an argument from Python side
+    // if logLevel == LogLevel.DEBUG {
+      writeln("Starting motif counting for k=", k);
+      writeln("Graph has ", g1.n_vertices, " vertices and ", srcNodesG1.size, " edges");
+      writeln("Calling Kavosh.......................");
+
+    // }
     
     var results = Kavosh(n, k);
+
+    /// Check point
+    writeln("\nK=", k," Motif Summary:");
+    writeln("Unique motifs found: ", results.size);
+        
+    // Print motif frequencies
+    for key in results.keysToArray(){
+      writeln("Motif: ", key, " Count: ", results[key].read());
+    }
 
     if logLevel == LogLevel.DEBUG {
         writeln("\n==== Motif Finding Complete ====");
