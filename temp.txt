@@ -1,0 +1,1787 @@
+Starting motif counting for k=3
+Graph has 4 vertices and 5 edges
+Calling Kavosh.......................
+
+==== Starting Kavosh ====
+Initializing KavoshState: n=4 Looking for motifs of size k=3
+
+==== Starting generateCompositions ====
+
+End of generateCompositions. Compositions are: [[1, 1], [2]]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 1
+Current pattern size: 1
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [0]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 1 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 1
+Validating vertex 2 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 2
+  Need 1 vertices at depth 0
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 1 2
+  First combination: [1]
+  Current state - Combination: [1]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [2]
+  Current state - Combination: [2]
+Generated 2 combinations
+Final combinations: [[1], [2]]
+    Added vertex 1
+    Current pattern: [0, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true true false false, pattern = [0, 1], motifCounts = {}, totalPatterns = 0, maxPatternSize = 0, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [0, 1]
+Current pattern: [1, 1]
+
+  Found 2 in-neighbors and 1 out-neighbors
+Validating vertex 2 at level 1
+  Vertex 2 has connection to pattern: true
+  Vertex 2 visited status: false
+  Added valid out-neighbor: 2
+Validating vertex 3 at level 1
+  Vertex 3 has connection to pattern: true
+  Vertex 3 visited status: false
+  Added valid in-neighbor: 3
+  Need 1 vertices at depth 1
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 2 3
+  First combination: [2]
+  Current state - Combination: [2]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [3]
+  Current state - Combination: [3]
+Generated 2 combinations
+Final combinations: [[2], [3]]
+    Added vertex 2
+    Current pattern: [0, 1, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true true false, pattern = [0, 1, 2], motifCounts = {}, totalPatterns = 0, maxPatternSize = 0, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [0, 1, 2]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [0, 1, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [0, 1]
+    After processing combination: [2]
+    Pattern size: 2
+    Current pattern: [0, 1]
+    Added vertex 3
+    Current pattern: [0, 1, 3]
+
+********************************
+Before recursion.
+addedVertices = [3]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true false true, pattern = [0, 1, 3], motifCounts = {010001100: 1}, totalPatterns = 1, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [0, 1, 3]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [0, 1, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 1 0 2
+Generated canonical label: 010000010
+    Removed vertex 3
+    Pattern after removal: [0, 1]
+    After processing combination: [3]
+    Pattern size: 2
+    Current pattern: [0, 1]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [0, 1]
+    Removed vertex 1
+    Pattern after removal: [0]
+    After processing combination: [1]
+    Pattern size: 1
+    Current pattern: [0]
+    Added vertex 2
+    Current pattern: [0, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true false true false, pattern = [0, 2], motifCounts = {010001100: 1, 010000010: 1}, totalPatterns = 2, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [0, 2]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 2 out-neighbors
+Validating vertex 3 at level 1
+  Vertex 3 has connection to pattern: true
+  Vertex 3 visited status: false
+  Added valid out-neighbor: 3
+Validating vertex 1 at level 1
+  Vertex 1 has connection to pattern: true
+  Vertex 1 visited status: false
+  Added valid in-neighbor: 1
+  Need 1 vertices at depth 1
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 1 3
+  First combination: [1]
+  Current state - Combination: [1]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [3]
+  Current state - Combination: [3]
+Generated 2 combinations
+Final combinations: [[1], [3]]
+    Added vertex 1
+    Current pattern: [0, 2, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true true false, pattern = [0, 2, 1], motifCounts = {010001100: 1, 010000010: 1}, totalPatterns = 2, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [0, 2, 1]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [0, 2, 1]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 1
+    Pattern after removal: [0, 2]
+    After processing combination: [1]
+    Pattern size: 2
+    Current pattern: [0, 2]
+    Added vertex 3
+    Current pattern: [0, 2, 3]
+
+********************************
+Before recursion.
+addedVertices = [3]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true false true true, pattern = [0, 2, 3], motifCounts = {010001100: 2, 010000010: 1}, totalPatterns = 3, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [0, 2, 3]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [0, 2, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 2 1
+Generated canonical label: 011000000
+    Removed vertex 3
+    Pattern after removal: [0, 2]
+    After processing combination: [3]
+    Pattern size: 2
+    Current pattern: [0, 2]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [0, 2]
+    Removed vertex 2
+    Pattern after removal: [0]
+    After processing combination: [2]
+    Pattern size: 1
+    Current pattern: [0]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [0]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 2
+Current pattern size: 1
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [0]
+Current pattern: [2]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 1 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 1
+Validating vertex 2 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 2
+  Need 2 vertices at depth 0
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 2
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=2
+  Initial elements: 1 2
+  First combination: [1, 2]
+  Current state - Combination: [1, 2]
+Generated 1 combinations
+Final combinations: [[1, 2]]
+    Added vertex 1
+    Current pattern: [0, 1]
+    Added vertex 2
+    Current pattern: [0, 1, 2]
+
+********************************
+Before recursion.
+addedVertices = [1, 2]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true true true false, pattern = [0, 1, 2], motifCounts = {010001100: 2, 010000010: 1, 011000000: 1}, totalPatterns = 4, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [0, 1, 2]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [0, 1, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [0, 1, 2]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [0, 1, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [0, 1]
+    Removed vertex 1
+    Pattern after removal: [0]
+    After processing combination: [1, 2]
+    Pattern size: 1
+    Current pattern: [0]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [0]
+
+==== Starting generateCompositions ====
+
+End of generateCompositions. Compositions are: [[1, 1], [2]]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 1
+Current pattern size: 1
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [1]
+Current pattern: [1, 1]
+
+  Found 2 in-neighbors and 1 out-neighbors
+Validating vertex 2 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 2
+Validating vertex 0 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 0
+Validating vertex 3 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 3
+  Need 1 vertices at depth 0
+  Have 3 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=3 k=1
+  Initial elements: 0 2 3
+  First combination: [0]
+  Current state - Combination: [0]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [2]
+  Current state - Combination: [2]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [3]
+  Current state - Combination: [3]
+Generated 3 combinations
+Final combinations: [[0], [2], [3]]
+    Added vertex 0
+    Current pattern: [1, 0]
+
+********************************
+Before recursion.
+addedVertices = [0]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true true false false, pattern = [1, 0], motifCounts = {010001100: 4, 010000010: 1, 011000000: 1}, totalPatterns = 6, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [1, 0]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 2 at level 1
+  Vertex 2 has connection to pattern: true
+  Vertex 2 visited status: false
+  Added valid in-neighbor: 2
+  Need 1 vertices at depth 1
+  Have 1 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=1 k=1
+  Initial elements: 2
+  First combination: [2]
+  Current state - Combination: [2]
+Generated 1 combinations
+Final combinations: [[2]]
+    Added vertex 2
+    Current pattern: [1, 0, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true true false, pattern = [1, 0, 2], motifCounts = {010001100: 4, 010000010: 1, 011000000: 1}, totalPatterns = 6, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [1, 0, 2]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 0, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [1, 0]
+    After processing combination: [2]
+    Pattern size: 2
+    Current pattern: [1, 0]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [1, 0]
+    Removed vertex 0
+    Pattern after removal: [1]
+    After processing combination: [0]
+    Pattern size: 1
+    Current pattern: [1]
+    Added vertex 2
+    Current pattern: [1, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true true false, pattern = [1, 2], motifCounts = {010001100: 5, 010000010: 1, 011000000: 1}, totalPatterns = 7, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [1, 2]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 2 out-neighbors
+Validating vertex 0 at level 1
+  Vertex 0 has connection to pattern: true
+  Vertex 0 visited status: false
+  Added valid out-neighbor: 0
+Validating vertex 3 at level 1
+  Vertex 3 has connection to pattern: true
+  Vertex 3 visited status: false
+  Added valid out-neighbor: 3
+  Need 1 vertices at depth 1
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 0 3
+  First combination: [0]
+  Current state - Combination: [0]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [3]
+  Current state - Combination: [3]
+Generated 2 combinations
+Final combinations: [[0], [3]]
+    Added vertex 0
+    Current pattern: [1, 2, 0]
+
+********************************
+Before recursion.
+addedVertices = [0]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true true false, pattern = [1, 2, 0], motifCounts = {010001100: 5, 010000010: 1, 011000000: 1}, totalPatterns = 7, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [1, 2, 0]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 2, 0]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 0
+    Pattern after removal: [1, 2]
+    After processing combination: [0]
+    Pattern size: 2
+    Current pattern: [1, 2]
+    Added vertex 3
+    Current pattern: [1, 2, 3]
+
+********************************
+Before recursion.
+addedVertices = [3]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = false true true true, pattern = [1, 2, 3], motifCounts = {010001100: 6, 010000010: 1, 011000000: 1}, totalPatterns = 8, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [1, 2, 3]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 2, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 3
+    Pattern after removal: [1, 2]
+    After processing combination: [3]
+    Pattern size: 2
+    Current pattern: [1, 2]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [1, 2]
+    Removed vertex 2
+    Pattern after removal: [1]
+    After processing combination: [2]
+    Pattern size: 1
+    Current pattern: [1]
+    Added vertex 3
+    Current pattern: [1, 3]
+
+********************************
+Before recursion.
+addedVertices = [3]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true false true, pattern = [1, 3], motifCounts = {010001100: 7, 010000010: 1, 011000000: 1}, totalPatterns = 9, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [1, 3]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 2 at level 1
+  Vertex 2 has connection to pattern: true
+  Vertex 2 visited status: false
+  Added valid in-neighbor: 2
+  Need 1 vertices at depth 1
+  Have 1 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=1 k=1
+  Initial elements: 2
+  First combination: [2]
+  Current state - Combination: [2]
+Generated 1 combinations
+Final combinations: [[2]]
+    Added vertex 2
+    Current pattern: [1, 3, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = false true true true, pattern = [1, 3, 2], motifCounts = {010001100: 7, 010000010: 1, 011000000: 1}, totalPatterns = 9, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [1, 3, 2]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 3, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [1, 3]
+    After processing combination: [2]
+    Pattern size: 2
+    Current pattern: [1, 3]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [1, 3]
+    Removed vertex 3
+    Pattern after removal: [1]
+    After processing combination: [3]
+    Pattern size: 1
+    Current pattern: [1]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [1]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 2
+Current pattern size: 1
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [1]
+Current pattern: [2]
+
+  Found 2 in-neighbors and 1 out-neighbors
+Validating vertex 2 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 2
+Validating vertex 0 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 0
+Validating vertex 3 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 3
+  Need 2 vertices at depth 0
+  Have 3 valid neighbors to choose from
+  About to generate combinations of size 2
+
+==== Starting generateCombinations ====
+Generating combinations: n=3 k=2
+  Initial elements: 0 2 3
+  First combination: [0, 2]
+  Current state - Combination: [0, 2]
+    Found movable element at position 0
+    Found movable element at position 1
+  Moving element from position 1
+  Added new combination: [0, 3]
+  Current state - Combination: [0, 3]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [2, 3]
+  Current state - Combination: [2, 3]
+Generated 3 combinations
+Final combinations: [[0, 2], [0, 3], [2, 3]]
+    Added vertex 0
+    Current pattern: [1, 0]
+    Added vertex 2
+    Current pattern: [1, 0, 2]
+
+********************************
+Before recursion.
+addedVertices = [0, 2]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true true true false, pattern = [1, 0, 2], motifCounts = {010001100: 8, 010000010: 1, 011000000: 1}, totalPatterns = 10, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [1, 0, 2]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 0, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [1, 0, 2]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 0, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [1, 0]
+    Removed vertex 0
+    Pattern after removal: [1]
+    After processing combination: [0, 2]
+    Pattern size: 1
+    Current pattern: [1]
+    Added vertex 0
+    Current pattern: [1, 0]
+    Added vertex 3
+    Current pattern: [1, 0, 3]
+
+********************************
+Before recursion.
+addedVertices = [0, 3]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true true false true, pattern = [1, 0, 3], motifCounts = {010001100: 10, 010000010: 1, 011000000: 1}, totalPatterns = 12, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [1, 0, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 0, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010000010
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [1, 0, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 0, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010000010
+    Removed vertex 3
+    Pattern after removal: [1, 0]
+    Removed vertex 0
+    Pattern after removal: [1]
+    After processing combination: [0, 3]
+    Pattern size: 1
+    Current pattern: [1]
+    Added vertex 2
+    Current pattern: [1, 2]
+    Added vertex 3
+    Current pattern: [1, 2, 3]
+
+********************************
+Before recursion.
+addedVertices = [2, 3]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true true true, pattern = [1, 2, 3], motifCounts = {010001100: 10, 010000010: 3, 011000000: 1}, totalPatterns = 14, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [1, 2, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 2, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [1, 2, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [1, 2, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 3
+    Pattern after removal: [1, 2]
+    Removed vertex 2
+    Pattern after removal: [1]
+    After processing combination: [2, 3]
+    Pattern size: 1
+    Current pattern: [1]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [1]
+
+==== Starting generateCompositions ====
+
+End of generateCompositions. Compositions are: [[1, 1], [2]]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 1
+Current pattern size: 1
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [2]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 2 out-neighbors
+Validating vertex 0 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 0
+Validating vertex 3 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 3
+Validating vertex 1 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 1
+  Need 1 vertices at depth 0
+  Have 3 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=3 k=1
+  Initial elements: 1 0 3
+  First combination: [1]
+  Current state - Combination: [1]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [0]
+  Current state - Combination: [0]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [3]
+  Current state - Combination: [3]
+Generated 3 combinations
+Final combinations: [[1], [0], [3]]
+    Added vertex 1
+    Current pattern: [2, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true true false, pattern = [2, 1], motifCounts = {010001100: 12, 010000010: 3, 011000000: 1}, totalPatterns = 16, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [2, 1]
+Current pattern: [1, 1]
+
+  Found 2 in-neighbors and 1 out-neighbors
+Validating vertex 0 at level 1
+  Vertex 0 has connection to pattern: true
+  Vertex 0 visited status: false
+  Added valid in-neighbor: 0
+Validating vertex 3 at level 1
+  Vertex 3 has connection to pattern: true
+  Vertex 3 visited status: false
+  Added valid in-neighbor: 3
+  Need 1 vertices at depth 1
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 0 3
+  First combination: [0]
+  Current state - Combination: [0]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [3]
+  Current state - Combination: [3]
+Generated 2 combinations
+Final combinations: [[0], [3]]
+    Added vertex 0
+    Current pattern: [2, 1, 0]
+
+********************************
+Before recursion.
+addedVertices = [0]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true true false, pattern = [2, 1, 0], motifCounts = {010001100: 12, 010000010: 3, 011000000: 1}, totalPatterns = 16, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 0
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [2, 1, 0]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 1, 0]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 0
+    Pattern after removal: [2, 1]
+    After processing combination: [0]
+    Pattern size: 2
+    Current pattern: [2, 1]
+    Added vertex 3
+    Current pattern: [2, 1, 3]
+
+********************************
+Before recursion.
+addedVertices = [3]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = false true true true, pattern = [2, 1, 3], motifCounts = {010001100: 13, 010000010: 3, 011000000: 1}, totalPatterns = 17, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 0
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [2, 1, 3]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 1, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 3
+    Pattern after removal: [2, 1]
+    After processing combination: [3]
+    Pattern size: 2
+    Current pattern: [2, 1]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [2, 1]
+    Removed vertex 1
+    Pattern after removal: [2]
+    After processing combination: [1]
+    Pattern size: 1
+    Current pattern: [2]
+    Added vertex 0
+    Current pattern: [2, 0]
+
+********************************
+Before recursion.
+addedVertices = [0]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true false true false, pattern = [2, 0], motifCounts = {010001100: 14, 010000010: 3, 011000000: 1}, totalPatterns = 18, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [2, 0]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 1 at level 1
+  Vertex 1 has connection to pattern: true
+  Vertex 1 visited status: false
+  Added valid out-neighbor: 1
+  Need 1 vertices at depth 1
+  Have 1 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=1 k=1
+  Initial elements: 1
+  First combination: [1]
+  Current state - Combination: [1]
+Generated 1 combinations
+Final combinations: [[1]]
+    Added vertex 1
+    Current pattern: [2, 0, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true true false, pattern = [2, 0, 1], motifCounts = {010001100: 14, 010000010: 3, 011000000: 1}, totalPatterns = 18, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 0
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [2, 0, 1]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 0, 1]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 1
+    Pattern after removal: [2, 0]
+    After processing combination: [1]
+    Pattern size: 2
+    Current pattern: [2, 0]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [2, 0]
+    Removed vertex 0
+    Pattern after removal: [2]
+    After processing combination: [0]
+    Pattern size: 1
+    Current pattern: [2]
+    Added vertex 3
+    Current pattern: [2, 3]
+
+********************************
+Before recursion.
+addedVertices = [3]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false false true true, pattern = [2, 3], motifCounts = {010001100: 15, 010000010: 3, 011000000: 1}, totalPatterns = 19, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [2, 3]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 1 at level 1
+  Vertex 1 has connection to pattern: true
+  Vertex 1 visited status: false
+  Added valid out-neighbor: 1
+  Need 1 vertices at depth 1
+  Have 1 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=1 k=1
+  Initial elements: 1
+  First combination: [1]
+  Current state - Combination: [1]
+Generated 1 combinations
+Final combinations: [[1]]
+    Added vertex 1
+    Current pattern: [2, 3, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = false true true true, pattern = [2, 3, 1], motifCounts = {010001100: 15, 010000010: 3, 011000000: 1}, totalPatterns = 19, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 0
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [2, 3, 1]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 3, 1]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 1
+    Pattern after removal: [2, 3]
+    After processing combination: [1]
+    Pattern size: 2
+    Current pattern: [2, 3]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [2, 3]
+    Removed vertex 3
+    Pattern after removal: [2]
+    After processing combination: [3]
+    Pattern size: 1
+    Current pattern: [2]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [2]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 2
+Current pattern size: 1
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [2]
+Current pattern: [2]
+
+  Found 1 in-neighbors and 2 out-neighbors
+Validating vertex 0 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 0
+Validating vertex 3 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 3
+Validating vertex 1 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 1
+  Need 2 vertices at depth 0
+  Have 3 valid neighbors to choose from
+  About to generate combinations of size 2
+
+==== Starting generateCombinations ====
+Generating combinations: n=3 k=2
+  Initial elements: 1 0 3
+  First combination: [1, 0]
+  Current state - Combination: [1, 0]
+    Found movable element at position 0
+    Found movable element at position 1
+  Moving element from position 1
+  Added new combination: [1, 3]
+  Current state - Combination: [1, 3]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [0, 3]
+  Current state - Combination: [0, 3]
+Generated 3 combinations
+Final combinations: [[1, 0], [1, 3], [0, 3]]
+    Added vertex 1
+    Current pattern: [2, 1]
+    Added vertex 0
+    Current pattern: [2, 1, 0]
+
+********************************
+Before recursion.
+addedVertices = [1, 0]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true true true false, pattern = [2, 1, 0], motifCounts = {010001100: 16, 010000010: 3, 011000000: 1}, totalPatterns = 20, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [2, 1, 0]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 1, 0]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [2, 1, 0]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 1, 0]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 0
+    Pattern after removal: [2, 1]
+    Removed vertex 1
+    Pattern after removal: [2]
+    After processing combination: [1, 0]
+    Pattern size: 1
+    Current pattern: [2]
+    Added vertex 1
+    Current pattern: [2, 1]
+    Added vertex 3
+    Current pattern: [2, 1, 3]
+
+********************************
+Before recursion.
+addedVertices = [1, 3]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true true true, pattern = [2, 1, 3], motifCounts = {010001100: 18, 010000010: 3, 011000000: 1}, totalPatterns = 22, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [2, 1, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 1, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [2, 1, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 1, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 3
+    Pattern after removal: [2, 1]
+    Removed vertex 1
+    Pattern after removal: [2]
+    After processing combination: [1, 3]
+    Pattern size: 1
+    Current pattern: [2]
+    Added vertex 0
+    Current pattern: [2, 0]
+    Added vertex 3
+    Current pattern: [2, 0, 3]
+
+********************************
+Before recursion.
+addedVertices = [0, 3]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = true false true true, pattern = [2, 0, 3], motifCounts = {010001100: 20, 010000010: 3, 011000000: 1}, totalPatterns = 24, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [2, 0, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 0, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 1 2 0
+Generated canonical label: 011000000
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [2, 0, 3]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [2, 0, 3]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 1 2 0
+Generated canonical label: 011000000
+    Removed vertex 3
+    Pattern after removal: [2, 0]
+    Removed vertex 0
+    Pattern after removal: [2]
+    After processing combination: [0, 3]
+    Pattern size: 1
+    Current pattern: [2]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [2]
+
+==== Starting generateCompositions ====
+
+End of generateCompositions. Compositions are: [[1, 1], [2]]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 1
+Current pattern size: 1
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [3]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 1 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 1
+Validating vertex 2 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 2
+  Need 1 vertices at depth 0
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 1 2
+  First combination: [1]
+  Current state - Combination: [1]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [2]
+  Current state - Combination: [2]
+Generated 2 combinations
+Final combinations: [[1], [2]]
+    Added vertex 1
+    Current pattern: [3, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true false true, pattern = [3, 1], motifCounts = {010001100: 20, 010000010: 3, 011000000: 3}, totalPatterns = 26, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [3, 1]
+Current pattern: [1, 1]
+
+  Found 2 in-neighbors and 1 out-neighbors
+Validating vertex 2 at level 1
+  Vertex 2 has connection to pattern: true
+  Vertex 2 visited status: false
+  Added valid out-neighbor: 2
+Validating vertex 0 at level 1
+  Vertex 0 has connection to pattern: true
+  Vertex 0 visited status: false
+  Added valid in-neighbor: 0
+  Need 1 vertices at depth 1
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 0 2
+  First combination: [0]
+  Current state - Combination: [0]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [2]
+  Current state - Combination: [2]
+Generated 2 combinations
+Final combinations: [[0], [2]]
+    Added vertex 0
+    Current pattern: [3, 1, 0]
+
+********************************
+Before recursion.
+addedVertices = [0]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true true false true, pattern = [3, 1, 0], motifCounts = {010001100: 20, 010000010: 3, 011000000: 3}, totalPatterns = 26, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [3, 1, 0]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [3, 1, 0]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 1 0 2
+Generated canonical label: 010000010
+    Removed vertex 0
+    Pattern after removal: [3, 1]
+    After processing combination: [0]
+    Pattern size: 2
+    Current pattern: [3, 1]
+    Added vertex 2
+    Current pattern: [3, 1, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = false true true true, pattern = [3, 1, 2], motifCounts = {010001100: 20, 010000010: 4, 011000000: 3}, totalPatterns = 27, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [3, 1, 2]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [3, 1, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [3, 1]
+    After processing combination: [2]
+    Pattern size: 2
+    Current pattern: [3, 1]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [3, 1]
+    Removed vertex 1
+    Pattern after removal: [3]
+    After processing combination: [1]
+    Pattern size: 1
+    Current pattern: [3]
+    Added vertex 2
+    Current pattern: [3, 2]
+
+********************************
+Before recursion.
+addedVertices = [2]
+pattern = [1, 1]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false false true true, pattern = [3, 2], motifCounts = {010001100: 21, 010000010: 4, 011000000: 3}, totalPatterns = 28, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 2
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [3, 2]
+Current pattern: [1, 1]
+
+  Found 1 in-neighbors and 2 out-neighbors
+Validating vertex 0 at level 1
+  Vertex 0 has connection to pattern: true
+  Vertex 0 visited status: false
+  Added valid out-neighbor: 0
+Validating vertex 1 at level 1
+  Vertex 1 has connection to pattern: true
+  Vertex 1 visited status: false
+  Added valid in-neighbor: 1
+  Need 1 vertices at depth 1
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 1
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=1
+  Initial elements: 1 0
+  First combination: [1]
+  Current state - Combination: [1]
+    Found movable element at position 0
+  Moving element from position 0
+  Added new combination: [0]
+  Current state - Combination: [0]
+Generated 2 combinations
+Final combinations: [[1], [0]]
+    Added vertex 1
+    Current pattern: [3, 2, 1]
+
+********************************
+Before recursion.
+addedVertices = [1]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = false true true true, pattern = [3, 2, 1], motifCounts = {010001100: 21, 010000010: 4, 011000000: 3}, totalPatterns = 28, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [3, 2, 1]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [3, 2, 1]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 1
+    Pattern after removal: [3, 2]
+    After processing combination: [1]
+    Pattern size: 2
+    Current pattern: [3, 2]
+    Added vertex 0
+    Current pattern: [3, 2, 0]
+
+********************************
+Before recursion.
+addedVertices = [0]
+pattern = [1, 1]
+depth + 1 = 2
+state = {n = 4, k = 3, visited = true false true true, pattern = [3, 2, 0], motifCounts = {010001100: 22, 010000010: 4, 011000000: 3}, totalPatterns = 29, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 2, Vertices needed at this depth: 7596482300073308788
+Current pattern size: 3
+Target size: 3
+Processing vertex: 0
+Current state.pattern: [3, 2, 0]
+Current pattern: [1, 1]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [3, 2, 0]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 2 1
+Generated canonical label: 011000000
+    Removed vertex 0
+    Pattern after removal: [3, 2]
+    After processing combination: [0]
+    Pattern size: 2
+    Current pattern: [3, 2]
+==== Completed enumeratePattern at depth 1 ====
+Final pattern: [3, 2]
+    Removed vertex 2
+    Pattern after removal: [3]
+    After processing combination: [2]
+    Pattern size: 1
+    Current pattern: [3]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [3]
+
+==== Starting enumeratePattern ====
+Depth: 0, Vertices needed at this depth: 2
+Current pattern size: 1
+Target size: 3
+Processing vertex: 3
+Current state.pattern: [3]
+Current pattern: [2]
+
+  Found 1 in-neighbors and 1 out-neighbors
+Validating vertex 1 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid out-neighbor: 1
+Validating vertex 2 at level 0
+Level 0: returning true for unvisited vertex
+  Added valid in-neighbor: 2
+  Need 2 vertices at depth 0
+  Have 2 valid neighbors to choose from
+  About to generate combinations of size 2
+
+==== Starting generateCombinations ====
+Generating combinations: n=2 k=2
+  Initial elements: 1 2
+  First combination: [1, 2]
+  Current state - Combination: [1, 2]
+Generated 1 combinations
+Final combinations: [[1, 2]]
+    Added vertex 1
+    Current pattern: [3, 1]
+    Added vertex 2
+    Current pattern: [3, 1, 2]
+
+********************************
+Before recursion.
+addedVertices = [1, 2]
+pattern = [2]
+depth + 1 = 1
+state = {n = 4, k = 3, visited = false true true true, pattern = [3, 1, 2], motifCounts = {010001100: 22, 010000010: 4, 011000000: 4}, totalPatterns = 30, maxPatternSize = 3, patternStats = {}}
+********************************
+
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 1
+Current state.pattern: [3, 1, 2]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [3, 1, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+
+==== Starting enumeratePattern ====
+Depth: 1, Vertices needed at this depth: 1
+Current pattern size: 3
+Target size: 3
+Processing vertex: 2
+Current state.pattern: [3, 1, 2]
+Current pattern: [2]
+
+Found complete pattern of size 3
+
+==== Starting processFoundMotif ====
+Processing pattern of size 3
+Current pattern: [3, 1, 2]
+Expected size: 3
+Generating canonical label for pattern
+Vertex ordering: 0 1 2
+Generated canonical label: 010001100
+    Removed vertex 2
+    Pattern after removal: [3, 1]
+    Removed vertex 1
+    Pattern after removal: [3]
+    After processing combination: [1, 2]
+    Pattern size: 1
+    Current pattern: [3]
+==== Completed enumeratePattern at depth 0 ====
+Final pattern: [3]
+At the end of Kavosh. state is: {n = 4, k = 3, visited = false false false false, pattern = [], motifCounts = {010001100: 24, 010000010: 4, 011000000: 4}, totalPatterns = 32, maxPatternSize = 3, patternStats = {}}
+
+K=3 Motif Summary:
+Unique motifs found: 3
+Motif: 24 Count: 24
+Motif: 4 Count: 4
+Motif: 4 Count: 4
+
+==== Motif Finding Complete ====
