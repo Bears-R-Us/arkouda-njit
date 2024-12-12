@@ -26,6 +26,7 @@ module SubgraphIsomorphism {
   use SegStringSort;
   use SegmentedString;
   use SymArrayDmap;
+  use Unique;
 
   /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
   class State {
@@ -146,7 +147,7 @@ module SubgraphIsomorphism {
         when "pdarray" {
           var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
           var graphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(graphAttributes[k][0], st);
-          if subgraphArrEntry.dtype != graphArrEntry.dtype then return false;
+          if subgraphArrEntry.dtype != graphArrEntry.dtype then continue;
 
           var etype = subgraphArrEntry.dtype;
           select etype {
@@ -196,9 +197,89 @@ module SubgraphIsomorphism {
     else return outerMatch;
   } // end of doAttributesMatch
 
-  /** Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
+  /* Generates the probability distribution for given subgraph attributes derived from the host
+     graph. */
+  proc generateProbabilityDistribution(const ref subgraphAttributes, const ref graphAttributes, st: borrowed SymTab) throws {
+    for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
+      if !graphAttributes.contains(k) then continue; // check if attributes are same
+      if v[1] != graphAttributes[k][1] then continue; // check if types are same
+
+      // Check the actual data.
+      select v[1] {
+        when "Categorical" {
+          var graphArrEntry = (st.registry.tab(graphAttributes[k][0])):shared CategoricalRegEntry;
+          const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
+          const ref graphCats = getSegString(graphArrEntry.categories, st);
+          
+          var (values, counts) = uniqueSort(graphArr);
+          var probMap = new map(string, real);
+          for (v,c) in zip (values,counts) do probMap.add(graphCats[v], c:real / graphArr.size:real);
+          writeln("Categorical probMap = ", probMap);
+          assert(1 == (+ reduce probMap.valuesToArray()):int);
+          writeln();
+        }
+        when "Strings" {
+          var graphStrings = getSegString(graphAttributes[k][0], st);
+          var (uo, uv, counts, inv) = uniqueGroup(graphStrings);
+          var values = getSegString(uo, uv, st);
+          var probMap = new map(string, real);
+          for (v,c) in zip (counts.domain, counts) do probMap.add(values[v], c:real / graphStrings.size:real);
+          writeln("Strings probMap = ", probMap);
+          assert(1 == (+ reduce probMap.valuesToArray()):int);
+          writeln();
+        }
+        when "pdarray" {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
+          var graphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(graphAttributes[k][0], st);
+          if subgraphArrEntry.dtype != graphArrEntry.dtype then continue;
+
+          var etype = subgraphArrEntry.dtype;
+          select etype {
+            when (DType.Int64) {
+              const ref graphArr = toSymEntry(graphArrEntry, int).a;
+              var (values, counts) = uniqueSort(graphArr);
+              var probMap = new map(int, real);
+              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              writeln("Int64 probMap = ", probMap);
+              assert(1 == (+ reduce probMap.valuesToArray()):int);
+              writeln();
+            }
+            when (DType.UInt64) {
+              const ref graphArr = toSymEntry(graphArrEntry, uint).a;
+              var (values, counts) = uniqueSort(graphArr);
+              var probMap = new map(uint, real);
+              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              writeln("UInt64 probMap = ", probMap);
+              assert(1 == (+ reduce probMap.valuesToArray()):int);
+              writeln();
+            }
+            when (DType.Float64) {
+              const ref graphArr = toSymEntry(graphArrEntry, real).a;
+              var (values, counts) = uniqueSort(graphArr);
+              var probMap = new map(real, real);
+              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              writeln("Float64 probMap = ", probMap);
+              assert(1 == (+ reduce probMap.valuesToArray()):int);
+              writeln();
+            }
+            when (DType.Bool) {
+              const ref graphArr = toSymEntry(graphArrEntry, bool).a;
+              var (values, counts) = uniqueSort(graphArr);
+              var probMap = new map(bool, real);
+              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              writeln("Bool probMap = ", probMap);
+              assert(1 == (+ reduce probMap.valuesToArray()):int);
+              writeln();
+            }
+          }
+        }
+      }
+    }
+  }
+
+  /* Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
   searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
-  array that maps the isomorphic vertices of `g1` to those of `g2`.*/
+  array that maps the isomorphic vertices of `g1` to those of `g2`. */
   proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
               sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
@@ -242,6 +323,10 @@ module SubgraphIsomorphism {
     var subgraphNodeAttributes = g2.getNodeAttributes();
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributes = g2.getEdgeAttributes();
+
+    // Generate the probability distributions for each attribute.
+    generateProbabilityDistribution(subgraphNodeAttributes, graphNodeAttributes, st);
+    generateProbabilityDistribution(subgraphEdgeAttributes, graphEdgeAttributes, st);
 
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
