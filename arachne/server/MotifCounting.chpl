@@ -29,7 +29,6 @@ module MotifCounting {
   use SymArrayDmap;
   use Logging;
 
-
   /* Memory-efficient state management for large graphs */
 class KavoshState {
     var n: int;              // Number of vertices
@@ -38,7 +37,9 @@ class KavoshState {
     var pattern: [0..<k] int;  // Fixed-size array instead of list
     var patternSize: int;      // Track current size
     var motifCounts: map(string, atomic int);
-    
+
+    var seenPatterns = new set(string);
+
     // Track memory usage
     var totalPatterns: atomic int = 0;
     var maxPatternSize: atomic int = 0;
@@ -46,6 +47,10 @@ class KavoshState {
     // Statistics tracking
     var patternStats = new map(string, (int, real, real)); // (frequency, zscore, pvalue)
  
+     // Store random distributions:
+    // For each motif (identified by label), we store an array of frequencies from random graphs
+    var randomDistributions = new map(string, list(int));
+
     proc init(n: int, k: int) {
         if logLevel == LogLevel.DEBUG {
             writeln("Initializing KavoshState: n=", n, " Looking for motifs of size k=", k);
@@ -130,6 +135,7 @@ class KavoshState {
     }
 }
 
+
 /* Identify if a pattern is a motif based on statistical criteria */
 proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
     // Criteria from the paper
@@ -150,6 +156,9 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
 
     return isSignificant;
 }
+
+
+
   proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
               sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
@@ -197,7 +206,145 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
     // If there are no vertex attributes, then check the edge attributes instead.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
 
+//////////////////// RandomizationState class ////////////////////////
 
+  /*
+   * Initialize randomization state:
+   * changedEdges map: stores only the edges that changed their destination.
+   * Key: (int,int) = (src, offset), where offset = local index in src's adjacency.
+   * Value: int = new destination.
+   *
+   * offset calculation: For an edge at global index E:
+   * If segGraphG1[u] = start index of u's edges,
+   * and E is in [segGraphG1[u], segGraphG1[u+1]),
+   * offset = E - segGraphG1[u].
+   */
+  class RandomizationState {
+    var changedEdges = new map((int,int), int);
+
+    // For randomization
+    var rng: randomStream(int);
+    var nEdges: int;
+
+    proc init(nEdges: int, seed: int = 12345) {
+      this.rng = new randomStream(int, seed=seed);
+      this.nEdges = nEdges;
+
+      if logLevel == LogLevel.DEBUG {
+        writeln("RandomizationState initialized with ", nEdges, " edges");
+      }
+    }
+
+    // Helper: Given a global edge index E, find (src, offset)
+    // We do a binary search on segGraphG to find src s.t. segGraphG[src] <= E < segGraphG[src+1]
+    proc edgeToSrcOffset(E: int): (int,int) {
+      // Binary search for src
+      var low = 0;
+      var high = segGraphG1.size - 2; // last valid src = segGraphG1.size-2
+      while low <= high {
+        var mid = (low+high)>>1;
+        if segGraphG[mid+1] <= E {
+          low = mid+1;
+        } else {
+          high = mid-1;
+        }
+      }
+      // Now low should point to the src
+      var src = low;
+      var offset = E - segGraphG1[src];
+      return (src, offset);
+    }
+
+    // Helper: Given (src, offset), find the global edge index
+    proc srcOffsetToEdge(src: int, offset: int): int {
+      return segGraphG1[src] + offset;
+    }
+
+    // Get the current dst for an edge identified by (src, offset).
+    // If changed, return changedEdges value; else original from dstNodesG.
+    proc getDstForEdge(src: int, offset: int): int {
+      if changedEdges.contains((src, offset)) {
+        return changedEdges[(src, offset)];
+      } else {
+        var globalE = srcOffsetToEdge(src, offset);
+        return dstNodesG1[globalE];
+      }
+    }
+
+    // Perform random swaps
+    // numSwaps: how many random attempts to swap edges
+    // Each attempt:
+    // 1. Pick two edges e1, e2 randomly
+    // 2. Let them be (u1->v1) and (u2->v2)
+    // 3. After swap: (u1->v2) and (u2->v1)
+    // Conditions:
+    // - No self-loop: ensure u1 != v2 and u2 != v1
+    // (We assume no duplicate check for efficiency. For large graphs, duplicates are unlikely.
+    //  If needed, add checks.)
+    proc performEdgeSwaps(numSwaps: int) {
+      const E = nEdges;
+      if logLevel == LogLevel.DEBUG {
+        writeln("Performing ", numSwaps, " edge swaps...");
+      }
+
+      for attempt in 1..numSwaps {
+        var e1 = rng.next() % E;
+        var e2 = rng.next() % E;
+        if e1 == e2 then continue; // same edge, skip
+
+        var (u1, off1) = edgeToSrcOffset(e1, segGraphG1);
+        var (u2, off2) = edgeToSrcOffset(e2, segGraphG1);
+
+        var v1 = getDstForEdge(u1, off1);
+        var v2 = getDstForEdge(u2, off2);
+
+        // Check no self-loops after swap
+        // After swap: u1->v2 and u2->v1
+        if u1 == v2 || u2 == v1 {
+          // would create a self-loop, skip
+          continue;
+        }
+
+        // Perform the swap
+        changedEdges[(u1, off1)] = v2;
+        changedEdges[(u2, off2)] = v1;
+
+        if logLevel == LogLevel.DEBUG && attempt % 1000 == 0 {
+          writeln("Swapped edges #", attempt, ": (", u1, "->", v1, ") with (", u2, "->", v2, ")");
+        }
+      }
+
+      if logLevel == LogLevel.DEBUG {
+        writeln("Completed edge swaps. Total changed edges: ", changedEdges.size);
+      }
+    }
+
+  }
+//////////////////// End of RandomizationState ////////////////////////
+
+ /********************************************
+   * Using the Randomized Graph
+   *
+   * Now we have a RandomizationState with changedEdges.
+   * We can define a function getNeighbors(u) that returns the neighbors of u
+   * under the randomized scenario.
+   ********************************************/
+
+  proc getNeighbors(u: int, const ref rndState: RandomizationState): list(int) {
+    var nbrs = new list(int);
+    var start = segGraphG1[u];
+    var end = segGraphG1[u+1];
+    for e in start..<end {
+      var offset = e - segGraphG1[u];
+      var dst = rndState.getDstForEdge(u, offset);
+      nbrs.pushBack(dst);
+    }
+    return nbrs;
+  }
+
+
+
+////////////////////////////////////////////////////////////////////////////////////////////
 
 
 
@@ -272,16 +419,49 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
           return;
       }
 
+      // Orbit-breaking: Ensure the root is the smallest vertex in the subgraph
+      var minVertex = state.pattern[0];
+      for i in 1..<state.patternSize {
+          if state.pattern[i] < minVertex {
+              minVertex = state.pattern[i];
+          }
+      }
+      // If the root is not the smallest vertex, skip counting this pattern
+      if state.pattern[0] != minVertex {
+          if logLevel == LogLevel.DEBUG {
+              writeln("Skipping motif, root is not the smallest vertex in the pattern.");
+          }
+          return;
+      }
+
+      // Create a sorted copy of the pattern to ensure uniqueness
+      var patternArr = state.pattern[0..<state.patternSize];
+      sort(patternArr);
+      var patternKey = "";
+      for v in patternArr {
+        patternKey += v:string + ",";
+      }
+
+      // Check if we've already seen this subgraph
+      if state.seenPatterns.contains(patternKey) {
+          // Already counted this subgraph
+          if logLevel == LogLevel.DEBUG {
+              writeln("Skipping motif, pattern already seen:", patternKey);
+          }
+          return;
+      } else {
+          state.seenPatterns.add(patternKey);
+      }
+
       // Build adjacency matrix only for the pattern size
       var n = state.patternSize;
       var adjMatrix: [0..<n, 0..<n] bool = false;
 
-      // Fill adjacency matrix efficiently
+      // Fill adjacency matrix
       for i in 0..<n {
           var v = state.pattern[i];
           var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
           for nbr in outNeighbors {
-              // Search for nbr in pattern array
               for j in 0..<n {
                   if state.pattern[j] == nbr {
                       adjMatrix[i, j] = true;
@@ -294,10 +474,10 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
           }
       }
 
-      // Use pre-allocated canonical label generation
       var labela = generateCanonicalLabel(adjMatrix);
       updateMotifCount(labela, state);
       state.updateMemoryStats();
+
     }// End of processFoundMotif
 
 
@@ -408,248 +588,79 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
         return order;
     }// End of getVertexOrdering
 
-    /* 
-    * Core enumeration function that builds motif patterns according to specified depth.
-    * Called by Kavosh() for each composition to build motifs.
-    */
-    proc enumeratePattern(v: int, ref pattern: list(int), depth: int, ref state: KavoshState) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n==== Starting enumeratePattern ====");
-          var verticesNeeded = if depth < pattern.size then pattern[depth] else -1;
-          writeln("Depth: ", depth, ", Vertices needed at this depth: ", verticesNeeded);
-          writeln("Current pattern size: ", state.patternSize);
-          writeln("Target size: ", state.k);
-          writeln("Processing vertex: ", v);
-          writeln("Current pattern vertices: ", state.pattern[0..<state.patternSize]);
-          writeln("Current composition pattern: ", pattern, "\n");
-      }
+ /*
+ * Enumerate patterns based on layering defined by compositions.
+ * Arguments:
+ *  depth: index into the composition array `comp`, indicating which layer we are at
+ *  comp: the chosen composition (list of integers) that sum up to k-1
+ * 
+ * At each depth:
+ *  - Determine how many vertices to pick (comp[depth]).
+ *  - Get candidates from the current pattern’s neighbors.
+ *  - Generate combinations of that many vertices from candidates.
+ *  - For each combination, add them to the pattern and recurse to next depth.
+ *  - If pattern size == k, process the found subgraph.
+ */
+proc enumeratePattern(ref state: KavoshState, ref comp: list(int), depth: int) throws {
 
-      // Check if we've reached target size
-      if state.patternSize == state.k {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Found complete pattern of size ", state.k);
-        }
+    // If we reached k, process motif
+    if state.patternSize == state.k {
         processFoundMotif(state);
         return;
-      }
+    }
 
-      // Check if we've gone too far
-      if depth >= pattern.size {
-          if logLevel == LogLevel.DEBUG {
-              writeln("Reached max depth without complete pattern");
-          }
-          return;
-      }
+    if depth >= comp.size {
+        return;
+    }
 
-      // Get neighbors using segment-based access for directed graph
-      var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];      
-      var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+    const toPick = comp[depth];
+    var candidates = getCandidates(state);
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("  Found ", inNeighbors.size, " in-neighbors and ", outNeighbors.size, " out-neighbors");
-      }
+    if candidates.size < toPick {
+        return;
+    }
 
-      // Build valid neighbor set respecting graph direction
-      var validNbrs: domain(int, parSafe=true);
-      
-      
-      // Process outgoing neighbors
-      for nbr in outNeighbors {
-          if !state.visited[nbr] {
-              if validateVertex(nbr, depth, state) {
-                  validNbrs.add(nbr);
-                  if logLevel == LogLevel.DEBUG {
-                      writeln("  Added valid out-neighbor: ", nbr);
-                  }
-              }
-          }
-      }
+    var combos = generateCombinations(candidates, toPick);
 
-      // Process incoming neighbors 
-      for nbr in inNeighbors {
-          if !state.visited[nbr] {
-              if validateVertex(nbr, depth, state) {
-                  validNbrs.add(nbr);
-                  if logLevel == LogLevel.DEBUG {
-                      writeln("  Added valid in-neighbor: ", nbr);
-                  }
-              }
-          }
-      }
+    for combo in combos {
+        const initialSize = state.patternSize;
+        try {
+            // Add chosen combo vertices
+            for u in combo {
+                state.addToPattern(u);
+                state.visited[u] = true;
+            }
 
-      // Get required number of vertices for this level
-      var k = pattern[depth];
-      
-      if logLevel == LogLevel.DEBUG {
-          writeln("  Need ", k, " vertices at depth ", depth);
-          writeln("  Have ", validNbrs.size, " valid neighbors to choose from");
-      }
+            // Recurse
+            enumeratePattern(state, comp, depth + 1);
 
-      // Only proceed if we have enough valid neighbors
-      if validNbrs.size >= k {
-          if logLevel == LogLevel.DEBUG {
-              writeln("  About to generate combinations of size ", k);
-          }
-
-          var combinations = generateCombinations(validNbrs, k);
-
-          // Process each combination
-          for combo in combinations {
-              var initialSize = state.patternSize;
-              var addedCount = 0;
-
-              try {
-                  // Add vertices in combination
-                  for u in combo {
-                      if !state.visited[u] {
-                          state.addToPattern(u);  // Using new method
-                          state.visited[u] = true;
-                          addedCount += 1;
-                          
-                          if logLevel == LogLevel.DEBUG {
-                              writeln("    Added vertex ", u);
-                              writeln("    Current pattern: ", state.pattern[0..<state.patternSize]);
-                          }
-                      } else {
-                          if logLevel == LogLevel.DEBUG {
-                              writeln("Warning: Attempted to add already visited vertex ", u);
-                          }
-                      }
-                  }
-
-                  // Only recurse if we added vertices successfully
-                  if addedCount == k {
-                      if logLevel == LogLevel.DEBUG {
-                          writeln("\n********************************");
-                          writeln("Before recursion:");
-                          writeln("Added vertices count: ", addedCount);
-                          writeln("Pattern: ", pattern);
-                          writeln("Depth + 1: ", depth+1);
-                          writeln("State: ", state);
-                          writeln("********************************\n");
-                      }
-
-                      // Process from each added vertex
-                      var currentSize = state.patternSize;
-                      for i in (currentSize-addedCount)..<currentSize {
-                          var u = state.pattern[i];
-                          enumeratePattern(u, pattern, depth + 1, state);
-                          if stopper.read() then break;
-                      }
-                  } else {
-                      if logLevel == LogLevel.DEBUG {
-                          writeln("Warning: Failed to add all vertices in combination");
-                      }
-                  }
-
-                  // Backtrack - remove added vertices
-                  while state.patternSize > initialSize {
-                      var lastVertex = state.pattern[state.patternSize-1];
-                      state.removeFromPattern();
-                      state.visited[lastVertex] = false;
-                      if logLevel == LogLevel.DEBUG {
-                          writeln("    Removed vertex ", lastVertex);
-                          writeln("    Pattern after removal: ", state.pattern[0..<state.patternSize]);
-                      }
-                  }
-
-              } catch e {
-                  writeln("Error processing combination: ", e.message());
-                  // Ensure cleanup
-                  while state.patternSize > initialSize {
-                      var lastVertex = state.pattern[state.patternSize-1];
-                      state.removeFromPattern();
-                      state.visited[lastVertex] = false;
-                  }
-              }
-
-              if logLevel == LogLevel.DEBUG {
-                  writeln("    After processing combination: ", combo);
-                  writeln("    Pattern size: ", state.patternSize);
-                  writeln("    Current pattern: ", state.pattern[0..<state.patternSize]);
-              }
-          }
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("==== Completed enumeratePattern at depth ", depth, " ====");
-          writeln("Final pattern: ", state.pattern[0..<state.patternSize]);
-      }
+            // Backtrack
+            while state.patternSize > initialSize {
+                const last = state.pattern[state.patternSize - 1];
+                state.removeFromPattern();
+                state.visited[last] = false;
+            }
+        } catch e {
+            // Ensure backtrack on error
+            while state.patternSize > initialSize {
+                const last = state.pattern[state.patternSize - 1];
+                state.removeFromPattern();
+                state.visited[last] = false;
+            }
+            writeln("Error in enumeratePattern: ", e.message());
+        }
+    }
 
     }// End of enumeratePattern
+/* Minimal validateVertex function when using the layering approach.
+   Since we pick candidates from neighbors of the current pattern,
+   connectivity is guaranteed. We only ensure that the vertex is not visited. */
 
-    /* 
-    * Validate vertex for next level processing.
-    * Returns true if vertex is valid for the current pattern level.
-    */
+proc validateVertex(v: int, level: int, const ref state: KavoshState): bool throws {
+    // If you are certain that all candidates provided to generateCombinations()
+    // are already connected to the current pattern, this check is enough.
+    return !state.visited[v];
 
-    proc validateVertex(v: int, level: int, const ref state: KavoshState): bool throws{
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n==== Starting validateVertex ====");
-          writeln("Validating vertex ", v, " at level ", level);
-          writeln("Current pattern: ", state.pattern[0..<state.patternSize]);
-      }
-
-      // Base case: level 0 just checks if vertex is unvisited
-      // For first level (level 0), all unvisited vertices are valid
-      if level == 0 {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Level 0 check: returning ", !state.visited[v]);
-        }
-        return !state.visited[v];
-      }
-
-
-      // Must have connection to at least one previous pattern vertex
-      var hasConnection = false;
-
-      // Check outgoing edges
-      var outNeighbors = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-      if logLevel == LogLevel.DEBUG {
-          writeln("Checking outgoing edges from ", v, ": ", outNeighbors);
-      }
-
-      for dest in outNeighbors {
-        for j in 0..<state.patternSize {
-            if dest == state.pattern[j] {
-              hasConnection = true;
-              if logLevel == LogLevel.DEBUG {
-                writeln("Found outgoing connection: ", v, " -> ", dest);
-              }
-              break;
-            }
-          }
-          if hasConnection then break;
-      }
-
-      // Check incoming edges if no outgoing connection found
-      if !hasConnection {
-          var inNeighbors = dstRG1[segRG1[v]..<segRG1[v+1]];
-          if logLevel == LogLevel.DEBUG {
-              writeln("Checking incoming edges to ", v, ": ", inNeighbors);
-          }
-
-          for src in inNeighbors {
-              for j in 0..<state.patternSize {
-                  if src == state.pattern[j] {
-                      hasConnection = true;
-                      if logLevel == LogLevel.DEBUG {
-                          writeln("Found incoming connection: ", src, " -> ", v);
-                      }
-                      break;
-                  }
-              }
-              if hasConnection then break;
-          }
-      }
-
-      var result = hasConnection && !state.visited[v];
-      if logLevel == LogLevel.DEBUG {
-            writeln("Final validation result for vertex ", v, ": ", result);
-            writeln("==== Completed validateVertex ====\n");
-        }
-
-        return result;
     }// End of validateVertex
 
     /* 
@@ -775,9 +786,48 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
 
     }// End of generateCombinations
 
+/* Get the candidate neighbors from the current pattern
+ * Candidates are all unvisited vertices that have an edge (in or out)
+ * to any vertex in the currently selected pattern.
+ * This ensures that each newly chosen vertex is connected to the
+ * subgraph formed so far, maintaining connectivity.
+ */
+proc getCandidates(ref state: KavoshState): domain(int, parSafe=true) {
+    var candidates: domain(int, parSafe=true);
 
-    /* Core Kavosh algorithm */
-    proc Kavosh(n: int, k: int) throws {
+    for vIdx in 0..<state.patternSize {
+        const v = state.pattern[vIdx];
+
+        // Outgoing neighbors
+        const outNbrs = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+        for nbr in outNbrs {
+            if !state.visited[nbr] {
+                candidates.add(nbr);
+            }
+        }
+
+        // Incoming neighbors
+        const inNbrs = dstRG1[segRG1[v]..<segRG1[v+1]];
+        for nbr in inNbrs {
+            if !state.visited[nbr] {
+                candidates.add(nbr);
+            }
+        }
+    }
+    return candidates;
+}// End of getCandidates
+
+
+/*
+ * The main Kavosh function calls:
+ * 1. Initialize state.
+ * 2. For each vertex as root:
+ *    - Mark it visited, add to pattern.
+ *    - Generate compositions for k-1
+ *    - For each composition, call enumeratePattern with depth=0
+ *    - Remove root from pattern, mark unvisited
+ */
+     proc Kavosh(n: int, k: int) throws {
       if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Kavosh ====");
       }
@@ -794,14 +844,15 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
         state.visited[v] = true;
         state.addToPattern(v);
 
-        // Generate compositions
+        // Generate compositions for k-1
         var compositions = generateCompositions(k-1);
             
         // Process patterns
         for comp in compositions {
-          enumeratePattern(v, comp, 0, state);
+          enumeratePattern(state, comp, 0);
         }
 
+        // Backtrack root
         state.visited[v] = false;
         state.removeFromPattern();
       }
@@ -814,7 +865,10 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
 
       return state.motifCounts;
     }// end of Kavosh
+/////////////////////////////////////////////Randomized part////////////////////////
 
+
+///////////////////////////////////////////////////////////////////////////////////
     // Execute core algorithm
     var n = g1.n_vertices;
     var k = 3; // Oliver: This should be as an argument from Python side
