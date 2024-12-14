@@ -157,6 +157,19 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
     return isSignificant;
 }
 
+  class RandomizationState {
+    var changedEdges = new map((int,int), int);
+    var rng: randomStream(int);
+    var nEdges: int;
+
+    proc init(nEdges: int, seed: int = 12345) {
+      this.rng = new randomStream(int, seed=seed);
+      this.nEdges = nEdges;
+      if logLevel == LogLevel.DEBUG {
+        writeln("RandomizationState initialized with ", nEdges, " edges");
+      }
+    }
+  }
 
 
   proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
@@ -206,119 +219,163 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
     // If there are no vertex attributes, then check the edge attributes instead.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
 
+    // To Oliver: Introduce a boolean or a parameter in runMotifCounting to decide
+
+    var useRandomizationFlag: bool = false;
+
+    // Execute core algorithm
+    var n = g1.n_edges;
+    var k = 3; // Oliver: This should be as an argument from Python side
+    if logLevel == LogLevel.DEBUG {
+      writeln("Starting motif counting for k=", k);
+      writeln("Graph has ", n, " vertices and ", mG1, " edges");
+      writeln("Randomization flag is set to ", useRandomizationFlag);
+      writeln("Calling Kavosh.......................");
+    }
+
+    // Create RandomizationState
+    //var rndState = new RandomizationState(mG1);
+    var rndState: owned RandomizationState? = nil;
+if useRandomizationFlag {
+  // Initialize randomization
+  rndState = new owned RandomizationState(mG1);
+        var myState = rndState!;
+        performEdgeSwaps(myState, 10000);
+    } 
+
+    // Call Kavosh with or without randomization
+    var results: map(string, atomic int);
+    if useRandomizationFlag {
+        results = Kavosh(n, k, rndState);
+    } else {
+        results = Kavosh(n, k, nil);
+    }
+// performEdgeSwaps(rndState, 10000);// For example 10k swaps?!
+
+
+    if logLevel == LogLevel.DEBUG {
+    // Check point
+
+    writeln("\nK=", k," Motif Summary:");
+    writeln("Unique motifs found: ", results.size);
+        
+    // Print motif frequencies
+    for key in results.keysToArray(){
+      writeln("Motif: ", key, " Count: ", results[key].read());
+    }
+
+
+        writeln("\n==== Motif Finding Complete ====");
+    }
+ 
+
+    // performEdgeSwaps(rndState, 10000);// For example 10k swaps?!
+
+    // // Pass rndState to Kavosh. Note rndState is optional. If you set rndState = nil, no randomization.
+    // var results = Kavosh(n, k, rndState);
+
+
 //////////////////// RandomizationState class ////////////////////////
 
-  /*
-   * Initialize randomization state:
-   * changedEdges map: stores only the edges that changed their destination.
-   * Key: (int,int) = (src, offset), where offset = local index in src's adjacency.
-   * Value: int = new destination.
-   *
-   * offset calculation: For an edge at global index E:
-   * If segGraphG1[u] = start index of u's edges,
-   * and E is in [segGraphG1[u], segGraphG1[u+1]),
-   * offset = E - segGraphG1[u].
-   */
-  class RandomizationState {
-    var changedEdges = new map((int,int), int);
 
-    // For randomization
-    var rng: randomStream(int);
-    var nEdges: int;
+  proc edgeToSrcOffset(E: int): (int,int) {
+    // if logLevel == LogLevel.DEBUG {
+    //   writeln("\n==== Starting edgeToSrcOffset ====");
+    //   writeln("E: ", E);
+    // }
 
-    proc init(nEdges: int, seed: int = 12345) {
-      this.rng = new randomStream(int, seed=seed);
-      this.nEdges = nEdges;
-
-      if logLevel == LogLevel.DEBUG {
-        writeln("RandomizationState initialized with ", nEdges, " edges");
-      }
-    }
-
-    // Helper: Given a global edge index E, find (src, offset)
-    // We do a binary search on segGraphG to find src s.t. segGraphG[src] <= E < segGraphG[src+1]
-    proc edgeToSrcOffset(E: int): (int,int) {
-      // Binary search for src
-      var low = 0;
-      var high = segGraphG1.size - 2; // last valid src = segGraphG1.size-2
-      while low <= high {
-        var mid = (low+high)>>1;
-        if segGraphG[mid+1] <= E {
-          low = mid+1;
-        } else {
-          high = mid-1;
-        }
-      }
-      // Now low should point to the src
-      var src = low;
-      var offset = E - segGraphG1[src];
-      return (src, offset);
-    }
-
-    // Helper: Given (src, offset), find the global edge index
-    proc srcOffsetToEdge(src: int, offset: int): int {
-      return segGraphG1[src] + offset;
-    }
-
-    // Get the current dst for an edge identified by (src, offset).
-    // If changed, return changedEdges value; else original from dstNodesG.
-    proc getDstForEdge(src: int, offset: int): int {
-      if changedEdges.contains((src, offset)) {
-        return changedEdges[(src, offset)];
+    var low = 0;
+    var high = segGraphG1.size - 2;
+    while low <= high {
+      var mid = (low+high)>>1;
+      if segGraphG1[mid+1] <= E {
+        low = mid+1;
       } else {
-        var globalE = srcOffsetToEdge(src, offset);
-        return dstNodesG1[globalE];
+        high = mid-1;
       }
     }
 
-    // Perform random swaps
-    // numSwaps: how many random attempts to swap edges
-    // Each attempt:
-    // 1. Pick two edges e1, e2 randomly
-    // 2. Let them be (u1->v1) and (u2->v2)
-    // 3. After swap: (u1->v2) and (u2->v1)
-    // Conditions:
-    // - No self-loop: ensure u1 != v2 and u2 != v1
-    // (We assume no duplicate check for efficiency. For large graphs, duplicates are unlikely.
-    //  If needed, add checks.)
-    proc performEdgeSwaps(numSwaps: int) {
-      const E = nEdges;
-      if logLevel == LogLevel.DEBUG {
-        writeln("Performing ", numSwaps, " edge swaps...");
+    var src = low;
+
+    // Verify that segGraphG1[src] <= E < segGraphG1[src+1]
+    if src < 0 || src >= segGraphG1.size-1 {
+      // Invalid src
+      return (-1, -1);
+    }
+
+    if E < segGraphG1[src] || E >= segGraphG1[src+1] {
+      // E not in the range of src's edges
+      return (-1, -1);
+    }
+    var offset = E - segGraphG1[src];
+
+    if logLevel == LogLevel.DEBUG {
+      writeln("src is ", src, " and offset is ", offset);
+    }
+    return (src, offset);
+  }
+
+  proc srcOffsetToEdge(src: int, offset: int): int {
+    return segGraphG1[src] + offset;
+  }
+
+  proc getDstForEdge(const ref rndState: RandomizationState, src: int, offset: int): int throws{
+    if rndState.changedEdges.contains((src, offset)) {
+      return rndState.changedEdges[(src, offset)];
+    } else {
+      var globalE = srcOffsetToEdge(src, offset);
+      return dstNodesG1[globalE];
+    }
+  }
+
+  proc performEdgeSwaps(ref rndState: RandomizationState, numSwaps: int) throws{
+    
+    if logLevel == LogLevel.DEBUG {
+      writeln("\n==== Starting performEdgeSwaps ====");
+      writeln("Performing ", numSwaps, " edge swaps...");
+    }
+
+    const E = rndState.nEdges;
+
+    var numSwapsNew = numSwaps;
+
+    if numSwaps > E then numSwapsNew = E;
+
+    for attempt in 1..numSwapsNew {
+      var e1 = rndState.rng.next() % E;
+      var e2 = rndState.rng.next() % E;
+      if e1 == e2 then continue;
+
+      var (u1, off1) = edgeToSrcOffset(e1);
+      var (u2, off2) = edgeToSrcOffset(e2);
+
+      // Check validity
+      if u1 == -1 || off1 == -1 || u2 == -1 || off2 == -1 {
+        continue;         // Invalid edge mapping, skip this swap
       }
 
-      for attempt in 1..numSwaps {
-        var e1 = rng.next() % E;
-        var e2 = rng.next() % E;
-        if e1 == e2 then continue; // same edge, skip
+      var v1 = getDstForEdge(rndState, u1, off1);
+      var v2 = getDstForEdge(rndState, u2, off2);
 
-        var (u1, off1) = edgeToSrcOffset(e1, segGraphG1);
-        var (u2, off2) = edgeToSrcOffset(e2, segGraphG1);
-
-        var v1 = getDstForEdge(u1, off1);
-        var v2 = getDstForEdge(u2, off2);
-
-        // Check no self-loops after swap
-        // After swap: u1->v2 and u2->v1
-        if u1 == v2 || u2 == v1 {
-          // would create a self-loop, skip
-          continue;
-        }
-
-        // Perform the swap
-        changedEdges[(u1, off1)] = v2;
-        changedEdges[(u2, off2)] = v1;
-
-        if logLevel == LogLevel.DEBUG && attempt % 1000 == 0 {
-          writeln("Swapped edges #", attempt, ": (", u1, "->", v1, ") with (", u2, "->", v2, ")");
-        }
+      if v1<0 || v1>=g1.n_vertices || v2<0 || v2>=g1.n_vertices{
+        continue;// Invalid vertex index, skip
       }
 
-      if logLevel == LogLevel.DEBUG {
-        writeln("Completed edge swaps. Total changed edges: ", changedEdges.size);
+      if u1 == v2 || u2 == v1 {
+        continue;// Self loop would result, skip
+      }
+
+      rndState.changedEdges[(u1, off1)] = v2;
+      rndState.changedEdges[(u2, off2)] = v1;
+
+      if logLevel == LogLevel.DEBUG && attempt % 1000 == 0 {
+        writeln("Swapped edges #", attempt, ": (", u1, "->", v1, ") with (", u2, "->", v2, ")");
       }
     }
 
+    if logLevel == LogLevel.DEBUG {
+      writeln("Completed edge swaps. Total changed edges: ", rndState.changedEdges.size);
+    }
   }
 //////////////////// End of RandomizationState ////////////////////////
 
@@ -330,13 +387,21 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
    * under the randomized scenario.
    ********************************************/
 
-  proc getNeighbors(u: int, const ref rndState: RandomizationState): list(int) {
+  // Return neighbors of u, using rndState if provided
+  proc getNeighbors(u: int, ref rndState: RandomizationState): list(int) {
     var nbrs = new list(int);
     var start = segGraphG1[u];
     var end = segGraphG1[u+1];
     for e in start..<end {
       var offset = e - segGraphG1[u];
-      var dst = rndState.getDstForEdge(u, offset);
+      var dst: int;
+      if rndState == nil {
+        // No randomization
+        dst = dstNodesG1[e];
+      } else {
+        // Use randomized destination
+        dst = rndState!.getDstForEdge(u, offset);
+      }
       nbrs.pushBack(dst);
     }
     return nbrs;
@@ -434,7 +499,7 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
           return;
       }
 
-      // Create a sorted copy of the pattern to ensure uniqueness
+      // Check uniqueness: Create a sorted copy of the pattern to ensure uniqueness
       var patternArr = state.pattern[0..<state.patternSize];
       sort(patternArr);
       var patternKey = "";
@@ -482,13 +547,13 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
 
 
     proc updateMotifCount(labela: string, ref state: KavoshState) {
-        if !state.motifCounts.contains(labela) {
-            var newCount: atomic int;
-            newCount.write(1);
-            state.motifCounts[labela] = newCount;
-        } else {
-            state.motifCounts[labela].add(1);
-        }
+      if !state.motifCounts.contains(labela) {
+          var newCount: atomic int;
+          newCount.write(1);
+          state.motifCounts[labela] = newCount;
+      } else {
+          state.motifCounts[labela].add(1);
+      }
     }// End of updateMotifCount
 
     /* 
@@ -588,81 +653,59 @@ proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
         return order;
     }// End of getVertexOrdering
 
- /*
- * Enumerate patterns based on layering defined by compositions.
- * Arguments:
- *  depth: index into the composition array `comp`, indicating which layer we are at
- *  comp: the chosen composition (list of integers) that sum up to k-1
- * 
- * At each depth:
- *  - Determine how many vertices to pick (comp[depth]).
- *  - Get candidates from the current pattern’s neighbors.
- *  - Generate combinations of that many vertices from candidates.
- *  - For each combination, add them to the pattern and recurse to next depth.
- *  - If pattern size == k, process the found subgraph.
- */
-proc enumeratePattern(ref state: KavoshState, ref comp: list(int), depth: int) throws {
+    /*
+    * Enumerate patterns based on layering defined by compositions.
+      * Pass rndState as optional. If rndState != nil, use it for neighbor retrieval.
 
-    // If we reached k, process motif
+    */
+ proc enumeratePattern(ref state: KavoshState,
+                        ref comp: list(int),
+                        depth: int,
+                        ref rndState: RandomizationState?) throws {
+
     if state.patternSize == state.k {
-        processFoundMotif(state);
-        return;
+      processFoundMotif(state);
+      return;
     }
 
     if depth >= comp.size {
-        return;
+      return;
     }
 
     const toPick = comp[depth];
-    var candidates = getCandidates(state);
+    var candidates = getCandidates(state, rndState);
 
     if candidates.size < toPick {
-        return;
+      return;
     }
 
     var combos = generateCombinations(candidates, toPick);
 
     for combo in combos {
-        const initialSize = state.patternSize;
-        try {
-            // Add chosen combo vertices
-            for u in combo {
-                state.addToPattern(u);
-                state.visited[u] = true;
-            }
-
-            // Recurse
-            enumeratePattern(state, comp, depth + 1);
-
-            // Backtrack
-            while state.patternSize > initialSize {
-                const last = state.pattern[state.patternSize - 1];
-                state.removeFromPattern();
-                state.visited[last] = false;
-            }
-        } catch e {
-            // Ensure backtrack on error
-            while state.patternSize > initialSize {
-                const last = state.pattern[state.patternSize - 1];
-                state.removeFromPattern();
-                state.visited[last] = false;
-            }
-            writeln("Error in enumeratePattern: ", e.message());
+      const initialSize = state.patternSize;
+      try {
+        for u in combo {
+          state.addToPattern(u);
+          state.visited[u] = true;
         }
+
+        enumeratePattern(state, comp, depth + 1, rndState);
+
+        while state.patternSize > initialSize {
+          const last = state.pattern[state.patternSize - 1];
+          state.removeFromPattern();
+          state.visited[last] = false;
+        }
+      } catch e {
+        while state.patternSize > initialSize {
+          const last = state.pattern[state.patternSize - 1];
+          state.removeFromPattern();
+          state.visited[last] = false;
+        }
+        writeln("Error in enumeratePattern: ", e.message());
+      }
     }
-
-    }// End of enumeratePattern
-/* Minimal validateVertex function when using the layering approach.
-   Since we pick candidates from neighbors of the current pattern,
-   connectivity is guaranteed. We only ensure that the vertex is not visited. */
-
-proc validateVertex(v: int, level: int, const ref state: KavoshState): bool throws {
-    // If you are certain that all candidates provided to generateCombinations()
-    // are already connected to the current pattern, this check is enough.
-    return !state.visited[v];
-
-    }// End of validateVertex
-
+  }
     /* 
     * Implementation of the revolving door ordering algorithm for generating combinations
     * This is called within runMotifCounting() to generate vertex combinations efficiently
@@ -792,48 +835,51 @@ proc validateVertex(v: int, level: int, const ref state: KavoshState): bool thro
  * This ensures that each newly chosen vertex is connected to the
  * subgraph formed so far, maintaining connectivity.
  */
-proc getCandidates(ref state: KavoshState): domain(int, parSafe=true) {
+
+   proc getCandidates(ref state: KavoshState,
+                     ref rndState: RandomizationState?): domain(int, parSafe=true) throws{
     var candidates: domain(int, parSafe=true);
 
     for vIdx in 0..<state.patternSize {
-        const v = state.pattern[vIdx];
+      const v = state.pattern[vIdx];
 
-        // Outgoing neighbors
-        const outNbrs = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-        for nbr in outNbrs {
-            if !state.visited[nbr] {
-                candidates.add(nbr);
-            }
+      // Outgoing neighbors (randomized)
+      var start = segGraphG1[v];
+      var end = segGraphG1[v+1];
+      for e in start..<end {
+        var offset = e - segGraphG1[v];
+        var nbr = getDstForEdge(rndState, v, offset);
+        if !state.visited[nbr] {
+          candidates.add(nbr);
         }
+      }
 
-        // Incoming neighbors
-        const inNbrs = dstRG1[segRG1[v]..<segRG1[v+1]];
-        for nbr in inNbrs {
-            if !state.visited[nbr] {
-                candidates.add(nbr);
-            }
+      // Incoming neighbors (not randomized)
+      start = segRG1[v];
+      end = segRG1[v+1];
+      for e in start..<end {
+        var nbr = dstRG1[e];
+        if !state.visited[nbr] {
+          candidates.add(nbr);
         }
+      }
     }
     return candidates;
-}// End of getCandidates
+  }
 
+  /*
+    * Kavosh main function
+    * Add an argument for rndState. If rndState is nil, no randomization is used.
+    */
+proc Kavosh(n: int, k: int, rndState: owned RandomizationState?) throws {
 
-/*
- * The main Kavosh function calls:
- * 1. Initialize state.
- * 2. For each vertex as root:
- *    - Mark it visited, add to pattern.
- *    - Generate compositions for k-1
- *    - For each composition, call enumeratePattern with depth=0
- *    - Remove root from pattern, mark unvisited
- */
-     proc Kavosh(n: int, k: int) throws {
       if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Kavosh ====");
       }
 
       var state = new KavoshState(n, k);
-        
+    var compositions = generateCompositions(k-1);
+
       // Process each vertex as root
       //forall v in 0..<n with (ref state) {
       for v in 0..<n {
@@ -844,55 +890,36 @@ proc getCandidates(ref state: KavoshState): domain(int, parSafe=true) {
         state.visited[v] = true;
         state.addToPattern(v);
 
-        // Generate compositions for k-1
-        var compositions = generateCompositions(k-1);
-            
         // Process patterns
-        for comp in compositions {
-          enumeratePattern(state, comp, 0);
+       for comp in compositions {
+            enumeratePattern(state, comp, 0, rndState);
         }
 
-        // Backtrack root
         state.visited[v] = false;
         state.removeFromPattern();
-      }
+    }
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nAt the end of Kavosh. state is: ", state);
-          writeln("Total patterns found: ", state.totalPatterns.read());
-          writeln("Max pattern size reached: ", state.maxPatternSize.read());
-      }
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nAt the end of Kavosh. state is: ", state);
+        writeln("Total patterns found: ", state.totalPatterns.read());
+        writeln("Max pattern size reached: ", state.maxPatternSize.read());
+    }
 
-      return state.motifCounts;
+    writeln("\nK=", k," Motif Summary:");
+    writeln("Unique motifs found: ", state.motifCounts.size);
+    for key in state.motifCounts.keysToArray(){
+        writeln("Motif: ", key, " Count: ", state.motifCounts[key].read());
+    }
+
     }// end of Kavosh
 /////////////////////////////////////////////Randomized part////////////////////////
 
 
 ///////////////////////////////////////////////////////////////////////////////////
-    // Execute core algorithm
-    var n = g1.n_vertices;
-    var k = 3; // Oliver: This should be as an argument from Python side
-    // if logLevel == LogLevel.DEBUG {
-      writeln("Starting motif counting for k=", k);
-      writeln("Graph has ", g1.n_vertices, " vertices and ", srcNodesG1.size, " edges");
-      writeln("Calling Kavosh.......................");
 
-    // }
-    
-    var results = Kavosh(n, k);
 
-    /// Check point
-    writeln("\nK=", k," Motif Summary:");
-    writeln("Unique motifs found: ", results.size);
-        
-    // Print motif frequencies
-    for key in results.keysToArray(){
-      writeln("Motif: ", key, " Count: ", results[key].read());
-    }
 
-    if logLevel == LogLevel.DEBUG {
-        writeln("\n==== Motif Finding Complete ====");
-    }
+
     var tempArr: [0..0] int;
     var srcPerIso = makeDistArray(2*2, int);
     var dstPerIso = makeDistArray(2*2, int);
