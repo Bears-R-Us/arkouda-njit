@@ -15,7 +15,6 @@ module MotifCounting {
   // Arachne modules.
   use GraphArray;
   use Utils;
-//   use SubgraphIsomorphismMsg;
   use MotifCountingMsg;
   
   // Arkouda modules.
@@ -31,127 +30,128 @@ module MotifCounting {
 
   /* Memory-efficient state management for large graphs */
   class KavoshState {
-      var n: int;              // Number of vertices
-      var k: int;              // Motif size
-      var visited: [0..<n] bool;
-      var pattern: [0..<k] int;  // Fixed-size array instead of list
-      var patternSize: int;      // Track current size
-      var motifCounts: map(string, atomic int);
+    var n: int;              // Number of vertices
+    var k: int;              // Motif size
+    var visited: [0..<n] bool;
+    var pattern: [0..<k] int;  // Fixed-size array instead of list
+    var patternSize: int;      // Track current size
+    var motifCounts: map(string, atomic int);
 
-      var seenPatterns = new set(string);
+    var seenPatterns = new set(string);
 
-      // Track memory usage
-      var totalPatterns: atomic int = 0;
-      var maxPatternSize: atomic int = 0;
+    // Track memory usage
+    var totalPatterns: atomic int = 0;
+    var maxPatternSize: atomic int = 0;
 
-      // Statistics tracking
-      var patternStats = new map(string, (int, real, real)); // (frequency, zscore, pvalue)
-  
-      proc init(n: int, k: int) {
-          if logLevel == LogLevel.DEBUG {
-              writeln("Initializing KavoshState: n=", n, " Looking for motifs of size k=", k);
-          }
-          this.n = n;
-          this.k = k;
-          this.visited = false;
-          this.pattern = -1;     // Initialize with invalid vertex values
-          this.patternSize = 0;
-          this.motifCounts = new map(string, atomic int);
-      }
+    // Statistics tracking
+    var patternStats = new map(string, (int, real, real)); // (frequency, zscore, pvalue)
+ 
+    proc init(n: int, k: int) {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Initializing KavoshState: n=", n, " Looking for motifs of size k=", k);
+        }
+        this.n = n;
+        this.k = k;
+        this.visited = false;
+        this.pattern = -1;     // Initialize with invalid vertex values
+        this.patternSize = 0;
+        this.motifCounts = new map(string, atomic int);
+    }
 
-      proc reset() {
-          if logLevel == LogLevel.DEBUG {
-              writeln("Resetting KavoshState");
-          }
-          this.visited = false;
-          this.pattern = -1;
-          this.patternSize = 0;
-      }
+    proc reset() {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Resetting KavoshState");
+        }
+        this.visited = false;
+        this.pattern = -1;
+        this.patternSize = 0;
+    }
 
-      /* Add vertex to pattern */
-      proc addToPattern(v: int) {
-          if logLevel == LogLevel.DEBUG {
-              writeln("Adding vertex ", v, " to pattern at position ", this.patternSize);
-          }
-          if this.patternSize < k {
-              this.pattern[this.patternSize] = v;
-              this.patternSize += 1;
-              updateMemoryStats();
-          }
-      }
+    /* Add vertex to pattern */
+    proc addToPattern(v: int) {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Adding vertex ", v, " to pattern at position ", this.patternSize);
+        }
+        if this.patternSize < k {
+            this.pattern[this.patternSize] = v;
+            this.patternSize += 1;
+            updateMemoryStats();
+        }
+    }
 
-      /* Remove last vertex from pattern */
-      proc removeFromPattern() {
-          if logLevel == LogLevel.DEBUG {
-              writeln("Removing last vertex from pattern at position ", this.patternSize-1);
-          }
-          if this.patternSize > 0 {
-              this.pattern[this.patternSize-1] = -1;
-              this.patternSize -= 1;
-          }
-      }
+    /* Remove last vertex from pattern */
+    proc removeFromPattern() {
+        if logLevel == LogLevel.DEBUG {
+            writeln("Removing last vertex from pattern at position ", this.patternSize-1);
+        }
+        if this.patternSize > 0 {
+            this.pattern[this.patternSize-1] = -1;
+            this.patternSize -= 1;
+        }
+    }
 
-      /* Track memory usage */
-      proc updateMemoryStats() {
-          totalPatterns.add(1);
-          maxPatternSize.write(max(maxPatternSize.read(), pattern.size));
-      }
+    /* Track memory usage */
+    proc updateMemoryStats() {
+        totalPatterns.add(1);
+        maxPatternSize.write(max(maxPatternSize.read(), pattern.size));
+    }
 
-      /* Update statistics */
-      proc updateStats(pattern: string, freq: int, zscore: real, pvalue: real) {
-          patternStats[pattern] = (freq, zscore, pvalue);
-      }
+    /* Update statistics */
+    proc updateStats(pattern: string, freq: int, zscore: real, pvalue: real) {
+        patternStats[pattern] = (freq, zscore, pvalue);
+    }
 
-      /* Print statistics */
-      proc printStats() {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\n==== Pattern Statistics ====");
-              writeln("Total unique patterns: ", motifCounts.size);
-              writeln("\nSignificant Motifs:");
-              for pattern in patternStats.keys() {
-                  var (freq, zscore, pvalue) = patternStats[pattern];
-                  if isMotif(pattern, freq, zscore, pvalue) {
-                      writeln("Pattern: ", pattern);
-                      writeln("  Frequency: ", freq);
-                      writeln("  Z-score: ", zscore);
-                      writeln("  P-value: ", pvalue);
-                  }
-              }
-          }
-      }
+    /* Print statistics */
+    proc printStats() {
+        if logLevel == LogLevel.DEBUG {
+            writeln("\n==== Pattern Statistics ====");
+            writeln("Total unique patterns: ", motifCounts.size);
+            writeln("\nSignificant Motifs:");
+            for pattern in patternStats.keys() {
+                var (freq, zscore, pvalue) = patternStats[pattern];
+                if isMotif(pattern, freq, zscore, pvalue) {
+                    writeln("Pattern: ", pattern);
+                    writeln("  Frequency: ", freq);
+                    writeln("  Z-score: ", zscore);
+                    writeln("  P-value: ", pvalue);
+                }
+            }
+        }
+    }
 
-      /* Clean up resources */
-      proc cleanup() {
-          pattern.clear();
-          motifCounts.clear();
-          if logLevel == LogLevel.DEBUG {
-              writeln("Processed ", totalPatterns.read(), " patterns");
-              writeln("Maximum pattern size: ", maxPatternSize.read());
-          }
-      }
+    /* Clean up resources */
+    proc cleanup() {
+        pattern.clear();
+        motifCounts.clear();
+        if logLevel == LogLevel.DEBUG {
+            writeln("Processed ", totalPatterns.read(), " patterns");
+            writeln("Maximum pattern size: ", maxPatternSize.read());
+        }
+    }
   }
 
 
   /* Identify if a pattern is a motif based on statistical criteria */
   proc isMotif(pattern: string, freq: int, zscore: real, pvalue: real): bool {
-    // Criteria from the paper
-    const minFreq = 4;              // Minimum frequency threshold
-    const pValueThreshold = 0.01;    // Maximum p-value threshold
-    const minZScore = 1.0;          // Minimum z-score threshold
+      // Criteria from the paper
+      const minFreq = 4;              // Minimum frequency threshold
+      const pValueThreshold = 0.01;    // Maximum p-value threshold
+      const minZScore = 1.0;          // Minimum z-score threshold
 
-    var isSignificant = freq >= minFreq && 
+      var isSignificant = freq >= minFreq && 
                         pvalue < pValueThreshold && 
                         zscore > minZScore;
 
-    if logLevel == LogLevel.DEBUG && isSignificant {
-      writeln("Found significant motif:");
-      writeln("  Frequency: ", freq, " (threshold: ", minFreq, ")");
-      writeln("  Z-score: ", zscore, " (threshold: ", minZScore, ")");
-      writeln("  P-value: ", pvalue, " (threshold: ", pValueThreshold, ")");
-    }
+      if logLevel == LogLevel.DEBUG && isSignificant {
+          writeln("Found significant motif:");
+          writeln("  Frequency: ", freq, " (threshold: ", minFreq, ")");
+          writeln("  Z-score: ", zscore, " (threshold: ", minZScore, ")");
+          writeln("  P-value: ", pvalue, " (threshold: ", pValueThreshold, ")");
+      }
 
     return isSignificant;
   }
+
 
 
   proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
@@ -200,61 +200,6 @@ module MotifCounting {
 
     // If there are no vertex attributes, then check the edge attributes instead.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
-
-    // Execute core algorithm
-    var n = g1.n_edges;
-    var k = 3; // Oliver: This should be as an argument from Python side
-    
-    if logLevel == LogLevel.DEBUG {
-      writeln("Starting motif counting for k=", k);
-      writeln("Graph has ", n, " vertices and ", mG1, " edges");
-      writeln("Calling Kavosh.......................");
-    }
-
-
-
-    // Call Kavosh with
-    var results: map(string, atomic int);
-    results = Kavosh(n, k);
-
-
-
-    if logLevel == LogLevel.DEBUG {
-      // Check point
-
-      writeln("\nK=", k," Motif Summary:");
-      writeln("Unique motifs found: ", results.size);
-          
-      // Print motif frequencies
-      for key in results.keysToArray(){
-        writeln("Motif: ", key, " Count: ", results[key].read());
-      }
-
-
-      writeln("\n==== Motif Finding Complete ====");
-    }
- 
-
-    // Return neighbors of u
-    proc getNeighbors(u: int): list(int) {
-      var nbrs = new list(int);
-      var start = segGraphG1[u];
-      var end = segGraphG1[u+1];
-      for e in start..<end {
-        var offset = e - segGraphG1[u];
-        var dst: int;
-
-        dst = dstNodesG1[e];
-        nbrs.pushBack(dst);
-      }
-      
-      return nbrs;
-    }
-
-
-
-////////////////////////////////////////////////////////////////////////////////////////////
-
 
 
     /* Generate integer compositions */
@@ -343,7 +288,7 @@ module MotifCounting {
           return;
       }
 
-      // Check uniqueness: Create a sorted copy of the pattern to ensure uniqueness
+      // Create a sorted copy of the pattern to ensure uniqueness
       var patternArr = state.pattern[0..<state.patternSize];
       sort(patternArr);
       var patternKey = "";
@@ -351,9 +296,9 @@ module MotifCounting {
         patternKey += v:string + ",";
       }
 
-      // Check if we've already seen this pattern
+      // Check if we've already seen this subgraph
       if state.seenPatterns.contains(patternKey) {
-          // Already counted this pattern
+          // Already counted this subgraph
           if logLevel == LogLevel.DEBUG {
               writeln("Skipping motif, pattern already seen:", patternKey);
           }
@@ -391,13 +336,13 @@ module MotifCounting {
 
 
     proc updateMotifCount(labela: string, ref state: KavoshState) {
-      if !state.motifCounts.contains(labela) {
-          var newCount: atomic int;
-          newCount.write(1);
-          state.motifCounts[labela] = newCount;
-      } else {
-          state.motifCounts[labela].add(1);
-      }
+        if !state.motifCounts.contains(labela) {
+            var newCount: atomic int;
+            newCount.write(1);
+            state.motifCounts[labela] = newCount;
+        } else {
+            state.motifCounts[labela].add(1);
+        }
     }// End of updateMotifCount
 
     /* 
@@ -405,7 +350,7 @@ module MotifCounting {
     * Takes adjacency matrix and returns unique string identifier.
     */
     proc generateCanonicalLabel(adjMatrix: [] bool): string throws {
-        if logLevel == LogLevel.DEBUG {
+      if logLevel == LogLevel.DEBUG {
             writeln("Generating canonical label for pattern");
         }
 
@@ -500,56 +445,69 @@ module MotifCounting {
     /*
     * Enumerate patterns based on layering defined by compositions.
     */
-    proc enumeratePattern(ref state: KavoshState,
-                            ref comp: list(int),
-                            depth: int) throws {
+    proc enumeratePattern(ref state: KavoshState, ref comp: list(int), depth: int) throws {
 
-      if state.patternSize == state.k {
+    // If we reached k, process motif
+    if state.patternSize == state.k {
         processFoundMotif(state);
         return;
-      }
+    }
 
-      if depth >= comp.size {
+    if depth >= comp.size {
         return;
-      }
+    }
 
-      const toPick = comp[depth];
-      var candidates = getCandidates(state);
+    const toPick = comp[depth];
+    var candidates = getCandidates(state);
 
-      if candidates.size < toPick {
+    if candidates.size < toPick {
         return;
-      }
+    }
 
-      var combos = generateCombinations(candidates, toPick);
+    var combos = generateCombinations(candidates, toPick);
 
-      for combo in combos {
+    for combo in combos {
         const initialSize = state.patternSize;
         try {
-          for u in combo {
-            state.addToPattern(u);
-            state.visited[u] = true;
-          }
+            // Add chosen combo vertices
+            for u in combo {
+                state.addToPattern(u);
+                state.visited[u] = true;
+            }
 
-          enumeratePattern(state, comp, depth + 1);
+            // Recurse
+            enumeratePattern(state, comp, depth + 1);
 
-          while state.patternSize > initialSize {
-            const last = state.pattern[state.patternSize - 1];
-            state.removeFromPattern();
-            state.visited[last] = false;
-          }
+            // Backtrack
+            while state.patternSize > initialSize {
+                const last = state.pattern[state.patternSize - 1];
+                state.removeFromPattern();
+                state.visited[last] = false;
+            }
         } catch e {
-          while state.patternSize > initialSize {
-            const last = state.pattern[state.patternSize - 1];
-            state.removeFromPattern();
-            state.visited[last] = false;
-          }
-          writeln("Error in enumeratePattern: ", e.message());
+            // Ensure backtrack on error
+            while state.patternSize > initialSize {
+                const last = state.pattern[state.patternSize - 1];
+                state.removeFromPattern();
+                state.visited[last] = false;
+            }
+            writeln("Error in enumeratePattern: ", e.message());
         }
-      }
     }
+
+    }// End of enumeratePattern
+    /* Minimal validateVertex function */
+    // if I was right we don't need it. do more checks
+    proc validateVertex(v: int, level: int, const ref state: KavoshState): bool throws {
+      // If we are certain that all candidates provided to generateCombinations()
+      // are already connected to the current pattern, why we should do any check?
+      return !state.visited[v];
+
+    }// End of validateVertex
+
     /* 
     * Implementation of the revolving door ordering algorithm for generating combinations
-    * This is called to generate vertex combinations efficiently
+    * This is called within runMotifCounting() to generate vertex combinations efficiently
     * References paper section: "Here, by using the 'revolving door ordering' algorithm
     * all combinations containing ki vertices from the ni vertices are selected."
     */
@@ -676,49 +634,48 @@ module MotifCounting {
     * This ensures that each newly chosen vertex is connected to the
     * subgraph formed so far, maintaining connectivity.
     */
-
-   proc getCandidates(ref state: KavoshState): domain(int, parSafe=true) throws{
+    proc getCandidates(ref state: KavoshState): domain(int, parSafe=true) {
       var candidates: domain(int, parSafe=true);
 
       for vIdx in 0..<state.patternSize {
         const v = state.pattern[vIdx];
 
         // Outgoing neighbors
-        var start = segGraphG1[v];
-        var end = segGraphG1[v+1];
-        for e in start..<end {
-          var nbr = dstNodesG1[e];
-          if !state.visited[nbr] {
-            candidates.add(nbr);
-          }
+        const outNbrs = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+        for nbr in outNbrs {
+            if !state.visited[nbr] {
+                candidates.add(nbr);
+            }
         }
 
-        // Incoming neighbors 
-        start = segRG1[v];
-        end = segRG1[v+1];
-        for e in start..<end {
-          var nbr = dstRG1[e];
-          if !state.visited[nbr] {
-            candidates.add(nbr);
-          }
+        // Incoming neighbors
+        const inNbrs = dstRG1[segRG1[v]..<segRG1[v+1]];
+        for nbr in inNbrs {
+            if !state.visited[nbr] {
+                candidates.add(nbr);
+            }
         }
       }
-
       return candidates;
-    }
+    }// End of getCandidates
 
-    /*
-    * Kavosh main function
-    */
-    proc Kavosh(n: int, k: int) throws {
 
+/*
+ * The main Kavosh function calls:
+ * 1. Initialize state.
+ * 2. For each vertex as root:
+ *    - Mark it visited, add to pattern.
+ *    - Generate compositions for k-1
+ *    - For each composition, call enumeratePattern with depth=0
+ *    - Remove root from pattern, mark unvisited
+ */
+     proc Kavosh(n: int, k: int) throws {
       if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Kavosh ====");
       }
 
       var state = new KavoshState(n, k);
-      var compositions = generateCompositions(k-1);
-
+        
       // Process each vertex as root
       //forall v in 0..<n with (ref state) {
       for v in 0..<n {
@@ -729,11 +686,15 @@ module MotifCounting {
         state.visited[v] = true;
         state.addToPattern(v);
 
+        // Generate compositions for k-1
+        var compositions = generateCompositions(k-1);
+            
         // Process patterns
         for comp in compositions {
-            enumeratePattern(state, comp, 0);
+          enumeratePattern(state, comp, 0);
         }
 
+        // Backtrack root
         state.visited[v] = false;
         state.removeFromPattern();
       }
@@ -744,14 +705,34 @@ module MotifCounting {
           writeln("Max pattern size reached: ", state.maxPatternSize.read());
       }
 
-      writeln("\nK=", k," Motif Summary:");
-      writeln("Unique motifs found: ", state.motifCounts.size);
-      for key in state.motifCounts.keysToArray(){
-          writeln("Motif: ", key, " Count: ", state.motifCounts[key].read());
-      }
-
       return state.motifCounts;
     }// end of Kavosh
+
+
+    // Execute core algorithm
+    var n = g1.n_vertices;
+    var k = 3; // Oliver: This should be as an argument from Python side
+    if logLevel == LogLevel.DEBUG {
+      writeln("Starting motif counting for k=", k);
+      writeln("Graph has ", g1.n_vertices, " vertices and ", srcNodesG1.size, " edges");
+      writeln("Calling Kavosh.......................");
+
+    }
+    
+    var results = Kavosh(n, k);
+
+    if logLevel == LogLevel.DEBUG {
+      /// Check point
+      writeln("\nK=", k," Motif Summary:");
+      
+      // Print motif frequencies
+      for key in results.keysToArray(){
+        writeln("Motif: ", key, " Count: ", results[key].read());
+      }
+      
+      writeln("Unique motifs found: ", results.size);
+      writeln("\n==== Motif Finding Complete ====");
+    }
 
     var tempArr: [0..0] int;
     var srcPerIso = makeDistArray(2*2, int);
