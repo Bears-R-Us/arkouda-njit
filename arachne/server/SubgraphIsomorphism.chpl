@@ -27,6 +27,7 @@ module SubgraphIsomorphism {
   use SegmentedString;
   use SymArrayDmap;
   use Unique;
+  use ArgSortMsg;
 
   /** Keeps track of the isomorphic mapping state during the execution process of VF2.*/
   class State {
@@ -119,7 +120,7 @@ module SubgraphIsomorphism {
     if matchType == "and" then outerMatch = true;
     if matchType == "or" then outerMatch = false;
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
-      if !graphAttributes.contains(k) then continue; // check if attributes are same
+      if !graphAttributes.contains(k) then continue; // check if attribute exists in graph
       if v[1] != graphAttributes[k][1] then continue; // check if types are same
       var innerMatch:bool;
 
@@ -197,11 +198,27 @@ module SubgraphIsomorphism {
     else return outerMatch;
   } // end of doAttributesMatch
 
+  /* Maps to track the probability distributions generated per attribute type. */
+  var edgeCategoricalProbabilityDistributions = new map(string, map(string, real));
+  var edgeStringsProbabilityDistributions = new map(string, map(string,real));
+  var edgeIntProbabilityDistributions = new map(string, map(int, real));
+  var edgeUIntProbabilityDistributions = new map(string, map(uint, real));
+  var edgeRealProbabilityDistributions = new map(string, map(real, real));
+  var edgeBoolProbabilityDistributions = new map(string, map(bool, real));
+
+  var nodeCategoricalProbabilityDistributions = new map(string, map(string, real));
+  var nodeStringsProbabilityDistributions = new map(string, map(string,real));
+  var nodeIntProbabilityDistributions = new map(string, map(int, real));
+  var nodeUIntProbabilityDistributions = new map(string, map(uint, real));
+  var nodeRealProbabilityDistributions = new map(string, map(real, real));
+  var nodeBoolProbabilityDistributions = new map(string, map(bool, real));
+
   /* Generates the probability distribution for given subgraph attributes derived from the host
      graph. */
-  proc generateProbabilityDistribution(const ref subgraphAttributes, const ref graphAttributes, st: borrowed SymTab) throws {
+  proc generateProbabilityDistribution(const ref subgraphAttributes, const ref graphAttributes, 
+                                       attributeBelongsTo:string, st: borrowed SymTab) throws {
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
-      if !graphAttributes.contains(k) then continue; // check if attributes are same
+      if !graphAttributes.contains(k) then continue; // check if attribute exists in graph
       if v[1] != graphAttributes[k][1] then continue; // check if types are same
 
       // Check the actual data.
@@ -214,19 +231,24 @@ module SubgraphIsomorphism {
           var (values, counts) = uniqueSort(graphArr);
           var probMap = new map(string, real);
           for (v,c) in zip (values,counts) do probMap.add(graphCats[v], c:real / graphArr.size:real);
-          writeln("Categorical probMap = ", probMap);
-          assert(1 == (+ reduce probMap.valuesToArray()):int);
-          writeln();
+
+          if attributeBelongsTo == "edge" then 
+            edgeCategoricalProbabilityDistributions.add(k, probMap);
+          else
+            nodeCategoricalProbabilityDistributions.add(k, probMap);
         }
         when "Strings" {
           var graphStrings = getSegString(graphAttributes[k][0], st);
           var (uo, uv, counts, inv) = uniqueGroup(graphStrings);
+          
           var values = getSegString(uo, uv, st);
           var probMap = new map(string, real);
           for (v,c) in zip (counts.domain, counts) do probMap.add(values[v], c:real / graphStrings.size:real);
-          writeln("Strings probMap = ", probMap);
-          assert(1 == (+ reduce probMap.valuesToArray()):int);
-          writeln();
+
+          if attributeBelongsTo == "edge" then 
+            edgeStringsProbabilityDistributions.add(k, probMap);
+          else
+            nodeStringsProbabilityDistributions.add(k, probMap);
         }
         when "pdarray" {
           var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
@@ -237,43 +259,342 @@ module SubgraphIsomorphism {
           select etype {
             when (DType.Int64) {
               const ref graphArr = toSymEntry(graphArrEntry, int).a;
+              
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(int, real);
               for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
-              writeln("Int64 probMap = ", probMap);
-              assert(1 == (+ reduce probMap.valuesToArray()):int);
-              writeln();
+
+              if attributeBelongsTo == "edge" then 
+                edgeIntProbabilityDistributions.add(k, probMap);
+              else
+                nodeIntProbabilityDistributions.add(k, probMap);
             }
             when (DType.UInt64) {
               const ref graphArr = toSymEntry(graphArrEntry, uint).a;
+              
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(uint, real);
               for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
-              writeln("UInt64 probMap = ", probMap);
-              assert(1 == (+ reduce probMap.valuesToArray()):int);
-              writeln();
+
+              if attributeBelongsTo == "edge" then 
+                edgeUIntProbabilityDistributions.add(k, probMap);
+              else
+                nodeUIntProbabilityDistributions.add(k, probMap);
             }
             when (DType.Float64) {
               const ref graphArr = toSymEntry(graphArrEntry, real).a;
+              
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(real, real);
               for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
-              writeln("Float64 probMap = ", probMap);
-              assert(1 == (+ reduce probMap.valuesToArray()):int);
-              writeln();
+
+              if attributeBelongsTo == "edge" then 
+                edgeRealProbabilityDistributions.add(k, probMap);
+              else
+                nodeRealProbabilityDistributions.add(k, probMap);
             }
             when (DType.Bool) {
               const ref graphArr = toSymEntry(graphArrEntry, bool).a;
+              
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(bool, real);
               for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
-              writeln("Bool probMap = ", probMap);
-              assert(1 == (+ reduce probMap.valuesToArray()):int);
-              writeln();
+
+              if attributeBelongsTo == "edge" then 
+                edgeBoolProbabilityDistributions.add(k, probMap);
+              else
+                nodeBoolProbabilityDistributions.add(k, probMap);
             }
           }
         }
       }
+    }
+  }
+
+  /* Given a subgraph and host graph probability distribution, generates the probability of each
+     vertex and edge with given attributes to appear in the host graph. */
+  proc getSubgraphProbabilities(subgraph: SegGraph, st: borrowed SymTab) throws {
+    const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
+    const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
+    const ref nodeMap = toSymEntry(subgraph.getComp("VERTEX_MAP_SDI"), int).a;
+    var nodeAttributes = subgraph.getNodeAttributes();
+    var edgeAttributes = subgraph.getEdgeAttributes();
+
+    var edgeProbabilities = makeDistArray(src.size, real);
+    var nodeProbabilities = makeDistArray(nodeMap.size, real);
+    edgeProbabilities = 1; nodeProbabilities = 1;
+
+    // Calculate the probabilities of each vertex appearing based on the distribution of 
+    // probabilities created from the host graph. This is done per attribute type for each vertex.
+    if nodeAttributes.size > 0 {
+      for u in nodeMap.domain {
+        for k in nodeCategoricalProbabilityDistributions.keys() {
+          var subgraphArrEntry = (st.registry.tab(nodeAttributes[k][0])):shared CategoricalRegEntry;
+          const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
+          const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
+          
+          nodeProbabilities[u] *= nodeCategoricalProbabilityDistributions[k][subgraphCats[subgraphArr[u]]];
+        }
+        for k in nodeStringsProbabilityDistributions.keys() {
+          var subgraphStrings = getSegString(nodeAttributes[k][0], st);
+
+          nodeProbabilities[u] *= nodeStringsProbabilityDistributions[k][subgraphStrings[u]];
+        }
+        for k in nodeIntProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
+
+          nodeProbabilities[u] *= nodeIntProbabilityDistributions[k][subgraphArr[u]];
+        }
+        for k in nodeUIntProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
+
+          nodeProbabilities[u] *= nodeUIntProbabilityDistributions[k][subgraphArr[u]];
+        }
+        for k in nodeRealProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
+
+          nodeProbabilities[u] *= nodeRealProbabilityDistributions[k][subgraphArr[u]];
+        }
+        for k in nodeBoolProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(nodeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
+
+          nodeProbabilities[u] *= nodeBoolProbabilityDistributions[k][subgraphArr[u]];
+        }
+      }
+    }
+
+    // Calculate the probabilities of each edge appearing based on the distribution of 
+    // probabilities created from the host graph. This is done per attribute type for each edge.
+    // Further, the probabilities of the vertices that make up the endpoints are combined into the
+    // edge probabilities.
+    if edgeAttributes.size > 0 {
+      for (u,v,i) in zip(src, dst, src.domain) {
+        for k in edgeCategoricalProbabilityDistributions.keys() {
+          var subgraphArrEntry = (st.registry.tab(edgeAttributes[k][0])):shared CategoricalRegEntry;
+          const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
+          const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
+          
+          edgeProbabilities[i] *= edgeCategoricalProbabilityDistributions[k][subgraphCats[subgraphArr[i]]];
+        }
+        for k in edgeStringsProbabilityDistributions.keys() {
+          var subgraphStrings = getSegString(edgeAttributes[k][0], st);
+          
+          edgeProbabilities[i] *= edgeStringsProbabilityDistributions[k][subgraphStrings[i]];
+        }
+        for k in edgeIntProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
+          
+          edgeProbabilities[i] *= edgeIntProbabilityDistributions[k][subgraphArr[i]];
+        }
+        for k in edgeUIntProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
+          
+          edgeProbabilities[i] *= edgeUIntProbabilityDistributions[k][subgraphArr[i]];
+        }
+        for k in edgeRealProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
+          
+          edgeProbabilities[i] *= edgeRealProbabilityDistributions[k][subgraphArr[i]];
+        }
+        for k in edgeBoolProbabilityDistributions.keys() {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(edgeAttributes[k][0], st);
+          const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
+          
+          edgeProbabilities[i] *= edgeBoolProbabilityDistributions[k][subgraphArr[i]];
+        }
+        edgeProbabilities[i] *= nodeProbabilities[u] * nodeProbabilities[v];
+      }
+    }
+
+    return (edgeProbabilities, nodeProbabilities);
+  }
+
+  
+  /* Generate a reordering of the vertices of the subgraph based on attribute probabilities or
+     structure. */
+  proc subgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
+    const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
+    const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
+    const ref seg = toSymEntry(subgraph.getComp("SEGMENTS_SDI"), int).a;
+    const ref srcR = toSymEntry(subgraph.getComp("SRC_R_SDI"), int).a;
+    const ref dstR = toSymEntry(subgraph.getComp("DST_R_SDI"), int).a;
+    const ref segR = toSymEntry(subgraph.getComp("SEGMENTS_R_SDI"), int).a;
+    const ref nodeMap = toSymEntry(subgraph.getComp("VERTEX_MAP_SDI"), int).a;
+    var nodeAttributes = subgraph.getNodeAttributes();
+    var edgeAttributes = subgraph.getEdgeAttributes();
+    
+    var (edgeProbabilities, nodeProbabilities) = getSubgraphProbabilities(subgraph, st);
+
+    // Create a map of old internal vertex names to new internal vertex names. -1 is the default.
+    var reorderedNodes = new map(int, int);
+    for u in nodeMap.domain do reorderedNodes.add(u, -1);
+
+    // Find the edges and vertices with lowest probability. If no edge and/or vertex attributes have
+    // been defined, then these probabilities should default to edge 0 and vertex 0.
+    var sortedIdxEdgeProbabilities = argsortDefault(edgeProbabilities);
+    var sortedIdxNodeProbabilities = argsortDefault(nodeProbabilities);
+    var rarestEdge = sortedIdxEdgeProbabilities[0];
+    var rarestNode = sortedIdxNodeProbabilities[0];
+
+    // Keep track of the edges and nodes that have been mapped already.
+    var mappedEdges = makeDistArray(src.size, bool);
+    var mappedNodes = makeDistArray(nodeMap.size, bool);
+    mappedEdges = false; mappedNodes = false;
+
+    writeln("src = ", src);
+    writeln("dst = ", dst);
+    writeln("probs = ", edgeProbabilities);
+    writeln();
+    writeln("nodes = ", nodeMap);
+    writeln("probs = ", nodeProbabilities);
+    writeln();
+    writeln("rarestEdge = ", src[rarestEdge], " --> ", dst[rarestEdge]);
+    writeln("rarestNode = ", rarestNode);
+    writeln();
+
+    // Both edge attributes and vertex attributes exist.
+    var reorderComplete = false;
+    if edgeAttributes.size > 0 && nodeAttributes.size > 0 {
+      reorderedNodes[src[rarestEdge]] = 0;
+      reorderedNodes[dst[rarestEdge]] = 1;
+      mappedEdges[rarestEdge] = true;
+      mappedNodes[src[rarestEdge]] = true;
+      mappedNodes[dst[rarestEdge]] = true;
+
+      var nextNodeName = 2;
+      var currRarestEdge = rarestEdge;
+      while !reorderComplete {
+        var nextPossibleEdges = new list((int,int,int)); // tuple of u --> v and edge id e
+        var currProbabilities = new list(real); // used to keep candidate probabilities
+        var u = src[currRarestEdge];
+        var v = dst[currRarestEdge];
+
+        /* Get all of the out neighbors and in neighbors of the currently rarest edge. */
+        for outNeighbor in dst[seg[u]..<seg[u+1]] {
+          var e = getEdgeId(u, outNeighbor, dst, seg);
+          if !mappedEdges[e] && !mappedNodes[outNeighbor] {
+            nextPossibleEdges.pushBack((u, outNeighbor, e));
+            currProbabilities.pushBack(edgeProbabilities[e]);
+          }
+        }
+        
+        for outNeighbor in dst[seg[v]..<seg[v+1]] {
+          var e = getEdgeId(v, outNeighbor, dst, seg);
+          if !mappedEdges[e] && !mappedNodes[outNeighbor] {
+            nextPossibleEdges.pushBack((v, outNeighbor, e));
+            currProbabilities.pushBack(edgeProbabilities[e]);
+          }
+        }
+
+        for inNeighbor in dstR[segR[u]..<segR[u+1]] {
+          var e = getEdgeId(inNeighbor, u, dst, seg);
+          if !mappedEdges[e] && !mappedNodes[inNeighbor] {
+            nextPossibleEdges.pushBack((inNeighbor, u, e));
+            currProbabilities.pushBack(edgeProbabilities[e]);
+          }
+        }
+
+        for inNeighbor in dstR[segR[v]..<segR[v+1]] {
+          var e = getEdgeId(inNeighbor, v, dst, seg);
+          if !mappedEdges[e] && !mappedNodes[inNeighbor] {
+            nextPossibleEdges.pushBack((inNeighbor, v, e));
+            currProbabilities.pushBack(edgeProbabilities[e]);
+          }
+        }
+
+        /* The end of a certain path was reached, but unmapped vertices remain. */
+        if currProbabilities.size == 0 && nextNodeName < nodeMap.size {
+          /* Iterate over all remaining edges, adding their probabilities to find the lowest. */
+          for (p,e) in zip(mappedEdges, mappedEdges.domain) do 
+            if p == false then currProbabilities.pushBack(edgeProbabilities[e]);
+
+          var idx = argsortDefault(currProbabilities.toArray());
+
+          /* Check to see if two edges have the same probability. */
+          var needsTieBreaker = false;
+          if idx.size > 1 {
+            if idx[0] == idx[1] then needsTieBreaker = true;
+          }
+          // TODO: Code the tie-breaker.
+
+          var e = idx[0];
+          var u = src[e];
+          var v = dst[e];
+          if !mappedNodes[u] && !mappedNodes[v] { // Neither end points have been mapped.
+            reorderedNodes[u] = nextNodeName;
+            reorderedNodes[v] = nextNodeName + 1;
+            mappedEdges[e] = true;
+            mappedNodes[u] = true;
+            mappedNodes[v] = true;
+
+            nextNodeName += 2;
+            currRarestEdge = e;
+            if nextNodeName == nodeMap.size then reorderComplete = true;
+            continue;
+          } else if !mappedNodes[u] && mappedNodes[v] { // Only the destination has been mapped.
+            reorderedNodes[u] = nextNodeName;
+            mappedEdges[e] = true;
+            mappedNodes[u] = true;
+
+            nextNodeName += 1;
+            currRarestEdge = e;
+            if nextNodeName == nodeMap.size then reorderComplete = true;
+            continue;
+          } else if mappedNodes[u] && !mappedNodes[v] { // Only the source has been mapped.
+            reorderedNodes[v] = nextNodeName;
+            mappedEdges[e] = true;
+            mappedNodes[v] = true;
+
+            nextNodeName += 1;
+            currRarestEdge = e;
+            if nextNodeName == nodeMap.size then reorderComplete = true;
+            continue;
+          } else {
+            writeln("Something catastrophic has gone wrong!");
+          }
+        }
+
+        writeln("nextPossibleEdges = ", nextPossibleEdges);
+
+        if currProbabilities.size >= 1 {
+          /* Sort the probabilities of current candidate edges to be remapped. */
+          var idx = argsortDefault(currProbabilities.toArray());
+
+          /* Check to see if two edges have the same probability. */
+          var needsTieBreaker = false;
+          if idx.size > 1 {
+            if idx[0] == idx[1] then needsTieBreaker = true;
+          }
+          // TODO: Code the tie-breaker.
+
+          /* Remap the remaining node of the chosen edge. */
+          var nextEdge = nextPossibleEdges[idx[0]];
+          writeln("nextEdge = ", nextEdge);
+          if (nextEdge[0] == u || nextEdge[0] == v) && !mappedNodes[nextEdge[1]] {
+            reorderedNodes[nextEdge[1]] = nextNodeName;
+            mappedNodes[nextEdge[1]] = true;
+          } else if (nextEdge[1] == u || nextEdge[1] == v) && !mappedNodes[nextEdge[0]] {
+            reorderedNodes[nextEdge[0]] = nextNodeName;
+            mappedNodes[nextEdge[0]] = true;
+          }
+
+          /* Update variables. */
+          nextNodeName += 1;
+          currRarestEdge = idx[0];
+          if nextNodeName == nodeMap.size then reorderComplete = true;
+
+          writeln();
+        }
+      }
+
+      writeln("reorderedNodes = ", reorderedNodes);
     }
   }
 
@@ -324,9 +645,31 @@ module SubgraphIsomorphism {
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributes = g2.getEdgeAttributes();
 
-    // Generate the probability distributions for each attribute.
-    generateProbabilityDistribution(subgraphNodeAttributes, graphNodeAttributes, st);
-    generateProbabilityDistribution(subgraphEdgeAttributes, graphEdgeAttributes, st);
+    // Generate the probability distributions for each attribute. Will be stored in module-level
+    // maps for each datatype.
+    generateProbabilityDistribution(subgraphNodeAttributes, graphNodeAttributes, "vertex", st);
+    generateProbabilityDistribution(subgraphEdgeAttributes, graphEdgeAttributes, "edge", st);
+
+    // writeln();
+    // writeln(edgeCategoricalProbabilityDistributions);
+    // writeln(edgeStringsProbabilityDistributions);
+    // writeln(edgeIntProbabilityDistributions);
+    // writeln(edgeUIntProbabilityDistributions);
+    // writeln(edgeRealProbabilityDistributions);
+    // writeln(edgeBoolProbabilityDistributions);
+
+    // writeln();
+
+    // writeln(nodeCategoricalProbabilityDistributions);
+    // writeln(nodeStringsProbabilityDistributions);
+    // writeln(nodeIntProbabilityDistributions);
+    // writeln(nodeUIntProbabilityDistributions);
+    // writeln(nodeRealProbabilityDistributions);
+    // writeln(nodeBoolProbabilityDistributions);
+    // writeln();
+
+    // Reorder the subgraph vertices and edges.
+    subgraphReordering(g2, st);
 
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
@@ -443,8 +786,8 @@ module SubgraphIsomorphism {
 
     /* Generate in-neighbors and out-neighbors for a given subgraph state.*/
     proc addToTinToutMVE(u0_g1: int, u1_g1: int, state: State): bool throws {
-      var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int);
-      var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int);
+      var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int, parSafe=true);
+      var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int, parSafe=true);
       
       Tin_u0 = dstRG1[segRG1[u0_g1]..<segRG1[u0_g1 + 1]];
       Tout_u0 = dstNodesG1[segGraphG1[u0_g1]..<segGraphG1[u0_g1 + 1]];
@@ -498,7 +841,7 @@ module SubgraphIsomorphism {
       Nei_u1 += Tin_u1;
       Nei_u1 += Tout_u1;
 
-      var intersecg1, intersecg2: domain(int);
+      var intersecg1, intersecg2: domain(int, parSafe=true);
       intersecg1 = Nei_u0 & Nei_u1;
 
       Nei_0 += Tin_0;
@@ -634,7 +977,7 @@ module SubgraphIsomorphism {
       var candidates = new set((int, int), parSafe = true);
       if state.Tout1.size > 0 && state.Tout2.size > 0 {
         var minTout2: int;
-        for elem in state.Tout2{
+        for elem in state.Tout2 {
           minTout2 = elem;
           break;
         }  
@@ -642,16 +985,13 @@ module SubgraphIsomorphism {
       } else {
         if state.Tin1.size > 0 && state.Tin2.size > 0 {
           var minTin2: int;
-          for elem in state.Tin2{
+          for elem in state.Tin2 {
             minTin2 = elem;
             break;
           }
           for n1 in state.Tin1 do candidates.add((n1, minTin2));
         } else { 
           var (unmappedG1, unmappedG2) = getBothUnmappedNodes(state);
-          //var flagunmappedG2 = false;
-          //var minUnmapped2 : int;
-
           if unmappedG2 != -1 {
             for i in 0..<state.n1 {
               if unmappedG1[i] == -1 then candidates.add((i,unmappedG2));
