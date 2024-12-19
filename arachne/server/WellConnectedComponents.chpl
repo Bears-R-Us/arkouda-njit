@@ -413,7 +413,7 @@ record densityMetrics {
     
     // Clustering metrics
     var triangleCount: int;               // Number of triangles in cluster
-    var globalClusteringCoeff: real;      // Ratio of triangles to connected triples
+    var ClusteringCoeff: real;      // Ratio of triangles to connected triples
     var avgLocalClusteringCoeff: real;    // Average of local clustering coefficients
     
     var triangleDensity: real;           // triangles/possible triangles
@@ -812,14 +812,16 @@ proc calculateTriangleMetrics(ref cluster: set(int), ref metrics: densityMetrics
    // Update density metrics
    updatedMetrics.triangleCount = finalTriangles;
    updatedMetrics.avgLocalClusteringCoeff = sumLocalCC.read() / cluster.size:real;
-   updatedMetrics.globalClusteringCoeff = if finalWedges > 0
+   updatedMetrics.ClusteringCoeff = if finalWedges > 0
                                          then (finalTriangles:real * 3.0) / finalWedges:real
                                          else 0.0;
 
    // Update triangle distribution metrics
    updatedMetrics.triangleDensity = if edges > 0 
-                                   then finalTriangles:real / edges:real
-                                   else 0.0;
+                                    // then finalTriangles:real / edges:real
+                                    then finalTriangles:real / cluster.size:real //updated because of Bartosz issue
+                                    // Triangle density redefined as triangles per vertex
+                                    else 0.0;
    updatedMetrics.participationRate = participatingVertices.read():real / cluster.size:real;
    updatedMetrics.maxLocalTriangles = maxTriangles.read();
    updatedMetrics.avgTrianglesPerVertex = finalTriangles:real / cluster.size:real;
@@ -840,7 +842,7 @@ proc calculateTriangleMetrics(ref cluster: set(int), ref metrics: densityMetrics
        writeln("Participating vertices: ", participatingVertices.read());
        writeln("Maximum triangles per vertex: ", maxTriangles.read());
        writeln("Average local CC: ", updatedMetrics.avgLocalClusteringCoeff);
-       writeln("Global CC: ", updatedMetrics.globalClusteringCoeff);
+       writeln("CC: ", updatedMetrics.ClusteringCoeff);
        writeln("Triangle density: ", updatedMetrics.triangleDensity);
        writeln("Participation rate: ", updatedMetrics.participationRate);
        writeln("\nTriangle Distribution Statistics:");
@@ -2962,7 +2964,7 @@ proc calculateViecutMincut(ref cluster: set(int), in metrics: connectivityMetric
     // metrics.density.internalEdges = 0;
     metrics.density.maxPossibleEdges = 0;
     metrics.density.triangleCount = 0;
-    metrics.density.globalClusteringCoeff = 0.0;
+    metrics.density.ClusteringCoeff = 0.0;
     metrics.density.avgLocalClusteringCoeff = 0.0;
     metrics.density.edgeDensityDistribution = 0.0;
     metrics.density.localDensityVariance = 0.0;
@@ -3017,7 +3019,7 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clust
 
     writeln("\nClustering Metrics:");
     writeln("  Triangle Count: ", metrics.density.triangleCount);
-    writeln("  Global Clustering Coefficient: ", metrics.density.globalClusteringCoeff);
+    writeln("  Clustering Coefficient: ", metrics.density.ClusteringCoeff);// Name changed based on Bartosz issue
     writeln("  Average Local Clustering Coefficient: ", metrics.density.avgLocalClusteringCoeff);
 
     writeln("\n----- Spectral Metrics -----");
@@ -3029,7 +3031,7 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clust
     writeln("\n----- Transitivity Metrics -----");
     writeln("  Wedge Count: ", metrics.transitivity.wedgeCount);
     writeln("  Triangle-to-Wedge Ratio: ", metrics.transitivity.triangleToWedgeRatio);
-    writeln("  Global Transitivity: ", metrics.transitivity.globalTransitivity);
+    writeln("  Global Transitivity: ", metrics.transitivity.globalTransitivity); //Commented because of Bartosz issue 2
 
     writeln("\n----- Triangle Distribution Metrics -----");
     writeln("  Triangle Density: ", metrics.density.triangleDensity);
@@ -3249,7 +3251,7 @@ try {
             metrics.density.sparsity,
             metrics.density.maxPossibleEdges,
             metrics.density.triangleCount,
-            metrics.density.globalClusteringCoeff,
+            metrics.density.ClusteringCoeff,
             metrics.density.avgLocalClusteringCoeff,
             metrics.density.triangleDensity,
             metrics.density.participationRate,
