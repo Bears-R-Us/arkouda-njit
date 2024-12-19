@@ -93,8 +93,8 @@ class KavoshState {
     var graphEdgeAttributes = g1.getEdgeAttributes();
 
 
-    // initChildSet: Gathers unique valid neighbors for the current level.
-    proc initChildSet(ref state: KavoshState, root: int, level: int) {
+    // Gathers unique valid neighbors for the current level.
+    proc initChildSet(ref state: KavoshState, root: int, level: int) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("====== initChildSet called for level ", level, " and root ", root, " ======");
       }
@@ -149,9 +149,9 @@ class KavoshState {
       }
     }// End of initChildSet
 
-    // Explore function: Explores subgraphs containing the root vertex,
+    // Explores subgraphs containing the root vertex,
     // expanding level by level until remainder = 0 (which means we have chosen k vertices).
-    proc Explore(ref state: KavoshState, root: int, level: int, remainder: int) {
+    proc Explore(ref state: KavoshState, root: int, level: int, remainder: int) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("===== Explore called =====");
         writeln("Current root: ", root, " level: ", level, " remainder: ", remainder);
@@ -170,6 +170,27 @@ class KavoshState {
       // Base case: all k vertices chosen
       if remainder == 0 {
         state.subgraphCount += 1;
+
+        // Build an array for the chosen vertices in this subgraph
+        var chosenVerts: [1..state.k] int;
+
+        // subgraph[i, 1..subgraph[i,0]] are chosen at that level
+        // but each level of Kavosh picks a certain number of vertices.
+        // Combine them in order. The total number selected = k.
+        // The order in subgraph is the order of selection.
+        // Usually, each subgraph[i,0] > 0 means we selected some vertices at that level.
+        // Flatten them into chosenVerts in ascending order of level.
+        var idx = 1;
+        for i in 0..<state.k {
+          for x in 1..state.subgraph[i,0] {
+            chosenVerts[idx] = state.subgraph[i,x];
+            idx += 1;
+          }
+        }
+        sort(chosenVerts);
+        // Encode the pattern of the found subgraph
+        var pattern = encodePattern(state.k, chosenVerts);
+
         if logLevel == LogLevel.DEBUG {
           writeln("Found complete subgraph #", state.subgraphCount);
           for l in 0..<state.k {
@@ -179,17 +200,9 @@ class KavoshState {
             }
             writeln();
           }
-        } else {
-          // Print subgraph in normal run if needed:
-          writeln("Found subgraph #", state.subgraphCount, ": ");
-          for l in 0..<state.k {
-            write("Level ", l, ": ");
-            for x in 1..state.subgraph[l,0] {
-              write(state.subgraph[l,x], " ");
-            }
-            writeln();
-          }
-        }
+            writeln("pattern generated: ", pattern);
+
+        } 
         return;
       }
 
@@ -231,7 +244,7 @@ class KavoshState {
         Explore(state, root, level+1, remainder - selSize);
 
         // Generate other combinations using revolve-door algorithm
-        GEN(childCount, selSize, root, level, remainder, selSize, state);
+        ForwardGenerator(childCount, selSize, root, level, remainder, selSize, state);
       }
 
       // Cleanup: Unmark visited children before going up
@@ -244,12 +257,12 @@ class KavoshState {
     // I read this for implemnting revolving door 
     // https://encyclopediaofmath.org/wiki/Gray_code#Combinations.2C_partitions.2C_permutations.2C_and_other_objects.
 
-    // swap: Used by revolve-door Gray code generation to swap two elements
+    // swapping: Used by revolve-door Gray code generation to swap two elements
     // and then immediately Explore with the new combination.
-    proc swap(i: int, j: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) {
+    proc swapping(i: int, j: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-        writeln("swap called: swapping indices ", i, " and ", j, " at level ", level);
-        writeln("Before swap: indexMap[level,i] = ", state.indexMap[level,i], 
+        writeln("swapping called: swapping indices ", i, " and ", j, " at level ", level);
+        writeln("Before swapping: indexMap[level,i] = ", state.indexMap[level,i], 
                 " indexMap[level,j] = ", state.indexMap[level,j]);
       }
 
@@ -257,66 +270,66 @@ class KavoshState {
       state.subgraph[level, state.indexMap[level,i]] = state.childSet[level,i];
 
       if logLevel == LogLevel.DEBUG {
-        writeln("After swap: subgraph[level,indexMap[level,i]] = childSet[level,i] = ", state.childSet[level,i]);
-        writeln("Now calling Explore after swap");
+        writeln("After swapping: subgraph[level,indexMap[level,i]] = childSet[level,i] = ", state.childSet[level,i]);
+        writeln("Now calling Explore after swapping");
       }
 
       Explore(state, root, level+1, remainder - m);
-    }// End of swap
+    }// End of swapping
 
-    // GEN: Part of revolve-door combination generation algorithm
-    proc GEN(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) {
+    // GEN: Part of revolve-door combination Forward Generator 
+    proc ForwardGenerator(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-        writeln("GEN called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
+        writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
       }
 
       if k > 0 && k < n {
-        GEN(n-1, k, root, level, remainder, m, state);
+        ForwardGenerator(n-1, k, root, level, remainder, m, state);
 
         if k == 1 {
           if logLevel == LogLevel.DEBUG {
-            writeln("GEN: k=1 case, calling swap(n, n-1) => swap(", n, ", ", n-1, ")");
+            writeln("ForwardGenerator: k=1 case, calling swapping(n, n-1) => swapping(", n, ", ", n-1, ")");
           }
-          swap(n, n-1, root, level, remainder, m, state);
+          swapping(n, n-1, root, level, remainder, m, state);
         } else {
           if logLevel == LogLevel.DEBUG {
-            writeln("GEN: k>1 case, calling swap(n, k-1) => swap(", n, ", ", k-1, ")");
+            writeln("GEN: k>1 case, calling swapping(n, k-1) => swapping(", n, ", ", k-1, ")");
           }
-          swap(n, k-1, root, level, remainder, m, state);
+          swapping(n, k-1, root, level, remainder, m, state);
         }
 
-        NEG(n-1, k-1, root, level, remainder, m, state);
+        reverseGenerator(n-1, k-1, root, level, remainder, m, state);
       }
-    }// End of GEN
+    }// End of ForwardGenerator
 
-    // NEG: Another part of revolve-door combination generation logic
-    proc NEG(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) {
+    // reverseGenerator: Another part of revolve-door combination generation logic
+    proc reverseGenerator(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-        writeln("NEG called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
+        writeln("reverseGenerator called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
       }
 
       if k > 0 && k < n {
-        GEN(n-1, k-1, root, level, remainder, m, state);
+        ForwardGenerator(n-1, k-1, root, level, remainder, m, state);
 
         if k == 1 {
           if logLevel == LogLevel.DEBUG {
-            writeln("NEG: k=1 case, calling swap(n-1, n) => swap(", n-1, ", ", n, ")");
+            writeln("reverseGenerator: k=1 case, calling swapping(n-1, n) => swapping(", n-1, ", ", n, ")");
           }
-          swap(n-1, n, root, level, remainder, m, state);
+          swapping(n-1, n, root, level, remainder, m, state);
         } else {
           if logLevel == LogLevel.DEBUG {
-            writeln("NEG: k>1 case, calling swap(k-1, n) => swap(", k-1, ", ", n, ")");
+            writeln("reverseGenerator: k>1 case, calling swapping(k-1, n) => swapping(", k-1, ", ", n, ")");
           }
-          swap(k-1, n, root, level, remainder, m, state);
+          swapping(k-1, n, root, level, remainder, m, state);
         }
 
-        NEG(n-1, k, root, level, remainder, m, state);
+        reverseGenerator(n-1, k, root, level, remainder, m, state);
       }
-    }// End of NEG
+    }// End of reverseGenerator
 
     // Enumerate: Iterates over all vertices as potential roots
     // and calls Explore to find all subgraphs of size k containing that root.
-    proc Enumerate(ref state: KavoshState) {
+    proc Enumerate(ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("Enumerate: starting enumeration over all vertices");
       }
@@ -340,6 +353,37 @@ class KavoshState {
       }
     }// End of Enumerate
 
+    // Encode the pattern of a k-sized subgraph.
+    // subgraphVerts: the vertices chosen for the subgraph.
+    // We assume subgraphVerts are in `state.subgraph[l,x]` arrays.
+    // We'll gather them into a temporary array for convenience.
+    proc encodePattern(k: int, subgraphVerts: [1..k] int): uint(64) throws{
+      var pattern: uint(64) = 0;
+      var pos = 0;
+
+      // We'll consider each pair (i,j) to set pattern bit
+      // Flatten row-major: for i in [1..k], j in [1..k], i,j distinct
+      // If edge from subgraphVerts[i] -> subgraphVerts[j] exists, set bit.
+      for i in 1..k {
+        for j in 1..k {
+          // Usually self-loops are 0 unless you have them. Let's just check edges if i!=j.
+          if i != j {
+            var u = subgraphVerts[i];
+            var w = subgraphVerts[j];
+            var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+            if eid != -1 {
+              pattern |= 1:uint(64) << pos;
+            }
+          }
+          pos += 1;
+        }
+      }
+      if logLevel == LogLevel.DEBUG {
+        writeln("subgraphVerts= ", subgraphVerts);
+        writeln("encodePattern called and pattern= ", pattern);
+      }
+      return pattern;
+    }
 ////////////////////////////////////////////////////////////////////////////////
     // Setup the problem
     var n = nodeMapGraphG1.size;
@@ -353,6 +397,33 @@ class KavoshState {
     }
     var maxDeg = max reduce nodeDegree;
 
+    // Instead of a single Enumerate, we now parallelize over each root
+    // Each root runs independently with its own KavoshState.
+    var atomicGlobalCount: atomic int; // atomic counter for global subgraph count
+    atomicGlobalCount.write(0);
+/*
+    coforall v in 0..<n with(ref atomicGlobalCount) {
+      // Create a local state for this root
+      var localState = new KavoshState(n, k, maxDeg);
+
+      // Initialize the root vertex
+      localState.subgraph[0,0] = 1;
+      localState.subgraph[0,1] = v;
+      localState.visited[v] = true;
+
+      // Explore subgraphs starting from this root
+      Explore(localState, v, 1, k - 1);
+
+      // Add local count to global
+      atomicGlobalCount.add(localState.subgraphCount);
+    }
+
+    if logLevel == LogLevel.DEBUG {
+      // After all tasks complete, we have the total subgraph count
+      writeln("\nTotal subgraphs found: ", atomicGlobalCount.read());
+    }
+    */
+
     var state = new KavoshState(n, k, maxDeg);
 
     if logLevel == LogLevel.DEBUG {
@@ -364,7 +435,8 @@ class KavoshState {
     Enumerate(state);
 
     if logLevel == LogLevel.DEBUG {
-      writeln("Total subgraphs found: ", state.subgraphCount);
+      writeln("\nTotal motif found: ", state.subgraphCount);
+      writeln();
     }
 
     var tempArr: [0..0] int;
