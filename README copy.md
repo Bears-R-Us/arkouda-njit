@@ -1,964 +1,263 @@
-Input graph edges:
-0 -> 1
-1 -> 2
-2 -> 0
-2 -> 3
-3 -> 4
-4 -> 2
-Starting motif counting for k=3
-Graph has 5 vertices and 6 edges
+Starting motif counting with k=3 on a graph of 5 vertices.
 Maximum degree: 4
-+++ Root is 0 (1/5)
-------- State Debug: Before starting enumeration from root 0 -------
-Subgraph count: 0
-
-Visited vertices: true false false false false
-
-Subgraph structure:
+Enumerate: starting enumeration over all vertices
+Root = 0 (1/5)
+===== Explore called =====
+Current root: 0 level: 1 remainder: 2
+Visited Array: true false false false false
+Current partial subgraph:
 Level 0 (count=1): 0 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-********enumerateVertex Called***************
-  Current level: 1
-  Root vertex: 0
-  Remainder: 2
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 0
-
-Visited vertices: true false false false false
-
-Subgraph structure:
-Level 0 (count=1): 0 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-Found 2 valid vertices at level 1
-------- State Debug: After initChildSet -------
-Subgraph count: 0
-
-Visited vertices: true false false false false
-
-Subgraph structure:
-Level 0 (count=1): 0 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 0 0 
-Level 2: 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 0
-  Remainder: 1
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 0
-
-Visited vertices: true true false false false
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 1 and root 0 ======
+initChildSet: Found 2 valid children at level 1
+Children: 1 2 
+Exploring with initial selection of size 1 at level 1
+Selected vertices: 1 
+===== Explore called =====
+Current root: 0 level: 2 remainder: 1
+Visited Array: true true true false false
+Current partial subgraph:
 Level 0 (count=1): 0 
 Level 1 (count=1): 1 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 0 
-Level 2: 
------------------End of State Debug -----------------------
-Found 1 valid vertices at level 2
-------- State Debug: After initChildSet -------
-Subgraph count: 0
-
-Visited vertices: true true false false false
-
-Subgraph structure:
-Level 0 (count=1): 0 
-Level 1 (count=1): 1 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=1): 2 
-
-Index mapping:
-Level 0: 
-Level 1: 1 0 
-Level 2: 0 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 2
-********enumerateVertex Called***************
-  Current level: 3
-  Root vertex: 0
-  Remainder: 0
-Found subgraph #1
-------- State Debug: Complete subgraph found -------
-Subgraph count: 1
-
-Visited vertices: true true true false false
-
-Subgraph structure:
-Level 0 (count=1): 0 
-Level 1 (count=1): 1 
-Level 2 (count=1): 2 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=1): 2 
-
-Index mapping:
-Level 0: 
-Level 1: 1 0 
-Level 2: 1 
------------------End of State Debug -----------------------
-*******GEN started*****************
-n=2 k=1 level=1
-*******GEN started*****************
-n=1 k=1 level=1
-*******swap started*****************
-Swapping indices 2 and 1 at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 0
-  Remainder: 1
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 1
-
-Visited vertices: true true false false false
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 2 and root 0 ======
+initChildSet: Found 0 valid children at level 2
+Children: 
+Not enough children (0) to select 1 vertices at level 2
+GEN called with n=2 k=1 level=1 remainder=2 m=1
+GEN called with n=1 k=1 level=1 remainder=2 m=1
+GEN: k=1 case, calling swap(n, n-1) => swap(2, 1)
+swap called: swapping indices 2 and 1 at level 1
+Before swap: indexMap[level,i] = 0 indexMap[level,j] = 1
+After swap: subgraph[level,indexMap[level,i]] = childSet[level,i] = 2
+Now calling Explore after swap
+===== Explore called =====
+Current root: 0 level: 2 remainder: 1
+Visited Array: true true true false false
+Current partial subgraph:
 Level 0 (count=1): 0 
 Level 1 (count=1): 2 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=1): 2 
-
-Index mapping:
-Level 0: 
-Level 1: 1 1 
-Level 2: 1 
------------------End of State Debug -----------------------
-Found 2 valid vertices at level 2
-------- State Debug: After initChildSet -------
-Subgraph count: 1
-
-Visited vertices: true true false false false
-
-Subgraph structure:
-Level 0 (count=1): 0 
-Level 1 (count=1): 2 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 1 
-Level 2: 1 0 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 2
-********enumerateVertex Called***************
-  Current level: 3
-  Root vertex: 0
-  Remainder: 0
-Found subgraph #2
-------- State Debug: Complete subgraph found -------
-Subgraph count: 2
-
-Visited vertices: true true false false true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 2 and root 0 ======
+initChildSet: Found 2 valid children at level 2
+Children: 4 3 
+Exploring with initial selection of size 1 at level 2
+Selected vertices: 4 
+===== Explore called =====
+Current root: 0 level: 3 remainder: 0
+Visited Array: true true true true true
+Current partial subgraph:
 Level 0 (count=1): 0 
 Level 1 (count=1): 2 
 Level 2 (count=1): 4 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 1 
-Level 2: 1 0 
------------------End of State Debug -----------------------
-*******GEN started*****************
-n=2 k=1 level=2
-*******GEN started*****************
-n=1 k=1 level=2
-*******swap started*****************
-Swapping indices 2 and 1 at level 2
-********enumerateVertex Called***************
-  Current level: 3
-  Root vertex: 0
-  Remainder: 0
-Found subgraph #3
-------- State Debug: Complete subgraph found -------
-Subgraph count: 3
-
-Visited vertices: true true false false true
-
-Subgraph structure:
+==========================
+subgraphVerts= 0 2 4
+encodePattern called and pattern= 136
+Found complete subgraph #1
+Level 0: 0 
+Level 1: 2 
+Level 2: 4 
+pattern generated: 136
+GEN called with n=2 k=1 level=2 remainder=1 m=1
+GEN called with n=1 k=1 level=2 remainder=1 m=1
+GEN: k=1 case, calling swap(n, n-1) => swap(2, 1)
+swap called: swapping indices 2 and 1 at level 2
+Before swap: indexMap[level,i] = 0 indexMap[level,j] = 1
+After swap: subgraph[level,indexMap[level,i]] = childSet[level,i] = 3
+Now calling Explore after swap
+===== Explore called =====
+Current root: 0 level: 3 remainder: 0
+Visited Array: true true true true true
+Current partial subgraph:
 Level 0 (count=1): 0 
 Level 1 (count=1): 2 
 Level 2 (count=1): 3 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 1 
-Level 2: 1 1 
------------------End of State Debug -----------------------
-*******NEG started*****************
-n=1 k=0 level=2
-*******NEG started*****************
-n=1 k=0 level=1
-Selecting 2 vertices at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 0
-  Remainder: 0
-Found subgraph #4
-------- State Debug: Complete subgraph found -------
-Subgraph count: 4
-
-Visited vertices: true true true false false
-
-Subgraph structure:
+==========================
+subgraphVerts= 0 2 3
+encodePattern called and pattern= 40
+Found complete subgraph #2
+Level 0: 0 
+Level 1: 2 
+Level 2: 3 
+pattern generated: 40
+NEG called with n=1 k=0 level=2 remainder=1 m=1
+NEG called with n=1 k=0 level=1 remainder=2 m=1
+Exploring with initial selection of size 2 at level 1
+Selected vertices: 1 2 
+===== Explore called =====
+Current root: 0 level: 2 remainder: 0
+Visited Array: true true true false false
+Current partial subgraph:
 Level 0 (count=1): 0 
 Level 1 (count=2): 1 2 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
+==========================
+subgraphVerts= 0 1 2
+encodePattern called and pattern= 98
+Found complete subgraph #3
+Level 0: 0 
 Level 1: 1 2 
-Level 2: 1 1 
------------------End of State Debug -----------------------
-------- State Debug: After completing enumeration from root 0 -------
-Subgraph count: 4
-
-Visited vertices: false false false false false
-
-Subgraph structure:
-Level 0 (count=1): 0 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 1 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 2 
-Level 2: 1 1 
------------------End of State Debug -----------------------
-+++ Root is 1 (2/5)
-------- State Debug: Before starting enumeration from root 1 -------
-Subgraph count: 4
-
-Visited vertices: false true false false false
-
-Subgraph structure:
-Level 0 (count=1): 1 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
 Level 2: 
------------------End of State Debug -----------------------
-********enumerateVertex Called***************
-  Current level: 1
-  Root vertex: 1
-  Remainder: 2
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 4
-
-Visited vertices: false true false false false
-
-Subgraph structure:
+pattern generated: 98
+GEN called with n=2 k=2 level=1 remainder=2 m=2
+Root = 1 (2/5)
+===== Explore called =====
+Current root: 1 level: 1 remainder: 2
+Visited Array: false true false false false
+Current partial subgraph:
 Level 0 (count=1): 1 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-Found 1 valid vertices at level 1
-------- State Debug: After initChildSet -------
-Subgraph count: 4
-
-Visited vertices: false true false false false
-
-Subgraph structure:
-Level 0 (count=1): 1 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 2 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 0 
-Level 2: 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 1
-  Remainder: 1
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 4
-
-Visited vertices: false true true false false
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 1 and root 1 ======
+initChildSet: Found 1 valid children at level 1
+Children: 2 
+Exploring with initial selection of size 1 at level 1
+Selected vertices: 2 
+===== Explore called =====
+Current root: 1 level: 2 remainder: 1
+Visited Array: false true true false false
+Current partial subgraph:
 Level 0 (count=1): 1 
 Level 1 (count=1): 2 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 2 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 
------------------End of State Debug -----------------------
-Found 2 valid vertices at level 2
-------- State Debug: After initChildSet -------
-Subgraph count: 4
-
-Visited vertices: false true true false false
-
-Subgraph structure:
-Level 0 (count=1): 1 
-Level 1 (count=1): 2 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 0 0 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 2
-********enumerateVertex Called***************
-  Current level: 3
-  Root vertex: 1
-  Remainder: 0
-Found subgraph #5
-------- State Debug: Complete subgraph found -------
-Subgraph count: 5
-
-Visited vertices: false true true false true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 2 and root 1 ======
+initChildSet: Found 2 valid children at level 2
+Children: 4 3 
+Exploring with initial selection of size 1 at level 2
+Selected vertices: 4 
+===== Explore called =====
+Current root: 1 level: 3 remainder: 0
+Visited Array: false true true true true
+Current partial subgraph:
 Level 0 (count=1): 1 
 Level 1 (count=1): 2 
 Level 2 (count=1): 4 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 1 0 
------------------End of State Debug -----------------------
-*******GEN started*****************
-n=2 k=1 level=2
-*******GEN started*****************
-n=1 k=1 level=2
-*******swap started*****************
-Swapping indices 2 and 1 at level 2
-********enumerateVertex Called***************
-  Current level: 3
-  Root vertex: 1
-  Remainder: 0
-Found subgraph #6
-------- State Debug: Complete subgraph found -------
-Subgraph count: 6
-
-Visited vertices: false true true false true
-
-Subgraph structure:
+==========================
+subgraphVerts= 1 2 4
+encodePattern called and pattern= 130
+Found complete subgraph #4
+Level 0: 1 
+Level 1: 2 
+Level 2: 4 
+pattern generated: 130
+GEN called with n=2 k=1 level=2 remainder=1 m=1
+GEN called with n=1 k=1 level=2 remainder=1 m=1
+GEN: k=1 case, calling swap(n, n-1) => swap(2, 1)
+swap called: swapping indices 2 and 1 at level 2
+Before swap: indexMap[level,i] = 1 indexMap[level,j] = 1
+After swap: subgraph[level,indexMap[level,i]] = childSet[level,i] = 3
+Now calling Explore after swap
+===== Explore called =====
+Current root: 1 level: 3 remainder: 0
+Visited Array: false true true true true
+Current partial subgraph:
 Level 0 (count=1): 1 
 Level 1 (count=1): 2 
 Level 2 (count=1): 3 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 1 1 
------------------End of State Debug -----------------------
-*******NEG started*****************
-n=1 k=0 level=2
-------- State Debug: After completing enumeration from root 1 -------
-Subgraph count: 6
-
-Visited vertices: false false false false false
-
-Subgraph structure:
-Level 0 (count=1): 1 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 2 
-Level 2 (count=2): 4 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 1 1 
------------------End of State Debug -----------------------
-+++ Root is 2 (3/5)
-------- State Debug: Before starting enumeration from root 2 -------
-Subgraph count: 6
-
-Visited vertices: false false true false false
-
-Subgraph structure:
+==========================
+subgraphVerts= 1 2 3
+encodePattern called and pattern= 34
+Found complete subgraph #5
+Level 0: 1 
+Level 1: 2 
+Level 2: 3 
+pattern generated: 34
+NEG called with n=1 k=0 level=2 remainder=1 m=1
+GEN called with n=1 k=1 level=1 remainder=2 m=1
+Not enough children (1) to select 2 vertices at level 1
+Root = 2 (3/5)
+===== Explore called =====
+Current root: 2 level: 1 remainder: 2
+Visited Array: false false true false false
+Current partial subgraph:
 Level 0 (count=1): 2 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-********enumerateVertex Called***************
-  Current level: 1
-  Root vertex: 2
-  Remainder: 2
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 6
-
-Visited vertices: false false true false false
-
-Subgraph structure:
-Level 0 (count=1): 2 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-Found 2 valid vertices at level 1
-------- State Debug: After initChildSet -------
-Subgraph count: 6
-
-Visited vertices: false false true false false
-
-Subgraph structure:
-Level 0 (count=1): 2 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 0 0 
-Level 2: 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 2
-  Remainder: 1
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 6
-
-Visited vertices: false false true false true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 1 and root 2 ======
+initChildSet: Found 2 valid children at level 1
+Children: 4 3 
+Exploring with initial selection of size 1 at level 1
+Selected vertices: 4 
+===== Explore called =====
+Current root: 2 level: 2 remainder: 1
+Visited Array: false false true true true
+Current partial subgraph:
 Level 0 (count=1): 2 
 Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 0 
-Level 2: 
------------------End of State Debug -----------------------
-Found 1 valid vertices at level 2
-------- State Debug: After initChildSet -------
-Subgraph count: 6
-
-Visited vertices: false false true false true
-
-Subgraph structure:
-Level 0 (count=1): 2 
-Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=1): 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 0 
-Level 2: 0 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 2
-********enumerateVertex Called***************
-  Current level: 3
-  Root vertex: 2
-  Remainder: 0
-Found subgraph #7
-------- State Debug: Complete subgraph found -------
-Subgraph count: 7
-
-Visited vertices: false false true true true
-
-Subgraph structure:
-Level 0 (count=1): 2 
-Level 1 (count=1): 4 
-Level 2 (count=1): 3 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=1): 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 0 
-Level 2: 1 
------------------End of State Debug -----------------------
-*******GEN started*****************
-n=2 k=1 level=1
-*******GEN started*****************
-n=1 k=1 level=1
-*******swap started*****************
-Swapping indices 2 and 1 at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 2
-  Remainder: 1
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 7
-
-Visited vertices: false false true false true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 2 and root 2 ======
+initChildSet: Found 0 valid children at level 2
+Children: 
+Not enough children (0) to select 1 vertices at level 2
+GEN called with n=2 k=1 level=1 remainder=2 m=1
+GEN called with n=1 k=1 level=1 remainder=2 m=1
+GEN: k=1 case, calling swap(n, n-1) => swap(2, 1)
+swap called: swapping indices 2 and 1 at level 1
+Before swap: indexMap[level,i] = 2 indexMap[level,j] = 1
+After swap: subgraph[level,indexMap[level,i]] = childSet[level,i] = 3
+Now calling Explore after swap
+===== Explore called =====
+Current root: 2 level: 2 remainder: 1
+Visited Array: false false true true true
+Current partial subgraph:
 Level 0 (count=1): 2 
 Level 1 (count=1): 3 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=1): 3 
-
-Index mapping:
-Level 0: 
-Level 1: 1 1 
-Level 2: 1 
------------------End of State Debug -----------------------
-Found 0 valid vertices at level 2
-------- State Debug: After initChildSet -------
-Subgraph count: 7
-
-Visited vertices: false false true false true
-
-Subgraph structure:
-Level 0 (count=1): 2 
-Level 1 (count=1): 3 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 1 
-Level 2: 
------------------End of State Debug -----------------------
-*******NEG started*****************
-n=1 k=0 level=1
-Selecting 2 vertices at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 2
-  Remainder: 0
-Found subgraph #8
-------- State Debug: Complete subgraph found -------
-Subgraph count: 8
-
-Visited vertices: false false true true true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 2 and root 2 ======
+initChildSet: Found 0 valid children at level 2
+Children: 
+Not enough children (0) to select 1 vertices at level 2
+NEG called with n=1 k=0 level=1 remainder=2 m=1
+Exploring with initial selection of size 2 at level 1
+Selected vertices: 4 3 
+===== Explore called =====
+Current root: 2 level: 2 remainder: 0
+Visited Array: false false true true true
+Current partial subgraph:
 Level 0 (count=1): 2 
 Level 1 (count=2): 4 3 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 2 
+==========================
+subgraphVerts= 2 3 4
+encodePattern called and pattern= 98
+Found complete subgraph #6
+Level 0: 2 
+Level 1: 4 3 
 Level 2: 
------------------End of State Debug -----------------------
-------- State Debug: After completing enumeration from root 2 -------
-Subgraph count: 8
-
-Visited vertices: false false false false false
-
-Subgraph structure:
-Level 0 (count=1): 2 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=2): 4 3 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 2 
-Level 2: 
------------------End of State Debug -----------------------
-+++ Root is 3 (4/5)
-------- State Debug: Before starting enumeration from root 3 -------
-Subgraph count: 8
-
-Visited vertices: false false false true false
-
-Subgraph structure:
+pattern generated: 98
+GEN called with n=2 k=2 level=1 remainder=2 m=2
+Root = 3 (4/5)
+===== Explore called =====
+Current root: 3 level: 1 remainder: 2
+Visited Array: false false false true false
+Current partial subgraph:
 Level 0 (count=1): 3 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-********enumerateVertex Called***************
-  Current level: 1
-  Root vertex: 3
-  Remainder: 2
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 8
-
-Visited vertices: false false false true false
-
-Subgraph structure:
-Level 0 (count=1): 3 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-Found 1 valid vertices at level 1
-------- State Debug: After initChildSet -------
-Subgraph count: 8
-
-Visited vertices: false false false true false
-
-Subgraph structure:
-Level 0 (count=1): 3 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 0 
-Level 2: 
------------------End of State Debug -----------------------
-Selecting 1 vertices at level 1
-********enumerateVertex Called***************
-  Current level: 2
-  Root vertex: 3
-  Remainder: 1
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 8
-
-Visited vertices: false false false true true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 1 and root 3 ======
+initChildSet: Found 1 valid children at level 1
+Children: 4 
+Exploring with initial selection of size 1 at level 1
+Selected vertices: 4 
+===== Explore called =====
+Current root: 3 level: 2 remainder: 1
+Visited Array: false false false true true
+Current partial subgraph:
 Level 0 (count=1): 3 
 Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 
------------------End of State Debug -----------------------
-Found 0 valid vertices at level 2
-------- State Debug: After initChildSet -------
-Subgraph count: 8
-
-Visited vertices: false false false true true
-
-Subgraph structure:
-Level 0 (count=1): 3 
-Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 
------------------End of State Debug -----------------------
-------- State Debug: After completing enumeration from root 3 -------
-Subgraph count: 8
-
-Visited vertices: false false false false false
-
-Subgraph structure:
-Level 0 (count=1): 3 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=1): 4 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 1 
-Level 2: 
------------------End of State Debug -----------------------
-+++ Root is 4 (5/5)
-------- State Debug: Before starting enumeration from root 4 -------
-Subgraph count: 8
-
-Visited vertices: false false false false true
-
-Subgraph structure:
+==========================
+====== initChildSet called for level 2 and root 3 ======
+initChildSet: Found 0 valid children at level 2
+Children: 
+Not enough children (0) to select 1 vertices at level 2
+GEN called with n=1 k=1 level=1 remainder=2 m=1
+Not enough children (1) to select 2 vertices at level 1
+Root = 4 (5/5)
+===== Explore called =====
+Current root: 4 level: 1 remainder: 2
+Visited Array: false false false false true
+Current partial subgraph:
 Level 0 (count=1): 4 
-Level 1 (count=0): 
-Level 2 (count=0): 
+==========================
+====== initChildSet called for level 1 and root 4 ======
+initChildSet: Found 0 valid children at level 1
+Children: 
+Not enough children (0) to select 1 vertices at level 1
+Enumerate: finished enumeration over all vertices
 
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-********enumerateVertex Called***************
-  Current level: 1
-  Root vertex: 4
-  Remainder: 2
-*******initChildSet started*****************
-------- State Debug: Before initChildSet -------
-Subgraph count: 8
-
-Visited vertices: false false false false true
-
-Subgraph structure:
-Level 0 (count=1): 4 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-Found 0 valid vertices at level 1
-------- State Debug: After initChildSet -------
-Subgraph count: 8
-
-Visited vertices: false false false false true
-
-Subgraph structure:
-Level 0 (count=1): 4 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-------- State Debug: After completing enumeration from root 4 -------
-Subgraph count: 8
-
-Visited vertices: false false false false false
-
-Subgraph structure:
-Level 0 (count=1): 4 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-ChildSet structure:
-Level 0 (count=0): 
-Level 1 (count=0): 
-Level 2 (count=0): 
-
-Index mapping:
-Level 0: 
-Level 1: 
-Level 2: 
------------------End of State Debug -----------------------
-Total subgraphs found: 8
+Total motif found: 6
