@@ -1375,8 +1375,9 @@ proc calculateBasicStats(in cluster: set(int)) throws {
     forall degree in stats.degrees with (+ reduce second_moment) {
         second_moment += (degree * degree): real;
     }
-    stats.degree_second_moment = second_moment;
-    
+    // stats.degree_second_moment = second_moment; // Fixed for the issue opened by Barosz
+    stats.degree_second_moment = second_moment / stats.n_vertices:real;
+
     // Calculate remaining statistics
     stats.n_edges = stats.degree_sum / 2;
     stats.avg_degree = stats.degree_sum: real / stats.n_vertices: real;
