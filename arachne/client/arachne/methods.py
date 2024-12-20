@@ -429,7 +429,7 @@ def diameter(graph: Graph) -> int:
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
                          semantic_check:str = None,
                          size_limit:int = None,
-                         time_limit:int = 30,
+                         time_limit:int = 0,
                          return_isos_as:str = "vertices",
                          algorithm_type:str = "ps",
                          reorder:bool = False,

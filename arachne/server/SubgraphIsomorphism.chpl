@@ -775,6 +775,7 @@ module SubgraphIsomorphism {
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
     var limitTime:bool = if timeLimit > 0 then true else false;
+    var printProgressCheck:bool = if printProgressInterval > 0 then true else false;
     var stopper:atomic bool = false;
     timeLimit *= 60;
 
@@ -845,9 +846,6 @@ module SubgraphIsomorphism {
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     var noEdgeAttributes = if subgraphEdgeAttributes.size == 0 then true else false;
-    
-    // Global array to keep track of all isomorphic mappings.
-    var allmappings: list(int, parSafe=true);
 
     // Timer for print-outs during execution.
     var timer:stopwatch;
@@ -1188,85 +1186,128 @@ module SubgraphIsomorphism {
     }
 
     /* Perform the vf2 recursive steps returning all found isomorphisms.*/
-    proc vf2Helper(state: owned State, depth: int) throws {
+    proc vf2Helper(state: owned State, depth: int): list(int,parSafe=true) throws {
+      var allmappings: list(int, parSafe=true);
+
       // Prints the progress every X number of minutes.
-      printProgress();
+      // if printProgress then printProgress();
+      // TODO: TURN BACK ON FOR PRODUCTION.
       
       // Base case: the depth is equivalent to the number of vertices in the subgraph.
       if depth == g2.n_vertices {
         allmappings.pushBack(state.core);
-        numIsoAtomic.add(1);
-        return;
+        // numIsoAtomic.add(1);
+        // TODO: TURN BACK ON FOR PRODUCTION.
+        return allmappings;
       }
 
       // Stop execution if flagged.
-      if stopper.read() then return;
+      // if stopper.read() then return;
+      // TODO: TURN BACK ON FOR PRODUCTION.
 
       // Early termination checks for both time and size limits, if enabled.
-      if limitSize && numIsoAtomic.read() >= matchLimit {
-        stopper.testAndSet();
-        return;
-      }
-      if limitTime && timer.elapsed():int >= timeLimit {
-        stopper.testAndSet();
-        return;
-      }
+      // if limitSize && numIsoAtomic.read() >= matchLimit {
+      //   stopper.testAndSet();
+      //   return;
+      // }
+      // if limitTime && timer.elapsed():int >= timeLimit {
+      //   stopper.testAndSet();
+      //   return;
+      // }
+      // TODO: TURN BACK ON FOR PRODUCTION.
 
       // Generate candidate pairs (n1, n2) for mapping
       var candidatePairs = getCandidatePairsOpti(state);
 
       // Iterate in parallel over candidate pairs
-      forall (n1, n2) in candidatePairs with (ref state) {
-        if stopper.read() then continue;
+      forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+        // if stopper.read() then continue;
+        // TODO: TURN BACK ON FOR PRODUCTION.
 
         if isFeasible(n1, n2, state) {
-          // Work on a clone, not the original state.
+          // Work on a clone, not the original state
           var newState = state.clone();
 
           // Update state with the new mapping
           addToTinTout(n1, n2, newState);
 
           // Recursive call with updated state and increased depth
-          vf2Helper(newState, depth + 1);
+          var newMappings: list(int, parSafe=true);
+          newMappings = vf2Helper(newState, depth + 1);
+
+          // Use a loop to add elements from newMappings to allmappings
+          for mapping in newMappings do allmappings.pushBack(mapping);
         }
       }
-      return;
+      return allmappings;
     }
     
     /* Executes VF2SIFromVertices. */
     proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph, const ref vertexFlagger) throws {
-      forall edgeIndex in 0..mG1-1 {
-        if stopper.read() then continue;
+      var solutions: list(int, parSafe=true);
+      forall edgeIndex in 0..mG1-1 with(ref solutions) {
+        // if stopper.read() then continue;
+        // TODO: TURN BACK ON FOR PRODUCTION.
 
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
           var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-          if edgeChecked then vf2Helper(initialState, 2);
+          if edgeChecked {
+            var newMappings = vf2Helper(initialState, 2);
+            for mapping in newMappings do solutions.pushBack(mapping);
+          }
         }
       }
+      var subIsoArrToReturn: [0..#solutions.size](int);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+
+      return subIsoArrToReturn;
     } // end of VF2SIFrom Vertices
 
     /* Executes VF2SIFromEdges. */
     proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph, const ref edgeFlagger) throws {
-      forall edgeIndex in 0..mG1-1 {
-        if stopper.read() then continue;
+      var solutions: list(int, parSafe=true);
+      forall edgeIndex in 0..mG1-1 with(ref solutions) {
+        // if stopper.read() then continue;
+        // TODO: TURN BACK ON FOR PRODUCTION.
 
         if edgeFlagger[edgeIndex] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
           var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-          if edgeChecked then vf2Helper(initialState, 2);
+          if edgeChecked {
+            var newMappings = vf2Helper(initialState, 2);
+            for mapping in newMappings do solutions.pushBack(mapping);
+          }
         }
       }
+      var subIsoArrToReturn: [0..#solutions.size](int);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+
+      return subIsoArrToReturn;
     } // end of VF2SIFromEdges
 
     /* Executes VF2PS. */
     proc VF2PS(g1: SegGraph, g2: SegGraph) throws {
       var initialState = new State(g1.n_vertices, g2.n_vertices);
-      vf2Helper(initialState, 0);
+      var solutions = vf2Helper(initialState, 0);
+      
+      var subIsoArrToReturn: [0..#solutions.size](int);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+
+      return subIsoArrToReturn;
     } // end of VF2PS
 
+    // Global array to store final results.
+    var allMappingsArrayD = makeDistDom(1);
+    var allMappingsArray: [allMappingsArrayD] int;
+
     // Call out to one of the vf2 procedures.
-    if algType == "ps" then VF2PS(g1, g2);
+    if algType == "ps" {
+      var allmappings = VF2PS(g1, g2);
+
+      allMappingsArrayD = makeDistDom(allmappings.size);
+      allMappingsArray = allmappings;
+    }
 
     if algType == "si" {
       var pickerTimer:stopwatch;
@@ -1276,29 +1317,40 @@ module SubgraphIsomorphism {
         var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        VF2SIFromVertices(g1,g2,vertexFlagger);
+        var allmappings = VF2SIFromVertices(g1,g2,vertexFlagger);
+
+        allMappingsArrayD = makeDistDom(allmappings.size);
+        allMappingsArray = allmappings;
       } else if !noEdgeAttributes && noVertexAttributes { // Graph only has edge attributes.
         pickerTimer.start();
         var edgeFlagger = edgePicker();
         var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        VF2SIFromEdges(g1,g2,edgeFlagger);
+        var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
+
+        allMappingsArrayD = makeDistDom(allmappings.size);
+        allMappingsArray = allmappings;
       } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
         pickerTimer.start();
         var edgeFlagger = edgePicker(true);
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        VF2SIFromEdges(g1,g2,edgeFlagger);
+        var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
+
+        allMappingsArrayD = makeDistDom(allmappings.size);
+        allMappingsArray = allmappings;
       } else { // Graph has no attributes.
         var edgeFlagger: [0..<g1.n_edges] bool = true;
-        VF2SIFromEdges(g1,g2,edgeFlagger);
+        var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
+
+        allMappingsArrayD = makeDistDom(allmappings.size);
+        allMappingsArray = allmappings;
       }
     }
     timer.stop();
 
-    var allMappingsArray = makeDistArray(allmappings.toArray());
     var isoArr = nodeMapGraphG1[allMappingsArray]; // Map vertices back to original values.
     var tempArr: [0..0] int;
 
