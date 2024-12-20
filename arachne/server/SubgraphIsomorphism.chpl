@@ -16,6 +16,7 @@ module SubgraphIsomorphism {
   use GraphArray;
   use Utils;
   use SubgraphIsomorphismMsg;
+  use WellConnectedComponents; // for edge list sort
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -417,9 +418,8 @@ module SubgraphIsomorphism {
   }
 
   
-  /* Generate a reordering of the vertices of the subgraph based on attribute probabilities or
-     structure. */
-  proc subgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
+  /* Generates a mapping for old vertex names to new vetrex names. */
+  proc getSubgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
     const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
     const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
     const ref seg = toSymEntry(subgraph.getComp("SEGMENTS_SDI"), int).a;
@@ -470,7 +470,7 @@ module SubgraphIsomorphism {
 
       var nextNodeName = 2;
       var currRarestEdge = rarestEdge;
-      while !reorderComplete {
+      while !reorderComplete { // loop until all the vertices have been remapped
         var nextPossibleEdges = new list((int,int,int)); // tuple of u --> v and edge id e
         var currProbabilities = new list(real); // used to keep candidate probabilities
         var u = src[currRarestEdge];
@@ -593,9 +593,173 @@ module SubgraphIsomorphism {
           writeln();
         }
       }
-
-      writeln("reorderedNodes = ", reorderedNodes);
     }
+
+    return reorderedNodes;
+  }
+
+  /* Given a new permutation, reorder given attributes. Used for subgraph reordering. */
+  proc getReorderedAttributes(attributes, perm, st) throws {
+    var newAttributeMap = new map(string, (string, string));
+    
+    // Loop over edge attributes. Making new symbol table entries and saving them.
+    for (k,v) in zip(attributes.keys(), attributes.values()) {
+      var attributeName = k;
+      var attributeStId = v[0];
+      var attributeType = v[1];
+      
+      // Check the actual data.
+      select attributeType {
+        when "Categorical" {
+          var subgraphArrEntry = (st.registry.tab(attributeStId)):shared CategoricalRegEntry;
+          const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
+          var subgraphCats = getSegString(subgraphArrEntry.categories, st);
+
+          var newArr = subgraphArr[perm];
+          var newCats = getSegString(subgraphArrEntry.categories, st);
+          var arrName = st.nextName();
+          st.addEntry(arrName, new shared SymEntry(newArr));
+          
+          var newEntry = new shared CategoricalRegEntry(arrName, 
+                                                        subgraphArrEntry.categories,
+                                                        subgraphArrEntry.permutation,
+                                                        subgraphArrEntry.segments,
+                                                        subgraphArrEntry.naCode);
+          var categoricalName = st.nextName();
+          st.registry.register_categorical(categoricalName, newEntry);
+          newAttributeMap.add(attributeName, (categoricalName, attributeType));
+        }
+        when "Strings" {
+          var subgraphStrings = getSegString(attributeStId, st);
+          var (offsets, values) = subgraphStrings[perm];
+          
+          var offsetsEntry = createSymEntry(offsets);
+          var valuesEntry = createSymEntry(values);
+          var stringsEntry = new shared SegStringSymEntry(offsetsEntry, valuesEntry, string);
+          var name = st.nextName();
+          st.addEntry(name, stringsEntry);
+          newAttributeMap.add(attributeName, (name, attributeType));
+        }
+        when "pdarray" {
+          var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(attributeStId, st);
+          var etype = subgraphArrEntry.dtype;
+
+          select etype {
+            when (DType.Int64) {
+              const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
+              var newArr = subgraphArr[perm];
+
+              var name = st.nextName();
+              st.addEntry(name, new shared SymEntry(newArr));
+              newAttributeMap.add(attributeName, (name, attributeType));
+            }
+            when (DType.UInt64) {
+              const ref subgraphArr = toSymEntry(subgraphArrEntry, uint).a;
+              var newArr = subgraphArr[perm];
+
+              var name = st.nextName();
+              st.addEntry(name, new shared SymEntry(newArr));
+              newAttributeMap.add(attributeName, (name, attributeType));
+            }
+            when (DType.Float64) {
+              const ref subgraphArr = toSymEntry(subgraphArrEntry, real).a;
+              var newArr = subgraphArr[perm];
+
+              var name = st.nextName();
+              st.addEntry(name, new shared SymEntry(newArr));
+              newAttributeMap.add(attributeName, (name, attributeType));
+            }
+            when (DType.Bool) {
+              const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
+              var newArr = subgraphArr[perm];
+
+              var name = st.nextName();
+              st.addEntry(name, new shared SymEntry(newArr));
+              newAttributeMap.add(attributeName, (name, attributeType));
+            }
+          }
+        }
+      }
+    }
+
+    return newAttributeMap;
+  }
+
+  /* Given a node mapping of original vertex names to new vertex names and the original subgraph, 
+     returns new structural and attribute arrays following the new reordering. */
+  proc getReorderedSubgraph(nodeMapping, originalSubgraph, st) throws {
+    const ref src = toSymEntry(originalSubgraph.getComp("SRC_SDI"), int).a;
+    const ref dst = toSymEntry(originalSubgraph.getComp("DST_SDI"), int).a;
+    const ref nodeMap = toSymEntry(originalSubgraph.getComp("VERTEX_MAP_SDI"), int).a;
+    var nodeAttributes = originalSubgraph.getNodeAttributes();
+    var edgeAttributes = originalSubgraph.getEdgeAttributes();
+
+    // Generate new source and destination arrays.
+    var newSrc = makeDistArray(src.size, int);
+    var newDst = makeDistArray(dst.size, int);
+    for (s, d, i, j) in zip(src, dst, newSrc.domain, newDst.domain) {
+      newSrc[i] = nodeMapping[s];
+      newDst[j] = nodeMapping[d];
+    }
+
+    writeln("nodeMapping = ", nodeMapping);
+    writeln("src    = ", src);
+    writeln("newSrc = ", newSrc);
+    writeln("dst    = ", dst);
+    writeln("newDst = ", newDst);
+
+    // Sort the newly created edge list.
+    var (sortedNewSrc, sortedNewDst) = sortEdgeList(newSrc, newDst);
+
+    writeln();
+    writeln("sortedNewSrc = ", sortedNewSrc);
+    writeln("sortedNewDst = ", sortedNewDst);
+
+    // Get the permutation that sorts the edges. This is needed to sort the attributes.
+    var edgePerm = makeDistArray(src.size, int);
+    for (i, sns, snd) in zip(edgePerm.domain, sortedNewSrc, sortedNewDst) {
+      for (j, ns, nd) in zip(newSrc.domain, newSrc, newDst) {
+        if sns == ns && snd == nd then edgePerm[i] = j;
+      }
+    }
+
+    // Get the permutation that sorts the nodes. This is needed to sort the attributes.
+    var newNodeMap = nodeMap;
+    for (i,u) in zip(newNodeMap.domain, newNodeMap) do newNodeMap[i] = nodeMapping[u];
+    var nodePerm = argsortDefault(newNodeMap);
+    var sortedNodeMap = newNodeMap[nodePerm];
+
+    // Reorder the attributes.
+    var reorderedEdgeAttributes = getReorderedAttributes(edgeAttributes, edgePerm, st);
+    var reorderedNodeAttributes = getReorderedAttributes(nodeAttributes, nodePerm, st);
+
+    // Created reversed arrays.
+    var srcR = sortedNewDst;
+    var dstR = sortedNewSrc;
+    var (sortedSrcR, sortedDstR) = sortEdgeList(srcR, dstR);
+
+    // Generate segments arrays for both regular and reversed arrays.
+    var (srcUnique, srcCounts) = Unique.uniqueFromSorted(sortedNewSrc);
+    var neis = makeDistArray(nodeMap.size, int);
+    neis = 0; 
+    neis[srcUnique] = srcCounts;
+    var segs = + scan neis; 
+    var completeSegs = makeDistArray(nodeMap.size + 1, int);
+    completeSegs[0] = 0;
+    completeSegs[1..] = segs;
+
+    var (srcRUnique, srcRCounts) = Unique.uniqueFromSorted(srcR);
+    var neisR = makeDistArray(nodeMap.size, int);
+    neisR = 0; 
+    neisR[srcRUnique] = srcRCounts;
+    var segsR = + scan neisR; 
+    var completeSegsR = makeDistArray(nodeMap.size + 1, int);
+    completeSegsR[0] = 0;
+    completeSegsR[1..] = segsR;
+
+    return (sortedNewSrc, sortedNewDst, completeSegs, sortedNodeMap, 
+            sortedSrcR, sortedDstR, completeSegsR, 
+            reorderedEdgeAttributes, reorderedNodeAttributes);
   }
 
   /* Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
@@ -603,7 +767,7 @@ module SubgraphIsomorphism {
   array that maps the isomorphic vertices of `g1` to those of `g2`. */
   proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
               sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
+              algType: string, returnIsosAs:string, reorder: bool, st: borrowed SymTab) throws {
     var numIso: int = 0;
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
     var semanticAndCheck = if semanticCheckType == "and" then true else false;
@@ -623,53 +787,60 @@ module SubgraphIsomorphism {
     const ref segRG1 = toSymEntry(g1.getComp("SEGMENTS_R_SDI"), int).a;
     const ref nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
 
+    // Returns the map of attribute name to tuple of symbol table identifier and array data type
+    // to be used to extract a given attribute array.
+    var graphNodeAttributes = g1.getNodeAttributes();
+    var subgraphNodeAttributesOriginal = g2.getNodeAttributes();
+    var graphEdgeAttributes = g1.getEdgeAttributes();
+    var subgraphEdgeAttributesOriginal = g2.getEdgeAttributes();
+
+    // Generate the probability distributions for each attribute. Will be stored in module-level
+    // maps for each datatype. This is only performed for the attributes that exist in both the
+    // subgraph and the graph.
+    if reorder {
+      generateProbabilityDistribution(subgraphNodeAttributesOriginal, graphNodeAttributes, 
+                                      "vertex", st);
+      generateProbabilityDistribution(subgraphEdgeAttributesOriginal, graphEdgeAttributes, 
+                                      "edge", st);
+    }
+
+    // Reorder the subgraph vertices and edges.
+    var newOrdering = if reorder then getSubgraphReordering(g2, st) else new map(int, int);
+
+    // Get a newly constructed subgraph from the reordering created above.
+    var (newSrc,newDst,newSeg,newMap,newSrcR,newDstR,newSegR,newEdgeAttributes,newNodeAttributes) = 
+        if reorder then getReorderedSubgraph(newOrdering, g2, st)
+        else (makeDistArray(1, int), makeDistArray(1, int), makeDistArray(1, int),
+              makeDistArray(1, int), makeDistArray(1, int), makeDistArray(1, int),
+              makeDistArray(1, int), new map(string, (string, string)), 
+              new map(string, (string, string)));
+
     // Extract the g2/H/h information from the SegGraph data structure.
-    const ref srcNodesG2 = toSymEntry(g2.getComp("SRC_SDI"), int).a;
-    const ref dstNodesG2 = toSymEntry(g2.getComp("DST_SDI"), int).a;
-    const ref segGraphG2 = toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-    const ref srcRG2 = toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-    const ref dstRG2 = toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-    const ref segRG2 = toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-    const ref nodeMapGraphG2 = toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
+    const ref srcNodesG2 = if reorder then newSrc
+                           else toSymEntry(g2.getComp("SRC_SDI"), int).a;
+    const ref dstNodesG2 = if reorder then newDst
+                           else toSymEntry(g2.getComp("DST_SDI"), int).a;
+    const ref segGraphG2 = if reorder then newSeg
+                           else toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
+    const ref srcRG2 = if reorder then newSrcR
+                       else toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
+    const ref dstRG2 = if reorder then newDstR
+                       else toSymEntry(g2.getComp("DST_R_SDI"), int).a;
+    const ref segRG2 = if reorder then newSegR
+                       else toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
+    const ref nodeMapGraphG2 = if reorder then newMap
+                               else toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
+
+    var subgraphEdgeAttributes = if reorder then newEdgeAttributes 
+                                 else subgraphEdgeAttributesOriginal;
+    var subgraphNodeAttributes = if reorder then newNodeAttributes
+                                 else subgraphNodeAttributesOriginal;
 
     // Get the number of vertices and edges for each graph.
     var nG1 = nodeMapGraphG1.size;
     var mG1 = srcNodesG1.size;
     var nG2 = nodeMapGraphG2.size;
     var mG2 = srcNodesG2.size;
-
-    // Returns the map of attribute name to tuple of symbol table identifier and array data type
-    // to be used to extract a given attribute array.
-    var graphNodeAttributes = g1.getNodeAttributes();
-    var subgraphNodeAttributes = g2.getNodeAttributes();
-    var graphEdgeAttributes = g1.getEdgeAttributes();
-    var subgraphEdgeAttributes = g2.getEdgeAttributes();
-
-    // Generate the probability distributions for each attribute. Will be stored in module-level
-    // maps for each datatype.
-    generateProbabilityDistribution(subgraphNodeAttributes, graphNodeAttributes, "vertex", st);
-    generateProbabilityDistribution(subgraphEdgeAttributes, graphEdgeAttributes, "edge", st);
-
-    // writeln();
-    // writeln(edgeCategoricalProbabilityDistributions);
-    // writeln(edgeStringsProbabilityDistributions);
-    // writeln(edgeIntProbabilityDistributions);
-    // writeln(edgeUIntProbabilityDistributions);
-    // writeln(edgeRealProbabilityDistributions);
-    // writeln(edgeBoolProbabilityDistributions);
-
-    // writeln();
-
-    // writeln(nodeCategoricalProbabilityDistributions);
-    // writeln(nodeStringsProbabilityDistributions);
-    // writeln(nodeIntProbabilityDistributions);
-    // writeln(nodeUIntProbabilityDistributions);
-    // writeln(nodeRealProbabilityDistributions);
-    // writeln(nodeBoolProbabilityDistributions);
-    // writeln();
-
-    // Reorder the subgraph vertices and edges.
-    subgraphReordering(g2, st);
 
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;

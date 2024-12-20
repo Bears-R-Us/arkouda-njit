@@ -47,8 +47,13 @@ module SubgraphIsomorphismMsg {
     var sizeLimit = msgArgs.getValueOf("SizeLimit");
     var timeLimit = msgArgs.getValueOf("TimeLimit"):int;
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
+    var reorder = msgArgs.getValueOf("Reorder"):bool;
     var algorithmType = msgArgs.getValueOf("AlgorithmType");
     var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
+
+    writeln("\n\n\n\n\n\n");
+    writeln("reorder = ", reorder);
+    writeln("\n\n\n\n\n\n");
      
     // Pull out our graph from the symbol table.
     var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
@@ -69,7 +74,7 @@ module SubgraphIsomorphismMsg {
 
       timer.start();
       var isos = runVF2(g,h,semanticCheckType,sizeLimit,timeLimit,
-                        printProgressInterval,algorithmType,returnIsosAs,st);
+                        printProgressInterval,algorithmType,returnIsosAs,reorder,st);
       timer.stop();
       outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
