@@ -59,11 +59,8 @@ def gnp(n: int, p: float,
         create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
     ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
-    Generate a random binomial graph.
-
-    Also known as an  Erdos-Renyi or completely random graph.
-
-    Strip out isolates, self-loops and duplicate edges so n_out <= n.
+    Generate a random binomial graph. Also known as an Erdos-Renyi or completely random graph.
+    Does not allow for the creation of isolates, self-loops, or duplicated edges.
 
     Parameters
     ----------
@@ -84,12 +81,26 @@ def gnp(n: int, p: float,
     graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
     
     """
-    m = np.random.binomial(n * (n - 1) // 2, p)  # determine number of edges
-    V, U = ak.randint(0, n, m), ak.randint(0, n, m)  # random pairs of nodes
+    U = ak.broadcast(ak.arange(0, n*n, n), ak.arange(n), n*n)
+    V = ak.arange(U.size) % n
+
+    not_self_loop = V != U
+    filtered_U = U[not_self_loop]
+    filtered_V = V[not_self_loop]
+
+    probabilities = ak.randint(0, 1, filtered_U.size, dtype=ak.float64)
+
+    kept_edges = probabilities < p
+    kept_U = filtered_U[kept_edges]
+    kept_V = filtered_V[kept_edges]
+
     graph = empty_graph(create_using)
+
     if V.size == 0 or U.size == 0:
         return graph
-    graph.add_edges_from(V,U)
+
+    graph.add_edges_from(kept_U,kept_V)
+
     return graph
 
 def karate_club_graph(create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
