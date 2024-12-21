@@ -459,9 +459,18 @@ module SubgraphIsomorphism {
     writeln("rarestNode = ", rarestNode);
     writeln();
 
-    // Both edge attributes and vertex attributes exist.
     var reorderComplete = false;
-    if edgeAttributes.size > 0 && nodeAttributes.size > 0 {
+
+    /**********************************************************************************************/
+    /**********************************************************************************************/
+    /********************************************CASE 1********************************************/
+    /**********************************************************************************************/
+    /**********************************************************************************************/
+    /* Edge attributes exist. This means that we want to create the reordering pased on the 
+       probabilities of each edge appearing. Starting from the rarest edge and then picking amongst
+       the rarest edges connected to either starting vertex and continuing until all vertices 
+       have been remapped. */
+    if edgeAttributes.size > 0 {
       reorderedNodes[src[rarestEdge]] = 0;
       reorderedNodes[dst[rarestEdge]] = 1;
       mappedEdges[rarestEdge] = true;
@@ -594,6 +603,93 @@ module SubgraphIsomorphism {
         }
       }
     }
+    else if nodeAttributes.size > 0 && edgeAttributes.size <= 0 {
+      /********************************************************************************************/
+      /********************************************************************************************/
+      /*******************************************CASE 2*******************************************/
+      /********************************************************************************************/
+      /********************************************************************************************/
+      /* Only node attributes exist. This means that we want to create the reordering pased on the 
+        probabilities of each node appearing. Starting from the rarest node and then picking amongst
+        the rarest neighbors connected to this vertex we continue untill all vertices have been 
+        remapped. */ 
+      reorderedNodes[rarestNode] = 0;
+      mappedNodes[rarestNode] = true;
+
+      var nextNodeName = 1;
+      var currRarestNode = rarestNode;
+      while !reorderComplete { // loop until all the vertices have been remapped
+        var nextPossibleVertices = new list(int); // adds all neighbors for a vertex not yet checked
+        var currProbabilities = new list(real); // used to keep candidate probabilities
+        var u = currRarestNode;
+
+        /* Get all of the out neighbors and in neighbors of current rarest vertex. */
+        for outNeighbor in dst[seg[u]..<seg[u+1]] {
+          if !mappedNodes[outNeighbor] {
+            nextPossibleVertices.pushBack(outNeighbor);
+            currProbabilities.pushBack(nodeProbabilities[u]);
+          }
+        }
+
+        for inNeighbor in dstR[segR[u]..<segR[u+1]] {
+          if !mappedNodes[inNeighbor] {
+            nextPossibleVertices.pushBack(inNeighbor);
+            currProbabilities.pushBack(nodeProbabilities[u]);
+          }
+        }
+
+        /* The end of a certain path was reached, but unmapped vertices remain. */
+        if currProbabilities.size == 0 && nextNodeName < nodeMap.size {
+          /* Iterate over all remaining vertices, adding their probabilities to find the lowest. */
+          for (p,u) in zip(mappedNodes, mappedNodes.domain) do 
+            if p == false then currProbabilities.pushBack(nodeProbabilities[u]);
+
+          var idx = argsortDefault(currProbabilities.toArray());
+
+          /* Check to see if two vertices have the same probability. */
+          var needsTieBreaker = false;
+          if idx.size > 1 {
+            if idx[0] == idx[1] then needsTieBreaker = true;
+          }
+          // TODO: Code the tie-breaker.
+
+          var u = idx[0];
+          reorderedNodes[u] = nextNodeName;
+          mappedNodes[u] = true;
+
+          nextNodeName += 1;
+          currRarestNode = u;
+          if nextNodeName == nodeMap.size then reorderComplete = true;
+          continue;
+        }
+
+        writeln("nextPossibleVertices = ", nextPossibleVertices);
+
+        if currProbabilities.size >= 1 {
+          /* Sort the probabilities of current candidate edges to be remapped. */
+          var idx = argsortDefault(currProbabilities.toArray());
+
+          /* Check to see if two nodes have the same probability. */
+          var needsTieBreaker = false;
+          if idx.size > 1 {
+            if idx[0] == idx[1] then needsTieBreaker = true;
+          }
+          // TODO: Code the tie-breaker.
+
+          /* Remap the selected node. */
+          var nextNode = nextPossibleVertices[idx[0]];
+          reorderedNodes[nextNode] = nextNodeName;
+          mappedNodes[nextNode] = true;
+
+          /* Update variables. */
+          nextNodeName += 1;
+          currRarestNode = nextNode;
+          if nextNodeName == nodeMap.size then reorderComplete = true;
+
+          writeln();
+        }
+      }
+    }
 
     return reorderedNodes;
   }
@@ -711,10 +807,6 @@ module SubgraphIsomorphism {
     // Sort the newly created edge list.
     var (sortedNewSrc, sortedNewDst) = sortEdgeList(newSrc, newDst);
 
-    writeln();
-    writeln("sortedNewSrc = ", sortedNewSrc);
-    writeln("sortedNewDst = ", sortedNewDst);
-
     // Get the permutation that sorts the edges. This is needed to sort the attributes.
     var edgePerm = makeDistArray(src.size, int);
     for (i, sns, snd) in zip(edgePerm.domain, sortedNewSrc, sortedNewDst) {
@@ -728,6 +820,8 @@ module SubgraphIsomorphism {
     for (i,u) in zip(newNodeMap.domain, newNodeMap) do newNodeMap[i] = nodeMapping[u];
     var nodePerm = argsortDefault(newNodeMap);
     var sortedNodeMap = newNodeMap[nodePerm];
+
+    writeln("sortedNodeMap = ", sortedNodeMap);
 
     // Reorder the attributes.
     var reorderedEdgeAttributes = getReorderedAttributes(edgeAttributes, edgePerm, st);
@@ -748,7 +842,11 @@ module SubgraphIsomorphism {
     completeSegs[0] = 0;
     completeSegs[1..] = segs;
 
-    var (srcRUnique, srcRCounts) = Unique.uniqueFromSorted(srcR);
+    writeln("sortedNewSrc = ", sortedNewSrc);
+    writeln("sortedNewDst = ", sortedNewDst);
+    writeln("completeSegs = ", completeSegs);
+
+    var (srcRUnique, srcRCounts) = Unique.uniqueFromSorted(sortedSrcR);
     var neisR = makeDistArray(nodeMap.size, int);
     neisR = 0; 
     neisR[srcRUnique] = srcRCounts;
@@ -756,6 +854,10 @@ module SubgraphIsomorphism {
     var completeSegsR = makeDistArray(nodeMap.size + 1, int);
     completeSegsR[0] = 0;
     completeSegsR[1..] = segsR;
+
+    writeln("sortedSrcR = ", sortedSrcR);
+    writeln("sortedDstR = ", sortedDstR);
+    writeln("completeSegsR = ", completeSegsR);
 
     return (sortedNewSrc, sortedNewDst, completeSegs, sortedNodeMap, 
             sortedSrcR, sortedDstR, completeSegsR, 
