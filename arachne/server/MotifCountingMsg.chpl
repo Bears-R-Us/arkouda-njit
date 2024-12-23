@@ -43,94 +43,97 @@ module MotifCountingMsg {
 
     // Extract messages sent from Python.
     var graphEntryName = msgArgs.getValueOf("MainGraphName");
-    var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
-    var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
-    var sizeLimit = msgArgs.getValueOf("SizeLimit");
+    // var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
+    // var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
+    // var sizeLimit = msgArgs.getValueOf("SizeLimit");
     var timeLimit = msgArgs.getValueOf("TimeLimit"):int;
-    var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
-    var algorithmType = msgArgs.getValueOf("AlgorithmType");
-    var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
+    // var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
+    // var algorithmType = msgArgs.getValueOf("AlgorithmType");
+    // var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
      
     // Pull out our graph from the symbol table.
     var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
     var g = gEntry.graph;
 
     // Pull out our subgraph from the symbol table.
-    var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
-    var h = hEntry.graph;
+    // var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
+    // var h = hEntry.graph;
 
     // Execute sequential VF2 subgraph isomorphism.
     var timer:stopwatch;
     if g.isDirected() {
-      if algorithmType != "ps" && algorithmType != "si" {
-        var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
-        siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-        return new MsgTuple(errorMsg, MsgType.ERROR);
-      }
+    //   if algorithmType != "ps" && algorithmType != "si" {
+    //     var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
+    //     siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+    //     return new MsgTuple(errorMsg, MsgType.ERROR);
+    //   }
 
       timer.start();
-      var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
-                        printProgressInterval,algorithmType,returnIsosAs,st);
+      // var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
+      //                   printProgressInterval,algorithmType,returnIsosAs,st);
+
+                              
+      var isos = runMotifCounting(g, timeLimit, st);
       timer.stop();
-      outMsg = "Kavosh%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
+      outMsg = "Kavosh%s took %r sec".format(timer.elapsed());
 
-      if returnIsosAs == "vertices" {
-        var isosAsVerticesName = st.nextName();
-        var isosAsVerticesEntry = createSymEntry(isos[0]);
-        st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
+      // if returnIsosAs == "vertices" {
+      //   var isosAsVerticesName = st.nextName();
+      //   var isosAsVerticesEntry = createSymEntry(isos[0]);
+      //   st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
         
-        var isosAsVerticesMapperName = st.nextName();
-        var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
-        st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
+      //   var isosAsVerticesMapperName = st.nextName();
+      //   var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
+      //   st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
         
-        repMsg = "created " + st.attrib(isosAsVerticesName)
-               + "+ created " + st.attrib(isosAsVerticesMapperName);
-      } else if returnIsosAs == "edges" {
-        var isosAsEdgesSrcName = st.nextName();
-        var isosAsEdgesSrcEntry = createSymEntry(isos[0]);
-        st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
+      //   repMsg = "created " + st.attrib(isosAsVerticesName)
+      //          + "+ created " + st.attrib(isosAsVerticesMapperName);
+      // } else if returnIsosAs == "edges" {
+      //   var isosAsEdgesSrcName = st.nextName();
+      //   var isosAsEdgesSrcEntry = createSymEntry(isos[0]);
+      //   st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
 
-        var isosAsEdgesDstName = st.nextName();
-        var isosAsEdgesDstEntry = createSymEntry(isos[1]);
-        st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
+      //   var isosAsEdgesDstName = st.nextName();
+      //   var isosAsEdgesDstEntry = createSymEntry(isos[1]);
+      //   st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
         
-        repMsg = "created " + st.attrib(isosAsEdgesSrcName) 
-               + "+ created " + st.attrib(isosAsEdgesDstName);
-      } else if returnIsosAs == "complete" {
-        var isosAsVerticesName = st.nextName();
-        var isosAsVerticesEntry = createSymEntry(isos[0]);
-        st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
+      //   repMsg = "created " + st.attrib(isosAsEdgesSrcName) 
+      //          + "+ created " + st.attrib(isosAsEdgesDstName);
+      // } else if returnIsosAs == "complete" {
+      //   var isosAsVerticesName = st.nextName();
+      //   var isosAsVerticesEntry = createSymEntry(isos[0]);
+      //   st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
         
-        var isosAsVerticesMapperName = st.nextName();
-        var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
-        st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
+      //   var isosAsVerticesMapperName = st.nextName();
+      //   var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
+      //   st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
         
-        var isosAsEdgesSrcName = st.nextName();
-        var isosAsEdgesSrcEntry = createSymEntry(isos[2]);
-        st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
+      //   var isosAsEdgesSrcName = st.nextName();
+      //   var isosAsEdgesSrcEntry = createSymEntry(isos[2]);
+      //   st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
 
-        var isosAsEdgesDstName = st.nextName();
-        var isosAsEdgesDstEntry = createSymEntry(isos[3]);
-        st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
+      //   var isosAsEdgesDstName = st.nextName();
+      //   var isosAsEdgesDstEntry = createSymEntry(isos[3]);
+      //   st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
         
-        repMsg = "created " + st.attrib(isosAsVerticesName)
-               + "+ created " + st.attrib(isosAsVerticesMapperName)
-               + "+ created " + st.attrib(isosAsEdgesSrcName)
-               + "+ created " + st.attrib(isosAsEdgesDstName);
-      } else {
-        var errorMsg = notImplementedError(pn, "return_isos_as type");
-        siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-        return new MsgTuple(errorMsg, MsgType.ERROR);
-      }
-      siLogger_motif.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      siLogger_motif.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
+      //   repMsg = "created " + st.attrib(isosAsVerticesName)
+      //          + "+ created " + st.attrib(isosAsVerticesMapperName)
+      //          + "+ created " + st.attrib(isosAsEdgesSrcName)
+      //          + "+ created " + st.attrib(isosAsEdgesDstName);
+      // } else {
+      //   var errorMsg = notImplementedError(pn, "return_isos_as type");
+      //   siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+      //   return new MsgTuple(errorMsg, MsgType.ERROR);
+      // }
+      // siLogger_motif.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      // siLogger_motif.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
-      return new MsgTuple(repMsg, MsgType.NORMAL);
-    } else {
+      // return new MsgTuple(repMsg, MsgType.NORMAL);
+    // } else {
       var errorMsg = notImplementedError(pn, "Motif Counting for directed graphs");
       siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
       return new MsgTuple(errorMsg, MsgType.ERROR);
-    }
+    // }
   } // end of motifCountingMsg
 
   use CommandMap;

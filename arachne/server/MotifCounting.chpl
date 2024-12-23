@@ -68,9 +68,12 @@ class KavoshState {
   }// End of KavoshState
 
 
-  proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
-              sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
+  // proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
+  //             sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
+  //             algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
+
+  proc runMotifCounting(g1: SegGraph, in timeLimit: int, st: borrowed SymTab) throws {
+
     var numIso: int = 0;
 
     // Extract the g1/G/g information from the SegGraph data structure.
@@ -331,7 +334,7 @@ class KavoshState {
         } 
         var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
 
-        // This is the place that we should call nautyCaller from cpp
+        // This is the place that we should call nautyClassify from cpp
         // Then we should Classify based on label that naugty will give.
         
         var nautyLabels = [2, 1, 0];  // example Nauty output (0-based)
@@ -583,7 +586,7 @@ class KavoshState {
     var tempArr: [0..0] int;
     var srcPerIso = makeDistArray(2*2, int);
     var dstPerIso = makeDistArray(2*2, int);
-    return (srcPerIso, dstPerIso, tempArr, tempArr);
+    return (tempArr);
   }// End of runMotifCounting
 
 }// End of MotifCounting Module

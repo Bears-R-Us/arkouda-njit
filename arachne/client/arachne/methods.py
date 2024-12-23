@@ -427,34 +427,37 @@ def diameter(graph: Graph) -> int:
     return int(repMsg)
 
 @typechecked
-def motif_counting(graph: PropGraph, subgraph: PropGraph,
-                         semantic_check:str = None,
-                         size_limit:int = None,
+def motif_counting(graph: PropGraph, 
+                        #  subgraph: PropGraph,
+                        #  semantic_check:str = None,
+                        #  size_limit:int = None,
                          time_limit:int = 30,
-                         return_isos_as:str = "vertices",
-                         algorithm_type:str = "ps",
-                         print_progress_interval:int = 2) -> Union[pdarray,Tuple]:
+                        #  return_isos_as:str = "vertices",
+                        #  algorithm_type:str = "ps",
+                        #  print_progress_interval:int = 2
+                         ) -> pdarray:
     cmd = "motifCounting"
     args = { "MainGraphName":graph.name,
-             "SubGraphName":subgraph.name,
-             "SemanticCheckType": str(semantic_check).lower(),
-             "SizeLimit": str(size_limit).lower(),
+            #  "SubGraphName":subgraph.name,
+            #  "SemanticCheckType": str(semantic_check).lower(),
+            #  "SizeLimit": str(size_limit).lower(),
              "TimeLimit": time_limit,
-             "ReturnIsosAs": return_isos_as,
-             "AlgorithmType": algorithm_type,
-             "PrintProgressInterval": print_progress_interval }
+            #  "ReturnIsosAs": return_isos_as,
+            #  "AlgorithmType": algorithm_type,
+            #  "PrintProgressInterval": print_progress_interval 
+             }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
-    returned_vals = (cast(str, rep_msg).split('+'))
+    # returned_vals = (cast(str, rep_msg).split('+'))
 
-    if return_isos_as == "complete":
-        return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]),
-                create_pdarray(returned_vals[2]), create_pdarray(returned_vals[3]))
+    # if return_isos_as == "complete":
+    #     return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]),
+    #             create_pdarray(returned_vals[2]), create_pdarray(returned_vals[3]))
 
-    if return_isos_as == "edges":
-        return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
+    # if return_isos_as == "edges":
+    #     return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
 
-    return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
+    return (create_pdarray(rep_msg))
 
 @typechecked
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
