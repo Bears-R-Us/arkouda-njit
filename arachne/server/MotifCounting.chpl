@@ -267,6 +267,35 @@ class KavoshState {
 
       return (newAdjMatrix, newMapping);
     }
+    
+    proc encodePatternFromMatrix(adjMatrix: [] int, k: int): uint(64) throws {
+      var pattern: uint(64) = 0;
+      var pos = 0;
+
+      // Same row-major traversal as before
+      for i in 0..#k {
+          for j in 0..#k {
+              // Set bit based on adjacency matrix value
+              if adjMatrix[i * k + j] == 1 {
+                  pattern |= 1:uint(64) << pos;
+              }
+              pos += 1;
+          }
+      }
+
+      if logLevel == LogLevel.DEBUG {
+          writeln("Adjacency Matrix used for encoding:");
+          for i in 0..#k {
+              for j in 0..#k {
+                  write(adjMatrix[i * k + j], " ");
+              }
+              writeln();
+          }
+          writeln("Generated pattern= ", pattern);
+      }
+      
+      return pattern;
+    }
 
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainder = 0 (which means we have chosen k vertices).
@@ -286,7 +315,7 @@ class KavoshState {
         writeln("==========================");
       }
 
-      // Base case: all k vertices chosen
+      // Base case: all k vertices chosen, now we have found a motif
       if remainder == 0 {
         state.subgraphCount += 1;
         if logLevel == LogLevel.DEBUG {
@@ -298,16 +327,22 @@ class KavoshState {
             }
             writeln();
           }
-          writeln("Now we make adjMatrix to pass to Naught");
+          writeln("Now we make adjMatrix to pass to Naugty");
         } 
         var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
-        
+
         // This is the place that we should call nautyCaller from cpp
         // Then we should Classify based on label that naugty will give.
         
         var nautyLabels = [2, 1, 0];  // example Nauty output (0-based)
+        
+        if logLevel == LogLevel.DEBUG {
+          writeln("Nauty returned: ", nautyLabels," we are makeing a new matrix to Classify!");
+        }
         var (newAdjMatrix, newMapping) = createNewAdjMatrix(chosenVerts, nautyLabels, state);
 
+        encodePatternFromMatrix(newAdjMatrix, state.k);
+        
         return;
       }
 
