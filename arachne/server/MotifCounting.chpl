@@ -117,7 +117,7 @@ class KavoshState {
         var inNeighbors = dstRG1[segRG1[parent]..<segRG1[parent+1]];
         neighbours += inNeighbors;
 
-        // Add each neighbor to childSet if it passes criteria
+        // Add each outNeighbor to childSet if it passes criteria
         for neighbor in neighbours {
           // Must be greater than root and not visited
           if neighbor > root && !state.visited[neighbor] {
@@ -149,6 +149,70 @@ class KavoshState {
       }
     }// End of initChildSet
 
+    proc prepareNaugtyArguments(ref state: KavoshState) throws{
+      if logLevel == LogLevel.DEBUG {
+        writeln("===== prepareNaugtyArguments called =====");
+      }
+
+      // Build an array for the chosen vertices in this subgraph
+      var chosenVerts: [1..state.k] int;
+        // subgraph[i, 1..subgraph[i,0]] are chosen at that level
+        // but each level of Kavosh picks a certain number of vertices.
+        // Combine them in order. The total number selected = k.
+        // The order in subgraph is the order of selection.
+        // Each subgraph[i,0] > 0 means we selected some vertices at that level.
+        // Flatten them into chosenVerts in ascending order of level.
+        var idx = 1;
+        for i in 0..<state.k {
+          for x in 1..state.subgraph[i,0] {
+            chosenVerts[idx] = state.subgraph[i,x];
+            idx += 1;
+          }
+        }
+        // Create and initialize adjacency matrix from chosenVerts
+        var adjMatrix: [0..#(state.k * state.k)] int;
+
+        for i in 0..#state.k {
+            for j in 0..#state.k {
+                if i != j {
+                    var u = chosenVerts[i+1]; // +1 because chosenVerts is 1-based
+                    var w = chosenVerts[j+1];
+                    var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                    if eid != -1 {
+                      adjMatrix[i * state.k + j] = 1;
+                    } else{
+                      adjMatrix[i * state.k + j] = 0;
+                    }
+                }
+            }
+        }
+        if logLevel == LogLevel.DEBUG {
+          // Print the mapping
+          writeln("Vertex to Index mapping:");
+          for i in 1..state.k {
+              writeln("Vertex ", chosenVerts[i], " -> Index ", i-1);
+          }
+
+
+          // Print the adjacency matrix as 1D array
+          writeln("\nAdjacency Matrix (1D):");
+          for i in 0..#(state.k * state.k) {
+              write(adjMatrix[i], " ");
+          }
+
+          // Print it in 2D format for better visualization
+          writeln("\nAdjacency Matrix (2D visualization):");
+          for i in 0..#state.k {
+              for j in 0..#state.k {
+                  write(adjMatrix[i * state.k + j], " ");
+              }
+              writeln();
+          }
+          writeln();
+        }
+      return (adjMatrix, chosenVerts);
+    }// End of prepareNaugtyArguments
+
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainder = 0 (which means we have chosen k vertices).
     proc Explore(ref state: KavoshState, root: int, level: int, remainder: int) throws{
@@ -170,27 +234,6 @@ class KavoshState {
       // Base case: all k vertices chosen
       if remainder == 0 {
         state.subgraphCount += 1;
-
-        // Build an array for the chosen vertices in this subgraph
-        var chosenVerts: [1..state.k] int;
-
-        // subgraph[i, 1..subgraph[i,0]] are chosen at that level
-        // but each level of Kavosh picks a certain number of vertices.
-        // Combine them in order. The total number selected = k.
-        // The order in subgraph is the order of selection.
-        // Usually, each subgraph[i,0] > 0 means we selected some vertices at that level.
-        // Flatten them into chosenVerts in ascending order of level.
-        var idx = 1;
-        for i in 0..<state.k {
-          for x in 1..state.subgraph[i,0] {
-            chosenVerts[idx] = state.subgraph[i,x];
-            idx += 1;
-          }
-        }
-        sort(chosenVerts);
-        // Encode the pattern of the found subgraph
-        var pattern = encodePattern(state.k, chosenVerts);
-
         if logLevel == LogLevel.DEBUG {
           writeln("Found complete subgraph #", state.subgraphCount);
           for l in 0..<state.k {
@@ -200,9 +243,15 @@ class KavoshState {
             }
             writeln();
           }
-            writeln("pattern generated: ", pattern);
-
+          writeln("Now we make adjMatrix to pass to Naught");
         } 
+        var (A, B) = prepareNaugtyArguments(state);
+        // This the place that we should call nautyCaller from cpp
+        // Then we should Classify based on label that naugty will give.
+        writeln("A is: ",A);
+        writeln("B is: ",B);
+        
+
         return;
       }
 
@@ -237,6 +286,7 @@ class KavoshState {
           for i in 1..selSize {
             write(state.subgraph[level,i], " ");
           }
+          writeln("we will Recurse with chosen selection");
           writeln();
         }
 
@@ -254,7 +304,7 @@ class KavoshState {
       state.subgraph[level,0] = 0;
     }// End of Explore
 
-    // I read this for implemnting revolving door 
+    // I read this for implementing revolving door 
     // https://encyclopediaofmath.org/wiki/Gray_code#Combinations.2C_partitions.2C_permutations.2C_and_other_objects.
 
     // swapping: Used by revolve-door Gray code generation to swap two elements
@@ -277,7 +327,7 @@ class KavoshState {
       Explore(state, root, level+1, remainder - m);
     }// End of swapping
 
-    // GEN: Part of revolve-door combination Forward Generator 
+    // ForwardGenerator(GEN): Part of revolve-door combination Forward Generator 
     proc ForwardGenerator(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
@@ -302,7 +352,7 @@ class KavoshState {
       }
     }// End of ForwardGenerator
 
-    // reverseGenerator: Another part of revolve-door combination generation logic
+    // reverseGenerator(NEG): Another part of revolve-door combination generation logic
     proc reverseGenerator(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("reverseGenerator called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
