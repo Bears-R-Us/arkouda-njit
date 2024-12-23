@@ -193,13 +193,11 @@ class KavoshState {
               writeln("Vertex ", chosenVerts[i], " -> Index ", i-1);
           }
 
-
           // Print the adjacency matrix as 1D array
           writeln("\nAdjacency Matrix (1D):");
           for i in 0..#(state.k * state.k) {
               write(adjMatrix[i], " ");
           }
-
           // Print it in 2D format for better visualization
           writeln("\nAdjacency Matrix (2D visualization):");
           for i in 0..#state.k {
@@ -212,6 +210,63 @@ class KavoshState {
         }
       return (adjMatrix, chosenVerts);
     }// End of prepareNaugtyArguments
+
+    proc createNewAdjMatrix(chosenVerts: [] int, nautyLabels: [] int, ref state: KavoshState) throws {
+      if logLevel == LogLevel.DEBUG {
+        writeln("===== createNewAdjMatrix called =====");
+        writeln("Original chosenVerts: ", chosenVerts);
+        writeln("Nauty labels: ", nautyLabels);
+      }
+
+      // Create mapping from new position to original vertex
+      var newMapping: [0..#state.k] int;
+      for i in 0..#state.k {
+        // nautyLabels[i] tells us which original position should be at position i
+        // chosenVerts is 1-based, so we add 1 to nautyLabels
+        newMapping[i] = chosenVerts[nautyLabels[i] + 1];
+      }
+
+      // Create and initialize new adjacency matrix based on new mapping
+      var newAdjMatrix: [0..#(state.k * state.k)] int;
+      for i in 0..#state.k {
+        for j in 0..#state.k {
+            if i != j {
+                var u = newMapping[i];
+                var w = newMapping[j];
+                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                if eid != -1 {
+                    newAdjMatrix[i * state.k + j] = 1;
+                } else {
+                    newAdjMatrix[i * state.k + j] = 0;
+                }
+            }
+        }
+      }
+
+      if logLevel == LogLevel.DEBUG {
+        writeln("New vertex mapping:");
+        for i in 0..#state.k {
+            writeln("Position ", i, " -> Vertex ", newMapping[i]);
+        }
+
+        writeln("\nNew Adjacency Matrix (1D):");
+        for i in 0..#(state.k * state.k) {
+            write(newAdjMatrix[i], " ");
+        }
+        writeln();
+
+        writeln("\nNew Adjacency Matrix (2D visualization):");
+        for i in 0..#state.k {
+            for j in 0..#state.k {
+                write(newAdjMatrix[i * state.k + j], " ");
+            }
+            writeln();
+        }
+        writeln();
+      }
+
+      return (newAdjMatrix, newMapping);
+    }
 
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainder = 0 (which means we have chosen k vertices).
@@ -245,12 +300,13 @@ class KavoshState {
           }
           writeln("Now we make adjMatrix to pass to Naught");
         } 
-        var (A, B) = prepareNaugtyArguments(state);
-        // This the place that we should call nautyCaller from cpp
-        // Then we should Classify based on label that naugty will give.
-        writeln("A is: ",A);
-        writeln("B is: ",B);
+        var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
         
+        // This is the place that we should call nautyCaller from cpp
+        // Then we should Classify based on label that naugty will give.
+        
+        var nautyLabels = [2, 1, 0];  // example Nauty output (0-based)
+        var (newAdjMatrix, newMapping) = createNewAdjMatrix(chosenVerts, nautyLabels, state);
 
         return;
       }
