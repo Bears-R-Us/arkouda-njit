@@ -34,7 +34,7 @@ class KavoshState {
     var k: int;
     var maxDeg: int;
 
-    var visited: [0..<n] bool;
+    var visited: domain(int , parSafe=true); // I changed it from (bool of array size n) to domain
 
     // subgraph[level][0] = count; subgraph[level][1..count] = vertices
     var subgraph: [0..<k, 0..maxDeg] int;
@@ -51,7 +51,8 @@ class KavoshState {
       this.n = n;
       this.k = k;
       this.maxDeg = maxDeg;
-      this.visited = false;
+      // this.visited = false;
+      this.visited = {1..0};
       this.subgraph = 0;
       this.childSet = 0;
       this.indexMap = 0;
@@ -59,7 +60,7 @@ class KavoshState {
     }
 
     proc reset() {
-      this.visited = false;
+      // this.visited = false;
       this.subgraph = 0;
       this.childSet = 0;
       this.indexMap = 0;
@@ -119,8 +120,10 @@ class KavoshState {
 
         // Add each outNeighbor to childSet if it passes criteria
         for neighbor in neighbours {
-          // Must be greater than root and not visited
-          if neighbor > root && !state.visited[neighbor] {
+          // Must be greater than root and not visited para
+          // if neighbor > root && !state.visited[neighbor] {
+          if neighbor > root && !state.visited.contains(neighbor) {
+
             // Check for duplicates in current childSet
             var exists = false;
             for j in 1..state.childSet[level,0] {
@@ -133,7 +136,8 @@ class KavoshState {
             if !exists {
               state.childSet[level,0] += 1;
               state.childSet[level, state.childSet[level,0]] = neighbor;
-              state.visited[neighbor] = true;
+              // state.visited[neighbor] = true;
+              state.visited.add(neighbor);
             }
           }
         }
@@ -297,6 +301,39 @@ class KavoshState {
       return pattern;
     }
 
+    // Manual test of nauty Calssifier. We should remove this function
+proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
+    var labels: [0..2] int;
+    
+    if (chosenVerts[1] == 0 && chosenVerts[2] == 2 && chosenVerts[3] == 4) then {
+        labels = [0, 1, 2];
+    }
+    else if (chosenVerts[1] == 0 && chosenVerts[2] == 2 && chosenVerts[3] == 3) then {
+        labels = [0, 2, 1];
+    }
+    else if (chosenVerts[1] == 0 && chosenVerts[2] == 1 && chosenVerts[3] == 2) then {
+        labels = [0, 1, 2];
+    }
+    else if (chosenVerts[1] == 1 && chosenVerts[2] == 2 && chosenVerts[3] == 4) then {
+        labels = [1, 0, 2];
+    }
+    else if (chosenVerts[1] == 1 && chosenVerts[2] == 2 && chosenVerts[3] == 3) then {
+        labels = [2, 1, 0];
+    }
+    else if (chosenVerts[1] == 2 && chosenVerts[2] == 4 && chosenVerts[3] == 3) then {
+        labels = [0, 2, 1];
+    }
+    else {
+        writeln("Error: Unexpected chosenVerts: ", chosenVerts);
+        // Handle error appropriately
+        labels = [ 0, 1, 2 ];  // Example of setting to invalid values
+    }
+    
+    return labels;
+}
+
+
+
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainder = 0 (which means we have chosen k vertices).
     proc Explore(ref state: KavoshState, root: int, level: int, remainder: int) throws{
@@ -334,15 +371,22 @@ class KavoshState {
         // This is the place that we should call nautyCaller from cpp
         // Then we should Classify based on label that naugty will give.
         
-        var nautyLabels = [2, 1, 0];  // example Nauty output (0-based)
+        //var nautyLabels = [2, 1, 0];  // example Nauty output (0-based)
         
+        // Instead of determineNautyLabels() we should call c_nautyClassify();
+        var nautyLabels = determineNautyLabels(chosenVerts);
+                          
         if logLevel == LogLevel.DEBUG {
           writeln("Nauty returned: ", nautyLabels," we are makeing a new matrix to Classify!");
         }
         var (newAdjMatrix, newMapping) = createNewAdjMatrix(chosenVerts, nautyLabels, state);
 
-        encodePatternFromMatrix(newAdjMatrix, state.k);
-        
+        var encodedID = encodePatternFromMatrix(newAdjMatrix, state.k);
+        // Here we have an encodedID which for each class of motifs is unique!
+        // I should decided how I should gather information. It should be something like VF2-PS
+        // 2 things to consider First we have a recursion function, Second we are doing on parallel
+        // So maybe we should change the state class. Do we needed it?
+
         return;
       }
 
@@ -359,7 +403,8 @@ class KavoshState {
           }
           // Unmark visited children before returning
           for i in 1..childCount {
-            state.visited[state.childSet[level,i]] = false;
+            // state.visited[state.childSet[level,i]] = false;
+            state.visited.remove(state.childSet[level,i]);
           }
           return;
         }
@@ -390,7 +435,8 @@ class KavoshState {
 
       // Cleanup: Unmark visited children before going up
       for i in 1..childCount {
-        state.visited[state.childSet[level,i]] = false;
+        // state.visited[state.childSet[level,i]] = false;
+        state.visited.remove(state.childSet[level,i]);
       }
       state.subgraph[level,0] = 0;
     }// End of Explore
@@ -482,11 +528,13 @@ class KavoshState {
 
         state.subgraph[0,0] = 1;
         state.subgraph[0,1] = v;
-        state.visited[v] = true;
+        // state.visited[v] = true;
+        state.visited.add(v);
 
         Explore(state, v, 1, state.k - 1);
 
-        state.visited[v] = false;
+        // state.visited[v] = false;
+        state.visited.remove(v);
       }
 
       if logLevel == LogLevel.DEBUG {
@@ -494,37 +542,7 @@ class KavoshState {
       }
     }// End of Enumerate
 
-    // Encode the pattern of a k-sized subgraph.
-    // subgraphVerts: the vertices chosen for the subgraph.
-    // We assume subgraphVerts are in `state.subgraph[l,x]` arrays.
-    // We'll gather them into a temporary array for convenience.
-    proc encodePattern(k: int, subgraphVerts: [1..k] int): uint(64) throws{
-      var pattern: uint(64) = 0;
-      var pos = 0;
 
-      // We'll consider each pair (i,j) to set pattern bit
-      // Flatten row-major: for i in [1..k], j in [1..k], i,j distinct
-      // If edge from subgraphVerts[i] -> subgraphVerts[j] exists, set bit.
-      for i in 1..k {
-        for j in 1..k {
-          // Usually self-loops are 0 unless you have them. Let's just check edges if i!=j.
-          if i != j {
-            var u = subgraphVerts[i];
-            var w = subgraphVerts[j];
-            var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-            if eid != -1 {
-              pattern |= 1:uint(64) << pos;
-            }
-          }
-          pos += 1;
-        }
-      }
-      if logLevel == LogLevel.DEBUG {
-        writeln("subgraphVerts= ", subgraphVerts);
-        writeln("encodePattern called and pattern= ", pattern);
-      }
-      return pattern;
-    }
 ////////////////////////////////////////////////////////////////////////////////
     // Setup the problem
     var n = nodeMapGraphG1.size;
@@ -539,7 +557,7 @@ class KavoshState {
     var maxDeg = max reduce nodeDegree;
 
     // Instead of a single Enumerate, we now parallelize over each root
-    // Each root runs independently with its own KavoshState.
+    // Each root runs independently with its own Kavosh State.
     var atomicGlobalCount: atomic int; // atomic counter for global subgraph count
     atomicGlobalCount.write(0);
 /*
@@ -550,7 +568,8 @@ class KavoshState {
       // Initialize the root vertex
       localState.subgraph[0,0] = 1;
       localState.subgraph[0,1] = v;
-      localState.visited[v] = true;
+      // localState.visited[v] = true;
+      localState.visited.add(v);
 
       // Explore subgraphs starting from this root
       Explore(localState, v, 1, k - 1);
@@ -563,7 +582,7 @@ class KavoshState {
       // After all tasks complete, we have the total subgraph count
       writeln("\nTotal subgraphs found: ", atomicGlobalCount.read());
     }
-    */
+*/
 
     var state = new KavoshState(n, k, maxDeg);
 
@@ -572,7 +591,7 @@ class KavoshState {
       writeln("Maximum degree: ", maxDeg);
     }
 
-    // Execute enumeration
+    // Execute enumeration for sequentil running
     Enumerate(state);
 
     if logLevel == LogLevel.DEBUG {
