@@ -37,13 +37,13 @@ class KavoshState {
     var visited: domain(int , parSafe=true); // I changed it from (bool of array size n) to domain
 
     // subgraph[level][0] = count; subgraph[level][1..count] = vertices
-    var subgraph: [0..<k, 0..maxDeg] int;
+    var subgraph: [0..<k, 0..<k+1] int;
 
     // childSet[level][0] = count; childSet[level][1..count] = children
-    var childSet: [0..<k, 0..maxDeg] int;
+    var childSet: [0..<k, 0..(maxDeg*k)+1] int;
 
     // indexMap[level][i] maps selection order for revolve-door algorithm
-    var indexMap: [0..<k, 0..maxDeg] int;
+    var indexMap: [0..<k, 0..(maxDeg*k)+1] int;
 
     var subgraphCount: int;
 
@@ -93,7 +93,6 @@ class KavoshState {
     var graphNodeAttributes = g1.getNodeAttributes();
     var graphEdgeAttributes = g1.getEdgeAttributes();
 
-
     // Gathers unique valid neighbors for the current level.
     proc initChildSet(ref state: KavoshState, root: int, level: int) throws{
       if logLevel == LogLevel.DEBUG {
@@ -124,21 +123,21 @@ class KavoshState {
           // if neighbor > root && !state.visited[neighbor] {
           if neighbor > root && !state.visited.contains(neighbor) {
 
-            // Check for duplicates in current childSet
-            var exists = false;
-            for j in 1..state.childSet[level,0] {
-              if state.childSet[level,j] == neighbor {
-                exists = true;
-                break;
-              }
-            }
+            // // Check for duplicates in current childSet
+            // var exists = false;
+            // for j in 1..state.childSet[level,0] {
+            //   if state.childSet[level,j] == neighbor {
+            //     exists = true;
+            //     break;
+            //   }
+            // }
             // If new, add it and mark visited
-            if !exists {
+            // if !exists {
               state.childSet[level,0] += 1;
               state.childSet[level, state.childSet[level,0]] = neighbor;
               // state.visited[neighbor] = true;
               state.visited.add(neighbor);
-            }
+            // }
           }
         }
       }
@@ -197,11 +196,6 @@ class KavoshState {
               writeln("Vertex ", chosenVerts[i], " -> Index ", i-1);
           }
 
-          // Print the adjacency matrix as 1D array
-          writeln("\nAdjacency Matrix (1D):");
-          for i in 0..#(state.k * state.k) {
-              write(adjMatrix[i], " ");
-          }
           // Print it in 2D format for better visualization
           writeln("\nAdjacency Matrix (2D visualization):");
           for i in 0..#state.k {
@@ -215,133 +209,139 @@ class KavoshState {
       return (adjMatrix, chosenVerts);
     }// End of prepareNaugtyArguments
 
-    proc createNewAdjMatrix(chosenVerts: [] int, nautyLabels: [] int, ref state: KavoshState) throws {
-      if logLevel == LogLevel.DEBUG {
-        writeln("===== createNewAdjMatrix called =====");
-        writeln("Original chosenVerts: ", chosenVerts);
-        writeln("Nauty labels: ", nautyLabels);
-      }
+    // proc createNewAdjMatrix(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState) throws {
+    //   if logLevel == LogLevel.DEBUG {
+    //     writeln("===== createNewAdjMatrix called =====");
+    //     writeln("Original chosenVerts: ", chosenVerts);
+    //     writeln("Nauty labels: ", nautyLabels);
+    //   }
 
-      // Create mapping from new position to original vertex
-      var newMapping: [0..#state.k] int;
-      for i in 0..#state.k {
-        // nautyLabels[i] tells us which original position should be at position i
-        // chosenVerts is 1-based, so we add 1 to nautyLabels
-        newMapping[i] = chosenVerts[nautyLabels[i] + 1];
-      }
+    //   // Create mapping from new position to original vertex
+    //   var newMapping: [0..#state.k] int;
+    //   for i in 0..#state.k {
+    //     // nautyLabels[i] tells us which original position should be at position i
+    //     // chosenVerts is 1-based, so we add 1 to nautyLabels
+    //     newMapping[i] = chosenVerts[nautyLabels[i] + 1];
+    //   }
 
-      // Create and initialize new adjacency matrix based on new mapping
-      var newAdjMatrix: [0..#(state.k * state.k)] int;
-      for i in 0..#state.k {
-        for j in 0..#state.k {
-            if i != j {
-                var u = newMapping[i];
-                var w = newMapping[j];
-                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                if eid != -1 {
-                    newAdjMatrix[i * state.k + j] = 1;
-                } else {
-                    newAdjMatrix[i * state.k + j] = 0;
-                }
-            }
+    //   // Create and initialize new adjacency matrix based on new mapping
+    //   var newAdjMatrix: [0..#(state.k * state.k)] int;
+    //   for i in 0..#state.k {
+    //     for j in 0..#state.k {
+    //         if i != j {
+    //             var u = newMapping[i];
+    //             var w = newMapping[j];
+    //             var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+    //             if eid != -1 {
+    //                 newAdjMatrix[i * state.k + j] = 1;
+    //             } else {
+    //                 newAdjMatrix[i * state.k + j] = 0;
+    //             }
+    //         }
+    //     }
+    //   }
+
+    //   if logLevel == LogLevel.DEBUG {
+    //     writeln("New vertex mapping:");
+    //     for i in 0..#state.k {
+    //         writeln("Vertex ", newMapping[i], " -> IndexedTo ", i);
+    //     }
+
+    //     writeln("\nNew Adjacency Matrix (2D visualization):");
+    //     for i in 0..#state.k {
+    //         for j in 0..#state.k {
+    //             write(newAdjMatrix[i * state.k + j], " ");
+    //         }
+    //         writeln();
+    //     }
+    //     writeln();
+    //   }
+
+    //   return (newAdjMatrix, newMapping);
+    // }
+    
+    // proc encodePatternFromMatrix(ref adjMatrix: [] int, ref k: int): uint(64) throws {
+    //   var pattern: uint(64) = 0;
+    //   var pos = 0;
+
+    //   // Same row-major traversal as before
+    //   for i in 0..#k {
+    //       for j in 0..#k {
+    //           // Set bit based on adjacency matrix value
+    //           if adjMatrix[i * k + j] == 1 {
+    //               pattern |= 1:uint(64) << pos;
+    //           }
+    //           pos += 1;
+    //       }
+    //   }
+
+    //   if logLevel == LogLevel.DEBUG {
+    //       writeln("Adjacency Matrix used for encoding:");
+    //       for i in 0..#k {
+    //           for j in 0..#k {
+    //               write(adjMatrix[i * k + j], " ");
+    //           }
+    //           writeln();
+    //       }
+    //       writeln("Generated pattern= ", pattern);
+    //   }
+      
+    //   return pattern;
+    // }
+
+    proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
+        if logLevel == LogLevel.DEBUG {
+            writeln("===== generatePatternDirect called =====");
+            writeln("Original chosenVerts: ", chosenVerts);
+            writeln("Nauty labels: ", nautyLabels);
         }
-      }
 
-      if logLevel == LogLevel.DEBUG {
-        writeln("New vertex mapping:");
-        for i in 0..#state.k {
-            writeln("Position ", i, " -> Vertex ", newMapping[i]);
-        }
+        var pattern: uint(64) = 0;
+        var pos = 0;
 
-        writeln("\nNew Adjacency Matrix (1D):");
-        for i in 0..#(state.k * state.k) {
-            write(newAdjMatrix[i], " ");
-        }
-        writeln();
-
-        writeln("\nNew Adjacency Matrix (2D visualization):");
+        // Generate pattern directly from vertex pairs
         for i in 0..#state.k {
             for j in 0..#state.k {
-                write(newAdjMatrix[i * state.k + j], " ");
+                if i != j {
+                    // Get vertices based on nauty labels
+                    var u = chosenVerts[nautyLabels[i] + 1];
+                    var w = chosenVerts[nautyLabels[j] + 1];
+                    
+                    // Check for edge and set bit
+                    var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                    if eid != -1 {
+                        pattern |= 1:uint(64) << pos;
+                    }
+                }
+                pos += 1; // Increment position even when i == j to maintain ordering
+            }
+        }
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Generated pattern= ", pattern);
+            // For debugging, show what the equivalent adjacency matrix would look like
+            writeln("\nEquivalent Adjacency Matrix (2D visualization):");
+            for i in 0..#state.k {
+                for j in 0..#state.k {
+                    var bitPos = i * state.k + j;
+                    write(if (pattern & (1:uint(64) << bitPos)) != 0 then 1 else 0, " ");
+                }
+                writeln();
             }
             writeln();
         }
-        writeln();
-      }
-
-      return (newAdjMatrix, newMapping);
-    }
-    
-    proc encodePatternFromMatrix(adjMatrix: [] int, k: int): uint(64) throws {
-      var pattern: uint(64) = 0;
-      var pos = 0;
-
-      // Same row-major traversal as before
-      for i in 0..#k {
-          for j in 0..#k {
-              // Set bit based on adjacency matrix value
-              if adjMatrix[i * k + j] == 1 {
-                  pattern |= 1:uint(64) << pos;
-              }
-              pos += 1;
-          }
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("Adjacency Matrix used for encoding:");
-          for i in 0..#k {
-              for j in 0..#k {
-                  write(adjMatrix[i * k + j], " ");
-              }
-              writeln();
-          }
-          writeln("Generated pattern= ", pattern);
-      }
-      
-      return pattern;
-    }
-
-    // Manual test of nauty Calssifier. We should remove this function
-proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
-    var labels: [0..2] int;
-    
-    if (chosenVerts[1] == 0 && chosenVerts[2] == 2 && chosenVerts[3] == 4) then {
-        labels = [0, 1, 2];
-    }
-    else if (chosenVerts[1] == 0 && chosenVerts[2] == 2 && chosenVerts[3] == 3) then {
-        labels = [0, 2, 1];
-    }
-    else if (chosenVerts[1] == 0 && chosenVerts[2] == 1 && chosenVerts[3] == 2) then {
-        labels = [0, 1, 2];
-    }
-    else if (chosenVerts[1] == 1 && chosenVerts[2] == 2 && chosenVerts[3] == 4) then {
-        labels = [1, 0, 2];
-    }
-    else if (chosenVerts[1] == 1 && chosenVerts[2] == 2 && chosenVerts[3] == 3) then {
-        labels = [2, 1, 0];
-    }
-    else if (chosenVerts[1] == 2 && chosenVerts[2] == 4 && chosenVerts[3] == 3) then {
-        labels = [0, 2, 1];
-    }
-    else {
-        writeln("Error: Unexpected chosenVerts: ", chosenVerts);
-        // Handle error appropriately
-        labels = [ 0, 1, 2 ];  // Example of setting to invalid values
-    }
-    
-    return labels;
-}
-
-
+        
+        return pattern;
+    }// End of generatePatternDirect
 
     // Explores subgraphs containing the root vertex,
-    // expanding level by level until remainder = 0 (which means we have chosen k vertices).
-    proc Explore(ref state: KavoshState, root: int, level: int, remainder: int) throws{
+    // expanding level by level until remainedToVisit = 0 (which means we have chosen k vertices).
+    proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("===== Explore called =====");
-        writeln("Current root: ", root, " level: ", level, " remainder: ", remainder);
-        writeln("Visited Array: ", state.visited);
-        writeln("Current partial subgraph:");
+        writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
+        writeln("Visited Vertices: ", state.visited);
+        writeln("Current partial subgraph level by level:");
         for l in 0..<level {
           write("Level ", l, " (count=", state.subgraph[l,0], "): ");
           for x in 1..state.subgraph[l,0] {
@@ -353,7 +353,7 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
       }
 
       // Base case: all k vertices chosen, now we have found a motif
-      if remainder == 0 {
+      if remainedToVisit == 0 {
         state.subgraphCount += 1;
         if logLevel == LogLevel.DEBUG {
           writeln("Found complete subgraph #", state.subgraphCount);
@@ -368,20 +368,32 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
         } 
         var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
 
-        // This is the place that we should call nautyCaller from cpp
-        // Then we should Classify based on label that naugty will give.
+        // Oliver: This is the place that we should call nautyCaller from cpp. Based on
+        // cuurent implenetation we should pass:
+        // void nautyClassify(
+        // int* subgraph,        // Adjacency matrix as flat array
+        // int subgraphSize,     // Number of nodes
+        // int* results,         // Output canonical labeling. 0-indexed
+        // int performCheck      // Flag to perform nauty_check (1 to perform, 0 to skip)
+        // )
+
         
-        //var nautyLabels = [2, 1, 0];  // example Nauty output (0-based)
-        
-        // Instead of determineNautyLabels() we should call c_nautyClassify();
-        var nautyLabels = determineNautyLabels(chosenVerts);
+        // For test purpose suppose k=3 and naugty returned this
+        var results:[0..<state.k] int = [0, 2, 1];
+
+        var nautyLabels = results;
                           
         if logLevel == LogLevel.DEBUG {
           writeln("Nauty returned: ", nautyLabels," we are makeing a new matrix to Classify!");
         }
-        var (newAdjMatrix, newMapping) = createNewAdjMatrix(chosenVerts, nautyLabels, state);
 
-        var encodedID = encodePatternFromMatrix(newAdjMatrix, state.k);
+        // Then we should Classify based on label that naugty will give.
+        var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
+        // assert(encodedID == pattern, 
+        //                             "\nPattern mismatch!\n" +
+        //                             "encodedID = " + encodedID:string + ")\n" +
+        //                             "pattern   = " + pattern:string + ")");
+ 
         // Here we have an encodedID which for each class of motifs is unique!
         // I should decided how I should gather information. It should be something like VF2-PS
         // 2 things to consider First we have a recursion function, Second we are doing on parallel
@@ -394,8 +406,8 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
       initChildSet(state, root, level);
       const childCount = state.childSet[level,0];
 
-      // Try all possible selection sizes at this level, from 1 to remainder
-      for selSize in 1..remainder {
+      // Try all possible selection sizes at this level, from 1 to remainedToVisit
+      for selSize in 1..remainedToVisit {
         if childCount < selSize {
           // Not enough children to form this selection
           if logLevel == LogLevel.DEBUG {
@@ -427,10 +439,10 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
         }
 
         // Recurse with chosen selection
-        Explore(state, root, level+1, remainder - selSize);
+        Explore(state, root, level+1, remainedToVisit - selSize);
 
         // Generate other combinations using revolve-door algorithm
-        ForwardGenerator(childCount, selSize, root, level, remainder, selSize, state);
+        ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
       }
 
       // Cleanup: Unmark visited children before going up
@@ -446,7 +458,7 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
 
     // swapping: Used by revolve-door Gray code generation to swap two elements
     // and then immediately Explore with the new combination.
-    proc swapping(i: int, j: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
+    proc swapping(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
         writeln("swapping called: swapping indices ", i, " and ", j, " at level ", level);
         writeln("Before swapping: indexMap[level,i] = ", state.indexMap[level,i], 
@@ -461,56 +473,56 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
         writeln("Now calling Explore after swapping");
       }
 
-      Explore(state, root, level+1, remainder - m);
+      Explore(state, root, level+1, remainedToVisit - m);
     }// End of swapping
 
     // ForwardGenerator(GEN): Part of revolve-door combination Forward Generator 
-    proc ForwardGenerator(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
+    proc ForwardGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-        writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
+        writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, " remainedToVisit=", remainedToVisit, " m=", m);
       }
 
       if k > 0 && k < n {
-        ForwardGenerator(n-1, k, root, level, remainder, m, state);
+        ForwardGenerator(n-1, k, root, level, remainedToVisit, m, state);
 
         if k == 1 {
           if logLevel == LogLevel.DEBUG {
             writeln("ForwardGenerator: k=1 case, calling swapping(n, n-1) => swapping(", n, ", ", n-1, ")");
           }
-          swapping(n, n-1, root, level, remainder, m, state);
+          swapping(n, n-1, root, level, remainedToVisit, m, state);
         } else {
           if logLevel == LogLevel.DEBUG {
             writeln("GEN: k>1 case, calling swapping(n, k-1) => swapping(", n, ", ", k-1, ")");
           }
-          swapping(n, k-1, root, level, remainder, m, state);
+          swapping(n, k-1, root, level, remainedToVisit, m, state);
         }
 
-        reverseGenerator(n-1, k-1, root, level, remainder, m, state);
+        reverseGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
       }
     }// End of ForwardGenerator
 
     // reverseGenerator(NEG): Another part of revolve-door combination generation logic
-    proc reverseGenerator(n: int, k: int, root: int, level: int, remainder: int, m: int, ref state: KavoshState) throws{
+    proc reverseGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-        writeln("reverseGenerator called with n=", n, " k=", k, " level=", level, " remainder=", remainder, " m=", m);
+        writeln("reverseGenerator called with n=", n, " k=", k, " level=", level, " remainedToVisit=", remainedToVisit, " m=", m);
       }
 
       if k > 0 && k < n {
-        ForwardGenerator(n-1, k-1, root, level, remainder, m, state);
+        ForwardGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
 
         if k == 1 {
           if logLevel == LogLevel.DEBUG {
             writeln("reverseGenerator: k=1 case, calling swapping(n-1, n) => swapping(", n-1, ", ", n, ")");
           }
-          swapping(n-1, n, root, level, remainder, m, state);
+          swapping(n-1, n, root, level, remainedToVisit, m, state);
         } else {
           if logLevel == LogLevel.DEBUG {
             writeln("reverseGenerator: k>1 case, calling swapping(k-1, n) => swapping(", k-1, ", ", n, ")");
           }
-          swapping(k-1, n, root, level, remainder, m, state);
+          swapping(k-1, n, root, level, remainedToVisit, m, state);
         }
 
-        reverseGenerator(n-1, k, root, level, remainder, m, state);
+        reverseGenerator(n-1, k, root, level, remainedToVisit, m, state);
       }
     }// End of reverseGenerator
 
@@ -555,7 +567,7 @@ proc determineNautyLabels(chosenVerts: [] int): [0..2] int {
       nodeDegree[v] = Tin.size + Tout.size;
     }
     var maxDeg = max reduce nodeDegree;
-
+  
     // Instead of a single Enumerate, we now parallelize over each root
     // Each root runs independently with its own Kavosh State.
     var atomicGlobalCount: atomic int; // atomic counter for global subgraph count
