@@ -45,7 +45,7 @@ class KavoshState {
     // indexMap[level][i] maps selection order for revolve-door algorithm
     var indexMap: [0..<k, 0..(maxDeg*k)+1] int;
 
-    var subgraphCount: int;
+    // var subgraphCount: int;
 
     proc init(n: int, k: int, maxDeg: int) {
       this.n = n;
@@ -56,7 +56,7 @@ class KavoshState {
       this.subgraph = 0;
       this.childSet = 0;
       this.indexMap = 0;
-      this.subgraphCount = 0;
+      // this.subgraphCount = 0;
     }
 
     proc reset() {
@@ -64,13 +64,15 @@ class KavoshState {
       this.subgraph = 0;
       this.childSet = 0;
       this.indexMap = 0;
-      this.subgraphCount = 0;
+      // this.subgraphCount = 0;
     }
   }// End of KavoshState
 
 
-  proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
-              sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
+  // proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
+  proc runMotifCounting(g1: SegGraph,  
+              // sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
+               motifSize: int, in printProgressInterval: int,
               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
     var numIso: int = 0;
 
@@ -93,7 +95,13 @@ class KavoshState {
     var graphNodeAttributes = g1.getNodeAttributes();
     var graphEdgeAttributes = g1.getEdgeAttributes();
 
-    var allmotifs: list(uint(64), parSafe=true);
+    // All motif counting and classify variables
+    // var allmotifs: list(uint(64), parSafe=true);
+    var motifClasses: set(uint(64), parSafe=true);
+    // Initiate it to 0
+    var allMotifCounts: atomic int;
+    
+    allMotifCounts.write(0);
 
     // Gathers unique valid neighbors for the current level.
     proc initChildSet(ref state: KavoshState, root: int, level: int) throws{
@@ -357,9 +365,10 @@ class KavoshState {
 
       // Base case: all k vertices chosen, now we have found a motif
       if remainedToVisit == 0 {
-        state.subgraphCount += 1;
+        // state.subgraphCount += 1;
         if logLevel == LogLevel.DEBUG {
-          writeln("Found complete subgraph #", state.subgraphCount);
+          // writeln("Found complete subgraph #", state.subgraphCount);
+          writeln("Found complete subgraph #", allMotifCounts.read());
           for l in 0..<state.k {
             write("Level ", l, ": ");
             for x in 1..state.subgraph[l,0] {
@@ -381,13 +390,13 @@ class KavoshState {
         // )
 
         
-        // For test purpose suppose k=3 and naugty returned this
-        var results:[0..<state.k] int = [0, 2, 1];
+        // For test purpose assume naugty returned this
+        var results:[0..<state.k] int = 0..<state.k;
 
         var nautyLabels = results;
                           
         if logLevel == LogLevel.DEBUG {
-          writeln("Nauty returned: ", nautyLabels," we are makeing a new matrix to Classify!");
+          writeln("Nauty returned: ", nautyLabels," we are in the way to Classify!");
         }
 
         // Then we should Classify based on label that naugty will give.
@@ -402,7 +411,10 @@ class KavoshState {
         // 2 things to consider First we have a recursion function, Second we are doing on parallel
         // So maybe we should change the state class. Do we needed it?
 
-        allmotifs.pushBack(pattern);
+        // allmotifs.pushBack(pattern);
+        motifClasses.add(pattern);
+        allMotifCounts.add(1);
+
         return;
       }
 
@@ -557,12 +569,89 @@ class KavoshState {
         writeln("Enumerate: finished enumeration over all vertices");
       }
     }// End of Enumerate
+//////////////////////////////Oliver: in case you needed!///////////////////////////////////////////////////
+//////////////////////////////Check it, I didn't check it as other functions
+///////////////////////////////////////////////////
+proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== patternToAdjMatrixAndEdges called =====");
+        writeln("Input pattern: ", pattern);
+        writeln("k value: ", k);
+    }
 
+    var adjMatrix: [0..#(k * k)] int = 0;
+    var edgeCount = 0;
+    
+    // First pass to count edges
+    for i in 0..#k {
+        for j in 0..#k {
+            var bitPos = i * k + j;
+            if (pattern & (1:uint(64) << bitPos)) != 0 {
+                adjMatrix[i * k + j] = 1;
+                edgeCount += 1;
+            }
+        }
+    }
 
+    // Create arrays for edges
+    var srcNodes: [0..#edgeCount] int;
+    var dstNodes: [0..#edgeCount] int;
+    var edgeIdx = 0;
+
+    // Second pass to populate edge arrays
+    for i in 0..#k {
+        for j in 0..#k {
+            if adjMatrix[i * k + j] == 1 {
+                srcNodes[edgeIdx] = i;
+                dstNodes[edgeIdx] = j;
+                edgeIdx += 1;
+            }
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nReconstructed Adjacency Matrix (2D visualization):");
+        for i in 0..#k {
+            for j in 0..#k {
+                write(adjMatrix[i * k + j], " ");
+            }
+            writeln();
+        }
+
+        writeln("\nEdge List:");
+        for i in 0..#edgeCount {
+            writeln(srcNodes[i], " -> ", dstNodes[i]);
+        }
+
+        // Verify by converting back
+        var verifyPattern: uint(64) = 0;
+        var pos = 0;
+        for i in 0..#k {
+            for j in 0..#k {
+                if adjMatrix[i * k + j] == 1 {
+                    verifyPattern |= 1:uint(64) << pos;
+                }
+                pos += 1;
+            }
+        }
+        writeln("\nVerification - pattern from reconstructed matrix: ", verifyPattern);
+        writeln("Original pattern: ", pattern);
+        writeln("Patterns match: ", verifyPattern == pattern);
+        writeln();
+    }
+
+    return (adjMatrix, srcNodes, dstNodes);
+}
+
+/* Example usage:
+var pattern: uint(64) = 123456;  // some pattern
+var k = 3;  // size of matrix
+var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, k);
+*/
 ////////////////////////////////////////////////////////////////////////////////
     // Setup the problem
     var n = nodeMapGraphG1.size;
-    var k = 3; // Looking for motifs of size 3
+    var k = motifSize; // Looking for motifs of size motifSize
     var nodeDegree: [0..<n] int;
 
     forall v in 0..<n with (ref nodeDegree) {
@@ -611,18 +700,25 @@ class KavoshState {
     Enumerate(state);
 
     if logLevel == LogLevel.DEBUG {
-      writeln("\nTotal motif found: ", state.subgraphCount);
-      writeln("\nallmotifs: ", allmotifs);
-      writeln("\nallmotifs.size: ", allmotifs.size);
+      // writeln("\nTotal motif found: ", state.subgraphCount);
+      // writeln("\nallmotifs: ", allmotifs);
+      // writeln("\nallmotifs.size: ", allmotifs.size);
       writeln();
     }
-    writeln("\nallmotifs.size: ", allmotifs.size);
+    // writeln("\nallmotifs List size: ", allmotifs.size);
+    writeln("\nNumber of found motif Classes: ", motifClasses.size);
+    // To read the final count:
+    writeln("\nallMotifCounts: ", allMotifCounts.read());
 
+
+    // Oliver: Now you can make your src and dst based on Classes that I gathered in 
+    // motifClasses and return them to users 
+    // we should decide to keep or delete (allmotifs list)
 
     var tempArr: [0..0] int;
-    var srcPerIso = makeDistArray(2*2, int);
-    var dstPerIso = makeDistArray(2*2, int);
-    return (srcPerIso, dstPerIso, tempArr, tempArr);
+    var srcPerMotif = makeDistArray(2*2, int);
+    var dstPerMotif = makeDistArray(2*2, int);
+    return (srcPerMotif, dstPerMotif, tempArr, tempArr);
   }// End of runMotifCounting
 
 }// End of MotifCounting Module

@@ -427,19 +427,20 @@ def diameter(graph: Graph) -> int:
     return int(repMsg)
 
 @typechecked
-def motif_counting(graph: PropGraph, subgraph: PropGraph,
-                         semantic_check:str = None,
-                         size_limit:int = None,
-                         time_limit:int = 30,
+def motif_counting(graph: PropGraph, 
+                #    subgraph: PropGraph,
+                        #  semantic_check:str = None,
+                        #  size_limit:int = None,
+                         motif_size:int,
                          return_isos_as:str = "vertices",
                          algorithm_type:str = "ps",
                          print_progress_interval:int = 2) -> Union[pdarray,Tuple]:
     cmd = "motifCounting"
     args = { "MainGraphName":graph.name,
-             "SubGraphName":subgraph.name,
-             "SemanticCheckType": str(semantic_check).lower(),
-             "SizeLimit": str(size_limit).lower(),
-             "TimeLimit": time_limit,
+            #  "SubGraphName":subgraph.name,
+            #  "SemanticCheckType": str(semantic_check).lower(),
+            #  "SizeLimit": str(size_limit).lower(),
+             "MotifSize": motif_size,
              "ReturnIsosAs": return_isos_as,
              "AlgorithmType": algorithm_type,
              "PrintProgressInterval": print_progress_interval }

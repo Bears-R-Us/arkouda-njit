@@ -43,10 +43,10 @@ module MotifCountingMsg {
 
     // Extract messages sent from Python.
     var graphEntryName = msgArgs.getValueOf("MainGraphName");
-    var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
-    var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
-    var sizeLimit = msgArgs.getValueOf("SizeLimit");
-    var timeLimit = msgArgs.getValueOf("TimeLimit"):int;
+    // var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
+    // var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
+    // var sizeLimit = msgArgs.getValueOf("SizeLimit");
+    var motifSize = msgArgs.getValueOf("MotifSize"):int;
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
     var algorithmType = msgArgs.getValueOf("AlgorithmType");
     var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
@@ -56,8 +56,8 @@ module MotifCountingMsg {
     var g = gEntry.graph;
 
     // Pull out our subgraph from the symbol table.
-    var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
-    var h = hEntry.graph;
+    // var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
+    // var h = hEntry.graph;
 
     // Execute sequential VF2 subgraph isomorphism.
     var timer:stopwatch;
@@ -69,7 +69,8 @@ module MotifCountingMsg {
       }
 
       timer.start();
-      var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
+      // var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
+      var isos = runMotifCounting(g,motifSize,
                         printProgressInterval,algorithmType,returnIsosAs,st);
       timer.stop();
       outMsg = "Kavosh%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
