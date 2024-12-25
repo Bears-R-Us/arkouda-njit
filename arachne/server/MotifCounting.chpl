@@ -93,6 +93,8 @@ class KavoshState {
     var graphNodeAttributes = g1.getNodeAttributes();
     var graphEdgeAttributes = g1.getEdgeAttributes();
 
+    var allmotifs: list(uint(64), parSafe=true);
+
     // Gathers unique valid neighbors for the current level.
     proc initChildSet(ref state: KavoshState, root: int, level: int) throws{
       if logLevel == LogLevel.DEBUG {
@@ -173,9 +175,9 @@ class KavoshState {
           }
         }
         // Create and initialize adjacency matrix from chosenVerts
-        var adjMatrix: [0..#(state.k * state.k)] int;
+        var adjMatrix: [0..#(state.k * state.k)] int = 0;
 
-        for i in 0..#state.k {
+        forall i in 0..#state.k with (ref adjMatrix) {
             for j in 0..#state.k {
                 if i != j {
                     var u = chosenVerts[i+1]; // +1 because chosenVerts is 1-based
@@ -183,12 +185,14 @@ class KavoshState {
                     var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
                     if eid != -1 {
                       adjMatrix[i * state.k + j] = 1;
-                    } else{
-                      adjMatrix[i * state.k + j] = 0;
                     }
+                    // } else{
+                    //   adjMatrix[i * state.k + j] = 0;
+                    // }
                 }
-            }
-        }
+             }
+         }
+  
         if logLevel == LogLevel.DEBUG {
           // Print the mapping
           writeln("Vertex to Index mapping:");
@@ -330,8 +334,7 @@ class KavoshState {
             }
             writeln();
         }
-        
-        return pattern;
+      return pattern;
     }// End of generatePatternDirect
 
     // Explores subgraphs containing the root vertex,
@@ -374,7 +377,7 @@ class KavoshState {
         // int* subgraph,        // Adjacency matrix as flat array
         // int subgraphSize,     // Number of nodes
         // int* results,         // Output canonical labeling. 0-indexed
-        // int performCheck      // Flag to perform nauty_check (1 to perform, 0 to skip)
+        // int performCheck      // Flag to perform nauty_check (1 to perform, else to skip)
         // )
 
         
@@ -399,6 +402,7 @@ class KavoshState {
         // 2 things to consider First we have a recursion function, Second we are doing on parallel
         // So maybe we should change the state class. Do we needed it?
 
+        allmotifs.pushBack(pattern);
         return;
       }
 
@@ -608,8 +612,12 @@ class KavoshState {
 
     if logLevel == LogLevel.DEBUG {
       writeln("\nTotal motif found: ", state.subgraphCount);
+      writeln("\nallmotifs: ", allmotifs);
+      writeln("\nallmotifs.size: ", allmotifs.size);
       writeln();
     }
+    writeln("\nallmotifs.size: ", allmotifs.size);
+
 
     var tempArr: [0..0] int;
     var srcPerIso = makeDistArray(2*2, int);
