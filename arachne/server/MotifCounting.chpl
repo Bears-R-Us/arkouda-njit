@@ -563,14 +563,46 @@ class KavoshState {
 
         // state.visited[v] = false;
         state.visited.remove(v);
+        writeln("--------------------------------");
+        writeln("we removed v= ",v," from state. lets look at state:");
+        writeln("state is:", state);
+        writeln("--------------------------------");
+
       }
 
       if logLevel == LogLevel.DEBUG {
         writeln("Enumerate: finished enumeration over all vertices");
       }
     }// End of Enumerate
+    
+    // Instead of a single Enumerate, we now parallelize over each root
+    // Each root runs independently with its own Kavosh State.
+    proc EnumerateParallel(n: int, k: int, maxDeg: int) throws{
+      if logLevel == LogLevel.DEBUG {
+        writeln("EnumerateParallel: starting enumeration over all vertices");
+      }
+  
+      coforall v in 0..<n {
+        // Create a local state for this root
+        var localState = new KavoshState(n, k, maxDeg);
+
+        // Initialize the root vertex
+        localState.subgraph[0,0] = 1;
+        localState.subgraph[0,1] = v;
+        // localState.visited[v] = true;
+        localState.visited.add(v);
+
+        // Explore subgraphs starting from this root
+        Explore(localState, v, 1, k - 1);
+
+      }
+
+      if logLevel == LogLevel.DEBUG {
+        writeln("EnumerateParallel: finished enumeration over all vertices");
+      }
+    }// End of EnumerateParallel
 //////////////////////////////Oliver: in case you needed!///////////////////////////////////////////////////
-//////////////////////////////Check it, I didn't check it as other functions
+//////////////////////////////Check it, I didn't check it as much as other functions
 ///////////////////////////////////////////////////
 proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
     if logLevel == LogLevel.DEBUG {
@@ -647,6 +679,8 @@ proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
 var pattern: uint(64) = 123456;  // some pattern
 var k = 3;  // size of matrix
 var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, k);
+Also we can make it to accept set of classes then srcNodes and dstNodes will be for all classes and each class
+seperated by a -1, So Harvard team can use it for cisualization purpose
 */
 ////////////////////////////////////////////////////////////////////////////////
     // Setup the problem
@@ -661,43 +695,18 @@ var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, k);
     }
     var maxDeg = max reduce nodeDegree;
   
-    // Instead of a single Enumerate, we now parallelize over each root
-    // Each root runs independently with its own Kavosh State.
-    var atomicGlobalCount: atomic int; // atomic counter for global subgraph count
-    atomicGlobalCount.write(0);
-/*
-    coforall v in 0..<n with(ref atomicGlobalCount) {
-      // Create a local state for this root
-      var localState = new KavoshState(n, k, maxDeg);
 
-      // Initialize the root vertex
-      localState.subgraph[0,0] = 1;
-      localState.subgraph[0,1] = v;
-      // localState.visited[v] = true;
-      localState.visited.add(v);
-
-      // Explore subgraphs starting from this root
-      Explore(localState, v, 1, k - 1);
-
-      // Add local count to global
-      atomicGlobalCount.add(localState.subgraphCount);
-    }
-
-    if logLevel == LogLevel.DEBUG {
-      // After all tasks complete, we have the total subgraph count
-      writeln("\nTotal subgraphs found: ", atomicGlobalCount.read());
-    }
-*/
-
-    var state = new KavoshState(n, k, maxDeg);
 
     if logLevel == LogLevel.DEBUG {
       writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
       writeln("Maximum degree: ", maxDeg);
     }
 
+    var state = new KavoshState(n, k, maxDeg);
     // Execute enumeration for sequentil running
-    Enumerate(state);
+    //Enumerate(state);
+
+    EnumerateParallel(n, k, maxDeg);
 
     if logLevel == LogLevel.DEBUG {
       // writeln("\nTotal motif found: ", state.subgraphCount);
