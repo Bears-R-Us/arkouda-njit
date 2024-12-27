@@ -638,11 +638,22 @@ Also we can make it to accept set of classes then srcNodes and dstNodes will be 
 seperated by a -1, So Harvard team can use it for cisualization purpose
 */
 ////////////////////////////////////////////////////////////////////////////////
+    proc createTaskRanges(r: range, numTasks: int) {
+        const totalSize = r.size;
+        const chunkSize = (totalSize + numTasks - 1) / numTasks;
+        var ranges: [0..#numTasks] range;
+        
+        for i in 0..#numTasks {
+            const start = r.low + i * chunkSize;
+            const end = min(start + chunkSize, r.high + 1);
+            if start < end {
+                ranges[i] = start..#(end - start);
+            }
+        }
+        
+        return ranges;
+    }
 
-    // Execute enumeration for sequentil running
-    //Enumerate(state);
-
-    // EnumerateParallel(n, k, maxDeg);
     // Enumerate: Iterates over all vertices as potential roots
     // and calls Explore to find all subgraphs of size k containing that root.
     proc Enumerate(n: int, k: int, maxDeg: int) throws{
@@ -651,28 +662,45 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
         writeln("Enumerate: starting enumeration over all vertices");
       }
 
-      coforall v in 0..<n with (ref globalClasses, ref globalMotifCount){
-        if logLevel == LogLevel.DEBUG {
-          writeln("Root = ", v, " (", v+1, "/", n, ")");
-        }
+      // Determine chunk size based on available parallelism
+      const numTasks = here.maxTaskPar;
+      var ranges = createTaskRanges(0..<n, numTasks);
 
-        var state = new KavoshState(n, k, maxDeg);
+      // forall v in 0..<n with (ref globalClasses, ref globalMotifCount){
+      //   if logLevel == LogLevel.DEBUG {
+      //     writeln("Root = ", v, " (", v+1, "/", n, ")");
+      //   }
 
-        state.subgraph[0,0] = 1;
-        state.subgraph[0,1] = v;
-        state.visited.add(v);
+      //   var state = new KavoshState(n, k, maxDeg);
 
-        Explore(state, v, 1, state.k - 1);
-        if logLevel == LogLevel.DEBUG {
-          writeln("Total Number of motifs: ", state.localsubgraphCount);
-          writeln("Number of Non-isomorphic Classes: ", state.localmotifClasses);
-          writeln();
-        }
-        globalMotifCount.add(state.localsubgraphCount);
-        //globalClasses += state.localmotifClasses;
+      //   state.subgraph[0,0] = 1;
+      //   state.subgraph[0,1] = v;
+      //   state.visited.clear();  // Just clear visited for next vertex
+      //   state.visited.add(v);
 
+      //   Explore(state, v, 1, state.k - 1);
+      //   if logLevel == LogLevel.DEBUG {
+      //     writeln("Total Number of motifs: ", state.localsubgraphCount);
+      //     writeln("Number of Non-isomorphic Classes: ", state.localmotifClasses);
+      //     writeln();
+      //   }
+      //   globalMotifCount.add(state.localsubgraphCount);
+      //   //globalClasses += state.localmotifClasses;
+
+      // }
+      // Process vertices in chunks
+      forall r in ranges with (ref globalClasses, ref globalMotifCount) {
+          var state = new KavoshState(n, k, maxDeg);  // One state per chunk
+          for v in r {  // Process vertices in this chunk with same state
+              state.subgraph[0,0] = 1;
+              state.subgraph[0,1] = v;
+              state.visited.clear();  // Just clear visited for next vertex
+              state.visited.add(v);
+              
+              Explore(state, v, 1, k - 1);
+              globalMotifCount.add(state.localsubgraphCount);
+          }
       }
-
       if logLevel == LogLevel.DEBUG {
         writeln("Enumerate: finished enumeration over all vertices");
       }
