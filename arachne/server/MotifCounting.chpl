@@ -30,6 +30,7 @@ module MotifCounting {
 
 
 class KavoshState {
+
     var n: int;
     var k: int;
     var maxDeg: int;
@@ -60,13 +61,6 @@ class KavoshState {
       this.localsubgraphCount = 0;
     }
 
-    proc reset() {
-      // this.visited = false;
-      this.subgraph = 0;
-      this.childSet = 0;
-      this.indexMap = 0;
-      this.localsubgraphCount = 0;
-    }
   }// End of KavoshState
 
 
@@ -102,13 +96,23 @@ class KavoshState {
     var n = nodeMapGraphG1.size;
     var k = motifSize; // Looking for motifs of size motifSize
     var nodeDegree: [0..<n] int;
+    var nodeNeighbours: [0..<n] domain(int);
 
     forall v in 0..<n with (ref nodeDegree) {
-      var NeiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
-      var NeiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-      nodeDegree[v] = NeiIn.size + NeiOut.size;
+      var neighbours: domain(int);
+
+      const NeiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
+      const NeiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+      neighbours += NeiIn;
+      neighbours += NeiOut;
+
+      nodeDegree[v] = neighbours.size;
+      // Collect all neighbors (both in and out) in a domain
+      nodeNeighbours[v] = neighbours;
     }
     var maxDeg = max reduce nodeDegree;
+
 
     // All motif counting and classify variables
     var globalMotifCount: atomic int;
@@ -128,39 +132,12 @@ class KavoshState {
       // For each vertex chosen at the previous level, get its neighbors
       for p in 1..parentsCount {
         const parent = state.subgraph[level-1,p];
+        for neighbor in nodeNeighbours[parent] {
 
-        // Collect all neighbors (both in and out) in a domain to ensure uniqueness
-        var neighbours: domain(int, parSafe=false);
-
-        // Outgoing neighbors
-        var outNeighbors = dstNodesG1[segGraphG1[parent]..<segGraphG1[parent+1]];
-        neighbours += outNeighbors;
-
-        // Incoming neighbors
-        var inNeighbors = dstRG1[segRG1[parent]..<segRG1[parent+1]];
-        neighbours += inNeighbors;
-
-        // Add each outNeighbor to childSet if it passes criteria
-        for neighbor in neighbours {
-          // Must be greater than root and not visited para
-          // if neighbor > root && !state.visited[neighbor] {
           if neighbor > root && !state.visited.contains(neighbor) {
-
-            // // Check for duplicates in current childSet
-            // var exists = false;
-            // for j in 1..state.childSet[level,0] {
-            //   if state.childSet[level,j] == neighbor {
-            //     exists = true;
-            //     break;
-            //   }
-            // }
-            // If new, add it and mark visited
-            // if !exists {
-              state.childSet[level,0] += 1;
+            state.childSet[level,0] += 1;
               state.childSet[level, state.childSet[level,0]] = neighbor;
-              // state.visited[neighbor] = true;
               state.visited.add(neighbor);
-            // }
           }
         }
       }
@@ -233,86 +210,6 @@ class KavoshState {
         }
       return (adjMatrix, chosenVerts);
     }// End of prepareNaugtyArguments
-
-    // proc createNewAdjMatrix(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState) throws {
-    //   if logLevel == LogLevel.DEBUG {
-    //     writeln("===== createNewAdjMatrix called =====");
-    //     writeln("Original chosenVerts: ", chosenVerts);
-    //     writeln("Nauty labels: ", nautyLabels);
-    //   }
-
-    //   // Create mapping from new position to original vertex
-    //   var newMapping: [0..#state.k] int;
-    //   for i in 0..#state.k {
-    //     // nautyLabels[i] tells us which original position should be at position i
-    //     // chosenVerts is 1-based, so we add 1 to nautyLabels
-    //     newMapping[i] = chosenVerts[nautyLabels[i] + 1];
-    //   }
-
-    //   // Create and initialize new adjacency matrix based on new mapping
-    //   var newAdjMatrix: [0..#(state.k * state.k)] int;
-    //   for i in 0..#state.k {
-    //     for j in 0..#state.k {
-    //         if i != j {
-    //             var u = newMapping[i];
-    //             var w = newMapping[j];
-    //             var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-    //             if eid != -1 {
-    //                 newAdjMatrix[i * state.k + j] = 1;
-    //             } else {
-    //                 newAdjMatrix[i * state.k + j] = 0;
-    //             }
-    //         }
-    //     }
-    //   }
-
-    //   if logLevel == LogLevel.DEBUG {
-    //     writeln("New vertex mapping:");
-    //     for i in 0..#state.k {
-    //         writeln("Vertex ", newMapping[i], " -> IndexedTo ", i);
-    //     }
-
-    //     writeln("\nNew Adjacency Matrix (2D visualization):");
-    //     for i in 0..#state.k {
-    //         for j in 0..#state.k {
-    //             write(newAdjMatrix[i * state.k + j], " ");
-    //         }
-    //         writeln();
-    //     }
-    //     writeln();
-    //   }
-
-    //   return (newAdjMatrix, newMapping);
-    // }
-    
-    // proc encodePatternFromMatrix(ref adjMatrix: [] int, ref k: int): uint(64) throws {
-    //   var pattern: uint(64) = 0;
-    //   var pos = 0;
-
-    //   // Same row-major traversal as before
-    //   for i in 0..#k {
-    //       for j in 0..#k {
-    //           // Set bit based on adjacency matrix value
-    //           if adjMatrix[i * k + j] == 1 {
-    //               pattern |= 1:uint(64) << pos;
-    //           }
-    //           pos += 1;
-    //       }
-    //   }
-
-    //   if logLevel == LogLevel.DEBUG {
-    //       writeln("Adjacency Matrix used for encoding:");
-    //       for i in 0..#k {
-    //           for j in 0..#k {
-    //               write(adjMatrix[i * k + j], " ");
-    //           }
-    //           writeln();
-    //       }
-    //       writeln("Generated pattern= ", pattern);
-    //   }
-      
-    //   return pattern;
-    // }
 
     proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
         if logLevel == LogLevel.DEBUG {
@@ -638,21 +535,7 @@ Also we can make it to accept set of classes then srcNodes and dstNodes will be 
 seperated by a -1, So Harvard team can use it for cisualization purpose
 */
 ////////////////////////////////////////////////////////////////////////////////
-    proc createTaskRanges(r: range, numTasks: int) {
-        const totalSize = r.size;
-        const chunkSize = (totalSize + numTasks - 1) / numTasks;
-        var ranges: [0..#numTasks] range;
-        
-        for i in 0..#numTasks {
-            const start = r.low + i * chunkSize;
-            const end = min(start + chunkSize, r.high + 1);
-            if start < end {
-                ranges[i] = start..#(end - start);
-            }
-        }
-        
-        return ranges;
-    }
+
 
     // Enumerate: Iterates over all vertices as potential roots
     // and calls Explore to find all subgraphs of size k containing that root.
@@ -662,50 +545,91 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
         writeln("Enumerate: starting enumeration over all vertices");
       }
 
-      // Determine chunk size based on available parallelism
-      const numTasks = here.maxTaskPar;
-      var ranges = createTaskRanges(0..<n, numTasks);
+      forall v in 0..<n with (ref globalClasses, ref globalMotifCount){
+        if logLevel == LogLevel.DEBUG {
+          writeln("Root = ", v, " (", v+1, "/", n, ")");
+        }
 
-      // forall v in 0..<n with (ref globalClasses, ref globalMotifCount){
-      //   if logLevel == LogLevel.DEBUG {
-      //     writeln("Root = ", v, " (", v+1, "/", n, ")");
-      //   }
+        var state = new KavoshState(n, k, maxDeg);
 
-      //   var state = new KavoshState(n, k, maxDeg);
+        state.subgraph[0,0] = 1;
+        state.subgraph[0,1] = v;
+        state.visited.clear();  // Just clear visited for next vertex
+        state.visited.add(v);
 
-      //   state.subgraph[0,0] = 1;
-      //   state.subgraph[0,1] = v;
-      //   state.visited.clear();  // Just clear visited for next vertex
-      //   state.visited.add(v);
+        Explore(state, v, 1, state.k - 1);
+        if logLevel == LogLevel.DEBUG {
+          writeln("Total Number of motifs: ", state.localsubgraphCount);
+          writeln("Number of Non-isomorphic Classes: ", state.localmotifClasses);
+          writeln();
+        }
+        globalMotifCount.add(state.localsubgraphCount);
+        globalClasses += state.localmotifClasses;
 
-      //   Explore(state, v, 1, state.k - 1);
-      //   if logLevel == LogLevel.DEBUG {
-      //     writeln("Total Number of motifs: ", state.localsubgraphCount);
-      //     writeln("Number of Non-isomorphic Classes: ", state.localmotifClasses);
-      //     writeln();
-      //   }
-      //   globalMotifCount.add(state.localsubgraphCount);
-      //   //globalClasses += state.localmotifClasses;
+       }
 
-      // }
-      // Process vertices in chunks
-      forall r in ranges with (ref globalClasses, ref globalMotifCount) {
-          var state = new KavoshState(n, k, maxDeg);  // One state per chunk
-          for v in r {  // Process vertices in this chunk with same state
-              state.subgraph[0,0] = 1;
-              state.subgraph[0,1] = v;
-              state.visited.clear();  // Just clear visited for next vertex
-              state.visited.add(v);
-              
-              Explore(state, v, 1, k - 1);
-              globalMotifCount.add(state.localsubgraphCount);
-          }
-      }
       if logLevel == LogLevel.DEBUG {
         writeln("Enumerate: finished enumeration over all vertices");
       }
     }// End of Enumerate
 
+    proc EnumerateChunkBase(n: int, k: int, maxDeg: int) throws {
+      const numTasks = here.maxTaskPar;
+      const chunkSize = max(1, n/numTasks);
+
+      if logLevel == LogLevel.DEBUG {
+          writeln("Starting enumeration with ", numTasks, " tasks");
+          writeln("Chunk size: ", chunkSize);
+      }
+
+      var timer:stopwatch;
+      timer.start();
+
+      forall chunk in 0..#numTasks with (ref globalClasses, ref globalMotifCount) {
+          var state = new KavoshState(n, k, maxDeg);
+          var localCount = 0;  // Regular int
+          var localClasses: set(uint(64));
+          
+          const startV = chunk * chunkSize;
+          const endV = min(startV + chunkSize, n);
+          
+          if logLevel == LogLevel.DEBUG {
+              writeln("Task ", chunk, " processing vertices ", startV, " to ", endV-1);
+          }
+
+          for v in startV..#(endV-startV) {
+              state.subgraph[0,0] = 1;
+              state.subgraph[0,1] = v;
+              state.visited.clear();
+              state.visited.add(v);
+              
+              Explore(state, v, 1, state.k - 1);
+              
+              // Accumulate locally
+              localCount += state.localsubgraphCount;
+              localClasses += state.localmotifClasses;
+              state.localmotifClasses.clear();
+          }
+          
+          // Update global state once per chunk
+          globalMotifCount.add(localCount);
+          globalClasses += localClasses;
+
+          if logLevel == LogLevel.DEBUG {
+              writeln("Task ", chunk, " found ", localCount, " motifs");
+              writeln("Task ", chunk, " found ", localClasses.size, " unique classes");
+          }
+      }
+
+      timer.stop();
+      if logLevel == LogLevel.DEBUG {
+          writeln("Total execution time: ", timer.elapsed(), " seconds");
+          writeln("Total motifs found: ", globalMotifCount.read());
+          writeln("Total unique classes: ", globalClasses.size);
+          writeln("Average motifs per second: ", globalMotifCount.read()/timer.elapsed());
+      }
+
+    }// End of EnumerateChunkBase
 
 
 
@@ -715,7 +639,7 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
     }
 
     Enumerate(g1.n_vertices, motifSize, maxDeg );
-
+    // EnumerateChunkBase(g1.n_vertices, motifSize, maxDeg );
     // Oliver: Now you can make your src and dst based on Classes that I gathered in 
     // motifClasses and return them to users 
     // we should decide to keep or delete (allmotifs list)
