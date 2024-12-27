@@ -34,7 +34,7 @@ class KavoshState {
     var k: int;
     var maxDeg: int;
 
-    var visited: domain(int , parSafe=true); // I changed it from (bool of array size n) to domain
+    var visited: domain(int , parSafe=false); // I changed it from (bool of array size n) to domain
 
     // subgraph[level][0] = count; subgraph[level][1..count] = vertices
     var subgraph: [0..<k, 0..<k+1] int;
@@ -45,7 +45,8 @@ class KavoshState {
     // indexMap[level][i] maps selection order for revolve-door algorithm
     var indexMap: [0..<k, 0..(maxDeg*k)+1] int;
 
-    // var subgraphCount: int;
+    var localsubgraphCount: int;
+    var localmotifClasses: set(uint(64), parSafe=false);
 
     proc init(n: int, k: int, maxDeg: int) {
       this.n = n;
@@ -56,7 +57,7 @@ class KavoshState {
       this.subgraph = 0;
       this.childSet = 0;
       this.indexMap = 0;
-      // this.subgraphCount = 0;
+      this.localsubgraphCount = 0;
     }
 
     proc reset() {
@@ -64,7 +65,7 @@ class KavoshState {
       this.subgraph = 0;
       this.childSet = 0;
       this.indexMap = 0;
-      // this.subgraphCount = 0;
+      this.localsubgraphCount = 0;
     }
   }// End of KavoshState
 
@@ -95,13 +96,25 @@ class KavoshState {
     var graphNodeAttributes = g1.getNodeAttributes();
     var graphEdgeAttributes = g1.getEdgeAttributes();
 
-    // All motif counting and classify variables
-    // var allmotifs: list(uint(64), parSafe=true);
-    var motifClasses: set(uint(64), parSafe=true);
-    // Initiate it to 0
-    var allMotifCounts: atomic int;
+
     
-    allMotifCounts.write(0);
+    // Setup the problem
+    var n = nodeMapGraphG1.size;
+    var k = motifSize; // Looking for motifs of size motifSize
+    var nodeDegree: [0..<n] int;
+
+    forall v in 0..<n with (ref nodeDegree) {
+      var NeiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
+      var NeiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+      nodeDegree[v] = NeiIn.size + NeiOut.size;
+    }
+    var maxDeg = max reduce nodeDegree;
+
+    // All motif counting and classify variables
+    var globalMotifCount: atomic int;
+    var globalClasses: set(uint(64), parSafe=true);
+    // Initiate it to 0
+    globalMotifCount.write(0);
 
     // Gathers unique valid neighbors for the current level.
     proc initChildSet(ref state: KavoshState, root: int, level: int) throws{
@@ -117,7 +130,7 @@ class KavoshState {
         const parent = state.subgraph[level-1,p];
 
         // Collect all neighbors (both in and out) in a domain to ensure uniqueness
-        var neighbours: domain(int, parSafe=true);
+        var neighbours: domain(int, parSafe=false);
 
         // Outgoing neighbors
         var outNeighbors = dstNodesG1[segGraphG1[parent]..<segGraphG1[parent+1]];
@@ -348,6 +361,8 @@ class KavoshState {
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainedToVisit = 0 (which means we have chosen k vertices).
     proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws{
+
+      
       if logLevel == LogLevel.DEBUG {
         writeln("===== Explore called =====");
         writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
@@ -365,10 +380,11 @@ class KavoshState {
 
       // Base case: all k vertices chosen, now we have found a motif
       if remainedToVisit == 0 {
-        // state.subgraphCount += 1;
+        state.localsubgraphCount += 1;
+
         if logLevel == LogLevel.DEBUG {
-          // writeln("Found complete subgraph #", state.subgraphCount);
-          writeln("Found complete subgraph #", allMotifCounts.read());
+          writeln("Found complete subgraph #", state.localsubgraphCount);
+          // writeln("Found complete subgraph #", allMotifCounts.read());
           for l in 0..<state.k {
             write("Level ", l, ": ");
             for x in 1..state.subgraph[l,0] {
@@ -410,12 +426,9 @@ class KavoshState {
         // I should decided how I should gather information. It should be something like VF2-PS
         // 2 things to consider First we have a recursion function, Second we are doing on parallel
         // So maybe we should change the state class. Do we needed it?
-
-        // allmotifs.pushBack(pattern);
-        motifClasses.add(pattern);
-        allMotifCounts.add(1);
-
-        return;
+        state.localmotifClasses.add(pattern);
+        writeln("state.localmotifClasses: ", state.localmotifClasses);
+        return ;
       }
 
       // Get children for this level
@@ -542,65 +555,7 @@ class KavoshState {
       }
     }// End of reverseGenerator
 
-    // Enumerate: Iterates over all vertices as potential roots
-    // and calls Explore to find all subgraphs of size k containing that root.
-    proc Enumerate(ref state: KavoshState) throws{
-      if logLevel == LogLevel.DEBUG {
-        writeln("Enumerate: starting enumeration over all vertices");
-      }
 
-      for v in 0..<state.n {
-        if logLevel == LogLevel.DEBUG {
-          writeln("Root = ", v, " (", v+1, "/", state.n, ")");
-        }
-
-        state.subgraph[0,0] = 1;
-        state.subgraph[0,1] = v;
-        // state.visited[v] = true;
-        state.visited.add(v);
-
-        Explore(state, v, 1, state.k - 1);
-
-        // state.visited[v] = false;
-        state.visited.remove(v);
-        writeln("--------------------------------");
-        writeln("we removed v= ",v," from state. lets look at state:");
-        writeln("state is:", state);
-        writeln("--------------------------------");
-
-      }
-
-      if logLevel == LogLevel.DEBUG {
-        writeln("Enumerate: finished enumeration over all vertices");
-      }
-    }// End of Enumerate
-    
-    // Instead of a single Enumerate, we now parallelize over each root
-    // Each root runs independently with its own Kavosh State.
-    proc EnumerateParallel(n: int, k: int, maxDeg: int) throws{
-      if logLevel == LogLevel.DEBUG {
-        writeln("EnumerateParallel: starting enumeration over all vertices");
-      }
-  
-      coforall v in 0..<n {
-        // Create a local state for this root
-        var localState = new KavoshState(n, k, maxDeg);
-
-        // Initialize the root vertex
-        localState.subgraph[0,0] = 1;
-        localState.subgraph[0,1] = v;
-        // localState.visited[v] = true;
-        localState.visited.add(v);
-
-        // Explore subgraphs starting from this root
-        Explore(localState, v, 1, k - 1);
-
-      }
-
-      if logLevel == LogLevel.DEBUG {
-        writeln("EnumerateParallel: finished enumeration over all vertices");
-      }
-    }// End of EnumerateParallel
 //////////////////////////////Oliver: in case you needed!///////////////////////////////////////////////////
 //////////////////////////////Check it, I didn't check it as much as other functions
 ///////////////////////////////////////////////////
@@ -683,18 +638,47 @@ Also we can make it to accept set of classes then srcNodes and dstNodes will be 
 seperated by a -1, So Harvard team can use it for cisualization purpose
 */
 ////////////////////////////////////////////////////////////////////////////////
-    // Setup the problem
-    var n = nodeMapGraphG1.size;
-    var k = motifSize; // Looking for motifs of size motifSize
-    var nodeDegree: [0..<n] int;
 
-    forall v in 0..<n with (ref nodeDegree) {
-      var Tin = dstRG1[segRG1[v]..<segRG1[v+1]];
-      var Tout = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-      nodeDegree[v] = Tin.size + Tout.size;
-    }
-    var maxDeg = max reduce nodeDegree;
-  
+    // Execute enumeration for sequentil running
+    //Enumerate(state);
+
+    // EnumerateParallel(n, k, maxDeg);
+    // Enumerate: Iterates over all vertices as potential roots
+    // and calls Explore to find all subgraphs of size k containing that root.
+    proc Enumerate(n: int, k: int, maxDeg: int) throws{
+      
+      if logLevel == LogLevel.DEBUG {
+        writeln("Enumerate: starting enumeration over all vertices");
+      }
+
+      coforall v in 0..<n with (ref globalClasses, ref globalMotifCount){
+        if logLevel == LogLevel.DEBUG {
+          writeln("Root = ", v, " (", v+1, "/", n, ")");
+        }
+
+        var state = new KavoshState(n, k, maxDeg);
+
+        state.subgraph[0,0] = 1;
+        state.subgraph[0,1] = v;
+        state.visited.add(v);
+
+        Explore(state, v, 1, state.k - 1);
+        if logLevel == LogLevel.DEBUG {
+          writeln("Total Number of motifs: ", state.localsubgraphCount);
+          writeln("Number of Non-isomorphic Classes: ", state.localmotifClasses);
+          writeln();
+        }
+        globalMotifCount.add(state.localsubgraphCount);
+        //globalClasses += state.localmotifClasses;
+
+      }
+
+      if logLevel == LogLevel.DEBUG {
+        writeln("Enumerate: finished enumeration over all vertices");
+      }
+    }// End of Enumerate
+
+
 
 
     if logLevel == LogLevel.DEBUG {
@@ -702,28 +686,21 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
       writeln("Maximum degree: ", maxDeg);
     }
 
-    var state = new KavoshState(n, k, maxDeg);
-    // Execute enumeration for sequentil running
-    //Enumerate(state);
-
-    EnumerateParallel(n, k, maxDeg);
-
-    if logLevel == LogLevel.DEBUG {
-      // writeln("\nTotal motif found: ", state.subgraphCount);
-      // writeln("\nallmotifs: ", allmotifs);
-      // writeln("\nallmotifs.size: ", allmotifs.size);
-      writeln();
-    }
-    // writeln("\nallmotifs List size: ", allmotifs.size);
-    writeln("\nNumber of found motif Classes: ", motifClasses.size);
-    // To read the final count:
-    writeln("\nallMotifCounts: ", allMotifCounts.read());
-
+    Enumerate(g1.n_vertices, motifSize, maxDeg );
 
     // Oliver: Now you can make your src and dst based on Classes that I gathered in 
     // motifClasses and return them to users 
     // we should decide to keep or delete (allmotifs list)
-
+    
+    if logLevel == LogLevel.DEBUG {
+      writeln("\nglobalMotifCount: ", globalMotifCount.read());
+      writeln("\nglobalClasses: ", globalClasses);
+      writeln("\nglobalClasses.size: ", globalClasses.size);
+    }
+    // writeln("\nallmotifs List size: ", allmotifs.size);
+    // writeln("\nNumber of found motif Classes: ", motifClasses.size);
+    // // To read the final count:
+    // writeln("\nallMotifCounts: ", allMotifCounts.read());
     var tempArr: [0..0] int;
     var srcPerMotif = makeDistArray(2*2, int);
     var dstPerMotif = makeDistArray(2*2, int);
