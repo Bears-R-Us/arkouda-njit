@@ -34,22 +34,17 @@ class KavoshState {
     var n: int;
     var k: int;
     var maxDeg: int;
-    const minSize: int = k;  // Minimum size for arrays
 
     var visited: domain(int , parSafe=false); // I changed it from (bool of array size n) to domain
-
-    // Arrays and their size management
-    var childSetSizes: [0..<k] domain(1);
-    var indexMapSizes: [0..<k] domain(1);
 
     // subgraph[level][0] = count; subgraph[level][1..count] = vertices
     var subgraph: [0..<k, 0..<k+1] int;
 
     // childSet[level][0] = count; childSet[level][1..count] = children
-    var childSet: [0..<k] [?d] int;
+    var childSet: [0..<k, 0..(maxDeg*k)+1] int;
 
     // indexMap[level][i] maps selection order for revolve-door algorithm
-    var indexMap: [0..<k] [?d] int;
+    var indexMap: [0..<k, 0..(maxDeg*k)+1] int;
 
     var localsubgraphCount: int;
     var localmotifClasses: set(uint(64), parSafe=false);
@@ -58,48 +53,14 @@ class KavoshState {
       this.n = n;
       this.k = k;
       this.maxDeg = maxDeg;
+      // this.visited = false;
       this.visited = {1..0};
       this.subgraph = 0;
-
-      // Initialize with minimum size
-      for i in 0..<k {
-        this.childSetSizes[i] = {0..minSize};
-        this.indexMapSizes[i] = {0..minSize};
-        this.childSet[i] = [j in 0..minSize] 0;
-        this.indexMap[i] = [j in 0..minSize] 0;
-      }
+      this.childSet = 0;
+      this.indexMap = 0;
       this.localsubgraphCount = 0;
     }
 
-    // Smart resize that considers minimum size and growth factor
-    proc resizeArraysForLevel(level: int, requestedSize: int) {
-        const currentSize = childSetSizes[level].size;
-        if requestedSize <= currentSize then return;  // No need to resize
-        
-        // Calculate new size with some padding to avoid frequent resizes
-        // Use max of requested, minimum, and 1.5x current size
-        const growthFactor = 1.5;
-        const newSize = max(requestedSize, 
-                          minSize, 
-                          (currentSize: real * growthFactor): int);
-        
-        const newDomain = {0..newSize};
-        
-        // Create new arrays with new size
-        var newChildSet: [newDomain] int;
-        var newIndexMap: [newDomain] int;
-        
-        // Copy existing data
-        const commonRange = {0..min(currentSize, newSize)};
-        newChildSet[commonRange] = childSet[level][commonRange];
-        newIndexMap[commonRange] = indexMap[level][commonRange];
-        
-        // Update domains and arrays
-        childSetSizes[level] = newDomain;
-        indexMapSizes[level] = newDomain;
-        childSet[level] = newChildSet;
-        indexMap[level] = newIndexMap;
-    }
   }// End of KavoshState
 
 
@@ -160,45 +121,35 @@ class KavoshState {
     globalMotifCount.write(0);
 
     // Gathers unique valid neighbors for the current level.
-    proc initChildSet(ref state: KavoshState, root: int, level: int) throws {
+    proc initChildSet(ref state: KavoshState, root: int, level: int) throws{
       if logLevel == LogLevel.DEBUG {
-          writeln("====== initChildSet called for level ", level, " and root ", root, " ======");
+        writeln("====== initChildSet called for level ", level, " and root ", root, " ======");
       }
 
-      state.childSet[level][0] = 0;  // Reset count
+      state.childSet[level,0] = 0;
       const parentsCount = state.subgraph[level-1,0];
 
-      // Calculate potential children count
-      var potentialChildren = 0;
+      // For each vertex chosen at the previous level, get its neighbors
       for p in 1..parentsCount {
-          const parent = state.subgraph[level-1,p];
-          potentialChildren += nodeNeighbours[parent].size;
-      }
+        const parent = state.subgraph[level-1,p];
+        for neighbor in nodeNeighbours[parent] {
 
-      // Ensure arrays are large enough
-      state.resizeArraysForLevel(level, potentialChildren);
-
-      // Collect children
-      for p in 1..parentsCount {
-          const parent = state.subgraph[level-1,p];
-          for neighbor in nodeNeighbours[parent] {
-              if neighbor > root && !state.visited.contains(neighbor) {
-                  state.childSet[level][0] += 1;
-                  state.childSet[level][state.childSet[level][0]] = neighbor;
-                  state.visited.add(neighbor);
-              }
+          if neighbor > root && !state.visited.contains(neighbor) {
+            state.childSet[level,0] += 1;
+              state.childSet[level, state.childSet[level,0]] = neighbor;
+              state.visited.add(neighbor);
           }
+        }
       }
 
       if logLevel == LogLevel.DEBUG {
-          writeln("initChildSet: Found ", state.childSet[level][0], " valid children at level ", level);
-          write("Children: ");
-          for i in 1..state.childSet[level][0] {
-              write(state.childSet[level][i], " ");
-          }
-          writeln();
+        writeln("initChildSet: Found ", state.childSet[level,0], " valid children at level ", level);
+        write("Children: ");
+        for i in 1..state.childSet[level,0] {
+          write(state.childSet[level,i], " ");
+        }
+        writeln();
       }
-
     }// End of initChildSet
 
     proc prepareNaugtyArguments(ref state: KavoshState) throws{
@@ -433,56 +384,47 @@ class KavoshState {
 
     // swapping: Used by revolve-door Gray code generation to swap two elements
     // and then immediately Explore with the new combination.
-    proc swapping(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
+    proc swapping(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-          writeln("swapping called: swapping indices ", i, " and ", j, " at level ", level);
-          writeln("Before swapping: indexMap[level][i] = ", state.indexMap[level][i], 
-                  " indexMap[level][j] = ", state.indexMap[level][j]);
+        writeln("swapping called: swapping indices ", i, " and ", j, " at level ", level);
+        writeln("Before swapping: indexMap[level,i] = ", state.indexMap[level,i], 
+                " indexMap[level,j] = ", state.indexMap[level,j]);
       }
 
-      // Ensure arrays are sized appropriately
-      const maxIdx = max(i, j);
-      if maxIdx >= state.childSetSizes[level].size {
-          state.resizeArraysForLevel(level, maxIdx + 1);
-      }
-
-      state.indexMap[level][i] = state.indexMap[level][j];
-      state.subgraph[level, state.indexMap[level][i]] = state.childSet[level][i];
+      state.indexMap[level,i] = state.indexMap[level,j];
+      state.subgraph[level, state.indexMap[level,i]] = state.childSet[level,i];
 
       if logLevel == LogLevel.DEBUG {
-          writeln("After swapping: subgraph[level,indexMap[level][i]] = childSet[level][i] = ", 
-                  state.childSet[level][i]);
-          writeln("Now calling Explore after swapping");
+        writeln("After swapping: subgraph[level,indexMap[level,i]] = childSet[level,i] = ", state.childSet[level,i]);
+        writeln("Now calling Explore after swapping");
       }
 
       Explore(state, root, level+1, remainedToVisit - m);
-
     }// End of swapping
 
     // ForwardGenerator(GEN): Part of revolve-door combination Forward Generator 
-    proc ForwardGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
+    proc ForwardGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws{
       if logLevel == LogLevel.DEBUG {
-          writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, 
-                  " remainedToVisit=", remainedToVisit, " m=", m);
-      }
-
-      // Ensure arrays are sized appropriately
-      if n >= state.childSetSizes[level].size {
-          state.resizeArraysForLevel(level, n + 1);
+        writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, " remainedToVisit=", remainedToVisit, " m=", m);
       }
 
       if k > 0 && k < n {
-          ForwardGenerator(n-1, k, root, level, remainedToVisit, m, state);
+        ForwardGenerator(n-1, k, root, level, remainedToVisit, m, state);
 
-          if k == 1 {
-              swapping(n, n-1, root, level, remainedToVisit, m, state);
-          } else {
-              swapping(n, k-1, root, level, remainedToVisit, m, state);
+        if k == 1 {
+          if logLevel == LogLevel.DEBUG {
+            writeln("ForwardGenerator: k=1 case, calling swapping(n, n-1) => swapping(", n, ", ", n-1, ")");
           }
+          swapping(n, n-1, root, level, remainedToVisit, m, state);
+        } else {
+          if logLevel == LogLevel.DEBUG {
+            writeln("GEN: k>1 case, calling swapping(n, k-1) => swapping(", n, ", ", k-1, ")");
+          }
+          swapping(n, k-1, root, level, remainedToVisit, m, state);
+        }
 
-          reverseGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
+        reverseGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
       }
-
     }// End of ForwardGenerator
 
     // reverseGenerator(NEG): Another part of revolve-door combination generation logic
