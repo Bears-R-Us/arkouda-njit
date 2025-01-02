@@ -28,139 +28,126 @@ module MotifCounting {
   use SymArrayDmap;
   use Logging;
 
-
 class KavoshState {
-
     var n: int;
     var k: int;
     var maxDeg: int;
-    const minSize: int = k;  // Minimum size for arrays
+    var visited: domain(int, parSafe=false);
 
-    var visited: domain(int , parSafe=false); // I changed it from (bool of array size n) to domain
-
-    // Single flat array for all levels with dynamic resizing
-    var arrayDomain: domain(1);  // Domain to control overall size
-    var childSet: [arrayDomain] int;     // Single flat array for all levels
-    var indexMap: [arrayDomain] int;     // Single flat array for all levels
-    
-    // Track size and capacity per level
-    var levelSizes: [0..<k] int;         // Current size of each level
-    var levelCapacities: [0..<k] int;    // Current capacity of each level
-    var levelOffsets: [0..<k] int;       // Starting offset for each level
-
-    // Fixed-size subgraph remains as is since it's small and fixed
-    var subgraph: [0..<(k * (k+1))] int;  // Flattened fixed-size array
+    // Convert 2D arrays to 1D
+    var subgraph: [0..#(k * (k+1))] int;  
+    var childSet: [0..#(k * ((maxDeg*k)+2))] int;
+    var indexMap: [0..#(k * ((maxDeg*k)+2))] int;
 
     var localsubgraphCount: int;
     var localmotifClasses: set(uint(64), parSafe=false);
 
-    proc init(n: int, k: int) {
+    // Add timing fields
+    var exploreTimer: stopwatch;
+    var childSetTimer: stopwatch;
+    var nautyTimer: stopwatch;
+    var swappingTimer: stopwatch;
+
+    // Add counters for number of calls
+    var exploreCount: atomic int;
+    var childSetCount: atomic int;
+    var nautyCount: atomic int;
+    var swappingCount: atomic int;
+
+    // Add accumulated times (in nanoseconds)
+    var exploreTime: atomic uint;
+    var childSetTime: atomic uint;
+    var nautyTime: atomic uint;
+    var swappingTime: atomic uint;
+
+    // Helper functions to convert 2D indexing to 1D
+    inline proc getSubgraphIndex(level: int, pos: int): int {
+        return level * (k+1) + pos;
+    }
+
+    inline proc getChildSetIndex(level: int, pos: int): int {
+        return level * ((maxDeg*k)+2) + pos;
+    }
+
+    inline proc getIndexMapIndex(level: int, pos: int): int {
+        return level * ((maxDeg*k)+2) + pos;
+    }
+
+    // Functions to get/set values using 2D-style indexing
+    inline proc getSubgraph(level: int, pos: int): int {
+        return subgraph[getSubgraphIndex(level, pos)];
+    }
+
+    inline proc setSubgraph(level: int, pos: int, value: int) {
+        subgraph[getSubgraphIndex(level, pos)] = value;
+    }
+
+    inline proc getChildSet(level: int, pos: int): int {
+        return childSet[getChildSetIndex(level, pos)];
+    }
+
+    inline proc setChildSet(level: int, pos: int, value: int) {
+        childSet[getChildSetIndex(level, pos)] = value;
+    }
+
+    inline proc getIndexMap(level: int, pos: int): int {
+        return indexMap[getIndexMapIndex(level, pos)];
+    }
+
+    inline proc setIndexMap(level: int, pos: int, value: int) {
+        indexMap[getIndexMapIndex(level, pos)] = value;
+    }
+
+   proc init(n: int, k: int, maxDeg: int) {
         this.n = n;
         this.k = k;
+        this.maxDeg = maxDeg;
         this.visited = {1..0};
         
-        // Initialize with minimum size for each level
-        var totalSize = k * minSize;
-        this.arrayDomain = {0..totalSize-1};
+        // Initialize arrays
+        this.subgraph = [0..#(k * (k+1))] 0;
+        this.childSet = [0..#(k * ((maxDeg*k)+2))] 0;
+        this.indexMap = [0..#(k * ((maxDeg*k)+2))] 0;
         
-        // Initialize tracking arrays
-        this.levelSizes = 0;
-        this.levelCapacities = minSize;
-        
-        // Calculate initial offsets
-        this.levelOffsets = 0;
-        for i in 1..<k {
-            this.levelOffsets[i] = this.levelOffsets[i-1] + minSize;
-        }
-        
-        // Initialize data arrays
-        this.childSet = 0;
-        this.indexMap = 0;
-        this.subgraph = 0;
         this.localsubgraphCount = 0;
+        this.localmotifClasses = new set(uint(64));
+
+        // Initialize stopwatches
+        this.exploreTimer = new stopwatch();
+        this.childSetTimer = new stopwatch();
+        this.nautyTimer = new stopwatch();
+        this.swappingTimer = new stopwatch();
+
+        // Initialize atomic variables (just declare them, don't write values yet)
+        this.complete();  // Complete initialization
+        
+        // Now initialize the atomic values
+        initAtomics();
     }
 
-    // Helper functions for array access
-    inline proc getChildSetIndex(level: int, idx: int): int {
-        return levelOffsets[level] + idx;
+    // Separate method to initialize atomic values
+    proc initAtomics() {
+        exploreCount.write(0);
+        childSetCount.write(0);
+        nautyCount.write(0);
+        swappingCount.write(0);
+
+        exploreTime.write(0);
+        childSetTime.write(0);
+        nautyTime.write(0);
+        swappingTime.write(0);
     }
-
-    proc getChildSetElement(level: int, idx: int): int {
-        return childSet[getChildSetIndex(level, idx)];
-    }
-
-    proc setChildSetElement(level: int, idx: int, value: int) {
-        childSet[getChildSetIndex(level, idx)] = value;
-    }
-
-    // Similar helpers for indexMap
-    inline proc getIndexMapElement(level: int, idx: int): int {
-        return indexMap[levelOffsets[level] + idx];
-    }
-
-    proc setIndexMapElement(level: int, idx: int, value: int) {
-        indexMap[levelOffsets[level] + idx] = value;
-    }
-
-    // Resize specific level
-    proc resizeLevel(level: int, requestedSize: int) {
-        if requestedSize <= levelCapacities[level] then return;
-
-        // Calculate new size with growth factor
-        const growthFactor = 1.5;
-        const newCapacity = max(requestedSize, 
-                              minSize, 
-                              (levelCapacities[level]: real * growthFactor): int);
-
-        // Calculate new total size needed
-        var newTotalSize = 0;
-        for i in 0..<k {
-            if i == level then
-                newTotalSize += newCapacity;
-            else
-                newTotalSize += levelCapacities[i];
-        }
-
-        // Create new arrays
-        var newDomain = {0..newTotalSize-1};
-        var newChildSet: [newDomain] int;
-        var newIndexMap: [newDomain] int;
-
-        // Copy existing data with updated offsets
-        var newOffset = 0;
-        for i in 0..<k {
-            const oldOffset = levelOffsets[i];
-            const size = if i == level then newCapacity else levelCapacities[i];
-            
-            // Copy data for this level
-            const copySize = min(levelSizes[i], size);
-            for j in 0..<copySize {
-                newChildSet[newOffset + j] = childSet[oldOffset + j];
-                newIndexMap[newOffset + j] = indexMap[oldOffset + j];
-            }
-            
-            // Update offset for next level
-            levelOffsets[i] = newOffset;
-            newOffset += size;
-            
-            // Update capacity if this is the level we're resizing
-            if i == level then
-                levelCapacities[i] = newCapacity;
-        }
-
-        // Update domain and arrays
-        arrayDomain = newDomain;
-        childSet = newChildSet;
-        indexMap = newIndexMap;
-    }
-
-    // Helper for subgraph access (flattened 2D array)
-    inline proc getSubgraphElement(level: int, idx: int): int {
-        return subgraph[level * (k+1) + idx];
-    }
-
-    proc setSubgraphElement(level: int, idx: int, value: int) {
-        subgraph[level * (k+1) + idx] = value;
+    // Add method to print timing statistics
+    proc printTimingStats() {
+        writeln("Timing Statistics for KavoshState:");
+        writeln("Explore: ", exploreCount.read(), " calls, total time: ", 
+                exploreTime.read():real/1e9, " seconds");
+        writeln("ChildSet: ", childSetCount.read(), " calls, total time: ", 
+                childSetTime.read():real/1e9, " seconds");
+        writeln("Nauty: ", nautyCount.read(), " calls, total time: ", 
+                nautyTime.read():real/1e9, " seconds");
+        writeln("Swapping: ", swappingCount.read(), " calls, total time: ", 
+                swappingTime.read():real/1e9, " seconds");
     }
 
   }// End of KavoshState
@@ -195,13 +182,13 @@ class KavoshState {
 
     
     // Setup the problem
-    var n = g1.n_vertices;
+    var n = nodeMapGraphG1.size;
     var k = motifSize; // Looking for motifs of size motifSize
     var nodeDegree: [0..<n] int;
     var nodeNeighbours: [0..<n] domain(int);
 
     forall v in 0..<n with (ref nodeDegree) {
-      var neighbours: domain(int);
+      var neighbours: domain(int, parSafe=false);
 
       const NeiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
       const NeiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
@@ -214,10 +201,7 @@ class KavoshState {
       nodeNeighbours[v] = neighbours;
     }
     var maxDeg = max reduce nodeDegree;
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("Graph preprocessing complete");
-    }
+
 
     // All motif counting and classify variables
     var globalMotifCount: atomic int;
@@ -225,510 +209,362 @@ class KavoshState {
     // Initiate it to 0
     globalMotifCount.write(0);
 
-    // Gathers unique valid neighbors for the current level.
-    proc initChildSet(ref state: KavoshState, root: int, level: int) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("====== initChildSet called for level ", level, " and root ", root, " ======");
-          writeln("Before collection - Current state:");
-          writeln("  Level Sizes: ", state.levelSizes);
-          writeln("  Level Capacities: ", state.levelCapacities);
-          writeln("  Level Offsets: ", state.levelOffsets);
-          writeln("  Visited Vertices: ", state.visited);
-      }
+// Gathers unique valid neighbors for the current level.
+proc initChildSet(ref state: KavoshState, root: int, level: int) throws {
+    state.childSetTimer.start();
+    state.childSetCount.add(1);
 
-      // Reset count for this level
-      state.levelSizes[level] = 0;
-      
-      const parentsCount = state.getSubgraphElement(level-1, 0);
+    if logLevel == LogLevel.DEBUG {
+        writeln("====== initChildSet called for level ", level, " and root ", root, " ======");
+    }
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nParents at level ", level-1, ":");
-          write("  Count: ", parentsCount, ", Vertices: ");
-          for p in 1..parentsCount {
-              write(state.getSubgraphElement(level-1, p), " ");
-          }
-          writeln();
-      }
+    // Initialize count for this level to 0
+    state.setChildSet(level, 0, 0);
+    const parentsCount = state.getSubgraph(level-1, 0);
 
-      // Calculate potential children
-      var potentialChildren = 0;
-      for p in 1..parentsCount {
-          const parent = state.getSubgraphElement(level-1, p);
-          potentialChildren += nodeNeighbours[parent].size;
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nPotential children calculation:");
-          writeln("  Maximum possible children: ", potentialChildren);
-          writeln("  Current capacity at level ", level, ": ", state.levelCapacities[level]);
-      }
-
-      // Ensure enough capacity
-      if potentialChildren > state.levelCapacities[level] {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nResizing required for level ", level);
-              writeln("  Old capacity: ", state.levelCapacities[level]);
-          }
-          
-          state.resizeLevel(level, potentialChildren);
-          
-          if logLevel == LogLevel.DEBUG {
-              writeln("  New capacity: ", state.levelCapacities[level]);
-              writeln("  New offsets: ", state.levelOffsets);
-          }
-      }
-
-      // Collect children
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nCollecting children:");
-      }
-
-      for p in 1..parentsCount {
-          const parent = state.getSubgraphElement(level-1, p);
-          if logLevel == LogLevel.DEBUG {
-              writeln("  Processing parent ", parent);
-              writeln("  Neighbours: ", nodeNeighbours[parent]);
-          }
-
-          for neighbor in nodeNeighbours[parent] {
-              if neighbor > root && !state.visited.contains(neighbor) {
-                  state.levelSizes[level] += 1;
-                  state.setChildSetElement(level, state.levelSizes[level], neighbor);
-                  state.visited.add(neighbor);
-                  
-                  if logLevel == LogLevel.DEBUG {
-                      writeln("    Added child ", neighbor, " at position ", state.levelSizes[level]);
-                  }
-              } else if logLevel == LogLevel.DEBUG {
-                  if neighbor <= root {
-                      writeln("    Skipped ", neighbor, " (not greater than root ", root, ")");
-                  } else if state.visited.contains(neighbor) {
-                      writeln("    Skipped ", neighbor, " (already visited)");
-                  }
-              }
-          }
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nFinal state after collection:");
-          writeln("  Found ", state.levelSizes[level], " valid children at level ", level);
-          write("  Children: ");
-          for i in 1..state.levelSizes[level] {
-              write(state.getChildSetElement(level, i), " ");
-          }
-          writeln();
-          writeln("  Updated visited set: ", state.visited);
-          writeln("======================================================");
-      }
-
-    }// End of initChildSet
-
-    proc prepareNaugtyArguments(ref state: KavoshState) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("===== prepareNaugtyArguments called =====");
-      }
-
-      // Build array of chosen vertices
-      var chosenVerts: [1..state.k] int;
-      var idx = 1;
-      for i in 0..<state.k {
-          for x in 1..state.getSubgraphElement(i, 0) {
-              chosenVerts[idx] = state.getSubgraphElement(i, x);
-              idx += 1;
-          }
-      }
-
-      // Create adjacency matrix
-      var adjMatrix: [0..#(state.k * state.k)] int = 0;
-
-      forall i in 0..#state.k with (ref adjMatrix) {
-          for j in 0..#state.k {
-              if i != j {
-                  var u = chosenVerts[i+1];
-                  var w = chosenVerts[j+1];
-                  var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                  if eid != -1 {
-                      adjMatrix[i * state.k + j] = 1;
-                  }
-              }
-          }
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("Chosen vertices: ", chosenVerts);
-          writeln("Adjacency matrix:");
-          for i in 0..#state.k {
-              for j in 0..#state.k {
-                  write(adjMatrix[i * state.k + j], " ");
-              }
-              writeln();
-          }
-      }
-
-      return (adjMatrix, chosenVerts);
-
-    }// End of prepareNaugtyArguments
-
-    proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("===== generatePatternDirect called =====");
-          writeln("Vertices: ", chosenVerts);
-          writeln("Nauty labels: ", nautyLabels);
-      }
-
-      var pattern: uint(64) = 0;
-      var pos = 0;
-
-      for i in 0..#state.k {
-          for j in 0..#state.k {
-              if i != j {
-                  var u = chosenVerts[nautyLabels[i] + 1];
-                  var w = chosenVerts[nautyLabels[j] + 1];
-                  var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                  if eid != -1 {
-                      pattern |= 1:uint(64) << pos;
-                  }
-              }
-              pos += 1;
-          }
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("Generated pattern: ", pattern);
-      }
-
-      return pattern;
-
-    }// End of generatePatternDirect
-
-    // Explores subgraphs containing the root vertex,
-    // expanding level by level until remainedToVisit = 0 (which means we have chosen k vertices).
-    proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n===== Explore called =====");
-          writeln("Parameters:");
-          writeln("  Root: ", root);
-          writeln("  Current level: ", level);
-          writeln("  Vertices remaining to visit: ", remainedToVisit);
-          writeln("\nCurrent State:");
-          writeln("  Visited vertices: ", state.visited);
-          writeln("  Current subgraph structure by level:");
-          for l in 0..<level {
-              write("    Level ", l, " (count=", state.getSubgraphElement(l, 0), "): ");
-              for x in 1..state.getSubgraphElement(l, 0) {
-                  write(state.getSubgraphElement(l, x), " ");
-              }
-              writeln();
-          }
-          writeln("==========================");
-      }
-
-      // Base case: all k vertices chosen
-      if remainedToVisit == 0 {
-          state.localsubgraphCount += 1;
-          
-          if logLevel == LogLevel.DEBUG {
-              writeln("\n!!! Found complete subgraph #", state.localsubgraphCount, " !!!");
-              writeln("Final subgraph structure:");
-              for l in 0..<state.k {
-                  write("  Level ", l, " (count=", state.getSubgraphElement(l, 0), "): ");
-                  for x in 1..state.getSubgraphElement(l, 0) {
-                      write(state.getSubgraphElement(l, x), " ");
-                  }
-                  writeln();
-              }
-              writeln("Now preparing for motif classification...");
-          }
-          var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
-
-          // Oliver: This is the place that we should call nautyCaller from cpp. Based on
-          // cuurent implenetation we should pass:
-          // void nautyClassify(
-          // int* subgraph,        // Adjacency matrix as flat array
-          // int subgraphSize,     // Number of nodes
-          // int* results,         // Output canonical labeling. 0-indexed
-          // int performCheck      // Flag to perform nauty_check (1 to perform, else to skip)
-          // )
-
-          
-          // For test purpose assume naugty returned this: 0, 1, 2, ..., K-1
-          var results:[0..<state.k] int = 0..<state.k;
-
-          var nautyLabels = results;
-                            
-          if logLevel == LogLevel.DEBUG {
-            writeln("Nauty returned: ", nautyLabels," we are in the way to Classify!");
-          }
-
-          // Then we should Classify based on label that naugty will give.
-          var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
-          // assert(encodedID == pattern, 
-          //                             "\nPattern mismatch!\n" +
-          //                             "encodedID = " + encodedID:string + ")\n" +
-          //                             "pattern   = " + pattern:string + ")");
-  
-          // Here we have an encodedID which for each class of motifs is unique!
-          // I should decided how I should gather information. It should be something like VF2-PS
-          // 2 things to consider First we have a recursion function, Second we are doing on parallel
-          // So maybe we should change the state class. Do we needed it?
-          state.localmotifClasses.add(pattern);
-          writeln("state.localmotifClasses: ", state.localmotifClasses);
-          return ;
+    // For each vertex chosen at the previous level, get its neighbors
+    for p in 1..parentsCount {
+        const parent = state.getSubgraph(level-1, p);
+        
+        for neighbor in nodeNeighbours[parent] {
+            // Must be greater than root and not visited
+            if neighbor > root && !state.visited.contains(neighbor) {
+                // Increment count and add neighbor
+                const currentCount = state.getChildSet(level, 0) + 1;
+                state.setChildSet(level, 0, currentCount);
+                state.setChildSet(level, currentCount, neighbor);
+                state.visited.add(neighbor);
+            }
         }
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nInitiating child collection for level ", level);
-      }
+    }
 
-      // Get children for this level
-      initChildSet(state, root, level);
-      const childCount = state.levelSizes[level];
+    if logLevel == LogLevel.DEBUG {
+        writeln("initChildSet: Found ", state.getChildSet(level, 0), " valid children at level ", level);
+        write("Children: ");
+        for i in 1..state.getChildSet(level, 0) {
+            write(state.getChildSet(level, i), " ");
+        }
+        writeln();
+    }
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("Child collection complete:");
-          writeln("  Total children found: ", childCount);
-          writeln("  Remained to visit: ", remainedToVisit);
-      }
+    state.childSetTimer.stop();
+    state.childSetTime.add(state.childSetTimer.elapsed():uint);
 
-      // Try all possible selection sizes
-      for selSize in 1..remainedToVisit {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nAttempting selection of size ", selSize, " from ", childCount, " children");
-          }
+}// End of initChildSet
+proc prepareNaugtyArguments(ref state: KavoshState) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== prepareNaugtyArguments called =====");
+    }
 
-          if childCount < selSize {
-              if logLevel == LogLevel.DEBUG {
-                  writeln("WARNING: Not enough children (", childCount, ") to select ", 
-                        selSize, " vertices at level ", level);
-                  writeln("Cleaning up and returning...");
-              }
-              // Cleanup visited children
-              for i in 1..childCount {
-                  state.visited.remove(state.getChildSetElement(level, i));
-              }
-              return;
-          }
+    // Step 1: Build array of chosen vertices
+    var chosenVerts: [1..state.k] int;
+    var idx = 1;
+    
+    // Gather vertices level by level
+    for level in 0..<state.k {
+        const vertCount = state.getSubgraph(level, 0);  // Get count for this level
+        for pos in 1..vertCount {
+            if idx > state.k {
+                halt("Error: More vertices than expected");
+            }
+            chosenVerts[idx] = state.getSubgraph(level, pos);
+            idx += 1;
+        }
+    }
 
-          if logLevel == LogLevel.DEBUG {
-              writeln("Making initial selection of size ", selSize, ":");
-          }
+    if idx - 1 != state.k {
+        halt("Error: Didn't find exactly k vertices");
+    }
 
-          // Initial selection
-          state.setSubgraphElement(level, 0, selSize);
-          for i in 1..selSize {
-              state.setSubgraphElement(level, i, state.getChildSetElement(level, i));
-              state.setIndexMapElement(level, i, i);
-              if logLevel == LogLevel.DEBUG {
-                  writeln("  Selected vertex ", state.getChildSetElement(level, i), 
-                        " at position ", i);
-              }
-          }
+    // Step 2: Create adjacency matrix
+    // Use 1D array for k x k matrix, initialized to 0
+    var adjMatrix: [0..#(state.k * state.k)] int = 0;
 
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nRecursing with chosen selection:");
-              writeln("  Next level: ", level+1);
-              writeln("  Remaining vertices: ", remainedToVisit - selSize);
-          }
+    // Step 3: Fill adjacency matrix
+    // For each pair of vertices, check if edge exists
+    for i in 0..#state.k {
+        for j in 0..#state.k {
+            if i != j {  // Skip self-loops
+                var u = chosenVerts[i+1];  // +1 because chosenVerts is 1-based
+                var w = chosenVerts[j+1];
+                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                if eid != -1 {
+                    adjMatrix[i * state.k + j] = 1;
+                }
+            }
+        }
+    }
 
-          // Recurse with chosen selection
-          Explore(state, root, level+1, remainedToVisit - selSize);
+    if logLevel == LogLevel.DEBUG {
+        // Print detailed debug information
+        writeln("\nChosen vertices:");
+        for i in 1..state.k {
+            writeln("Position ", i-1, " -> Vertex ", chosenVerts[i]);
+        }
 
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nGenerating other combinations using revolve-door algorithm");
-              writeln("  Total children: ", childCount);
-              writeln("  Selection size: ", selSize);
-          }
+        writeln("\nAdjacency Matrix (2D visualization):");
+        for i in 0..#state.k {
+            for j in 0..#state.k {
+                write(adjMatrix[i * state.k + j], " ");
+            }
+            writeln();
+        }
+    }
 
-          // Generate other combinations
-          ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
-      }
+    return (adjMatrix, chosenVerts);
+}// End of prepareNaugtyArguments
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nCompleting exploration at level ", level);
-          writeln("Cleaning up visited children...");
-      }
 
-      // Cleanup
-      for i in 1..childCount {
-          state.visited.remove(state.getChildSetElement(level, i));
-      }
-      state.setSubgraphElement(level, 0, 0);
+proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== generatePatternDirect called =====");
+        writeln("Original chosenVerts: ", chosenVerts);
+        writeln("Nauty labels: ", nautyLabels);
+    }
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("Cleanup complete. Visited set after cleanup: ", state.visited);
-          writeln("===== End Explore =====\n");
-      }
-    }// End of Explore
+    var pattern: uint(64) = 0;
+    var pos = 0;
+
+    // Generate pattern directly from vertex pairs
+    for i in 0..#state.k {
+        for j in 0..#state.k {
+            if i != j {
+                // Get vertices based on nauty labels
+                var u = chosenVerts[nautyLabels[i] + 1];
+                var w = chosenVerts[nautyLabels[j] + 1];
+                
+                // Check for edge and set bit
+                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                if eid != -1 {
+                    pattern |= 1:uint(64) << pos;
+                }
+            }
+            pos += 1; // Increment position even when i == j to maintain ordering
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Generated pattern= ", pattern);
+        writeln("\nEquivalent Adjacency Matrix (2D visualization):");
+        for i in 0..#state.k {
+            for j in 0..#state.k {
+                var bitPos = i * state.k + j;
+                write(if (pattern & (1:uint(64) << bitPos)) != 0 then 1 else 0, " ");
+            }
+            writeln();
+        }
+    }
+    return pattern;
+}// End of generatePatternDirect
+
+// Explores subgraphs containing the root vertex,
+// expanding level by level until remainedToVisit = 0 (which means we have chosen k vertices).
+proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
+    // timers and counters
+    state.exploreTimer.start();
+    state.exploreCount.add(1);
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== Explore called =====");
+        writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
+        writeln("Visited Vertices: ", state.visited);
+        writeln("Current partial subgraph level by level:");
+        for l in 0..<level {
+            write("Level ", l, " (count=", state.getSubgraph(l, 0), "): ");
+            for x in 1..state.getSubgraph(l, 0) {
+                write(state.getSubgraph(l, x), " ");
+            }
+            writeln();
+        }
+        writeln("==========================");
+    }
+
+    // Base case: all k vertices chosen, now we have found a motif
+    if remainedToVisit == 0 {
+        state.localsubgraphCount += 1;
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Found complete subgraph #", state.localsubgraphCount);
+            for l in 0..<state.k {
+                write("Level ", l, ": ");
+                for x in 1..state.getSubgraph(l, 0) {
+                    write(state.getSubgraph(l, x), " ");
+                }
+                writeln();
+            }
+            writeln("Now we make adjMatrix to pass to Naugty");
+        }
+
+        state.nautyTimer.start();
+        var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
+        
+        // For test purpose assume naugty returned this
+        var results: [0..<state.k] int = 0..<state.k;
+        var nautyLabels = results;
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Nauty returned: ", nautyLabels, " we are in the way to Classify!");
+        }
+
+        var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
+        state.nautyTimer.stop();
+        state.nautyTime.add(state.nautyTimer.elapsed():uint);
+        state.nautyCount.add(1);
+
+        state.localmotifClasses.add(pattern);
+        
+        if logLevel == LogLevel.DEBUG {
+            writeln("state.localmotifClasses: ", state.localmotifClasses);
+        }
+        state.localmotifClasses.add(pattern);
+
+        state.exploreTimer.stop();
+        state.exploreTime.add(state.exploreTimer.elapsed():uint);
+        
+        return;
+    }
+
+    // Get children for this level
+    initChildSet(state, root, level);
+    const childCount = state.getChildSet(level, 0);
+
+    // Try all possible selection sizes at this level, from 1 to remainedToVisit
+    for selSize in 1..remainedToVisit {
+        if childCount < selSize {
+            // Not enough children to form this selection
+            if logLevel == LogLevel.DEBUG {
+                writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
+            }
+            // Unmark visited children before returning
+            for i in 1..childCount {
+                state.visited.remove(state.getChildSet(level, i));
+            }
+            state.exploreTimer.stop();
+            state.exploreTime.add(state.exploreTimer.elapsed():uint);
+            return;
+        }
+
+        // Initial selection: pick the first selSize children
+        state.setSubgraph(level, 0, selSize);
+        for i in 1..selSize {
+            state.setSubgraph(level, i, state.getChildSet(level, i));
+            state.setIndexMap(level, i, i);
+        }
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Exploring with initial selection of size ", selSize, " at level ", level);
+            write("Selected vertices: ");
+            for i in 1..selSize {
+                write(state.getSubgraph(level, i), " ");
+            }
+            writeln("we will Recurse with chosen selection");
+            writeln();
+        }
+
+        // Recurse with chosen selection
+        Explore(state, root, level+1, remainedToVisit - selSize);
+
+        // Generate other combinations using revolve-door algorithm
+        ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
+    }
+
+    // Cleanup: Unmark visited children before going up
+    for i in 1..childCount {
+        state.visited.remove(state.getChildSet(level, i));
+    }
+    state.setSubgraph(level, 0, 0);
+
+    state.exploreTimer.stop();
+    state.exploreTime.add(state.exploreTimer.elapsed():uint);
+    
+}// End of Explore
+
+
 
     // I read this for implementing revolving door 
     // https://encyclopediaofmath.org/wiki/Gray_code#Combinations.2C_partitions.2C_permutations.2C_and_other_objects.
 
-    // swapping: Used by revolve-door Gray code generation to swap two elements
-    // and then immediately Explore with the new combination.
-    proc swapping(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n----- swapping called -----");
-          writeln("Parameters:");
-          writeln("  Swapping positions i=", i, " and j=", j);
-          writeln("  At level: ", level);
-          writeln("  Remained to visit: ", remainedToVisit);
-          writeln("\nBefore swap:");
-          writeln("  indexMap[", level, "][", i, "] = ", state.getIndexMapElement(level, i));
-          writeln("  indexMap[", level, "][", j, "] = ", state.getIndexMapElement(level, j));
-          writeln("  Current selection: ");
-          for x in 1..m {
-              write(state.getChildSetElement(level, x), " ");
-          }
-          writeln();
-      }
+ // swapping: Used by revolve-door Gray code generation to swap two elements
+// and then immediately Explore with the new combination.
+proc swapping(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
+    state.swappingTimer.start();
+    state.swappingCount.add(1);
 
-      // Ensure array capacity
-      const maxIdx = max(i, j);
-      if maxIdx >= state.levelCapacities[level] {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nResizing required:");
-              writeln("  Current capacity: ", state.levelCapacities[level]);
-              writeln("  Required capacity: ", maxIdx + 1);
-          }
-          state.resizeLevel(level, maxIdx + 1);
-          if logLevel == LogLevel.DEBUG {
-              writeln("  New capacity: ", state.levelCapacities[level]);
-          }
-      }
+    if logLevel == LogLevel.DEBUG {
+        writeln("swapping called: swapping indices ", i, " and ", j, " at level ", level);
+        writeln("Before swapping: indexMap[level,i] = ", state.getIndexMap(level, i), 
+                " indexMap[level,j] = ", state.getIndexMap(level, j));
+    }
 
-      // Update indexMap
-      state.setIndexMapElement(level, i, state.getIndexMapElement(level, j));
-      
-      // Update subgraph based on new indexMap
-      state.setSubgraphElement(level, state.getIndexMapElement(level, i), 
-                            state.getChildSetElement(level, i));
+    state.setIndexMap(level, i, state.getIndexMap(level, j));
+    state.setSubgraph(level, state.getIndexMap(level, i), state.getChildSet(level, i));
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("\nAfter swap:");
-          writeln("  New indexMap[", level, "][", i, "] = ", state.getIndexMapElement(level, i));
-          writeln("  Updated subgraph value at position ", state.getIndexMapElement(level, i), 
-                  " = ", state.getChildSetElement(level, i));
-          writeln("\nRecursing to next level...");
-      }
+    if logLevel == LogLevel.DEBUG {
+        writeln("After swapping: subgraph[level,indexMap[level,i]] = childSet[level,i] = ", 
+                state.getChildSet(level, i));
+        writeln("Now calling Explore after swapping");
+    }
 
-      Explore(state, root, level+1, remainedToVisit - m);
+    Explore(state, root, level+1, remainedToVisit - m);
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("----- End swapping -----\n");
-      }
+    state.swappingTimer.stop();
+    state.swappingTime.add(state.swappingTimer.elapsed():uint);
+}// End of swapping
 
-    }// End of swapping
+// ForwardGenerator(GEN): Part of revolve-door combination Forward Generator 
+proc ForwardGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("ForwardGenerator called with n=", n, " k=", k, " level=", level, 
+                " remainedToVisit=", remainedToVisit, " m=", m);
+    }
 
-    // ForwardGenerator(GEN): Part of revolve-door combination Forward Generator 
-    proc ForwardGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n>>>>> ForwardGenerator called <<<<<");
-          writeln("Parameters:");
-          writeln("  n = ", n, " (total elements)");
-          writeln("  k = ", k, " (selection size)");
-          writeln("  level = ", level);
-          writeln("  remainedToVisit = ", remainedToVisit);
-          writeln("  m = ", m, " (original selection size)");
-          writeln("\nCurrent State at Level ", level, ":");
-          writeln("  Capacity: ", state.levelCapacities[level]);
-          writeln("  Current Size: ", state.levelSizes[level]);
-          writeln("  Current Selection: ");
-          for i in 1..k {
-              write(state.getChildSetElement(level, i), " ");
-          }
-          writeln();
-      }
+    if k > 0 && k < n {
+        ForwardGenerator(n-1, k, root, level, remainedToVisit, m, state);
 
-      // Ensure array capacity
-      if n >= state.levelCapacities[level] {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nResizing required:");
-              writeln("  Current capacity: ", state.levelCapacities[level]);
-              writeln("  Required capacity: ", n+1);
-          }
-          state.resizeLevel(level, n + 1);
-          if logLevel == LogLevel.DEBUG {
-              writeln("  New capacity: ", state.levelCapacities[level]);
-          }
-      }
+        if k == 1 {
+            if logLevel == LogLevel.DEBUG {
+                writeln("ForwardGenerator: k=1 case, calling swapping(n, n-1) => swapping(", 
+                        n, ", ", n-1, ")");
+            }
+            swapping(n, n-1, root, level, remainedToVisit, m, state);
+        } else {
+            if logLevel == LogLevel.DEBUG {
+                writeln("GEN: k>1 case, calling swapping(n, k-1) => swapping(", n, ", ", k-1, ")");
+            }
+            swapping(n, k-1, root, level, remainedToVisit, m, state);
+        }
 
-      if k > 0 && k < n {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nRecursing with n-1 = ", n-1);
-          }
-          ForwardGenerator(n-1, k, root, level, remainedToVisit, m, state);
+        reverseGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
+    }
+}// End of ForwardGenerator
 
-          if k == 1 {
-              if logLevel == LogLevel.DEBUG {
-                  writeln("\nk=1 case: swapping positions ", n, " and ", n-1);
-              }
-              swapping(n, n-1, root, level, remainedToVisit, m, state);
-          } else {
-              if logLevel == LogLevel.DEBUG {
-                  writeln("\nk>1 case: swapping positions ", n, " and ", k-1);
-              }
-              swapping(n, k-1, root, level, remainedToVisit, m, state);
-          }
+// reverseGenerator(NEG): Another part of revolve-door combination generation logic
+proc reverseGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("reverseGenerator called with n=", n, " k=", k, " level=", level, 
+                " remainedToVisit=", remainedToVisit, " m=", m);
+    }
 
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nCalling reverseGenerator with n-1 = ", n-1, " and k-1 = ", k-1);
-          }
-          reverseGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
-      }
+    if k > 0 && k < n {
+        ForwardGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
 
-      if logLevel == LogLevel.DEBUG {
-          writeln(">>>>> End ForwardGenerator <<<<<\n");
-      }
+        if k == 1 {
+            if logLevel == LogLevel.DEBUG {
+                writeln("reverseGenerator: k=1 case, calling swapping(n-1, n) => swapping(", 
+                        n-1, ", ", n, ")");
+            }
+            swapping(n-1, n, root, level, remainedToVisit, m, state);
+        } else {
+            if logLevel == LogLevel.DEBUG {
+                writeln("reverseGenerator: k>1 case, calling swapping(k-1, n) => swapping(", 
+                        k-1, ", ", n, ")");
+            }
+            swapping(k-1, n, root, level, remainedToVisit, m, state);
+        }
 
-
-    }// End of ForwardGenerator
-
-    // reverseGenerator(NEG): Another part of revolve-door combination generation logic
-    proc reverseGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, ref state: KavoshState) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n<<<<< reverseGenerator called >>>>>");
-          writeln("Parameters:");
-          writeln("  n = ", n, " (total elements)");
-          writeln("  k = ", k, " (selection size)");
-          writeln("  level = ", level);
-          writeln("  remainedToVisit = ", remainedToVisit);
-          writeln("  m = ", m, " (original selection size)");
-          writeln("\nCurrent Selection:");
-          for i in 1..m {
-              write(state.getChildSetElement(level, i), " ");
-          }
-          writeln();
-      }
-
-      if k > 0 && k < n {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nCalling ForwardGenerator with n-1 = ", n-1, " and k-1 = ", k-1);
-          }
-          ForwardGenerator(n-1, k-1, root, level, remainedToVisit, m, state);
-
-          if k == 1 {
-              if logLevel == LogLevel.DEBUG {
-                  writeln("\nk=1 case: swapping positions ", n-1, " and ", n);
-              }
-              swapping(n-1, n, root, level, remainedToVisit, m, state);
-          } else {
-              if logLevel == LogLevel.DEBUG {
-                  writeln("\nk>1 case: swapping positions ", k-1, " and ", n);
-              }
-              swapping(k-1, n, root, level, remainedToVisit, m, state);
-          }
-
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nCalling reverseGenerator with n-1 = ", n-1, " and k = ", k);
-          }
-          reverseGenerator(n-1, k, root, level, remainedToVisit, m, state);
-      }
-
-      if logLevel == LogLevel.DEBUG {
-          writeln("<<<<< End reverseGenerator >>>>>\n");
-      }
-
-    }// End of reverseGenerator
-
+        reverseGenerator(n-1, k, root, level, remainedToVisit, m, state);
+    }
+}// End of reverseGenerator
 
 //////////////////////////////Oliver: in case you needed!///////////////////////////////////////////////////
 //////////////////////////////Check it, I didn't check it as much as other functions
@@ -814,60 +650,85 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
 ////////////////////////////////////////////////////////////////////////////////
 
 
-    // Enumerate: Iterates over all vertices as potential roots
-    // and calls Explore to find all subgraphs of size k containing that root.
-    proc Enumerate(n: int, k: int) throws {
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n===== Starting Enumeration =====");
-          writeln("Parameters:");
-          writeln("  Total vertices (n): ", n);
-          writeln("  Motif size (k): ", k);
-      }
+// Enumerate: Iterates over all vertices as potential roots
+// and calls Explore to find all subgraphs of size k containing that root.
+proc Enumerate(n: int, k: int, maxDeg: int) throws {
+    var totalTimer: stopwatch;
+    totalTimer.start();
 
-      // Global tracking variables
-      var globalMotifCount: atomic int;
-      var globalClasses: set(uint(64), parSafe=true);
-      globalMotifCount.write(0);
+    var threadTimers: [0..<numLocales] stopwatch;
+    var threadTimes: [0..<numLocales] atomic real;
 
-      forall v in 0..<n with (ref globalClasses, ref globalMotifCount) {
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nProcessing root vertex ", v, " (", v+1, "/", n, ")");
-          }
+    if logLevel == LogLevel.DEBUG {
+        writeln("Enumerate: starting enumeration over all vertices");
+    }
 
-          var state = new KavoshState(n, k);
+    forall v in 0..<n with (ref globalClasses, ref globalMotifCount, var myTimer = new stopwatch()) {
+        const tid = here.id;
+        myTimer.start();
 
-          // Initialize root vertex
-          state.setSubgraphElement(0, 0, 1);
-          state.setSubgraphElement(0, 1, v);
-          state.visited.add(v);
+        if logLevel == LogLevel.DEBUG {
+            writeln("Root = ", v, " (", v+1, "/", n, ")");
+        }
 
-          // Explore from this root
-          Explore(state, v, 1, k - 1);
+        var state = new KavoshState(n, k, maxDeg);
 
-          if logLevel == LogLevel.DEBUG {
-              writeln("\nCompleted root ", v, ":");
-              writeln("  Local motif count: ", state.localsubgraphCount);
-              writeln("  Local motif classes: ", state.localmotifClasses);
-          }
+        // Initialize root vertex in subgraph
+        state.setSubgraph(0, 0, 1);      // Set count to 1
+        state.setSubgraph(0, 1, v);      // Set the vertex
+        
+        // Initialize visited for root vertex
+        state.visited.clear();           // Clear visited for next vertex
+        state.visited.add(v);
 
-          // Update global counts
-          globalMotifCount.add(state.localsubgraphCount);
-          globalClasses += state.localmotifClasses;
+        // Start exploration from level 1 with k-1 vertices remaining to visit
+        Explore(state, v, 1, state.k - 1);
 
-          state.visited.remove(v);
-      }
+        if logLevel == LogLevel.DEBUG {
+            writeln("Total Number of motifs: ", state.localsubgraphCount);
+            writeln("Number of Non-isomorphic Classes: ", state.localmotifClasses);
+            writeln();
+        }
 
-      if logLevel == LogLevel.DEBUG {
-          writeln("\n===== Enumeration Complete =====");
-          writeln("Final Results:");
-          writeln("  Total motifs found: ", globalMotifCount.read());
-          writeln("  Unique motif classes: ", globalClasses.size);
-          writeln("  Class IDs: ", globalClasses);
-      }
+        // Update global counters
+        globalMotifCount.add(state.localsubgraphCount);
+        globalClasses += state.localmotifClasses;
 
-      return (globalMotifCount.read(), globalClasses);
+        myTimer.stop();
+        threadTimes[tid].add(myTimer.elapsed());
+    }
+    
+    totalTimer.stop();
+    // Print timing statistics
+    writeln("\nOverall Timing Statistics:");
+    writeln("Total execution time: ", totalTimer.elapsed(), " seconds");
+    writeln("\nPer-Thread Times:");
+    for i in 0..<numLocales {
+        const threadTime = threadTimes[i].read();
+        if threadTime > 0 {
+            writeln("Thread ", i, ": ", threadTime, " seconds");
+        }
+    }
 
-    }// End of Enumerate
+    // Additional statistics if needed
+    const maxThreadTime = max reduce [t in threadTimes] t.read();
+    const minThreadTime = min reduce [t in threadTimes] t.read();
+    const avgThreadTime = (+ reduce [t in threadTimes] t.read()) / numLocales;
+    
+    writeln("\nThread Time Analysis:");
+    writeln("Max thread time: ", maxThreadTime, " seconds");
+    writeln("Min thread time: ", minThreadTime, " seconds");
+    writeln("Avg thread time: ", avgThreadTime, " seconds");
+    writeln("Max/Min ratio: ", maxThreadTime/minThreadTime);
+    writeln("Max/Avg ratio: ", maxThreadTime/avgThreadTime);
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Enumerate: finished enumeration over all vertices");
+        writeln("\nglobalMotifCount: ", globalMotifCount.read());
+        writeln("\nglobalClasses: ", globalClasses);
+        writeln("\nglobalClasses.size: ", globalClasses.size);
+    }
+}// End of Enumerate
 
 
     if logLevel == LogLevel.DEBUG {
@@ -875,21 +736,20 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
       writeln("Maximum degree: ", maxDeg);
     }
 
-    var (totalMotifs, motifClasses) = Enumerate(n, motifSize);
-    
+    Enumerate(g1.n_vertices, motifSize, maxDeg );
     // Oliver: Now you can make your src and dst based on Classes that I gathered in 
     // motifClasses and return them to users 
     // we should decide to keep or delete (allmotifs list)
     
     if logLevel == LogLevel.DEBUG {
-        writeln("\nMotif counting complete:");
-        writeln("  Total motifs: ", totalMotifs);
-        writeln("  Unique classes: ", motifClasses.size);
+      writeln("\nglobalMotifCount: ", globalMotifCount.read());
+      writeln("\nglobalClasses: ", globalClasses);
+      writeln("\nglobalClasses.size: ", globalClasses.size);
     }
-
-    // Prepare return values
-    // Oliver: For now, returning placeholder arrays - modify as needed
-
+    // writeln("\nallmotifs List size: ", allmotifs.size);
+    // writeln("\nNumber of found motif Classes: ", motifClasses.size);
+    // // To read the final count:
+    // writeln("\nallMotifCounts: ", allMotifCounts.read());
     var tempArr: [0..0] int;
     var srcPerMotif = makeDistArray(2*2, int);
     var dstPerMotif = makeDistArray(2*2, int);
