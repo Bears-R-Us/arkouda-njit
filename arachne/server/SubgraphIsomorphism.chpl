@@ -418,281 +418,620 @@ module SubgraphIsomorphism {
   }
 
   
-  /* Generates a mapping for old vertex names to new vetrex names. */
+  // /* Generates a mapping for old vertex names to new vetrex names. */
+  // proc getSubgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
+  //   const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
+  //   const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
+  //   const ref seg = toSymEntry(subgraph.getComp("SEGMENTS_SDI"), int).a;
+  //   const ref srcR = toSymEntry(subgraph.getComp("SRC_R_SDI"), int).a;
+  //   const ref dstR = toSymEntry(subgraph.getComp("DST_R_SDI"), int).a;
+  //   const ref segR = toSymEntry(subgraph.getComp("SEGMENTS_R_SDI"), int).a;
+  //   const ref nodeMap = toSymEntry(subgraph.getComp("VERTEX_MAP_SDI"), int).a;
+  //   var nodeAttributes = subgraph.getNodeAttributes();
+  //   var edgeAttributes = subgraph.getEdgeAttributes();
+    
+  //   // Get the probabilities of each edge and vertex from the subgraph appearing in the main graph.
+  //   var (edgeProbabilities, nodeProbabilities) = getSubgraphProbabilities(subgraph, st);
+
+  //   // Create a map of old internal vertex names to new internal vertex names. -1 is the default.
+  //   var reorderedNodes = new map(int, int);
+  //   for u in nodeMap.domain do reorderedNodes.add(u, -1);
+
+  //   // Find the edges and vertices with lowest probability. If no edge and/or vertex attributes have
+  //   // been defined, then these probabilities should default to edge 0 and vertex 0.
+  //   var sortedIdxEdgeProbabilities = argsortDefault(edgeProbabilities);
+  //   var sortedIdxNodeProbabilities = argsortDefault(nodeProbabilities);
+  //   var rarestEdge = sortedIdxEdgeProbabilities[0];
+  //   var rarestNode = sortedIdxNodeProbabilities[0];
+
+  //   // Keep track of the edges and nodes that have been mapped already.
+  //   var mappedEdges = makeDistArray(src.size, bool);
+  //   var mappedNodes = makeDistArray(nodeMap.size, bool);
+  //   mappedEdges = false; mappedNodes = false;
+
+  //   // writeln("src = ", src);
+  //   // writeln("dst = ", dst);
+  //   // writeln("probs = ", edgeProbabilities);
+  //   // writeln();
+  //   // writeln("nodes = ", nodeMap);
+  //   // writeln("probs = ", nodeProbabilities);
+  //   // writeln();
+  //   // writeln("rarestEdge = ", src[rarestEdge], " --> ", dst[rarestEdge]);
+  //   // writeln("rarestNode = ", rarestNode);
+  //   // writeln();
+
+  //   var outDegree = makeDistArray(nodeMap.size, int);
+  //   var inDegree = makeDistArray(nodeMap.size, int);
+  //   var totalDegree = makeDistArray(nodeMap.size, int);
+
+  //   // Get structural information for subgraph. 
+  //   for u in nodeMap.domain {
+  //     outDegree[u] = seg[u+1] - seg[u];
+  //     inDegree[u] = segR[u+1] - segR[u];
+  //     totalDegree[u] = outDegree[u] + inDegree[u];
+  //   }
+
+  //   var reorderComplete = false;
+  //   /**********************************************************************************************/
+  //   /**********************************************************************************************/
+  //   /********************************************CASE 1********************************************/
+  //   /**********************************************************************************************/
+  //   /**********************************************************************************************/
+  //   /* Edge attributes exist. This means that we want to create the reordering based on the 
+  //      probabilities of each edge appearing. Starting from the rarest edge and then picking amongst
+  //      the rarest edges connected to either starting vertex and continuing until all vertices 
+  //      have been remapped. */
+  //   if edgeAttributes.size > 0 {
+  //     reorderedNodes[src[rarestEdge]] = 0;
+  //     reorderedNodes[dst[rarestEdge]] = 1;
+  //     mappedEdges[rarestEdge] = true;
+  //     mappedNodes[src[rarestEdge]] = true;
+  //     mappedNodes[dst[rarestEdge]] = true;
+
+  //     var nextNodeName = 2;
+  //     var currRarestEdge = rarestEdge;
+  //     while !reorderComplete { // loop until all the vertices have been remapped
+  //       var nextPossibleEdges = new list((int,int,int)); // tuple of u --> v and edge id e
+  //       var currProbabilities = new list(real); // used to keep candidate probabilities
+  //       var u = src[currRarestEdge];
+  //       var v = dst[currRarestEdge];
+
+  //       /* Get all of the out neighbors and in neighbors of the currently rarest edge. */
+  //       for outNeighbor in dst[seg[u]..<seg[u+1]] {
+  //         var e = getEdgeId(u, outNeighbor, dst, seg);
+  //         if !mappedEdges[e] && !mappedNodes[outNeighbor] {
+  //           nextPossibleEdges.pushBack((u, outNeighbor, e));
+  //           currProbabilities.pushBack(edgeProbabilities[e]);
+  //         }
+  //       }
+        
+  //       for outNeighbor in dst[seg[v]..<seg[v+1]] {
+  //         var e = getEdgeId(v, outNeighbor, dst, seg);
+  //         if !mappedEdges[e] && !mappedNodes[outNeighbor] {
+  //           nextPossibleEdges.pushBack((v, outNeighbor, e));
+  //           currProbabilities.pushBack(edgeProbabilities[e]);
+  //         }
+  //       }
+
+  //       for inNeighbor in dstR[segR[u]..<segR[u+1]] {
+  //         var e = getEdgeId(inNeighbor, u, dst, seg);
+  //         if !mappedEdges[e] && !mappedNodes[inNeighbor] {
+  //           nextPossibleEdges.pushBack((inNeighbor, u, e));
+  //           currProbabilities.pushBack(edgeProbabilities[e]);
+  //         }
+  //       }
+
+  //       for inNeighbor in dstR[segR[v]..<segR[v+1]] {
+  //         var e = getEdgeId(inNeighbor, v, dst, seg);
+  //         if !mappedEdges[e] && !mappedNodes[inNeighbor] {
+  //           nextPossibleEdges.pushBack((inNeighbor, v, e));
+  //           currProbabilities.pushBack(edgeProbabilities[e]);
+  //         }
+  //       }
+
+  //       /* The end of a certain path was reached, but unmapped vertices remain. */
+  //       if nextPossibleEdges.size <= 0 && nextNodeName < nodeMap.size {
+  //         /* Iterate over all remaining edges, adding their probabilities to find the lowest. */
+  //         for (p,e) in zip(mappedEdges, mappedEdges.domain) {
+  //           if p == false {
+  //             nextPossibleEdges.pushBack((src[e], dst[e], e));
+  //             currProbabilities.pushBack(edgeProbabilities[e]);
+  //           }
+  //         }
+  //         var idx = argsortDefault(currProbabilities.toArray());
+  //         var e = nextPossibleEdges[idx[0]][2];
+  //         var u = src[e];
+  //         var v = dst[e];
+
+          
+
+  //         /* Check to see if two edges have the same probability. */
+  //         var needsTieBreaker = false;
+  //         if idx.size > 1 {
+  //           if currProbabilities[e] == currProbabilities[nextPossibleEdges[idx[1]][2]] then needsTieBreaker = true;
+  //         }
+  //         // TODO: Code the tie-breaker.
+
+  //         if !mappedNodes[u] && !mappedNodes[v] { // Neither end points have been mapped.
+  //           reorderedNodes[u] = nextNodeName;
+  //           reorderedNodes[v] = nextNodeName + 1;
+  //           mappedEdges[e] = true;
+  //           mappedNodes[u] = true;
+  //           mappedNodes[v] = true;
+
+  //           nextNodeName += 2;
+  //           currRarestEdge = e;
+  //           if nextNodeName == nodeMap.size then reorderComplete = true;
+  //           continue;
+  //         } else if !mappedNodes[u] && mappedNodes[v] { // Only the destination has been mapped.
+  //           reorderedNodes[u] = nextNodeName;
+  //           mappedEdges[e] = true;
+  //           mappedNodes[u] = true;
+
+  //           nextNodeName += 1;
+  //           currRarestEdge = e;
+  //           if nextNodeName == nodeMap.size then reorderComplete = true;
+  //           continue;
+  //         } else if mappedNodes[u] && !mappedNodes[v] { // Only the source has been mapped.
+  //           reorderedNodes[v] = nextNodeName;
+  //           mappedEdges[e] = true;
+  //           mappedNodes[v] = true;
+
+  //           nextNodeName += 1;
+  //           currRarestEdge = e;
+  //           if nextNodeName == nodeMap.size then reorderComplete = true;
+  //           continue;
+  //         } else {
+  //           writeln("Something catastrophic has gone wrong!");
+  //         }
+  //       }
+
+  //       writeln("nextPossibleEdges = ", nextPossibleEdges);
+
+  //       if currProbabilities.size >= 1 {
+  //         /* Sort the probabilities of current candidate edges to be remapped. */
+  //         var idx = argsortDefault(currProbabilities.toArray());
+
+  //         /* Check to see if two edges have the same probability. */
+  //         var needsTieBreaker = false;
+  //         if idx.size > 1 {
+  //           if currProbabilities[idx[0]] == currProbabilities[idx[1]] then needsTieBreaker = true;
+  //         }
+  //         // TODO: Code the tie-breaker.
+
+  //         /* Remap the remaining node of the chosen edge. */
+  //         var nextEdge = nextPossibleEdges[idx[0]];
+  //         writeln("nextEdge = ", nextEdge);
+  //         if (nextEdge[0] == u || nextEdge[0] == v) && !mappedNodes[nextEdge[1]] {
+  //           reorderedNodes[nextEdge[1]] = nextNodeName;
+  //           mappedNodes[nextEdge[1]] = true;
+  //         } else if (nextEdge[1] == u || nextEdge[1] == v) && !mappedNodes[nextEdge[0]] {
+  //           reorderedNodes[nextEdge[0]] = nextNodeName;
+  //           mappedNodes[nextEdge[0]] = true;
+  //         }
+
+  //         /* Update variables. */
+  //         nextNodeName += 1;
+  //         currRarestEdge = idx[0];
+  //         if nextNodeName == nodeMap.size then reorderComplete = true;
+
+  //         writeln();
+  //       }
+  //     }
+  //   } else if nodeAttributes.size > 0 && edgeAttributes.size <= 0 {
+  //     /********************************************************************************************/
+  //     /********************************************************************************************/
+  //     /*******************************************CASE 2*******************************************/
+  //     /********************************************************************************************/
+  //     /********************************************************************************************/
+  //     /* Only node attributes exist. This means that we want to create the reordering based on the 
+  //       probabilities of each node appearing. Starting from the rarest node and then picking amongst
+  //       the rarest neighbors connected to this vertex we continue untill all vertices have been 
+  //       remapped. */ 
+  //     reorderedNodes[rarestNode] = 0;
+  //     mappedNodes[rarestNode] = true;
+
+  //     var nextNodeName = 1;
+  //     var currRarestNode = rarestNode;
+  //     while !reorderComplete { // loop until all the vertices have been remapped
+  //       var nextPossibleNodes = new list(int); // adds all neighbors for a vertex not yet checked
+  //       var currProbabilities = new list(real); // used to keep candidate probabilities
+  //       var u = currRarestNode;
+
+  //       /* Get all of the out neighbors and in neighbors of current rarest vertex. */
+  //       for outNeighbor in dst[seg[u]..<seg[u+1]] {
+  //         if !mappedNodes[outNeighbor] {
+  //           nextPossibleNodes.pushBack(outNeighbor);
+  //           currProbabilities.pushBack(nodeProbabilities[outNeighbor]);
+  //         }
+  //       }
+
+  //       for inNeighbor in dstR[segR[u]..<segR[u+1]] {
+  //         if !mappedNodes[inNeighbor] {
+  //           nextPossibleNodes.pushBack(inNeighbor);
+  //           currProbabilities.pushBack(nodeProbabilities[inNeighbor]);
+  //         }
+  //       }
+
+  //       /* The end of a certain path was reached, but unmapped vertices remain. */
+  //       if nextPossibleNodes.size <= 0 && nextNodeName < nodeMap.size {
+  //         /* Iterate over all remaining vertices, adding their probabilities to find the lowest. */
+  //         for (p,u) in zip(mappedNodes, mappedNodes.domain) do 
+  //           if p == false {
+  //             nextPossibleNodes.pushBack(u);
+  //             currProbabilities.pushBack(nodeProbabilities[u]);
+  //           }
+
+  //         var idx = argsortDefault(currProbabilities.toArray());
+
+  //         /* Check to see if two vertices have the same probability. */
+  //         var needsTieBreaker = false;
+  //         if idx.size > 1 {
+  //           if currProbabilities[idx[0]] == currProbabilities[idx[1]] then needsTieBreaker = true;
+  //         }
+  //         // TODO: Code the tie-breaker.
+
+  //         var u = nextPossibleNodes[idx[0]];
+  //         reorderedNodes[u] = nextNodeName;
+  //         mappedNodes[u] = true;
+
+  //         nextNodeName += 1;
+  //         currRarestNode = u;
+  //         if nextNodeName == nodeMap.size then reorderComplete = true;
+  //         continue;
+  //       }
+
+  //       writeln("nextPossibleNodes = ", nextPossibleNodes);
+
+  //       if currProbabilities.size >= 1 {
+  //         /* Sort the probabilities of current candidate edges to be remapped. */
+  //         var idx = argsortDefault(currProbabilities.toArray());
+
+  //         /* Check to see if two nodes have the same probability. */
+  //         var needsTieBreaker = false;
+  //         if idx.size > 1 {
+  //           if currProbabilities[idx[0]] == currProbabilities[idx[1]] then needsTieBreaker = true;
+  //         }
+  //         // TODO: Code the tie-breaker.
+
+  //         /* Remap the selected node. */
+  //         var nextNode = nextPossibleNodes[idx[0]];
+  //         reorderedNodes[nextNode] = nextNodeName;
+  //         mappedNodes[nextNode] = true;
+
+  //         /* Update variables. */
+  //         nextNodeName += 1;
+  //         currRarestNode = nextNode;
+  //         if nextNodeName == nodeMap.size then reorderComplete = true;
+
+  //         writeln();
+  //       }
+  //     }
+  //   } else if nodeAttributes.size <= 0 && edgeAttributes.size <= 0 {
+  //     /********************************************************************************************/
+  //     /********************************************************************************************/
+  //     /*******************************************CASE 3*******************************************/
+  //     /********************************************************************************************/
+  //     /********************************************************************************************/
+  //     /* No vertex or node attributes exist. This means we want to create the reordering based on 
+  //        the degrees of each vertex. Starting with the vertex with most degree and then picking 
+  //        amongst its neighbors the next vertex with most degree. This is repeated until all the 
+  //        vertices have been reordered. */
+  //     var outDegreeIdx = argsortDefault(outDegree);
+  //     var inDegreeIdx = argsortDefault(inDegree);
+  //     var totalDegreeIdx = argsortDefault(totalDegree);
+  //     var outDom = outDegreeIdx.domain;
+  //     var inDom = inDegreeIdx.domain;
+
+  //     var mostImportantNode = if outDegree[outDegreeIdx[outDom.high]] != 0 then outDegreeIdx[outDom.high]
+  //                             else inDegreeIdx[inDom.high];
+
+  //     writeln("STARTING STRUCTURAL REORDERING BELOW: ");
+  //     writeln("Visiting ", mostImportantNode, " first...");
+  //     reorderedNodes[mostImportantNode] = 0;
+  //     mappedNodes[mostImportantNode] = true;
+
+  //     var nextNodeName = 1;
+  //     var currMostImportantNode = mostImportantNode;
+  //     while !reorderComplete { // loop until all the vertices have been remapped
+  //       var nextPossibleInNodes = new list(int); // adds in neighbors for a node not yet checked
+  //       var inNodeOutDegrees = new list(int);
+  //       var inNodeInDegrees = new list(int);
+
+  //       var nextPossibleOutNodes = new list(int); // adds out neighbors for a node not yet checked
+  //       var outNodeOutDegrees = new list(int);
+  //       var outNodeInDegrees = new list(int);
+        
+  //       var u = currMostImportantNode;
+
+  //       /* Get all of the out neighbors and in neighbors of current most important vertex. */
+  //       for outNeighbor in dst[seg[u]..<seg[u+1]] {
+  //         if !mappedNodes[outNeighbor] {
+  //           nextPossibleOutNodes.pushBack(outNeighbor);
+  //           outNodeOutDegrees.pushBack(outDegree[outNeighbor]);
+  //           outNodeInDegrees.pushBack(inDegree[outNeighbor]);
+  //         }
+  //       }
+
+  //       for inNeighbor in dstR[segR[u]..<segR[u+1]] {
+  //         if !mappedNodes[inNeighbor] {
+  //           nextPossibleInNodes.pushBack(inNeighbor);
+  //           inNodeOutDegrees.pushBack(outDegree[inNeighbor]);
+  //           inNodeInDegrees.pushBack(inDegree[inNeighbor]);
+  //         }
+  //       }
+
+  //       /* The end of a certain path was reached, but unmapped vertices remain. */
+  //       if nextPossibleOutNodes.size <= 0 && nextPossibleInNodes.size <= 0 && nextNodeName < nodeMap.size {
+  //         var nextPossibleNodes = new list(int);
+  //         var currOutDegrees = new list(int);
+  //         var currInDegrees = new list(int);
+
+  //         /* Iterate over all remaining vertices, adding their degrees to find the lowest. */
+  //         for (p,u) in zip(mappedNodes, mappedNodes.domain) {
+  //           if p == false {
+  //             nextPossibleNodes.pushBack(u);
+  //             currOutDegrees.pushBack(outDegree[u]);
+  //             currInDegrees.pushBack(inDegree[u]);
+  //           }
+  //         }
+  //         var outDegreeIdx = argsortDefault(currOutDegrees.toArray());
+  //         var inDegreeIdx = argsortDefault(currInDegrees.toArray());
+  //         var outDom = outDegreeIdx.domain;
+  //         var inDom = inDegreeIdx.domain;
+
+  //         var mostImportantNode = if currOutDegrees[outDegreeIdx[outDom.high]] != 0 then nextPossibleNodes[outDegreeIdx[outDom.high]]
+  //                                 else nextPossibleNodes[inDegreeIdx[inDom.high]];            
+  //         reorderedNodes[mostImportantNode] = nextNodeName;
+  //         mappedNodes[mostImportantNode] = true;
+
+  //         nextNodeName += 1;
+  //         currMostImportantNode = mostImportantNode;
+  //         if nextNodeName == nodeMap.size then reorderComplete = true;
+  //         continue;
+  //       }
+
+  //       writeln("nextPossibleOutNodes = ", nextPossibleOutNodes);
+  //       writeln("nextPossibleInNodes = ", nextPossibleInNodes);
+
+  //       if nextPossibleOutNodes.size >= 1 || nextPossibleInNodes.size >= 1 {
+  //         var outNodeOutDegreeIdx = argsortDefault(outNodeOutDegrees.toArray());
+  //         var outNodeInDegreeIdx = argsortDefault(outNodeInDegrees.toArray());
+  //         var inNodeOutDegreeIdx = argsortDefault(inNodeOutDegrees.toArray());
+  //         var inNodeInDegreeIdx = argsortDefault(inNodeInDegrees.toArray());
+
+  //         var outDom = outNodeOutDegreeIdx.domain;
+  //         var inDom = inNodeInDegreeIdx.domain;
+  //         var mostImportantNode:int;
+
+  //         /* TODO: CONTINUE HERE. */
+          
+  //         if nextPossibleOutNodes.size >= 1 && nextPossibleInNodes.size >= 1 {
+  //           mostImportantNode = if outNodeOutDegrees[outNodeOutDegreeIdx[outDom.high]] != 0 then nextPossibleOutNodes[outNodeOutDegreeIdx[outDom.high]]
+  //                               else nextPossibleOutNodes[outNodeInDegreeIdx[inDom.high]];
+  //         } else if nextPossibleOutNodes.size >= 1 && nextPossibleInNodes.size <= 0 {
+  //           mostImportantNode = nextPossibleOutNodes[outDegreeIdx[outDom.high]];
+  //         } else if nextPossibleOutNodes.size <= 0 && nextPossibleInNodes.size >= 1 {
+  //           mostImportantNode = nextPossibleInNodes[inDegreeIdx[inDom.high]];
+  //         }
+           
+  //         writeln("Visiting ", mostImportantNode, " now...");
+  //         reorderedNodes[mostImportantNode] = nextNodeName;
+  //         mappedNodes[mostImportantNode] = true;
+
+  //         nextNodeName += 1;
+  //         currMostImportantNode = mostImportantNode;
+  //         if nextNodeName == nodeMap.size then reorderComplete = true;
+
+  //         writeln();
+  //       }
+  //     }
+  //   }
+
+  //   writeln("reorderedNodes = ", reorderedNodes);
+  //   return reorderedNodes;
+  // }
+
+  /* Computes the degree of a graph when only source and destination arrays are known. */
+  proc computeDegrees(src, dst) throws {
+    // Find unique nodes. 
+    var uniqueNodesSet = new set(int);
+    for (u,v) in zip(src,dst) { uniqueNodesSet.add(u); uniqueNodesSet.add(v); }
+    var uniqueNodes = uniqueNodesSet.toArray();
+    sort(uniqueNodes);
+
+    // Initialize degree arrays.
+    var inDegree = makeDistArray(uniqueNodes.size, int); inDegree = 0;
+    var outDegree = makeDistArray(uniqueNodes.size, int); outDegree = 0;
+
+    // Create a map to map nodes to their index in uniqueNodes.
+    var nodeToIndex = new map(int, int);
+    for (idx, node) in zip(uniqueNodes.domain, uniqueNodes) do nodeToIndex.add(node, idx);
+
+    // Calculate out-degrees.
+    for node in src do outDegree[nodeToIndex[node]] += 1;
+
+    // Calculate in-degrees.
+    for node in dst do inDegree[nodeToIndex[node]] += 1;
+
+    // Calculate total degrees.
+    var totalDegree = inDegree + outDegree;
+
+    return (uniqueNodes, nodeToIndex, inDegree, outDegree, totalDegree);
+  }
+
+  /* When some vertex u is reindexed, then the degrees need to be updated. */
+  proc updateDegrees(src, dst, uniqueNodes) throws {
+    // Create a map to map nodes to their index in uniqueNodes.
+    var nodeToIndex = new map(int, int);
+    for (idx, node) in zip(uniqueNodes.domain, uniqueNodes) do nodeToIndex.add(node, idx);
+    var inDegree = makeDistArray(uniqueNodes.size, int); inDegree = 0;
+    var outDegree = makeDistArray(uniqueNodes.size, int); outDegree = 0;
+
+    // Calculate out-degrees.
+    for node in src do outDegree[nodeToIndex[node]] += 1;
+
+    // Calculate in-degrees.
+    for node in dst do inDegree[nodeToIndex[node]] += 1;
+
+    // Calculate total degrees.
+    var totalDegree = inDegree + outDegree;
+
+    return (inDegree, outDegree, totalDegree);
+  }
+
+  /* Define a custom tuple comparator. */
+  record CandidatesComparator {
+    proc compare(a: (int, real, int, int), b: (int, real, int, int)) {
+      if a[1] != b[1] then return a[1] - b[1];
+      else if a[1] == b[1] && a[2] != b[2] then return b[2] - a[2];
+      else if a[1] == b[1] && a[2] == b[2] then return b[3] - a[3];
+      else return b[3] - a[3];
+    }
+  }
+
+  /* Generates a mapping of old vertex identifiers to new vertex identifiers. */
   proc getSubgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
+    // Extract subgraph source and destination arrays.
+    var srcTemp = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
+    var dstTemp = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
     const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
     const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
-    const ref seg = toSymEntry(subgraph.getComp("SEGMENTS_SDI"), int).a;
-    const ref srcR = toSymEntry(subgraph.getComp("SRC_R_SDI"), int).a;
-    const ref dstR = toSymEntry(subgraph.getComp("DST_R_SDI"), int).a;
-    const ref segR = toSymEntry(subgraph.getComp("SEGMENTS_R_SDI"), int).a;
-    const ref nodeMap = toSymEntry(subgraph.getComp("VERTEX_MAP_SDI"), int).a;
-    var nodeAttributes = subgraph.getNodeAttributes();
-    var edgeAttributes = subgraph.getEdgeAttributes();
+
+    // Compute degrees.
+    var (uniqueNodes, nodeToIndex, inDegree, outDegree, totalDegree) = computeDegrees(srcTemp, dstTemp);
+    var reordering = nodeToIndex;
+    for key in reordering.keys() do reordering.replace(key, -1);
     
+    // Get the probabilities of each edge and vertex from the subgraph appearing in the main graph.
     var (edgeProbabilities, nodeProbabilities) = getSubgraphProbabilities(subgraph, st);
 
-    // Create a map of old internal vertex names to new internal vertex names. -1 is the default.
-    var reorderedNodes = new map(int, int);
-    for u in nodeMap.domain do reorderedNodes.add(u, -1);
+    writeln("initial srcTemp = ", srcTemp);
+    writeln("initial dstTemp = ", dstTemp);
+    writeln("uniqueNodes     = ", uniqueNodes);
+    writeln("inDegree        = ", inDegree);
+    writeln("outDegree       = ", outDegree);
+    writeln("totalDegree     = ", totalDegree);
 
-    // Find the edges and vertices with lowest probability. If no edge and/or vertex attributes have
-    // been defined, then these probabilities should default to edge 0 and vertex 0.
-    var sortedIdxEdgeProbabilities = argsortDefault(edgeProbabilities);
-    var sortedIdxNodeProbabilities = argsortDefault(nodeProbabilities);
-    var rarestEdge = sortedIdxEdgeProbabilities[0];
-    var rarestNode = sortedIdxNodeProbabilities[0];
+    // Create an array of tuples tracking vertex probability, highest degree, and out-degree.
+    var candidates = makeDistArray(uniqueNodes.size, (int,real,int,int));
+    for i in candidates.domain do candidates[i] = (uniqueNodes[i], nodeProbabilities[i], totalDegree[i], outDegree[i]);
+    var candidatesComparator: CandidatesComparator;
+    sort(candidates, comparator=candidatesComparator);
+    var replacedNodes = new list(int);
 
-    // Keep track of the edges and nodes that have been mapped already.
-    var mappedEdges = makeDistArray(src.size, bool);
-    var mappedNodes = makeDistArray(nodeMap.size, bool);
-    mappedEdges = false; mappedNodes = false;
+    writeln("candidates = ", candidates);
 
-    writeln("src = ", src);
-    writeln("dst = ", dst);
-    writeln("probs = ", edgeProbabilities);
-    writeln();
-    writeln("nodes = ", nodeMap);
-    writeln("probs = ", nodeProbabilities);
-    writeln();
-    writeln("rarestEdge = ", src[rarestEdge], " --> ", dst[rarestEdge]);
-    writeln("rarestNode = ", rarestNode);
-    writeln();
+    writeln("\nSelecting and remapping the first given node...");
+    var selectedNode = candidates[0][0];
+    var sortedIndex = 0;
+    writef("Initially selected node %i was given sorted index %i\n", selectedNode, sortedIndex);
 
-    var reorderComplete = false;
+    for i in srcTemp.domain {
+      if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+      else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
 
-    /**********************************************************************************************/
-    /**********************************************************************************************/
-    /********************************************CASE 1********************************************/
-    /**********************************************************************************************/
-    /**********************************************************************************************/
-    /* Edge attributes exist. This means that we want to create the reordering pased on the 
-       probabilities of each edge appearing. Starting from the rarest edge and then picking amongst
-       the rarest edges connected to either starting vertex and continuing until all vertices 
-       have been remapped. */
-    if edgeAttributes.size > 0 {
-      reorderedNodes[src[rarestEdge]] = 0;
-      reorderedNodes[dst[rarestEdge]] = 1;
-      mappedEdges[rarestEdge] = true;
-      mappedNodes[src[rarestEdge]] = true;
-      mappedNodes[dst[rarestEdge]] = true;
+      if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+      else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+    }
 
-      var nextNodeName = 2;
-      var currRarestEdge = rarestEdge;
-      while !reorderComplete { // loop until all the vertices have been remapped
-        var nextPossibleEdges = new list((int,int,int)); // tuple of u --> v and edge id e
-        var currProbabilities = new list(real); // used to keep candidate probabilities
-        var u = src[currRarestEdge];
-        var v = dst[currRarestEdge];
+    replacedNodes.pushBack(uniqueNodes[sortedIndex]);
 
-        /* Get all of the out neighbors and in neighbors of the currently rarest edge. */
-        for outNeighbor in dst[seg[u]..<seg[u+1]] {
-          var e = getEdgeId(u, outNeighbor, dst, seg);
-          if !mappedEdges[e] && !mappedNodes[outNeighbor] {
-            nextPossibleEdges.pushBack((u, outNeighbor, e));
-            currProbabilities.pushBack(edgeProbabilities[e]);
-          }
-        }
-        
-        for outNeighbor in dst[seg[v]..<seg[v+1]] {
-          var e = getEdgeId(v, outNeighbor, dst, seg);
-          if !mappedEdges[e] && !mappedNodes[outNeighbor] {
-            nextPossibleEdges.pushBack((v, outNeighbor, e));
-            currProbabilities.pushBack(edgeProbabilities[e]);
-          }
-        }
+    writeln("replacedNodes = ", replacedNodes);
+    writeln("updated srcTemp = ", srcTemp);
+    writeln("updated dstTemp = ", dstTemp);
 
-        for inNeighbor in dstR[segR[u]..<segR[u+1]] {
-          var e = getEdgeId(inNeighbor, u, dst, seg);
-          if !mappedEdges[e] && !mappedNodes[inNeighbor] {
-            nextPossibleEdges.pushBack((inNeighbor, u, e));
-            currProbabilities.pushBack(edgeProbabilities[e]);
-          }
-        }
-
-        for inNeighbor in dstR[segR[v]..<segR[v+1]] {
-          var e = getEdgeId(inNeighbor, v, dst, seg);
-          if !mappedEdges[e] && !mappedNodes[inNeighbor] {
-            nextPossibleEdges.pushBack((inNeighbor, v, e));
-            currProbabilities.pushBack(edgeProbabilities[e]);
-          }
-        }
-
-        /* The end of a certain path was reached, but unmapped vertices remain. */
-        if currProbabilities.size == 0 && nextNodeName < nodeMap.size {
-          /* Iterate over all remaining edges, adding their probabilities to find the lowest. */
-          for (p,e) in zip(mappedEdges, mappedEdges.domain) do 
-            if p == false then currProbabilities.pushBack(edgeProbabilities[e]);
-
-          var idx = argsortDefault(currProbabilities.toArray());
-
-          /* Check to see if two edges have the same probability. */
-          var needsTieBreaker = false;
-          if idx.size > 1 {
-            if idx[0] == idx[1] then needsTieBreaker = true;
-          }
-          // TODO: Code the tie-breaker.
-
-          var e = idx[0];
-          var u = src[e];
-          var v = dst[e];
-          if !mappedNodes[u] && !mappedNodes[v] { // Neither end points have been mapped.
-            reorderedNodes[u] = nextNodeName;
-            reorderedNodes[v] = nextNodeName + 1;
-            mappedEdges[e] = true;
-            mappedNodes[u] = true;
-            mappedNodes[v] = true;
-
-            nextNodeName += 2;
-            currRarestEdge = e;
-            if nextNodeName == nodeMap.size then reorderComplete = true;
-            continue;
-          } else if !mappedNodes[u] && mappedNodes[v] { // Only the destination has been mapped.
-            reorderedNodes[u] = nextNodeName;
-            mappedEdges[e] = true;
-            mappedNodes[u] = true;
-
-            nextNodeName += 1;
-            currRarestEdge = e;
-            if nextNodeName == nodeMap.size then reorderComplete = true;
-            continue;
-          } else if mappedNodes[u] && !mappedNodes[v] { // Only the source has been mapped.
-            reorderedNodes[v] = nextNodeName;
-            mappedEdges[e] = true;
-            mappedNodes[v] = true;
-
-            nextNodeName += 1;
-            currRarestEdge = e;
-            if nextNodeName == nodeMap.size then reorderComplete = true;
-            continue;
-          } else {
-            writeln("Something catastrophic has gone wrong!");
-          }
-        }
-
-        writeln("nextPossibleEdges = ", nextPossibleEdges);
-
-        if currProbabilities.size >= 1 {
-          /* Sort the probabilities of current candidate edges to be remapped. */
-          var idx = argsortDefault(currProbabilities.toArray());
-
-          /* Check to see if two edges have the same probability. */
-          var needsTieBreaker = false;
-          if idx.size > 1 {
-            if idx[0] == idx[1] then needsTieBreaker = true;
-          }
-          // TODO: Code the tie-breaker.
-
-          /* Remap the remaining node of the chosen edge. */
-          var nextEdge = nextPossibleEdges[idx[0]];
-          writeln("nextEdge = ", nextEdge);
-          if (nextEdge[0] == u || nextEdge[0] == v) && !mappedNodes[nextEdge[1]] {
-            reorderedNodes[nextEdge[1]] = nextNodeName;
-            mappedNodes[nextEdge[1]] = true;
-          } else if (nextEdge[1] == u || nextEdge[1] == v) && !mappedNodes[nextEdge[0]] {
-            reorderedNodes[nextEdge[0]] = nextNodeName;
-            mappedNodes[nextEdge[0]] = true;
-          }
-
-          /* Update variables. */
-          nextNodeName += 1;
-          currRarestEdge = idx[0];
-          if nextNodeName == nodeMap.size then reorderComplete = true;
-
-          writeln();
+    writeln("\nFirst node remapping finished, while loop begins...");
+    while replacedNodes.size < uniqueNodes.size {
+      var currentNode = replacedNodes.last;
+      var (inDegree, outDegree, totalDegree) = updateDegrees(srcTemp, dstTemp, uniqueNodes);
+      
+      var outNeighborsList = new list((int,real,int,int));
+      for i in srcTemp.domain {
+        var outNeighbor = dstTemp[i];
+        if srcTemp[i] == currentNode && !replacedNodes.contains(outNeighbor) {
+          outNeighborsList.pushBack((outNeighbor,
+                                    nodeProbabilities[nodeToIndex[outNeighbor]],
+                                    totalDegree[nodeToIndex[outNeighbor]],
+                                    outDegree[nodeToIndex[outNeighbor]]));
         }
       }
-    }
-    else if nodeAttributes.size > 0 && edgeAttributes.size <= 0 {
-      /********************************************************************************************/
-      /********************************************************************************************/
-      /*******************************************CASE 2*******************************************/
-      /********************************************************************************************/
-      /********************************************************************************************/
-      /* Only node attributes exist. This means that we want to create the reordering pased on the 
-        probabilities of each node appearing. Starting from the rarest node and then picking amongst
-        the rarest neighbors connected to this vertex we continue untill all vertices have been 
-        remapped. */ 
-      reorderedNodes[rarestNode] = 0;
-      mappedNodes[rarestNode] = true;
+      var outNeighbors = outNeighborsList.toArray();
+      sort(outNeighbors, comparator=candidatesComparator);
 
-      var nextNodeName = 1;
-      var currRarestNode = rarestNode;
-      while !reorderComplete { // loop until all the vertices have been remapped
-        var nextPossibleVertices = new list(int); // adds all neighbors for a vertex not yet checked
-        var currProbabilities = new list(real); // used to keep candidate probabilities
-        var u = currRarestNode;
+      writef("\nChecking node %i with out-neighbors ", currentNode);
+      write(outNeighbors);
+      write("...\n");
+      writeln("uniqueNodes = ", uniqueNodes);
+      writeln("inDegree    = ", inDegree);
+      writeln("outDegree   = ", outDegree);
+      writeln("totalDegree = ", totalDegree);
 
-        /* Get all of the out neighbors and in neighbors of current rarest vertex. */
-        for outNeighbor in dst[seg[u]..<seg[u+1]] {
-          if !mappedNodes[outNeighbor] {
-            nextPossibleVertices.pushBack(outNeighbor);
-            currProbabilities.pushBack(nodeProbabilities[u]);
+      if outNeighbors.size > 0 {
+        var nextNode = outNeighbors[0][0];
+        var sortedIndex = replacedNodes.size;
+
+        for i in srcTemp.domain {
+          if srcTemp[i] == nextNode then srcTemp[i] = uniqueNodes[sortedIndex];
+          else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = nextNode;
+
+          if dstTemp[i] == nextNode then dstTemp[i] = uniqueNodes[sortedIndex];
+          else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = nextNode;
+        }    
+
+        replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+
+        writef("Next selected node %i was given sorted index %i\n", nextNode, sortedIndex);
+        writeln("replacedNodes   = ", replacedNodes);
+        writeln("updated srcTemp = ", srcTemp);
+        writeln("updated dstTemp = ", dstTemp);    
+      } else {
+        var remainingCandidatesList = new list((int,real,int,int));
+        for i in uniqueNodes.domain {
+          var u = uniqueNodes[i];
+          if !replacedNodes.contains(u) {
+            writeln("$$$$$ adding u = ", u);
+            remainingCandidatesList.pushBack((u,
+                                              nodeProbabilities[i],
+                                              totalDegree[i],
+                                              outDegree[i]));
           }
         }
+        var remainingCandidates = remainingCandidatesList.toArray();
+        sort(remainingCandidates, comparator=candidatesComparator);
 
-        for inNeighbor in dstR[segR[u]..<segR[u+1]] {
-          if !mappedNodes[inNeighbor] {
-            nextPossibleVertices.pushBack(inNeighbor);
-            currProbabilities.pushBack(nodeProbabilities[u]);
+        writeln("remainingCandidates = ", remainingCandidates);
+        if remainingCandidates.size > 0 {
+          var selectedNode = remainingCandidates[0][0];
+          var sortedIndex = replacedNodes.size;
+
+          for i in srcTemp.domain {
+            if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+            else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+            if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+            else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
           }
-        }
 
-        /* The end of a certain path was reached, but unmapped vertices remain. */
-        if currProbabilities.size == 0 && nextNodeName < nodeMap.size {
-          /* Iterate over all remaining vertices, adding their probabilities to find the lowest. */
-          for (p,u) in zip(mappedNodes, mappedNodes.domain) do 
-            if p == false then currProbabilities.pushBack(nodeProbabilities[u]);
-
-          var idx = argsortDefault(currProbabilities.toArray());
-
-          /* Check to see if two vertices have the same probability. */
-          var needsTieBreaker = false;
-          if idx.size > 1 {
-            if idx[0] == idx[1] then needsTieBreaker = true;
-          }
-          // TODO: Code the tie-breaker.
-
-          var u = idx[0];
-          reorderedNodes[u] = nextNodeName;
-          mappedNodes[u] = true;
-
-          nextNodeName += 1;
-          currRarestNode = u;
-          if nextNodeName == nodeMap.size then reorderComplete = true;
-          continue;
-        }
-
-        writeln("nextPossibleVertices = ", nextPossibleVertices);
-
-        if currProbabilities.size >= 1 {
-          /* Sort the probabilities of current candidate edges to be remapped. */
-          var idx = argsortDefault(currProbabilities.toArray());
-
-          /* Check to see if two nodes have the same probability. */
-          var needsTieBreaker = false;
-          if idx.size > 1 {
-            if idx[0] == idx[1] then needsTieBreaker = true;
-          }
-          // TODO: Code the tie-breaker.
-
-          /* Remap the selected node. */
-          var nextNode = nextPossibleVertices[idx[0]];
-          reorderedNodes[nextNode] = nextNodeName;
-          mappedNodes[nextNode] = true;
-
-          /* Update variables. */
-          nextNodeName += 1;
-          currRarestNode = nextNode;
-          if nextNodeName == nodeMap.size then reorderComplete = true;
-
-          writeln();
+          replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+          writef("Next selected node (no out-neighbors) %i was given sorted index %i\n", selectedNode, sortedIndex);
+          writeln("replacedNodes   = ", replacedNodes);
+          writeln("updated srcTemp = ", srcTemp);
+          writeln("updated dstTemp = ", dstTemp);
         }
       }
     }
 
-    return reorderedNodes;
+    // Save the reordering based off the new source and destination arrays.
+    for (u, v, uNew, vNew) in zip(src, dst, srcTemp, dstTemp) {
+      reordering[u] = uNew;
+      reordering[v] = vNew;
+    }
+
+    return reordering;
   }
+
+
 
   /* Given a new permutation, reorder given attributes. Used for subgraph reordering. */
   proc getReorderedAttributes(attributes, perm, st) throws {
