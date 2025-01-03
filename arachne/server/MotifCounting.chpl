@@ -252,6 +252,8 @@ module MotifCounting {
 
         return (adjMatrix, chosenVerts);
     }// End of prepareNaugtyArguments
+
+    
     proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
         if logLevel == LogLevel.DEBUG {
             writeln("===== generatePatternDirect called =====");
@@ -605,22 +607,23 @@ seperated by a -1, So Harvard team can use it for cisualization purpose
     }// End of Enumerate
 
 
+    writeln("**********************************************************************");
 
-    if logLevel == LogLevel.DEBUG {
-      writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
-      writeln("Maximum degree: ", maxDeg);
-    }
+    writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
+    writeln("Maximum degree: ", maxDeg);
 
     Enumerate(g1.n_vertices, motifSize, maxDeg );
     // Oliver: Now you can make your src and dst based on Classes that I gathered in 
     // motifClasses and return them to users 
     // we should decide to keep or delete (allmotifs list)
     
-    if logLevel == LogLevel.DEBUG {
-      writeln("\nglobalMotifCount: ", globalMotifCount.read());
-      writeln("\nglobalClasses: ", globalClasses);
-      writeln("\nglobalClasses.size: ", globalClasses.size);
-    }
+
+    writeln("\nglobalMotifCount: ", globalMotifCount.read());
+    writeln("\nglobalClasses: ", globalClasses);
+    writeln("\nglobalClasses.size: ", globalClasses.size);
+
+    writeln("**********************************************************************");
+
     // writeln("\nallmotifs List size: ", allmotifs.size);
     // writeln("\nNumber of found motif Classes: ", motifClasses.size);
     // // To read the final count:
