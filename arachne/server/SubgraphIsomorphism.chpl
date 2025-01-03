@@ -882,6 +882,8 @@ module SubgraphIsomorphism {
 
   /* Define a custom tuple comparator. */
   record CandidatesComparator {
+    
+    /* Comparator used for vertices. */
     proc compare(a: (int, real, int, int), b: (int, real, int, int)) {
       if a[1] != b[1] then return a[1] - b[1];
       else if a[1] == b[1] && a[2] != b[2] then return b[2] - a[2];
@@ -892,11 +894,16 @@ module SubgraphIsomorphism {
 
   /* Generates a mapping of old vertex identifiers to new vertex identifiers. */
   proc getSubgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
-    // Extract subgraph source and destination arrays.
+    // Extract copies and references to subgraph source and destination arrays.
     var srcTemp = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
     var dstTemp = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
     const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
     const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
+
+    // Extract attribute information to decide if edge, vertex, or structural based reordering is 
+    // to be used.
+    var nodeAttributes = subgraph.getNodeAttributes();
+    var edgeAttributes = subgraph.getEdgeAttributes();
 
     // Compute degrees.
     var (uniqueNodes, nodeToIndex, inDegree, outDegree, totalDegree) = computeDegrees(srcTemp, dstTemp);
@@ -913,111 +920,257 @@ module SubgraphIsomorphism {
     writeln("outDegree       = ", outDegree);
     writeln("totalDegree     = ", totalDegree);
 
-    // Create an array of tuples tracking vertex probability, highest degree, and out-degree.
-    var candidates = makeDistArray(uniqueNodes.size, (int,real,int,int));
-    for i in candidates.domain do candidates[i] = (uniqueNodes[i], nodeProbabilities[i], totalDegree[i], outDegree[i]);
-    var candidatesComparator: CandidatesComparator;
-    sort(candidates, comparator=candidatesComparator);
-    var replacedNodes = new list(int);
+    if edgeAttributes.size == 0 { // There are no edge attributes, focus on vertices and/or structure.
+      // Create an array of tuples tracking vertex probability, highest degree, and out-degree.
+      var candidates = makeDistArray(uniqueNodes.size, (int,real,int,int));
+      for i in candidates.domain do candidates[i] = (uniqueNodes[i], nodeProbabilities[i], totalDegree[i], outDegree[i]);
+      var candidatesComparator: CandidatesComparator;
+      sort(candidates, comparator=candidatesComparator);
+      var replacedNodes = new list(int);
 
-    writeln("candidates = ", candidates);
+      writeln("candidates = ", candidates);
 
-    writeln("\nSelecting and remapping the first given node...");
-    var selectedNode = candidates[0][0];
-    var sortedIndex = 0;
-    writef("Initially selected node %i was given sorted index %i\n", selectedNode, sortedIndex);
+      // Select and remap the first given node.
+      writeln("\nSelecting and remapping the first given node...");
+      var selectedNode = candidates[0][0];
+      var sortedIndex = 0;
+      writef("Initially selected node %i was given sorted index %i\n", selectedNode, sortedIndex);
 
-    for i in srcTemp.domain {
-      if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
-      else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
-
-      if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
-      else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
-    }
-
-    replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-
-    writeln("replacedNodes = ", replacedNodes);
-    writeln("updated srcTemp = ", srcTemp);
-    writeln("updated dstTemp = ", dstTemp);
-
-    writeln("\nFirst node remapping finished, while loop begins...");
-    while replacedNodes.size < uniqueNodes.size {
-      var currentNode = replacedNodes.last;
-      var (inDegree, outDegree, totalDegree) = updateDegrees(srcTemp, dstTemp, uniqueNodes);
-      
-      var outNeighborsList = new list((int,real,int,int));
+      // Swap the selected node with the first sorted index.
       for i in srcTemp.domain {
-        var outNeighbor = dstTemp[i];
-        if srcTemp[i] == currentNode && !replacedNodes.contains(outNeighbor) {
-          outNeighborsList.pushBack((outNeighbor,
-                                    nodeProbabilities[nodeToIndex[outNeighbor]],
-                                    totalDegree[nodeToIndex[outNeighbor]],
-                                    outDegree[nodeToIndex[outNeighbor]]));
-        }
+        if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+        else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+        if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+        else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
       }
-      var outNeighbors = outNeighborsList.toArray();
-      sort(outNeighbors, comparator=candidatesComparator);
+      replacedNodes.pushBack(uniqueNodes[sortedIndex]);
 
-      writef("\nChecking node %i with out-neighbors ", currentNode);
-      write(outNeighbors);
-      write("...\n");
-      writeln("uniqueNodes = ", uniqueNodes);
-      writeln("inDegree    = ", inDegree);
-      writeln("outDegree   = ", outDegree);
-      writeln("totalDegree = ", totalDegree);
+      writeln("replacedNodes = ", replacedNodes);
+      writeln("updated srcTemp = ", srcTemp);
+      writeln("updated dstTemp = ", dstTemp);
 
-      if outNeighbors.size > 0 {
-        var nextNode = outNeighbors[0][0];
-        var sortedIndex = replacedNodes.size;
-
+      writeln("\nFirst node remapping finished, while loop begins...");
+      // Loop until all vertices have been remapped.
+      while replacedNodes.size < uniqueNodes.size {
+        var currentNode = replacedNodes.last;
+        var (inDegree, outDegree, totalDegree) = updateDegrees(srcTemp, dstTemp, uniqueNodes);
+        
+        // Select the out-neighbors of the current vertex and sort them based on candidacy. 
+        var outNeighborsList = new list((int,real,int,int));
         for i in srcTemp.domain {
-          if srcTemp[i] == nextNode then srcTemp[i] = uniqueNodes[sortedIndex];
-          else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = nextNode;
-
-          if dstTemp[i] == nextNode then dstTemp[i] = uniqueNodes[sortedIndex];
-          else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = nextNode;
-        }    
-
-        replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-
-        writef("Next selected node %i was given sorted index %i\n", nextNode, sortedIndex);
-        writeln("replacedNodes   = ", replacedNodes);
-        writeln("updated srcTemp = ", srcTemp);
-        writeln("updated dstTemp = ", dstTemp);    
-      } else {
-        var remainingCandidatesList = new list((int,real,int,int));
-        for i in uniqueNodes.domain {
-          var u = uniqueNodes[i];
-          if !replacedNodes.contains(u) {
-            writeln("$$$$$ adding u = ", u);
-            remainingCandidatesList.pushBack((u,
-                                              nodeProbabilities[i],
-                                              totalDegree[i],
-                                              outDegree[i]));
+          var outNeighbor = dstTemp[i];
+          if srcTemp[i] == currentNode && !replacedNodes.contains(outNeighbor) {
+            outNeighborsList.pushBack((outNeighbor,
+                                      nodeProbabilities[nodeToIndex[outNeighbor]],
+                                      totalDegree[nodeToIndex[outNeighbor]],
+                                      outDegree[nodeToIndex[outNeighbor]]));
           }
         }
-        var remainingCandidates = remainingCandidatesList.toArray();
-        sort(remainingCandidates, comparator=candidatesComparator);
+        var outNeighbors = outNeighborsList.toArray();
+        sort(outNeighbors, comparator=candidatesComparator);
 
-        writeln("remainingCandidates = ", remainingCandidates);
-        if remainingCandidates.size > 0 {
-          var selectedNode = remainingCandidates[0][0];
+        writef("\nChecking node %i with out-neighbors ", currentNode);
+        write(outNeighbors);
+        write("...\n");
+        writeln("uniqueNodes = ", uniqueNodes);
+        writeln("inDegree    = ", inDegree);
+        writeln("outDegree   = ", outDegree);
+        writeln("totalDegree = ", totalDegree);
+
+        // If there are out-neighbors then perform the same swapping steps as above.
+        if outNeighbors.size > 0 {
+          var nextNode = outNeighbors[0][0];
           var sortedIndex = replacedNodes.size;
 
           for i in srcTemp.domain {
-            if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
-            else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+            if srcTemp[i] == nextNode then srcTemp[i] = uniqueNodes[sortedIndex];
+            else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = nextNode;
 
-            if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
-            else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
-          }
+            if dstTemp[i] == nextNode then dstTemp[i] = uniqueNodes[sortedIndex];
+            else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = nextNode;
+          }    
 
           replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-          writef("Next selected node (no out-neighbors) %i was given sorted index %i\n", selectedNode, sortedIndex);
+
+          writef("Next selected node %i was given sorted index %i\n", nextNode, sortedIndex);
           writeln("replacedNodes   = ", replacedNodes);
           writeln("updated srcTemp = ", srcTemp);
-          writeln("updated dstTemp = ", dstTemp);
+          writeln("updated dstTemp = ", dstTemp);    
+        } else { // If there are no out-neighbors, then pick the next node from the remaining vertices.
+          // Assemble remaining candidates, checking their probabilities and structure.
+          var remainingCandidatesList = new list((int,real,int,int));
+          for i in uniqueNodes.domain {
+            var u = uniqueNodes[i];
+            if !replacedNodes.contains(u) {
+              remainingCandidatesList.pushBack((u,
+                                                nodeProbabilities[i],
+                                                totalDegree[i],
+                                                outDegree[i]));
+            }
+          }
+          var remainingCandidates = remainingCandidatesList.toArray();
+          sort(remainingCandidates, comparator=candidatesComparator);
+
+          writeln("remainingCandidates = ", remainingCandidates);
+          if remainingCandidates.size > 0 {
+            // Select first remaining candidate.
+            var selectedNode = remainingCandidates[0][0];
+            var sortedIndex = replacedNodes.size;
+
+            for i in srcTemp.domain {
+              if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+              else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+              if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+              else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+            }
+
+            replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+            writef("Next selected node (no out-neighbors) %i was given sorted index %i\n", selectedNode, sortedIndex);
+            writeln("replacedNodes   = ", replacedNodes);
+            writeln("updated srcTemp = ", srcTemp);
+            writeln("updated dstTemp = ", dstTemp);
+          }
+        }
+      }
+    } else { // There are edge attributes. Use edge probabilities.
+      // Candidates are edge tuples, edge probability, and source and destination vertex probs.
+      // It break ties on destination and source vertex probabilities, respectively.
+      var candidates = makeDistArray(srcTemp.size, (int, real, int, int));
+      for i in candidates.domain {
+        var u = src[i];
+        var v = dst[i];
+        var edgeProb = edgeProbabilities[i];
+        var combinedTotalDegree = totalDegree[u] + totalDegree[v];
+        var combinedOutDegree = outDegree[u] + outDegree[v];
+        candidates[i] = (i, edgeProb, combinedTotalDegree, combinedTotalDegree);
+      }
+      var candidatesComparator: CandidatesComparator;
+      sort(candidates, comparator=candidatesComparator);
+      var replacedNodes = new list(int);
+
+      writeln("candidates = ", candidates);
+
+      // Select and remap both of the vertices of the first given edge.
+      writeln("\nSelecting and remapping the first given edge...");
+      // First selected edge.
+      var e = candidates[0][0];
+      
+      // Firstly, vertex u...
+      var selectedNode = src[e];
+      var sortedIndex = 0;
+      writef("Source node %i was given sorted index %i\n", selectedNode, sortedIndex);
+      for i in srcTemp.domain {
+        if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+        else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+        if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+        else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+      }
+      replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+      writeln("replacedNodes = ", replacedNodes);
+      writeln("updated srcTemp = ", srcTemp);
+      writeln("updated dstTemp = ", dstTemp);
+
+      // Secondly, vertex v...
+      selectedNode = dst[e];
+      sortedIndex = 1;
+      writef("Destination node %i was given sorted index %i\n", selectedNode, sortedIndex);
+      for i in srcTemp.domain {
+        if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+        else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+        if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+        else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+      }
+      replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+      writeln("replacedNodes = ", replacedNodes);
+      writeln("updated srcTemp = ", srcTemp);
+      writeln("updated dstTemp = ", dstTemp);
+
+      writeln("\nFirst edge remapping finished, while loop begins...");
+      // Loop until all vertices have been remapped.
+      while replacedNodes.size < uniqueNodes.size {
+        var currentNode = replacedNodes.last;
+        var (inDegree, outDegre, totalDegree) = updateDegrees(srcTemp, dstTemp, uniqueNodes);
+
+        // Select the out-neighbors of the current vertex and sort them based on candidacy. 
+        var outNeighborsList = new list((int,real,int,int));
+        for i in srcTemp.domain {
+          var outNeighbor = dstTemp[i];
+          if srcTemp[i] == currentNode && !replacedNodes.contains(outNeighbor) {
+            outNeighborsList.pushBack((outNeighbor,
+                                      edgeProbabilities[nodeToIndex[outNeighbor]],
+                                      totalDegree[nodeToIndex[outNeighbor]],
+                                      outDegree[nodeToIndex[outNeighbor]]));
+          }
+        }
+        var outNeighbors = outNeighborsList.toArray();
+        sort(outNeighbors, comparator=candidatesComparator);
+
+        writef("\nChecking node %i with out-neighbors ", currentNode);
+        write(outNeighbors);
+        write("...\n");
+        writeln("uniqueNodes = ", uniqueNodes);
+        writeln("inDegree    = ", inDegree);
+        writeln("outDegree   = ", outDegree);
+        writeln("totalDegree = ", totalDegree);
+
+        // If there are out-neighbors then perform the same swapping steps as above.
+        if outNeighbors.size > 0 {
+          var nextNode = outNeighbors[0][0];
+          var sortedIndex = replacedNodes.size;
+
+          for i in srcTemp.domain {
+            if srcTemp[i] == nextNode then srcTemp[i] = uniqueNodes[sortedIndex];
+            else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = nextNode;
+
+            if dstTemp[i] == nextNode then dstTemp[i] = uniqueNodes[sortedIndex];
+            else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = nextNode;
+          }    
+
+          replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+
+          writef("Next selected node %i was given sorted index %i\n", nextNode, sortedIndex);
+          writeln("replacedNodes   = ", replacedNodes);
+          writeln("updated srcTemp = ", srcTemp);
+          writeln("updated dstTemp = ", dstTemp);    
+        } else { // If there are no out-neighbors, then pick the next node from the remaining vertices.
+          // Assemble remaining candidates, checking their probabilities and structure.
+          var remainingCandidatesList = new list((int,real,int,int));
+          for i in uniqueNodes.domain {
+            var u = uniqueNodes[i];
+            if !replacedNodes.contains(u) {
+              remainingCandidatesList.pushBack((u,
+                                                edgeProbabilities[i],
+                                                totalDegree[i],
+                                                outDegree[i]));
+            }
+          }
+          var remainingCandidates = remainingCandidatesList.toArray();
+          sort(remainingCandidates, comparator=candidatesComparator);
+
+          writeln("remainingCandidates = ", remainingCandidates);
+          if remainingCandidates.size > 0 {
+            // Select first remaining candidate.
+            var selectedNode = remainingCandidates[0][0];
+            var sortedIndex = replacedNodes.size;
+
+            for i in srcTemp.domain {
+              if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+              else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+              if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+              else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+            }
+
+            replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+            writef("Next selected node (no out-neighbors) %i was given sorted index %i\n", selectedNode, sortedIndex);
+            writeln("replacedNodes   = ", replacedNodes);
+            writeln("updated srcTemp = ", srcTemp);
+            writeln("updated dstTemp = ", dstTemp);
+          }
         }
       }
     }
@@ -1137,12 +1290,6 @@ module SubgraphIsomorphism {
       newDst[j] = nodeMapping[d];
     }
 
-    writeln("nodeMapping = ", nodeMapping);
-    writeln("src    = ", src);
-    writeln("newSrc = ", newSrc);
-    writeln("dst    = ", dst);
-    writeln("newDst = ", newDst);
-
     // Sort the newly created edge list.
     var (sortedNewSrc, sortedNewDst) = sortEdgeList(newSrc, newDst);
 
@@ -1159,8 +1306,6 @@ module SubgraphIsomorphism {
     for (i,u) in zip(newNodeMap.domain, newNodeMap) do newNodeMap[i] = nodeMapping[u];
     var nodePerm = argsortDefault(newNodeMap);
     var sortedNodeMap = newNodeMap[nodePerm];
-
-    writeln("sortedNodeMap = ", sortedNodeMap);
 
     // Reorder the attributes.
     var reorderedEdgeAttributes = getReorderedAttributes(edgeAttributes, edgePerm, st);
@@ -1181,10 +1326,6 @@ module SubgraphIsomorphism {
     completeSegs[0] = 0;
     completeSegs[1..] = segs;
 
-    writeln("sortedNewSrc = ", sortedNewSrc);
-    writeln("sortedNewDst = ", sortedNewDst);
-    writeln("completeSegs = ", completeSegs);
-
     var (srcRUnique, srcRCounts) = Unique.uniqueFromSorted(sortedSrcR);
     var neisR = makeDistArray(nodeMap.size, int);
     neisR = 0; 
@@ -1193,10 +1334,6 @@ module SubgraphIsomorphism {
     var completeSegsR = makeDistArray(nodeMap.size + 1, int);
     completeSegsR[0] = 0;
     completeSegsR[1..] = segsR;
-
-    writeln("sortedSrcR = ", sortedSrcR);
-    writeln("sortedDstR = ", sortedDstR);
-    writeln("completeSegsR = ", completeSegsR);
 
     return (sortedNewSrc, sortedNewDst, completeSegs, sortedNodeMap, 
             sortedSrcR, sortedDstR, completeSegsR, 
