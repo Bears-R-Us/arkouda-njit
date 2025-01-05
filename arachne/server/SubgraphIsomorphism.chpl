@@ -1421,6 +1421,16 @@ module SubgraphIsomorphism {
     var nG2 = nodeMapGraphG2.size;
     var mG2 = srcNodesG2.size;
 
+  writeln("********************************************************************");
+  writeln("Initial srcNodesG2: ", srcNodesG2);
+  writeln("Initial dstNodesG2: ", dstNodesG2);
+  writeln("Initial segGraphG2: ", segGraphG2);
+  writeln("Initial nG2: ", nG2);
+  writeln("Initial mG2: ", mG2);
+  writeln("Initial subgraphEdgeAttributes: ", subgraphEdgeAttributes);
+  writeln("Initial subgraphNodeAttributes: ", subgraphNodeAttributes);
+  writeln("********************************************************************");
+
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     var noEdgeAttributes = if subgraphEdgeAttributes.size == 0 then true else false;
@@ -1845,6 +1855,10 @@ module SubgraphIsomorphism {
     /* Executes VF2SIFromEdges. */
     proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph, const ref edgeFlagger) throws {
       var solutions: list(int, parSafe=true);
+      writeln("srcNodesG1 = ", srcNodesG1);
+      writeln("dstNodesG1 = ", dstNodesG1);
+      writeln("srcNodesG2 = ", srcNodesG2);
+      writeln("dstNodesG2 = ", dstNodesG2);
       forall edgeIndex in 0..mG1-1 with(ref solutions) {
         // if stopper.read() then continue;
         // TODO: TURN BACK ON FOR PRODUCTION.
@@ -1852,6 +1866,7 @@ module SubgraphIsomorphism {
         if edgeFlagger[edgeIndex] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
           var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          writeln("edgeIndex = ", edgeIndex, " edgeChecked = ", edgeChecked);
           if edgeChecked {
             var newMappings = vf2Helper(initialState, 2);
             for mapping in newMappings do solutions.pushBack(mapping);
@@ -1895,6 +1910,8 @@ module SubgraphIsomorphism {
         var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        writeln("//////////////////////////////////////////////////////");
+        writeln("*******************VF2SIFromVertices*******************");
         var allmappings = VF2SIFromVertices(g1,g2,vertexFlagger);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
@@ -1905,6 +1922,8 @@ module SubgraphIsomorphism {
         var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        writeln("//////////////////////////////////////////////////////");
+        writeln("*******************VF2SIFromEdges 1*******************");
         var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
@@ -1915,14 +1934,20 @@ module SubgraphIsomorphism {
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        writeln("//////////////////////////////////////////////////////");
+        writeln("*******************VF2SIFromEdges 2*******************");
         var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       } else { // Graph has no attributes.
         var edgeFlagger: [0..<g1.n_edges] bool = true;
+        writeln("//////////////////////////////////////////////////////");
+        writeln("*******************VF2SIFromEdges 3******************");
+        writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
+        
         var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
-
+        writeln("allmappings.size = ", allmappings.size);
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       }
