@@ -1350,6 +1350,8 @@ module SubgraphIsomorphism {
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
     var semanticAndCheck = if semanticCheckType == "and" then true else false;
     var semanticOrCheck = if semanticCheckType == "or" then true else false;
+    var semanticNoneCheck = if semanticCheckType == "none" then true else false;
+    writeln("semanticNoneCheck = ", semanticNoneCheck);
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
     var limitTime:bool = if timeLimit > 0 then true else false;
@@ -1383,36 +1385,37 @@ module SubgraphIsomorphism {
                                       "edge", st);
     }
 
-    // Reorder the subgraph vertices and edges.
-    var newOrdering = if reorder then getSubgraphReordering(g2, st) else new map(int, int);
+    // Reorder the subgraph vertices and edges. If algtype is "si" the reorder flag will be igored!
+    //var newOrdering = if reorder then getSubgraphReordering(g2, st) else new map(int, int);
+    var newOrdering = if reorder || algType == "si" then getSubgraphReordering(g2, st) else new map(int, int);
 
     // Get a newly constructed subgraph from the reordering created above.
     var (newSrc,newDst,newSeg,newMap,newSrcR,newDstR,newSegR,newEdgeAttributes,newNodeAttributes) = 
-        if reorder then getReorderedSubgraph(newOrdering, g2, st)
+        if reorder || algType == "si" then getReorderedSubgraph(newOrdering, g2, st)
         else (makeDistArray(1, int), makeDistArray(1, int), makeDistArray(1, int),
               makeDistArray(1, int), makeDistArray(1, int), makeDistArray(1, int),
               makeDistArray(1, int), new map(string, (string, string)), 
               new map(string, (string, string)));
 
     // Extract the g2/H/h information from the SegGraph data structure.
-    const ref srcNodesG2 = if reorder then newSrc
+    const ref srcNodesG2 = if reorder || algType == "si" then newSrc
                            else toSymEntry(g2.getComp("SRC_SDI"), int).a;
-    const ref dstNodesG2 = if reorder then newDst
+    const ref dstNodesG2 = if reorder || algType == "si" then newDst
                            else toSymEntry(g2.getComp("DST_SDI"), int).a;
-    const ref segGraphG2 = if reorder then newSeg
+    const ref segGraphG2 = if reorder || algType == "si" then newSeg
                            else toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-    const ref srcRG2 = if reorder then newSrcR
+    const ref srcRG2 = if reorder || algType == "si" then newSrcR
                        else toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-    const ref dstRG2 = if reorder then newDstR
+    const ref dstRG2 = if reorder || algType == "si" then newDstR
                        else toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-    const ref segRG2 = if reorder then newSegR
+    const ref segRG2 = if reorder || algType == "si" then newSegR
                        else toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-    const ref nodeMapGraphG2 = if reorder then newMap
+    const ref nodeMapGraphG2 = if reorder || algType == "si" then newMap
                                else toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
-    var subgraphEdgeAttributes = if reorder then newEdgeAttributes 
+    var subgraphEdgeAttributes = if reorder || algType == "si" then newEdgeAttributes 
                                  else subgraphEdgeAttributesOriginal;
-    var subgraphNodeAttributes = if reorder then newNodeAttributes
+    var subgraphNodeAttributes = if reorder || algType == "si" then newNodeAttributes
                                  else subgraphNodeAttributesOriginal;
 
     // Get the number of vertices and edges for each graph.
@@ -1421,15 +1424,15 @@ module SubgraphIsomorphism {
     var nG2 = nodeMapGraphG2.size;
     var mG2 = srcNodesG2.size;
 
-  writeln("********************************************************************");
-  writeln("Initial srcNodesG2: ", srcNodesG2);
-  writeln("Initial dstNodesG2: ", dstNodesG2);
-  writeln("Initial segGraphG2: ", segGraphG2);
-  writeln("Initial nG2: ", nG2);
-  writeln("Initial mG2: ", mG2);
-  writeln("Initial subgraphEdgeAttributes: ", subgraphEdgeAttributes);
-  writeln("Initial subgraphNodeAttributes: ", subgraphNodeAttributes);
-  writeln("********************************************************************");
+//   writeln("********************************************************************");
+//   writeln("Initial srcNodesG2: ", srcNodesG2);
+//   writeln("Initial dstNodesG2: ", dstNodesG2);
+//   writeln("Initial segGraphG2: ", segGraphG2);
+//   writeln("Initial nG2: ", nG2);
+//   writeln("Initial mG2: ", mG2);
+//   writeln("Initial subgraphEdgeAttributes: ", subgraphEdgeAttributes);
+//   writeln("Initial subgraphNodeAttributes: ", subgraphNodeAttributes);
+//   writeln("********************************************************************");
 
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
@@ -1855,10 +1858,10 @@ module SubgraphIsomorphism {
     /* Executes VF2SIFromEdges. */
     proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph, const ref edgeFlagger) throws {
       var solutions: list(int, parSafe=true);
-      writeln("srcNodesG1 = ", srcNodesG1);
-      writeln("dstNodesG1 = ", dstNodesG1);
-      writeln("srcNodesG2 = ", srcNodesG2);
-      writeln("dstNodesG2 = ", dstNodesG2);
+    //   writeln("srcNodesG1 = ", srcNodesG1);
+    //   writeln("dstNodesG1 = ", dstNodesG1);
+    //   writeln("srcNodesG2 = ", srcNodesG2);
+    //   writeln("dstNodesG2 = ", dstNodesG2);
       forall edgeIndex in 0..mG1-1 with(ref solutions) {
         // if stopper.read() then continue;
         // TODO: TURN BACK ON FOR PRODUCTION.
@@ -1866,7 +1869,7 @@ module SubgraphIsomorphism {
         if edgeFlagger[edgeIndex] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
           var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-          writeln("edgeIndex = ", edgeIndex, " edgeChecked = ", edgeChecked);
+        //   writeln("edgeIndex = ", edgeIndex, " edgeChecked = ", edgeChecked, "initialState = ", initialState);
           if edgeChecked {
             var newMappings = vf2Helper(initialState, 2);
             for mapping in newMappings do solutions.pushBack(mapping);
@@ -1910,8 +1913,8 @@ module SubgraphIsomorphism {
         var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        writeln("//////////////////////////////////////////////////////");
-        writeln("*******************VF2SIFromVertices*******************");
+        // writeln("//////////////////////////////////////////////////////");
+        // writeln("*******************VF2SIFromVertices*******************");
         var allmappings = VF2SIFromVertices(g1,g2,vertexFlagger);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
@@ -1922,8 +1925,8 @@ module SubgraphIsomorphism {
         var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        writeln("//////////////////////////////////////////////////////");
-        writeln("*******************VF2SIFromEdges 1*******************");
+        // writeln("//////////////////////////////////////////////////////");
+        // writeln("*******************VF2SIFromEdges 1*******************");
         var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
@@ -1934,20 +1937,20 @@ module SubgraphIsomorphism {
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        writeln("//////////////////////////////////////////////////////");
-        writeln("*******************VF2SIFromEdges 2*******************");
+        // writeln("//////////////////////////////////////////////////////");
+        // writeln("*******************VF2SIFromEdges 2*******************");
         var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       } else { // Graph has no attributes.
         var edgeFlagger: [0..<g1.n_edges] bool = true;
-        writeln("//////////////////////////////////////////////////////");
-        writeln("*******************VF2SIFromEdges 3******************");
-        writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
+        // writeln("//////////////////////////////////////////////////////");
+        // writeln("*******************VF2SIFromEdges 3******************");
+        // writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
         
         var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
-        writeln("allmappings.size = ", allmappings.size);
+        // writeln("allmappings.size = ", allmappings.size);
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       }
