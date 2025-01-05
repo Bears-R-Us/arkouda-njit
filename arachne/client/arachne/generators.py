@@ -57,7 +57,7 @@ def empty_graph(create_using):
 
 def gnp(n: int, p: float,
         create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-    ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+    , seed: int = None) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Generate a random binomial graph. Also known as an Erdos-Renyi or completely random graph.
     Does not allow for the creation of isolates, self-loops, or duplicated edges.
@@ -88,7 +88,7 @@ def gnp(n: int, p: float,
     filtered_U = U[not_self_loop]
     filtered_V = V[not_self_loop]
 
-    probabilities = ak.randint(0, 1, filtered_U.size, dtype=ak.float64)
+    probabilities = ak.randint(0, 1, filtered_U.size, dtype=ak.float64, seed=seed)
 
     kept_edges = probabilities < p
     kept_U = filtered_U[kept_edges]
