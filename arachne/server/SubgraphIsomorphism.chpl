@@ -1350,8 +1350,8 @@ module SubgraphIsomorphism {
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
     var semanticAndCheck = if semanticCheckType == "and" then true else false;
     var semanticOrCheck = if semanticCheckType == "or" then true else false;
-    var semanticNoneCheck = if semanticCheckType == "none" then true else false;
-    writeln("semanticNoneCheck = ", semanticNoneCheck);
+    // var semanticNoneCheck = if semanticCheckType == "none" then true else false;
+    // writeln("semanticNoneCheck = ", semanticNoneCheck);
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
     var limitTime:bool = if timeLimit > 0 then true else false;
@@ -1935,6 +1935,7 @@ module SubgraphIsomorphism {
         pickerTimer.start();
         var edgeFlagger = edgePicker(true);
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
+        writeln("edgeFlagger.size = ", edgeFlagger);
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         // writeln("//////////////////////////////////////////////////////");
