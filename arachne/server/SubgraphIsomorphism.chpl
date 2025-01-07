@@ -1935,7 +1935,7 @@ module SubgraphIsomorphism {
         pickerTimer.start();
         var edgeFlagger = edgePicker(true);
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
-        writeln("edgeFlagger.size = ", edgeFlagger);
+        // writeln("edgeFlagger.size = ", edgeFlagger);
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         // writeln("//////////////////////////////////////////////////////");
