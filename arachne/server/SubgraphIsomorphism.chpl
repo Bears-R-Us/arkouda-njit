@@ -188,15 +188,11 @@ module SubgraphIsomorphism {
       if matchType == "or" && outerMatch then return true;
     }
     
-    // Since the default `outerMatch` for "and" is true, then if no checks were actually done, 
-    // then we should return false.
-    if matchType == "and" && matchCounter == 0 then return false;
-
-    // Alternatively, if there were no matches performed, and the matching type is "or" then return
-    // true.
-    if matchType == "or" && matchCounter == 0 then return true;
-
-    else return outerMatch;
+    // This means no attributes in the subgraph were matched with attributes in the main graph.
+    // This can be caused by none of the attribute names or types matching.
+    if matchCounter == 0 then return false;
+    
+    return outerMatch;
   } // end of doAttributesMatch
 
   /* Maps to track the probability distributions generated per attribute type. */
@@ -417,421 +413,6 @@ module SubgraphIsomorphism {
     return (edgeProbabilities, nodeProbabilities);
   }
 
-  
-  // /* Generates a mapping for old vertex names to new vetrex names. */
-  // proc getSubgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
-  //   const ref src = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
-  //   const ref dst = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
-  //   const ref seg = toSymEntry(subgraph.getComp("SEGMENTS_SDI"), int).a;
-  //   const ref srcR = toSymEntry(subgraph.getComp("SRC_R_SDI"), int).a;
-  //   const ref dstR = toSymEntry(subgraph.getComp("DST_R_SDI"), int).a;
-  //   const ref segR = toSymEntry(subgraph.getComp("SEGMENTS_R_SDI"), int).a;
-  //   const ref nodeMap = toSymEntry(subgraph.getComp("VERTEX_MAP_SDI"), int).a;
-  //   var nodeAttributes = subgraph.getNodeAttributes();
-  //   var edgeAttributes = subgraph.getEdgeAttributes();
-    
-  //   // Get the probabilities of each edge and vertex from the subgraph appearing in the main graph.
-  //   var (edgeProbabilities, nodeProbabilities) = getSubgraphProbabilities(subgraph, st);
-
-  //   // Create a map of old internal vertex names to new internal vertex names. -1 is the default.
-  //   var reorderedNodes = new map(int, int);
-  //   for u in nodeMap.domain do reorderedNodes.add(u, -1);
-
-  //   // Find the edges and vertices with lowest probability. If no edge and/or vertex attributes have
-  //   // been defined, then these probabilities should default to edge 0 and vertex 0.
-  //   var sortedIdxEdgeProbabilities = argsortDefault(edgeProbabilities);
-  //   var sortedIdxNodeProbabilities = argsortDefault(nodeProbabilities);
-  //   var rarestEdge = sortedIdxEdgeProbabilities[0];
-  //   var rarestNode = sortedIdxNodeProbabilities[0];
-
-  //   // Keep track of the edges and nodes that have been mapped already.
-  //   var mappedEdges = makeDistArray(src.size, bool);
-  //   var mappedNodes = makeDistArray(nodeMap.size, bool);
-  //   mappedEdges = false; mappedNodes = false;
-
-  //   // writeln("src = ", src);
-  //   // writeln("dst = ", dst);
-  //   // writeln("probs = ", edgeProbabilities);
-  //   // writeln();
-  //   // writeln("nodes = ", nodeMap);
-  //   // writeln("probs = ", nodeProbabilities);
-  //   // writeln();
-  //   // writeln("rarestEdge = ", src[rarestEdge], " --> ", dst[rarestEdge]);
-  //   // writeln("rarestNode = ", rarestNode);
-  //   // writeln();
-
-  //   var outDegree = makeDistArray(nodeMap.size, int);
-  //   var inDegree = makeDistArray(nodeMap.size, int);
-  //   var totalDegree = makeDistArray(nodeMap.size, int);
-
-  //   // Get structural information for subgraph. 
-  //   for u in nodeMap.domain {
-  //     outDegree[u] = seg[u+1] - seg[u];
-  //     inDegree[u] = segR[u+1] - segR[u];
-  //     totalDegree[u] = outDegree[u] + inDegree[u];
-  //   }
-
-  //   var reorderComplete = false;
-  //   /**********************************************************************************************/
-  //   /**********************************************************************************************/
-  //   /********************************************CASE 1********************************************/
-  //   /**********************************************************************************************/
-  //   /**********************************************************************************************/
-  //   /* Edge attributes exist. This means that we want to create the reordering based on the 
-  //      probabilities of each edge appearing. Starting from the rarest edge and then picking amongst
-  //      the rarest edges connected to either starting vertex and continuing until all vertices 
-  //      have been remapped. */
-  //   if edgeAttributes.size > 0 {
-  //     reorderedNodes[src[rarestEdge]] = 0;
-  //     reorderedNodes[dst[rarestEdge]] = 1;
-  //     mappedEdges[rarestEdge] = true;
-  //     mappedNodes[src[rarestEdge]] = true;
-  //     mappedNodes[dst[rarestEdge]] = true;
-
-  //     var nextNodeName = 2;
-  //     var currRarestEdge = rarestEdge;
-  //     while !reorderComplete { // loop until all the vertices have been remapped
-  //       var nextPossibleEdges = new list((int,int,int)); // tuple of u --> v and edge id e
-  //       var currProbabilities = new list(real); // used to keep candidate probabilities
-  //       var u = src[currRarestEdge];
-  //       var v = dst[currRarestEdge];
-
-  //       /* Get all of the out neighbors and in neighbors of the currently rarest edge. */
-  //       for outNeighbor in dst[seg[u]..<seg[u+1]] {
-  //         var e = getEdgeId(u, outNeighbor, dst, seg);
-  //         if !mappedEdges[e] && !mappedNodes[outNeighbor] {
-  //           nextPossibleEdges.pushBack((u, outNeighbor, e));
-  //           currProbabilities.pushBack(edgeProbabilities[e]);
-  //         }
-  //       }
-        
-  //       for outNeighbor in dst[seg[v]..<seg[v+1]] {
-  //         var e = getEdgeId(v, outNeighbor, dst, seg);
-  //         if !mappedEdges[e] && !mappedNodes[outNeighbor] {
-  //           nextPossibleEdges.pushBack((v, outNeighbor, e));
-  //           currProbabilities.pushBack(edgeProbabilities[e]);
-  //         }
-  //       }
-
-  //       for inNeighbor in dstR[segR[u]..<segR[u+1]] {
-  //         var e = getEdgeId(inNeighbor, u, dst, seg);
-  //         if !mappedEdges[e] && !mappedNodes[inNeighbor] {
-  //           nextPossibleEdges.pushBack((inNeighbor, u, e));
-  //           currProbabilities.pushBack(edgeProbabilities[e]);
-  //         }
-  //       }
-
-  //       for inNeighbor in dstR[segR[v]..<segR[v+1]] {
-  //         var e = getEdgeId(inNeighbor, v, dst, seg);
-  //         if !mappedEdges[e] && !mappedNodes[inNeighbor] {
-  //           nextPossibleEdges.pushBack((inNeighbor, v, e));
-  //           currProbabilities.pushBack(edgeProbabilities[e]);
-  //         }
-  //       }
-
-  //       /* The end of a certain path was reached, but unmapped vertices remain. */
-  //       if nextPossibleEdges.size <= 0 && nextNodeName < nodeMap.size {
-  //         /* Iterate over all remaining edges, adding their probabilities to find the lowest. */
-  //         for (p,e) in zip(mappedEdges, mappedEdges.domain) {
-  //           if p == false {
-  //             nextPossibleEdges.pushBack((src[e], dst[e], e));
-  //             currProbabilities.pushBack(edgeProbabilities[e]);
-  //           }
-  //         }
-  //         var idx = argsortDefault(currProbabilities.toArray());
-  //         var e = nextPossibleEdges[idx[0]][2];
-  //         var u = src[e];
-  //         var v = dst[e];
-
-          
-
-  //         /* Check to see if two edges have the same probability. */
-  //         var needsTieBreaker = false;
-  //         if idx.size > 1 {
-  //           if currProbabilities[e] == currProbabilities[nextPossibleEdges[idx[1]][2]] then needsTieBreaker = true;
-  //         }
-  //         // TODO: Code the tie-breaker.
-
-  //         if !mappedNodes[u] && !mappedNodes[v] { // Neither end points have been mapped.
-  //           reorderedNodes[u] = nextNodeName;
-  //           reorderedNodes[v] = nextNodeName + 1;
-  //           mappedEdges[e] = true;
-  //           mappedNodes[u] = true;
-  //           mappedNodes[v] = true;
-
-  //           nextNodeName += 2;
-  //           currRarestEdge = e;
-  //           if nextNodeName == nodeMap.size then reorderComplete = true;
-  //           continue;
-  //         } else if !mappedNodes[u] && mappedNodes[v] { // Only the destination has been mapped.
-  //           reorderedNodes[u] = nextNodeName;
-  //           mappedEdges[e] = true;
-  //           mappedNodes[u] = true;
-
-  //           nextNodeName += 1;
-  //           currRarestEdge = e;
-  //           if nextNodeName == nodeMap.size then reorderComplete = true;
-  //           continue;
-  //         } else if mappedNodes[u] && !mappedNodes[v] { // Only the source has been mapped.
-  //           reorderedNodes[v] = nextNodeName;
-  //           mappedEdges[e] = true;
-  //           mappedNodes[v] = true;
-
-  //           nextNodeName += 1;
-  //           currRarestEdge = e;
-  //           if nextNodeName == nodeMap.size then reorderComplete = true;
-  //           continue;
-  //         } else {
-  //           writeln("Something catastrophic has gone wrong!");
-  //         }
-  //       }
-
-  //       writeln("nextPossibleEdges = ", nextPossibleEdges);
-
-  //       if currProbabilities.size >= 1 {
-  //         /* Sort the probabilities of current candidate edges to be remapped. */
-  //         var idx = argsortDefault(currProbabilities.toArray());
-
-  //         /* Check to see if two edges have the same probability. */
-  //         var needsTieBreaker = false;
-  //         if idx.size > 1 {
-  //           if currProbabilities[idx[0]] == currProbabilities[idx[1]] then needsTieBreaker = true;
-  //         }
-  //         // TODO: Code the tie-breaker.
-
-  //         /* Remap the remaining node of the chosen edge. */
-  //         var nextEdge = nextPossibleEdges[idx[0]];
-  //         writeln("nextEdge = ", nextEdge);
-  //         if (nextEdge[0] == u || nextEdge[0] == v) && !mappedNodes[nextEdge[1]] {
-  //           reorderedNodes[nextEdge[1]] = nextNodeName;
-  //           mappedNodes[nextEdge[1]] = true;
-  //         } else if (nextEdge[1] == u || nextEdge[1] == v) && !mappedNodes[nextEdge[0]] {
-  //           reorderedNodes[nextEdge[0]] = nextNodeName;
-  //           mappedNodes[nextEdge[0]] = true;
-  //         }
-
-  //         /* Update variables. */
-  //         nextNodeName += 1;
-  //         currRarestEdge = idx[0];
-  //         if nextNodeName == nodeMap.size then reorderComplete = true;
-
-  //         writeln();
-  //       }
-  //     }
-  //   } else if nodeAttributes.size > 0 && edgeAttributes.size <= 0 {
-  //     /********************************************************************************************/
-  //     /********************************************************************************************/
-  //     /*******************************************CASE 2*******************************************/
-  //     /********************************************************************************************/
-  //     /********************************************************************************************/
-  //     /* Only node attributes exist. This means that we want to create the reordering based on the 
-  //       probabilities of each node appearing. Starting from the rarest node and then picking amongst
-  //       the rarest neighbors connected to this vertex we continue untill all vertices have been 
-  //       remapped. */ 
-  //     reorderedNodes[rarestNode] = 0;
-  //     mappedNodes[rarestNode] = true;
-
-  //     var nextNodeName = 1;
-  //     var currRarestNode = rarestNode;
-  //     while !reorderComplete { // loop until all the vertices have been remapped
-  //       var nextPossibleNodes = new list(int); // adds all neighbors for a vertex not yet checked
-  //       var currProbabilities = new list(real); // used to keep candidate probabilities
-  //       var u = currRarestNode;
-
-  //       /* Get all of the out neighbors and in neighbors of current rarest vertex. */
-  //       for outNeighbor in dst[seg[u]..<seg[u+1]] {
-  //         if !mappedNodes[outNeighbor] {
-  //           nextPossibleNodes.pushBack(outNeighbor);
-  //           currProbabilities.pushBack(nodeProbabilities[outNeighbor]);
-  //         }
-  //       }
-
-  //       for inNeighbor in dstR[segR[u]..<segR[u+1]] {
-  //         if !mappedNodes[inNeighbor] {
-  //           nextPossibleNodes.pushBack(inNeighbor);
-  //           currProbabilities.pushBack(nodeProbabilities[inNeighbor]);
-  //         }
-  //       }
-
-  //       /* The end of a certain path was reached, but unmapped vertices remain. */
-  //       if nextPossibleNodes.size <= 0 && nextNodeName < nodeMap.size {
-  //         /* Iterate over all remaining vertices, adding their probabilities to find the lowest. */
-  //         for (p,u) in zip(mappedNodes, mappedNodes.domain) do 
-  //           if p == false {
-  //             nextPossibleNodes.pushBack(u);
-  //             currProbabilities.pushBack(nodeProbabilities[u]);
-  //           }
-
-  //         var idx = argsortDefault(currProbabilities.toArray());
-
-  //         /* Check to see if two vertices have the same probability. */
-  //         var needsTieBreaker = false;
-  //         if idx.size > 1 {
-  //           if currProbabilities[idx[0]] == currProbabilities[idx[1]] then needsTieBreaker = true;
-  //         }
-  //         // TODO: Code the tie-breaker.
-
-  //         var u = nextPossibleNodes[idx[0]];
-  //         reorderedNodes[u] = nextNodeName;
-  //         mappedNodes[u] = true;
-
-  //         nextNodeName += 1;
-  //         currRarestNode = u;
-  //         if nextNodeName == nodeMap.size then reorderComplete = true;
-  //         continue;
-  //       }
-
-  //       writeln("nextPossibleNodes = ", nextPossibleNodes);
-
-  //       if currProbabilities.size >= 1 {
-  //         /* Sort the probabilities of current candidate edges to be remapped. */
-  //         var idx = argsortDefault(currProbabilities.toArray());
-
-  //         /* Check to see if two nodes have the same probability. */
-  //         var needsTieBreaker = false;
-  //         if idx.size > 1 {
-  //           if currProbabilities[idx[0]] == currProbabilities[idx[1]] then needsTieBreaker = true;
-  //         }
-  //         // TODO: Code the tie-breaker.
-
-  //         /* Remap the selected node. */
-  //         var nextNode = nextPossibleNodes[idx[0]];
-  //         reorderedNodes[nextNode] = nextNodeName;
-  //         mappedNodes[nextNode] = true;
-
-  //         /* Update variables. */
-  //         nextNodeName += 1;
-  //         currRarestNode = nextNode;
-  //         if nextNodeName == nodeMap.size then reorderComplete = true;
-
-  //         writeln();
-  //       }
-  //     }
-  //   } else if nodeAttributes.size <= 0 && edgeAttributes.size <= 0 {
-  //     /********************************************************************************************/
-  //     /********************************************************************************************/
-  //     /*******************************************CASE 3*******************************************/
-  //     /********************************************************************************************/
-  //     /********************************************************************************************/
-  //     /* No vertex or node attributes exist. This means we want to create the reordering based on 
-  //        the degrees of each vertex. Starting with the vertex with most degree and then picking 
-  //        amongst its neighbors the next vertex with most degree. This is repeated until all the 
-  //        vertices have been reordered. */
-  //     var outDegreeIdx = argsortDefault(outDegree);
-  //     var inDegreeIdx = argsortDefault(inDegree);
-  //     var totalDegreeIdx = argsortDefault(totalDegree);
-  //     var outDom = outDegreeIdx.domain;
-  //     var inDom = inDegreeIdx.domain;
-
-  //     var mostImportantNode = if outDegree[outDegreeIdx[outDom.high]] != 0 then outDegreeIdx[outDom.high]
-  //                             else inDegreeIdx[inDom.high];
-
-  //     writeln("STARTING STRUCTURAL REORDERING BELOW: ");
-  //     writeln("Visiting ", mostImportantNode, " first...");
-  //     reorderedNodes[mostImportantNode] = 0;
-  //     mappedNodes[mostImportantNode] = true;
-
-  //     var nextNodeName = 1;
-  //     var currMostImportantNode = mostImportantNode;
-  //     while !reorderComplete { // loop until all the vertices have been remapped
-  //       var nextPossibleInNodes = new list(int); // adds in neighbors for a node not yet checked
-  //       var inNodeOutDegrees = new list(int);
-  //       var inNodeInDegrees = new list(int);
-
-  //       var nextPossibleOutNodes = new list(int); // adds out neighbors for a node not yet checked
-  //       var outNodeOutDegrees = new list(int);
-  //       var outNodeInDegrees = new list(int);
-        
-  //       var u = currMostImportantNode;
-
-  //       /* Get all of the out neighbors and in neighbors of current most important vertex. */
-  //       for outNeighbor in dst[seg[u]..<seg[u+1]] {
-  //         if !mappedNodes[outNeighbor] {
-  //           nextPossibleOutNodes.pushBack(outNeighbor);
-  //           outNodeOutDegrees.pushBack(outDegree[outNeighbor]);
-  //           outNodeInDegrees.pushBack(inDegree[outNeighbor]);
-  //         }
-  //       }
-
-  //       for inNeighbor in dstR[segR[u]..<segR[u+1]] {
-  //         if !mappedNodes[inNeighbor] {
-  //           nextPossibleInNodes.pushBack(inNeighbor);
-  //           inNodeOutDegrees.pushBack(outDegree[inNeighbor]);
-  //           inNodeInDegrees.pushBack(inDegree[inNeighbor]);
-  //         }
-  //       }
-
-  //       /* The end of a certain path was reached, but unmapped vertices remain. */
-  //       if nextPossibleOutNodes.size <= 0 && nextPossibleInNodes.size <= 0 && nextNodeName < nodeMap.size {
-  //         var nextPossibleNodes = new list(int);
-  //         var currOutDegrees = new list(int);
-  //         var currInDegrees = new list(int);
-
-  //         /* Iterate over all remaining vertices, adding their degrees to find the lowest. */
-  //         for (p,u) in zip(mappedNodes, mappedNodes.domain) {
-  //           if p == false {
-  //             nextPossibleNodes.pushBack(u);
-  //             currOutDegrees.pushBack(outDegree[u]);
-  //             currInDegrees.pushBack(inDegree[u]);
-  //           }
-  //         }
-  //         var outDegreeIdx = argsortDefault(currOutDegrees.toArray());
-  //         var inDegreeIdx = argsortDefault(currInDegrees.toArray());
-  //         var outDom = outDegreeIdx.domain;
-  //         var inDom = inDegreeIdx.domain;
-
-  //         var mostImportantNode = if currOutDegrees[outDegreeIdx[outDom.high]] != 0 then nextPossibleNodes[outDegreeIdx[outDom.high]]
-  //                                 else nextPossibleNodes[inDegreeIdx[inDom.high]];            
-  //         reorderedNodes[mostImportantNode] = nextNodeName;
-  //         mappedNodes[mostImportantNode] = true;
-
-  //         nextNodeName += 1;
-  //         currMostImportantNode = mostImportantNode;
-  //         if nextNodeName == nodeMap.size then reorderComplete = true;
-  //         continue;
-  //       }
-
-  //       writeln("nextPossibleOutNodes = ", nextPossibleOutNodes);
-  //       writeln("nextPossibleInNodes = ", nextPossibleInNodes);
-
-  //       if nextPossibleOutNodes.size >= 1 || nextPossibleInNodes.size >= 1 {
-  //         var outNodeOutDegreeIdx = argsortDefault(outNodeOutDegrees.toArray());
-  //         var outNodeInDegreeIdx = argsortDefault(outNodeInDegrees.toArray());
-  //         var inNodeOutDegreeIdx = argsortDefault(inNodeOutDegrees.toArray());
-  //         var inNodeInDegreeIdx = argsortDefault(inNodeInDegrees.toArray());
-
-  //         var outDom = outNodeOutDegreeIdx.domain;
-  //         var inDom = inNodeInDegreeIdx.domain;
-  //         var mostImportantNode:int;
-
-  //         /* TODO: CONTINUE HERE. */
-          
-  //         if nextPossibleOutNodes.size >= 1 && nextPossibleInNodes.size >= 1 {
-  //           mostImportantNode = if outNodeOutDegrees[outNodeOutDegreeIdx[outDom.high]] != 0 then nextPossibleOutNodes[outNodeOutDegreeIdx[outDom.high]]
-  //                               else nextPossibleOutNodes[outNodeInDegreeIdx[inDom.high]];
-  //         } else if nextPossibleOutNodes.size >= 1 && nextPossibleInNodes.size <= 0 {
-  //           mostImportantNode = nextPossibleOutNodes[outDegreeIdx[outDom.high]];
-  //         } else if nextPossibleOutNodes.size <= 0 && nextPossibleInNodes.size >= 1 {
-  //           mostImportantNode = nextPossibleInNodes[inDegreeIdx[inDom.high]];
-  //         }
-           
-  //         writeln("Visiting ", mostImportantNode, " now...");
-  //         reorderedNodes[mostImportantNode] = nextNodeName;
-  //         mappedNodes[mostImportantNode] = true;
-
-  //         nextNodeName += 1;
-  //         currMostImportantNode = mostImportantNode;
-  //         if nextNodeName == nodeMap.size then reorderComplete = true;
-
-  //         writeln();
-  //       }
-  //     }
-  //   }
-
-  //   writeln("reorderedNodes = ", reorderedNodes);
-  //   return reorderedNodes;
-  // }
-
   /* Computes the degree of a graph when only source and destination arrays are known. */
   proc computeDegrees(src, dst) throws {
     // Find unique nodes. 
@@ -893,7 +474,7 @@ module SubgraphIsomorphism {
   }
 
   /* Generates a mapping of old vertex identifiers to new vertex identifiers. */
-  proc getSubgraphReordering(subgraph: SegGraph, st: borrowed SymTab) throws {
+  proc getSubgraphReordering(subgraph: SegGraph, reorderType: string, st: borrowed SymTab) throws {
     // Extract copies and references to subgraph source and destination arrays.
     var srcTemp = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
     var dstTemp = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
@@ -920,7 +501,8 @@ module SubgraphIsomorphism {
     writeln("outDegree       = ", outDegree);
     writeln("totalDegree     = ", totalDegree);
 
-    if edgeAttributes.size == 0 { // There are no edge attributes, focus on vertices and/or structure.
+    if (reorderType == "structural") || (reorderType == "probability" && edgeAttributes.size == 0) { 
+      // There are no edge attributes, focus on vertices and/or structure.
       // Create an array of tuples tracking vertex probability, highest degree, and out-degree.
       var candidates = makeDistArray(uniqueNodes.size, (int,real,int,int));
       for i in candidates.domain do candidates[i] = (uniqueNodes[i], nodeProbabilities[i], totalDegree[i], outDegree[i]);
@@ -1034,7 +616,8 @@ module SubgraphIsomorphism {
           }
         }
       }
-    } else { // There are edge attributes. Use edge probabilities.
+    } else { 
+      // There are edge attributes. Use edge probabilities.
       // Candidates are edge tuples, edge probability, and source and destination vertex probs.
       // It break ties on destination and source vertex probabilities, respectively.
       var candidates = makeDistArray(srcTemp.size, (int, real, int, int));
@@ -1183,8 +766,6 @@ module SubgraphIsomorphism {
 
     return reordering;
   }
-
-
 
   /* Given a new permutation, reorder given attributes. Used for subgraph reordering. */
   proc getReorderedAttributes(attributes, perm, st) throws {
@@ -1345,7 +926,7 @@ module SubgraphIsomorphism {
   array that maps the isomorphic vertices of `g1` to those of `g2`. */
   proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
               sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, reorder: bool, st: borrowed SymTab) throws {
+              algType: string, returnIsosAs:string, reorderType: string, st: borrowed SymTab) throws {
     var numIso: int = 0;
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
     var semanticAndCheck = if semanticCheckType == "and" then true else false;
@@ -1378,7 +959,7 @@ module SubgraphIsomorphism {
     // Generate the probability distributions for each attribute. Will be stored in module-level
     // maps for each datatype. This is only performed for the attributes that exist in both the
     // subgraph and the graph.
-    if reorder {
+    if reorderType == "probability" {
       generateProbabilityDistribution(subgraphNodeAttributesOriginal, graphNodeAttributes, 
                                       "vertex", st);
       generateProbabilityDistribution(subgraphEdgeAttributesOriginal, graphEdgeAttributes, 
@@ -1387,35 +968,36 @@ module SubgraphIsomorphism {
 
     // Reorder the subgraph vertices and edges. If algtype is "si" the reorder flag will be igored!
     //var newOrdering = if reorder then getSubgraphReordering(g2, st) else new map(int, int);
-    var newOrdering = if reorder || algType == "si" then getSubgraphReordering(g2, st) else new map(int, int);
+    var newOrdering = if reorderType != "None" then getSubgraphReordering(g2, reorderType, st) 
+                      else new map(int, int);
 
     // Get a newly constructed subgraph from the reordering created above.
     var (newSrc,newDst,newSeg,newMap,newSrcR,newDstR,newSegR,newEdgeAttributes,newNodeAttributes) = 
-        if reorder || algType == "si" then getReorderedSubgraph(newOrdering, g2, st)
+        if reorderType != "None" then getReorderedSubgraph(newOrdering, g2, st)
         else (makeDistArray(1, int), makeDistArray(1, int), makeDistArray(1, int),
               makeDistArray(1, int), makeDistArray(1, int), makeDistArray(1, int),
               makeDistArray(1, int), new map(string, (string, string)), 
               new map(string, (string, string)));
 
     // Extract the g2/H/h information from the SegGraph data structure.
-    const ref srcNodesG2 = if reorder || algType == "si" then newSrc
+    const ref srcNodesG2 = if reorderType != "None" then newSrc
                            else toSymEntry(g2.getComp("SRC_SDI"), int).a;
-    const ref dstNodesG2 = if reorder || algType == "si" then newDst
+    const ref dstNodesG2 = if reorderType != "None" then newDst
                            else toSymEntry(g2.getComp("DST_SDI"), int).a;
-    const ref segGraphG2 = if reorder || algType == "si" then newSeg
+    const ref segGraphG2 = if reorderType != "None" then newSeg
                            else toSymEntry(g2.getComp("SEGMENTS_SDI"), int).a;
-    const ref srcRG2 = if reorder || algType == "si" then newSrcR
+    const ref srcRG2 = if reorderType != "None" then newSrcR
                        else toSymEntry(g2.getComp("SRC_R_SDI"), int).a;
-    const ref dstRG2 = if reorder || algType == "si" then newDstR
+    const ref dstRG2 = if reorderType != "None" then newDstR
                        else toSymEntry(g2.getComp("DST_R_SDI"), int).a;
-    const ref segRG2 = if reorder || algType == "si" then newSegR
+    const ref segRG2 = if reorderType != "None" then newSegR
                        else toSymEntry(g2.getComp("SEGMENTS_R_SDI"), int).a;
-    const ref nodeMapGraphG2 = if reorder || algType == "si" then newMap
+    const ref nodeMapGraphG2 = if reorderType != "None" then newMap
                                else toSymEntry(g2.getComp("VERTEX_MAP_SDI"), int).a;
 
-    var subgraphEdgeAttributes = if reorder || algType == "si" then newEdgeAttributes 
+    var subgraphEdgeAttributes = if reorderType != "None" then newEdgeAttributes 
                                  else subgraphEdgeAttributesOriginal;
-    var subgraphNodeAttributes = if reorder || algType == "si" then newNodeAttributes
+    var subgraphNodeAttributes = if reorderType != "None" then newNodeAttributes
                                  else subgraphNodeAttributesOriginal;
 
     // Get the number of vertices and edges for each graph.
@@ -1424,19 +1006,23 @@ module SubgraphIsomorphism {
     var nG2 = nodeMapGraphG2.size;
     var mG2 = srcNodesG2.size;
 
-//   writeln("********************************************************************");
-//   writeln("Initial srcNodesG2: ", srcNodesG2);
-//   writeln("Initial dstNodesG2: ", dstNodesG2);
-//   writeln("Initial segGraphG2: ", segGraphG2);
-//   writeln("Initial nG2: ", nG2);
-//   writeln("Initial mG2: ", mG2);
-//   writeln("Initial subgraphEdgeAttributes: ", subgraphEdgeAttributes);
-//   writeln("Initial subgraphNodeAttributes: ", subgraphNodeAttributes);
-//   writeln("********************************************************************");
+    // writeln("********************************************************************");
+    // writeln("Initial srcNodesG2: ", srcNodesG2);
+    // writeln("Initial dstNodesG2: ", dstNodesG2);
+    // writeln("Initial segGraphG2: ", segGraphG2);
+    // writeln("Initial nG2: ", nG2);
+    // writeln("Initial mG2: ", mG2);
+    // writeln("Initial subgraphEdgeAttributes: ", subgraphEdgeAttributes);
+    // writeln("Initial subgraphNodeAttributes: ", subgraphNodeAttributes);
+    // writeln("********************************************************************");
 
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     var noEdgeAttributes = if subgraphEdgeAttributes.size == 0 then true else false;
+
+    // Used for the pickers.
+    var vertexFlagger: [0..<g1.n_vertices] bool = false;
+    var edgeFlagger: [0..<g1.n_edges] bool = false;
 
     // Timer for print-outs during execution.
     var timer:stopwatch;
@@ -1444,12 +1030,11 @@ module SubgraphIsomorphism {
 
     /* Pick the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
     proc vertexPicker() throws {
-      var vertexFlagger: [0..<g1.n_vertices] bool = false;
       var Tin_0 = segRG2[1] - segRG2[0];
       var Tout_0 = segGraphG2[1] - segGraphG2[0];
 
       forall v in 0..<g1.n_vertices {
-        var inNeighborsg1 = segRG1[v+1] - segRG1[v];            
+        var inNeighborsg1 = segRG1[v+1] - segRG1[v];
         var outNeighborsg1 = segGraphG1[v+1] - segGraphG1[v];
 
         if semanticAndCheck {
@@ -1460,14 +1045,10 @@ module SubgraphIsomorphism {
             then vertexFlagger[v] = true;
         } else { vertexFlagger[v] = true; }
       }
-
-      return vertexFlagger;
     }
 
     /* Pick the edges from the host graph that can be mapped to edge 0 of the data graph. */
     proc edgePicker(checkVertices:bool = false) throws {
-      var edgeFlagger: [0..<g1.n_edges] bool = false;
-
       // Get the first edge of the subgraph. Since the edge list is pre-sorted, then the first edge
       // will always be at index 0.
       var uSubgraph = srcNodesG2[0];
@@ -1509,8 +1090,6 @@ module SubgraphIsomorphism {
             then edgeFlagger[e] = true;
         } else { edgeFlagger[e] = true; }
       }
-
-      return edgeFlagger;
     }
 
     /* Generate in-neighbors and out-neighbors for a given subgraph state.*/
@@ -1834,7 +1413,7 @@ module SubgraphIsomorphism {
     }
     
     /* Executes VF2SIFromVertices. */
-    proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph, const ref vertexFlagger) throws {
+    proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph) throws {
       var solutions: list(int, parSafe=true);
       forall edgeIndex in 0..mG1-1 with(ref solutions) {
         // if stopper.read() then continue;
@@ -1856,7 +1435,7 @@ module SubgraphIsomorphism {
     } // end of VF2SIFrom Vertices
 
     /* Executes VF2SIFromEdges. */
-    proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph, const ref edgeFlagger) throws {
+    proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph) throws {
       var solutions: list(int, parSafe=true);
     //   writeln("srcNodesG1 = ", srcNodesG1);
     //   writeln("dstNodesG1 = ", dstNodesG1);
@@ -1909,48 +1488,48 @@ module SubgraphIsomorphism {
       var pickerTimer:stopwatch;
       if noEdgeAttributes && !noVertexAttributes { // Graph only has vertex attributes.
         pickerTimer.start();
-        var vertexFlagger = vertexPicker();
+        vertexPicker();
         var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         // writeln("//////////////////////////////////////////////////////");
         // writeln("*******************VF2SIFromVertices*******************");
-        var allmappings = VF2SIFromVertices(g1,g2,vertexFlagger);
+        var allmappings = VF2SIFromVertices(g1,g2);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       } else if !noEdgeAttributes && noVertexAttributes { // Graph only has edge attributes.
         pickerTimer.start();
-        var edgeFlagger = edgePicker();
+        edgePicker();
         var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         // writeln("//////////////////////////////////////////////////////");
         // writeln("*******************VF2SIFromEdges 1*******************");
-        var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
+        var allmappings = VF2SIFromEdges(g1,g2);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
         pickerTimer.start();
-        var edgeFlagger = edgePicker(true);
+        edgePicker(true);
         var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
         // writeln("edgeFlagger.size = ", edgeFlagger);
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         // writeln("//////////////////////////////////////////////////////");
         // writeln("*******************VF2SIFromEdges 2*******************");
-        var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
+        var allmappings = VF2SIFromEdges(g1,g2);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       } else { // Graph has no attributes.
-        var edgeFlagger: [0..<g1.n_edges] bool = true;
+        edgeFlagger = true;
         // writeln("//////////////////////////////////////////////////////");
         // writeln("*******************VF2SIFromEdges 3******************");
         // writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
         
-        var allmappings = VF2SIFromEdges(g1,g2,edgeFlagger);
+        var allmappings = VF2SIFromEdges(g1,g2);
         // writeln("allmappings.size = ", allmappings.size);
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;

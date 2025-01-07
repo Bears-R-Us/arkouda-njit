@@ -432,7 +432,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
                          time_limit:int = 0,
                          return_isos_as:str = "vertices",
                          algorithm_type:str = "ps",
-                         reorder:bool = False,
+                         reorder_type:str = None,
                          print_progress_interval:int = 2) -> Union[pdarray,Tuple]:
     """
     Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
@@ -471,8 +471,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         by `ps` is a paralell and scalable version of the original VF2 algorithm. The version `si`
         is experimental and creates original states based off existing edges only. Experiments show
         that `si` outperforms `ps` for large graphs.
-    reorder : bool
-        Reorders the subgraph according to probability or structure.
+    reorder_type : str
+        Reorders the subgraph according to "probability" or "structural".
     print_progress_interval : int
         Maintains how often the progress should be printed server-side for how many patterns have
         been found.
@@ -503,7 +503,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
              "SizeLimit": str(size_limit).lower(),
              "TimeLimit": time_limit,
              "ReturnIsosAs": return_isos_as,
-             "Reorder": str(reorder).lower(),
+             "ReorderType": reorder_type,
              "AlgorithmType": algorithm_type,
              "PrintProgressInterval": print_progress_interval }
 

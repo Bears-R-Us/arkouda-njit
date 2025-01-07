@@ -47,12 +47,12 @@ module SubgraphIsomorphismMsg {
     var sizeLimit = msgArgs.getValueOf("SizeLimit");
     var timeLimit = msgArgs.getValueOf("TimeLimit"):int;
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
-    var reorder = msgArgs.getValueOf("Reorder"):bool;
+    var reorderType = msgArgs.getValueOf("ReorderType");
     var algorithmType = msgArgs.getValueOf("AlgorithmType");
     var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
 
     writeln("\n\n\n\n\n\n");
-    writeln("reorder = ", reorder);
+    writeln("reorderType = ", reorderType);
     writeln("\n\n\n\n\n\n");
      
     // Pull out our graph from the symbol table.
@@ -74,7 +74,7 @@ module SubgraphIsomorphismMsg {
 
       timer.start();
       var isos = runVF2(g,h,semanticCheckType,sizeLimit,timeLimit,
-                        printProgressInterval,algorithmType,returnIsosAs,reorder,st);
+                        printProgressInterval,algorithmType,returnIsosAs,reorderType,st);
       timer.stop();
       outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
