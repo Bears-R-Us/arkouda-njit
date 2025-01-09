@@ -115,41 +115,75 @@ module SubgraphIsomorphism {
     categorical consistencies and use integer attribute matching instead.
   */
   proc doAttributesMatch(graphIdx, subgraphIdx, const ref graphAttributes, const ref subgraphAttributes, 
-                         matchType:string, st: borrowed SymTab) throws {
-    var outerMatch:bool;
+                         st: borrowed SymTab) throws {
+    // writeln("doAttributesMatch call to check g1 index: ",graphIdx, " with g2 index: ", subgraphIdx);
+    var outerMatch:bool = true;
     var matchCounter:int = 0;
-    if matchType == "and" then outerMatch = true;
-    if matchType == "or" then outerMatch = false;
+
+
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
-      if !graphAttributes.contains(k) then continue; // check if attribute exists in graph
-      if v[1] != graphAttributes[k][1] then continue; // check if types are same
+      // writeln("Checking subgraph attribute key: ", k);
+      // writeln("Checking subgraph attribute value type: ", v[1]);
+      
+      // check if attribute exists in graph
+      if !graphAttributes.contains(k) {
+        // writeln("Graph does not contain attribute key: ", k);
+        continue;
+      }
+
+      // check if types are same
+      if v[1] != graphAttributes[k][1] {
+        // writeln("Type mismatch for key: ", k, " (subgraph type: ", v[1], ", graph type: ", graphAttributes[k][1], ")");
+        continue;
+      }      
+
       var innerMatch:bool;
+
+      // writeln("Matched key: ", k, " with type: ", v[1]);
 
       // Check the actual data.
       select v[1] {
         when "Categorical" {
+          
+          // writeln("Processing Categorical attribute for key: ", k);
+
           var subgraphArrEntry = (st.registry.tab(v[0])):shared CategoricalRegEntry;
           const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
           const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
+          //writeln("Subgraph categorical labels: ", subgraphCats);
 
           var graphArrEntry = (st.registry.tab(graphAttributes[k][0])):shared CategoricalRegEntry;
           const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
           const ref graphCats = getSegString(graphArrEntry.categories, st);
+          //writeln("Graph categorical labels: ", graphCats);
 
           innerMatch = (subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]]);
+          //writeln("Categorical match result: ", innerMatch);
+
           matchCounter += 1;
         }
         when "Strings" {
+          // writeln("Processing String attribute for key: ", k);
+
           var subgraphStrings = getSegString(v[0], st);
           var graphStrings = getSegString(graphAttributes[k][0], st);
+          // writeln("Subgraph string labels: ", subgraphStrings);
+          // writeln("Graph string labels: ", graphStrings);
 
           innerMatch = subgraphStrings[subgraphIdx] == graphStrings[graphIdx];
+          // writeln("String match result: ", innerMatch);
+
           matchCounter += 1;
         }
         when "pdarray" {
+          // writeln("Processing pdarray attribute for key: ", k);
+
           var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
           var graphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(graphAttributes[k][0], st);
-          if subgraphArrEntry.dtype != graphArrEntry.dtype then continue;
+          if subgraphArrEntry.dtype != graphArrEntry.dtype {
+            // writeln("Type mismatch in pdarray for key: ", k);
+            continue;
+          }
 
           var etype = subgraphArrEntry.dtype;
           select etype {
@@ -178,19 +212,23 @@ module SubgraphIsomorphism {
               matchCounter += 1;
             }
           }
+          // writeln("pdarray match result for key: ", k, " is: ", innerMatch);
+
         }
       }
-      if matchType == "or" then outerMatch = outerMatch || innerMatch;
-      if matchType == "and" then outerMatch = outerMatch && innerMatch;
+      // writeln("Match result for key: ", k, " is: ", innerMatch);
+
+      outerMatch = outerMatch && innerMatch;
       
-      // For or check, if at least one of the checks yields true, then no other checks need to be
-      // made.
-      if matchType == "or" && outerMatch then return true;
     }
     
     // This means no attributes in the subgraph were matched with attributes in the main graph.
     // This can be caused by none of the attribute names or types matching.
-    if matchCounter == 0 then return false;
+    if matchCounter == 0 {
+      // writeln("No attributes matched between subgraph and main graph.");
+      return false;
+    }
+    // writeln("Final match result: ", outerMatch);
     
     return outerMatch;
   } // end of doAttributesMatch
@@ -940,6 +978,10 @@ module SubgraphIsomorphism {
     var stopper:atomic bool = false;
     timeLimit *= 60;
 
+    // Used for the pickers.
+    var vertexFlagger: [0..<g1.n_vertices] bool = false;
+    var edgeFlagger: [0..<g1.n_edges] bool = false;
+
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
@@ -956,6 +998,10 @@ module SubgraphIsomorphism {
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributesOriginal = g2.getEdgeAttributes();
 
+    writeln("graphNodeAttributes = ", graphNodeAttributes);
+    writeln("subgraphNodeAttributesOriginal = ", subgraphNodeAttributesOriginal);
+    writeln("graphEdgeAttributes = ", graphEdgeAttributes);
+    writeln("subgraphEdgeAttributesOriginal = ", subgraphEdgeAttributesOriginal);
     // Generate the probability distributions for each attribute. Will be stored in module-level
     // maps for each datatype. This is only performed for the attributes that exist in both the
     // subgraph and the graph.
@@ -1020,16 +1066,13 @@ module SubgraphIsomorphism {
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     var noEdgeAttributes = if subgraphEdgeAttributes.size == 0 then true else false;
 
-    // Used for the pickers.
-    var vertexFlagger: [0..<g1.n_vertices] bool = false;
-    var edgeFlagger: [0..<g1.n_edges] bool = false;
 
     // Timer for print-outs during execution.
     var timer:stopwatch;
     timer.start();
 
     /* Pick the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
-    proc vertexPicker() throws {
+    proc vertexPickerStructral() throws {
       var Tin_0 = segRG2[1] - segRG2[0];
       var Tout_0 = segGraphG2[1] - segGraphG2[0];
 
@@ -1037,13 +1080,53 @@ module SubgraphIsomorphism {
         var inNeighborsg1 = segRG1[v+1] - segRG1[v];
         var outNeighborsg1 = segGraphG1[v+1] - segGraphG1[v];
 
+        if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, st) && (inNeighborsg1 >= Tin_0) && (outNeighborsg1 >= Tout_0) {
+          vertexFlagger[v] = true;
+        }
+      }
+
+    }
+
+    /* Pick the edges from the host graph that can be mapped to edge 0 of the data graph. */
+    proc edgePickerStructural(checkVertices:bool = false) throws {
+      // Get the first edge of the subgraph. Since the edge list is pre-sorted, then the first edge
+      // will always be at index 0.
+      var uSubgraph = srcNodesG2[0];
+      var vSubgraph = dstNodesG2[0];
+
+      // Get in-degree and out-degree for source vertex of first edge.
+      var Tin_uSubgraph = segRG2[uSubgraph+1] - segRG2[uSubgraph];
+      var Tout_uSubgraph = segGraphG2[uSubgraph+1] - segGraphG2[uSubgraph];
+
+      // Get in-degree and out-degree for destination vertex of first edge.
+      var Tin_vSubgraph = segRG2[vSubgraph+1] - segRG2[vSubgraph];
+      var Tout_vSubgraph = segGraphG2[vSubgraph+1] - segGraphG2[vSubgraph];
+
+      forall e in 0..<g1.n_edges {
+        var u = srcNodesG1[e];
+        var v = dstNodesG1[e];
+
+        var Tin_u = segRG1[u+1] - segRG1[u];
+        var Tout_u = segGraphG1[u+1] - segGraphG1[u];
+
+        //if checkVertices {
+          //if semanticAndCheck {
+            if !(doAttributesMatch(u, uSubgraph, graphNodeAttributes, subgraphNodeAttributes, st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph))
+              then continue;
+          //}  
+          //else { /* Do nothing. */ }
+        //}
+
+        var Tin_v = segRG1[v+1] - segRG1[v];
+        var Tout_v = segGraphG1[v+1] - segGraphG1[v];
+
         if semanticAndCheck {
-          if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, "and", st) && (inNeighborsg1 >= Tin_0) && (outNeighborsg1 >= Tout_0)
-            then vertexFlagger[v] = true;
+          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
+            then edgeFlagger[e] = true;
         } else if semanticOrCheck {
-          if doAttributesMatch(v, 0, graphNodeAttributes, subgraphNodeAttributes, "or", st) && (inNeighborsg1 >= Tin_0) && (outNeighborsg1 >= Tout_0)
-            then vertexFlagger[v] = true;
-        } else { vertexFlagger[v] = true; }
+          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
+            then edgeFlagger[e] = true;
+        } else { edgeFlagger[e] = true; }
       }
     }
 
@@ -1140,37 +1223,25 @@ module SubgraphIsomorphism {
       Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
       Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
 
-      if semanticAndCheck {
-        if !doAttributesMatch(u1_g1, 1, graphNodeAttributes, subgraphNodeAttributes, "and", st) 
-          then return false;
-      } else if semanticOrCheck {
-        if !doAttributesMatch(u1_g1, 1, graphNodeAttributes, subgraphNodeAttributes, "or", st)
-          then return false;
-      } else { }
+      if !doAttributesMatch(u1_g1, 1, graphNodeAttributes, subgraphNodeAttributes, st) 
+        then return false;
+      
 
       var eid1 = getEdgeId(u0_g1, u1_g1, dstNodesG1, segGraphG1);
       var eid2 = getEdgeId(0, 1, dstNodesG2, segGraphG2);
 
-      if semanticAndCheck {
-        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) then
+      if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, st) then
           return false;
-      } else if semanticOrCheck {
-        if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) then
-          return false;
-      } else { }
+
 
       var eid1_rev = getEdgeId(u1_g1, u0_g1, dstNodesG1, segGraphG1);
       var eid2_rev = getEdgeId(1, 0, dstNodesG2, segGraphG2);
       if eid2_rev != -1 && eid1_rev == -1 then return false;
 
       if eid1_rev != -1 && eid2_rev != -1 {
-        if semanticAndCheck {
-          if !doAttributesMatch(eid1_rev, eid2_rev, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) then
+          if !doAttributesMatch(eid1_rev, eid2_rev, graphEdgeAttributes, subgraphEdgeAttributes, st) then
             return false;
-        } else if semanticOrCheck {
-          if !doAttributesMatch(eid1_rev, eid2_rev, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) then
-            return false;
-        } else { }
+        
       }
       const cond2 = Tin_u1.size >= Tin_1.size && Tout_u1.size >= Tout_1.size;
       if !cond2 then return false;
@@ -1180,7 +1251,7 @@ module SubgraphIsomorphism {
       Nei_u1 += Tin_u1;
       Nei_u1 += Tout_u1;
 
-      var intersecg1, intersecg2: domain(int, parSafe=true);
+      var intersecg1, intersecg2: domain(int, parSafe=false);
       intersecg1 = Nei_u0 & Nei_u1;
 
       Nei_0 += Tin_0;
@@ -1225,14 +1296,11 @@ module SubgraphIsomorphism {
 
           if eid1 == -1 || eid2 == -1 then return false;
 
-          if semanticAndCheck {
-            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) then
-              return false;
-          } else if semanticOrCheck {
-            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) then
-              return false;
-          } else { }
-        } else {
+          if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, st) then
+            return false;
+
+        } 
+        else {
           if state.Tin2.contains(Out2) then termin2 += 1;
           if state.Tout2.contains(Out2) then termout2 += 1;
           if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;
@@ -1249,14 +1317,11 @@ module SubgraphIsomorphism {
 
           if eid1 == -1 || eid2 == -1 then return false;
 
-          if semanticAndCheck {
-            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) then
-              return false;
-          } else if semanticOrCheck {
-            if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) then
-              return false;
-          } else { }
-        } else {
+          if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, st) then
+            return false;
+
+        } 
+        else {
           if state.Tin2.contains(In2) then termin2 += 1;
           if state.Tout2.contains(In2) then termout2 += 1;
           if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
@@ -1287,13 +1352,8 @@ module SubgraphIsomorphism {
           (termin2 + termout2 + new2) <= (termin1 + termout1 + new1)
         ) then return false;
 
-      if semanticAndCheck {
-        if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "and", st) 
+        if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, st) 
           then return false;
-      } else if semanticOrCheck {
-        if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, "or", st)
-          then return false;
-      } else { }
 
       return true;
     } // end of isFeasible
@@ -1414,6 +1474,7 @@ module SubgraphIsomorphism {
     
     /* Executes VF2SIFromVertices. */
     proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph) throws {
+      // writeln("*********************VF2SIFromVertices*******************");
       var solutions: list(int, parSafe=true);
       forall edgeIndex in 0..mG1-1 with(ref solutions) {
         // if stopper.read() then continue;
@@ -1426,6 +1487,9 @@ module SubgraphIsomorphism {
             var newMappings = vf2Helper(initialState, 2);
             for mapping in newMappings do solutions.pushBack(mapping);
           }
+          // else {
+          //   writeln("--------------------->addToTinToutMVE returned false");
+          // }
         }
       }
       var subIsoArrToReturn: [0..#solutions.size](int);
@@ -1486,54 +1550,71 @@ module SubgraphIsomorphism {
 
     if algType == "si" {
       var pickerTimer:stopwatch;
-      if noEdgeAttributes && !noVertexAttributes { // Graph only has vertex attributes.
+      //if reorderType == "structural" {
         pickerTimer.start();
-        vertexPicker();
+
+        vertexPickerStructral();
         var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        // writeln("//////////////////////////////////////////////////////");
-        // writeln("*******************VF2SIFromVertices*******************");
+
         var allmappings = VF2SIFromVertices(g1,g2);
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
-      } else if !noEdgeAttributes && noVertexAttributes { // Graph only has edge attributes.
-        pickerTimer.start();
-        edgePicker();
-        var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
-        pickerTimer.reset();
-        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        // writeln("//////////////////////////////////////////////////////");
-        // writeln("*******************VF2SIFromEdges 1*******************");
-        var allmappings = VF2SIFromEdges(g1,g2);
+      //} 
+      
+      // else if reorderType == "probability" {
+      //           pickerTimer.start();
 
-        allMappingsArrayD = makeDistDom(allmappings.size);
-        allMappingsArray = allmappings;
-      } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
-        pickerTimer.start();
-        edgePicker(true);
-        var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
-        // writeln("edgeFlagger.size = ", edgeFlagger);
-        pickerTimer.reset();
-        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        // writeln("//////////////////////////////////////////////////////");
-        // writeln("*******************VF2SIFromEdges 2*******************");
-        var allmappings = VF2SIFromEdges(g1,g2);
+      //           edgePickerStructural(true);
+      //           var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
+      //           writeln("edgeFlagger.size = ", edgeFlagger);
+      //           pickerTimer.reset();
+      //           siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-        allMappingsArrayD = makeDistDom(allmappings.size);
-        allMappingsArray = allmappings;
-      } else { // Graph has no attributes.
-        edgeFlagger = true;
-        // writeln("//////////////////////////////////////////////////////");
-        // writeln("*******************VF2SIFromEdges 3******************");
-        // writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
+      //           var allmappings = VF2SIFromEdges(g1,g2);
+
+      //           allMappingsArrayD = makeDistDom(allmappings.size);
+      //           allMappingsArray = allmappings;
+      // }
+
+      // } else if !noEdgeAttributes && noVertexAttributes { // Graph only has edge attributes.
+      //   pickerTimer.start();
+      //   edgePicker();
+      //   var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
+      //   pickerTimer.reset();
+      //   siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      //   // writeln("//////////////////////////////////////////////////////");
+      //   // writeln("*******************VF2SIFromEdges 1*******************");
+      //   var allmappings = VF2SIFromEdges(g1,g2);
+
+      //   allMappingsArrayD = makeDistDom(allmappings.size);
+      //   allMappingsArray = allmappings;
+      // } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
+      //   pickerTimer.start();
+      //   edgePicker(true);
+      //   var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
+      //   // writeln("edgeFlagger.size = ", edgeFlagger);
+      //   pickerTimer.reset();
+      //   siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      //   // writeln("//////////////////////////////////////////////////////");
+      //   // writeln("*******************VF2SIFromEdges 2*******************");
+      //   var allmappings = VF2SIFromEdges(g1,g2);
+
+      //   allMappingsArrayD = makeDistDom(allmappings.size);
+      //   allMappingsArray = allmappings;
+      // } else { // Graph has no attributes.
+      //   edgeFlagger = true;
+      //   // writeln("//////////////////////////////////////////////////////");
+      //   // writeln("*******************VF2SIFromEdges 3******************");
+      //   // writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
         
-        var allmappings = VF2SIFromEdges(g1,g2);
-        // writeln("allmappings.size = ", allmappings.size);
-        allMappingsArrayD = makeDistDom(allmappings.size);
-        allMappingsArray = allmappings;
-      }
+      //   var allmappings = VF2SIFromEdges(g1,g2);
+      //   // writeln("allmappings.size = ", allmappings.size);
+      //   allMappingsArrayD = makeDistDom(allmappings.size);
+      //   allMappingsArray = allmappings;
+      // }
     }
     timer.stop();
 
