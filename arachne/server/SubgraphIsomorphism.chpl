@@ -120,6 +120,9 @@ module SubgraphIsomorphism {
     var outerMatch:bool = true;
     var matchCounter:int = 0;
 
+    if graphAttributes.size == 0 && subgraphAttributes.size == 0 then return true;
+    if graphAttributes.size == 0 && subgraphAttributes.size >= 1 then return false;
+    if graphAttributes.size >= 1 && subgraphAttributes.size == 0 then return true;
 
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
       // writeln("Checking subgraph attribute key: ", k);
@@ -229,6 +232,8 @@ module SubgraphIsomorphism {
       return false;
     }
     // writeln("Final match result: ", outerMatch);
+
+
     
     return outerMatch;
   } // end of doAttributesMatch
