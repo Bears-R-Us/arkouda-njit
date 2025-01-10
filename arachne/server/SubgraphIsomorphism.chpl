@@ -119,10 +119,12 @@ module SubgraphIsomorphism {
     // writeln("doAttributesMatch call to check g1 index: ",graphIdx, " with g2 index: ", subgraphIdx);
     var outerMatch:bool = true;
     var matchCounter:int = 0;
-
-    if graphAttributes.size == 0 && subgraphAttributes.size == 0 then return true;
-    if graphAttributes.size == 0 && subgraphAttributes.size >= 1 then return false;
-    if graphAttributes.size >= 1 && subgraphAttributes.size == 0 then return true;
+    // writeln(" graphAttributes.size = ",  graphAttributes.size);
+    // writeln(" subgraphAttributes.size = ",  subgraphAttributes.size);
+    
+    if graphAttributes.size <= 0 && subgraphAttributes.size <= 0 then return true;
+    if graphAttributes.size <= 0 && subgraphAttributes.size >= 1 then return false;
+    if graphAttributes.size >= 1 && subgraphAttributes.size <= 0 then return true;
 
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
       // writeln("Checking subgraph attribute key: ", k);
