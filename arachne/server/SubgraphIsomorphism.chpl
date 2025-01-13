@@ -545,6 +545,8 @@ module SubgraphIsomorphism {
     writeln("inDegree        = ", inDegree);
     writeln("outDegree       = ", outDegree);
     writeln("totalDegree     = ", totalDegree);
+    writeln("edgeProbabilities     = ", edgeProbabilities);
+    writeln("nodeProbabilities     = ", nodeProbabilities);
 
     if (reorderType == "structural") || (reorderType == "probability" && edgeAttributes.size == 0) { 
       // There are no edge attributes, focus on vertices and/or structure.
@@ -662,6 +664,7 @@ module SubgraphIsomorphism {
         }
       }
     } else { 
+      writeln("Else selected for reordering");
       // There are edge attributes. Use edge probabilities.
       // Candidates are edge tuples, edge probability, and source and destination vertex probs.
       // It break ties on destination and source vertex probabilities, respectively.
@@ -721,6 +724,7 @@ module SubgraphIsomorphism {
       // Loop until all vertices have been remapped.
       while replacedNodes.size < uniqueNodes.size {
         var currentNode = replacedNodes.last;
+        writeln("currentNode = ", currentNode );
         var (inDegree, outDegre, totalDegree) = updateDegrees(srcTemp, dstTemp, uniqueNodes);
 
         // Select the out-neighbors of the current vertex and sort them based on candidacy. 
