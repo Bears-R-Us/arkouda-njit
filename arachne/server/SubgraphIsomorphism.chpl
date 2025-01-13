@@ -549,6 +549,7 @@ module SubgraphIsomorphism {
     writeln("nodeProbabilities     = ", nodeProbabilities);
 
     if (reorderType == "structural") || (reorderType == "probability" && edgeAttributes.size == 0) { 
+      writeln("Entering structural and/or vertex probability reordering of subgraph.");
       // There are no edge attributes, focus on vertices and/or structure.
       // Create an array of tuples tracking vertex probability, highest degree, and out-degree.
       var candidates = makeDistArray(uniqueNodes.size, (int,real,int,int));
@@ -664,7 +665,7 @@ module SubgraphIsomorphism {
         }
       }
     } else { 
-      writeln("Else selected for reordering");
+      writeln("Entering edge probability reordering of subgraph.");
       // There are edge attributes. Use edge probabilities.
       // Candidates are edge tuples, edge probability, and source and destination vertex probs.
       // It break ties on destination and source vertex probabilities, respectively.
@@ -687,38 +688,50 @@ module SubgraphIsomorphism {
       writeln("\nSelecting and remapping the first given edge...");
       // First selected edge.
       var e = candidates[0][0];
+      var pickedSrc = src[e];
+      var pickedDst = dst[e];
       
-      // Firstly, vertex u...
-      var selectedNode = src[e];
-      var sortedIndex = 0;
-      writef("Source node %i was given sorted index %i\n", selectedNode, sortedIndex);
-      for i in srcTemp.domain {
-        if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
-        else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+      if pickedSrc == 1 && pickedSrc == 0 {
+        writeln("Entering special case where pickedSrc and pickedDst of edge 0 are 1--->0.");
+        for i in srcTemp.domain {
+          if srcTemp[i] == 0 then srcTemp[i] = 1;
+          if dstTemp[i] == 1 then dstTemp[i] = 0;
+        }
+        replacedNodes.pushBack(uniqueNodes[0]);
+        replacedNodes.pushBack(uniqueNodes[1]);
+      } else {
+        // Firstly, vertex u...
+        var selectedNode = src[e];
+        var sortedIndex = 0;
+        writef("Source node %i was given sorted index %i\n", selectedNode, sortedIndex);
+        for i in srcTemp.domain {
+          if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+          else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
 
-        if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
-        else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+          if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+          else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+        }
+        replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+        writeln("replacedNodes = ", replacedNodes);
+        writeln("updated srcTemp = ", srcTemp);
+        writeln("updated dstTemp = ", dstTemp);
+
+        // Secondly, vertex v...
+        selectedNode = dstTemp[e];
+        sortedIndex = 1;
+        writef("Destination node %i was given sorted index %i\n", selectedNode, sortedIndex);
+        for i in srcTemp.domain {
+          if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
+          else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
+
+          if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
+          else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
+        }
+        replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+        writeln("replacedNodes = ", replacedNodes);
+        writeln("updated srcTemp = ", srcTemp);
+        writeln("updated dstTemp = ", dstTemp);
       }
-      replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-      writeln("replacedNodes = ", replacedNodes);
-      writeln("updated srcTemp = ", srcTemp);
-      writeln("updated dstTemp = ", dstTemp);
-
-      // Secondly, vertex v...
-      selectedNode = dst[e];
-      sortedIndex = 1;
-      writef("Destination node %i was given sorted index %i\n", selectedNode, sortedIndex);
-      for i in srcTemp.domain {
-        if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
-        else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
-
-        if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
-        else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
-      }
-      replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-      writeln("replacedNodes = ", replacedNodes);
-      writeln("updated srcTemp = ", srcTemp);
-      writeln("updated dstTemp = ", dstTemp);
 
       writeln("\nFirst edge remapping finished, while loop begins...");
       // Loop until all vertices have been remapped.
@@ -733,7 +746,7 @@ module SubgraphIsomorphism {
           var outNeighbor = dstTemp[i];
           if srcTemp[i] == currentNode && !replacedNodes.contains(outNeighbor) {
             outNeighborsList.pushBack((outNeighbor,
-                                      edgeProbabilities[nodeToIndex[outNeighbor]],
+                                      edgeProbabilities[i],
                                       totalDegree[nodeToIndex[outNeighbor]],
                                       outDegree[nodeToIndex[outNeighbor]]));
           }
@@ -768,16 +781,17 @@ module SubgraphIsomorphism {
           writeln("replacedNodes   = ", replacedNodes);
           writeln("updated srcTemp = ", srcTemp);
           writeln("updated dstTemp = ", dstTemp);    
-        } else { // If there are no out-neighbors, then pick the next node from the remaining vertices.
+        } else { 
+          // If there are no out-neighbors, then pick the next node from the remaining vertices.
           // Assemble remaining candidates, checking their probabilities and structure.
           var remainingCandidatesList = new list((int,real,int,int));
           for i in uniqueNodes.domain {
             var u = uniqueNodes[i];
             if !replacedNodes.contains(u) {
               remainingCandidatesList.pushBack((u,
-                                                edgeProbabilities[i],
-                                                totalDegree[i],
-                                                outDegree[i]));
+                                                nodeProbabilities[u],
+                                                totalDegree[u],
+                                                outDegree[u]));
             }
           }
           var remainingCandidates = remainingCandidatesList.toArray();
@@ -812,6 +826,8 @@ module SubgraphIsomorphism {
       reordering[u] = uNew;
       reordering[v] = vNew;
     }
+
+    writeln("reorder = ", reordering);
 
     return reordering;
   }
@@ -919,6 +935,8 @@ module SubgraphIsomorphism {
       newSrc[i] = nodeMapping[s];
       newDst[j] = nodeMapping[d];
     }
+    writeln("newSrc = ", newSrc);
+    writeln("newDst = ", newDst);
 
     // Sort the newly created edge list.
     var (sortedNewSrc, sortedNewDst) = sortEdgeList(newSrc, newDst);
@@ -930,6 +948,7 @@ module SubgraphIsomorphism {
         if sns == ns && snd == nd then edgePerm[i] = j;
       }
     }
+    writeln("edgePerm = ", edgePerm);
 
     // Get the permutation that sorts the nodes. This is needed to sort the attributes.
     var newNodeMap = nodeMap;
