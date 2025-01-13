@@ -1565,7 +1565,15 @@ module SubgraphIsomorphism {
         pickerTimer.reset();
         siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
+        var countTrue = + reduce vertexFlagger;
+        writeln("Number nodes that we picked: ", countTrue, " out of ", g1.n_vertices);
+
+        var VF2_si_Timer:stopwatch;
+        VF2_si_Timer.start();
         var allmappings = VF2SIFromVertices(g1,g2);
+        VF2_si_Timer.stop();
+        writeln("\n\nVF2_si_Timer",VF2_si_Timer.elapsed());
+        writeln("\n\n");
 
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
