@@ -834,6 +834,7 @@ module SubgraphIsomorphism {
 
   /* Given a new permutation, reorder given attributes. Used for subgraph reordering. */
   proc getReorderedAttributes(attributes, perm, st) throws {
+    writeln("\nCreating reordered attributes...");
     var newAttributeMap = new map(string, (string, string));
     
     // Loop over edge attributes. Making new symbol table entries and saving them.
@@ -881,7 +882,10 @@ module SubgraphIsomorphism {
           select etype {
             when (DType.Int64) {
               const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
+              writeln("subgraphArr = ", subgraphArr);
               var newArr = subgraphArr[perm];
+              writeln("newArr = ", newArr);
+              writeln();
 
               var name = st.nextName();
               st.addEntry(name, new shared SymEntry(newArr));
@@ -905,7 +909,9 @@ module SubgraphIsomorphism {
             }
             when (DType.Bool) {
               const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
+              writeln("subgraphArr = ", subgraphArr);
               var newArr = subgraphArr[perm];
+              writeln("newArr = ", newArr);
 
               var name = st.nextName();
               st.addEntry(name, new shared SymEntry(newArr));
@@ -916,6 +922,7 @@ module SubgraphIsomorphism {
       }
     }
 
+    writeln();
     return newAttributeMap;
   }
 
@@ -941,6 +948,9 @@ module SubgraphIsomorphism {
     // Sort the newly created edge list.
     var (sortedNewSrc, sortedNewDst) = sortEdgeList(newSrc, newDst);
 
+    writeln("sortedNewSrc = ", sortedNewSrc);
+    writeln("sortedNewDst = ", sortedNewDst);
+
     // Get the permutation that sorts the edges. This is needed to sort the attributes.
     var edgePerm = makeDistArray(src.size, int);
     for (i, sns, snd) in zip(edgePerm.domain, sortedNewSrc, sortedNewDst) {
@@ -955,6 +965,9 @@ module SubgraphIsomorphism {
     for (i,u) in zip(newNodeMap.domain, newNodeMap) do newNodeMap[i] = nodeMapping[u];
     var nodePerm = argsortDefault(newNodeMap);
     var sortedNodeMap = newNodeMap[nodePerm];
+    writeln("newNodeMap = ", newNodeMap);
+    writeln("nodePerm = ", nodePerm);
+    writeln("sortedNodeMap = ", sortedNodeMap);
 
     // Reorder the attributes.
     var reorderedEdgeAttributes = getReorderedAttributes(edgeAttributes, edgePerm, st);
@@ -964,6 +977,8 @@ module SubgraphIsomorphism {
     var srcR = sortedNewDst;
     var dstR = sortedNewSrc;
     var (sortedSrcR, sortedDstR) = sortEdgeList(srcR, dstR);
+    writeln("sortedSrcR = ", sortedSrcR);
+    writeln("sortedDstR = ", sortedDstR);
 
     // Generate segments arrays for both regular and reversed arrays.
     var (srcUnique, srcCounts) = Unique.uniqueFromSorted(sortedNewSrc);
@@ -974,6 +989,7 @@ module SubgraphIsomorphism {
     var completeSegs = makeDistArray(nodeMap.size + 1, int);
     completeSegs[0] = 0;
     completeSegs[1..] = segs;
+    writeln("completeSegs = ", completeSegs);
 
     var (srcRUnique, srcRCounts) = Unique.uniqueFromSorted(sortedSrcR);
     var neisR = makeDistArray(nodeMap.size, int);
@@ -983,6 +999,7 @@ module SubgraphIsomorphism {
     var completeSegsR = makeDistArray(nodeMap.size + 1, int);
     completeSegsR[0] = 0;
     completeSegsR[1..] = segsR;
+    writeln("completeSegsR = ", completeSegsR);
 
     return (sortedNewSrc, sortedNewDst, completeSegs, sortedNodeMap, 
             sortedSrcR, sortedDstR, completeSegsR, 
