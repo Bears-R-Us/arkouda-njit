@@ -962,7 +962,7 @@ module SubgraphIsomorphism {
 
     // Get the permutation that sorts the nodes. This is needed to sort the attributes.
     var newNodeMap = nodeMap;
-    for (i,u) in zip(newNodeMap.domain, newNodeMap) do newNodeMap[i] = nodeMapping[u];
+    for (u,i) in zip(newNodeMap, newNodeMap.domain) do u = nodeMapping[i];
     var nodePerm = argsortDefault(newNodeMap);
     var sortedNodeMap = newNodeMap[nodePerm];
     writeln("newNodeMap = ", newNodeMap);
