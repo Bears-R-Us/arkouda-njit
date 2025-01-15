@@ -926,9 +926,68 @@ module SubgraphIsomorphism {
     return newAttributeMap;
   }
 
+  /* Used to ensure that the first edge is of type 0 --> 1 */
+  proc checkAndChangeFirstEdge(in src, in dst, in nodeMapping) throws {
+    if src[0] == 0 then return (src, dst, nodeMapping);
+
+    // Keep track of u and v to fix the nodeMapping.
+    var u = src[0];
+    var v = dst[0];
+
+    // Firstly, vertex u...
+    var selectedNode = src[0];
+    writef("Source node %i was given sorted index %i\n", selectedNode, 0);
+    for i in src.domain {
+      if src[i] == selectedNode then src[i] = 0;
+      else if src[i] == 0 then src[i] = selectedNode;
+
+      if dst[i] == selectedNode then dst[i] = 0;
+      else if dst[i] == 0 then dst[i] = selectedNode;
+    }
+
+    // Secondly, vertex v...
+    selectedNode = dst[0];
+    writef("Destination node %i was given sorted index %i\n", selectedNode, 1);
+    for i in src.domain {
+      if src[i] == selectedNode then src[i] = 1;
+      else if src[i] == 1 then src[i] = selectedNode;
+
+      if dst[i] == selectedNode then dst[i] = 1;
+      else if dst[i] == 1 then dst[i] = selectedNode;
+    }
+
+    // Update node mapping.
+    for (key,value) in zip(nodeMapping.keys(), nodeMapping.values()) {
+      if value == u then nodeMapping.replace(key, 0);
+      if value == v then nodeMapping.replace(key, 1);
+    }
+
+    return (src, dst, nodeMapping);
+  }
+
+  /* Used to sort two edges since the default sorting being utilized was returning wrong info. */
+  proc sortTwoEdges(in src, in dst) throws {
+    var comparator: TupleComparator;
+    var result = comparator.compare((src[0], dst[0]), (src[1], dst[1]));
+    
+    var newSrc = makeDistArray(src.size, int);
+    var newDst = makeDistArray(dst.size, int);
+
+    if result > 0 {
+      newSrc[0] = src[1];
+      newDst[0] = dst[1];
+      newSrc[1] = src[0];
+      newDst[1] = dst[0];
+
+      return (newSrc, newDst);
+    }
+
+    return (src, dst);
+  }
+
   /* Given a node mapping of original vertex names to new vertex names and the original subgraph, 
      returns new structural and attribute arrays following the new reordering. */
-  proc getReorderedSubgraph(nodeMapping, originalSubgraph, st) throws {
+  proc getReorderedSubgraph(in nodeMapping, originalSubgraph, st) throws {
     const ref src = toSymEntry(originalSubgraph.getComp("SRC_SDI"), int).a;
     const ref dst = toSymEntry(originalSubgraph.getComp("DST_SDI"), int).a;
     const ref nodeMap = toSymEntry(originalSubgraph.getComp("VERTEX_MAP_SDI"), int).a;
@@ -946,7 +1005,21 @@ module SubgraphIsomorphism {
     writeln("newDst = ", newDst);
 
     // Sort the newly created edge list.
-    var (sortedNewSrc, sortedNewDst) = sortEdgeList(newSrc, newDst);
+    var (srcToCheck,dstToCheck) = if newSrc.size > 2 then sortEdgeList(newSrc, newDst)
+                                  else if newSrc.size == 2 then sortTwoEdges(newSrc, newDst)
+                                  else (newSrc, newDst);
+    writeln("srcToCheck = ", srcToCheck);
+    writeln("dstToCheck = ", dstToCheck);
+
+    // Check the edge list to make sure the first edge is 0 --> 1. If not, then it updates the
+    // vertex names one last time.
+    var (updatedSrc,updatedDst,newMapping) = checkAndChangeFirstEdge(srcToCheck,dstToCheck,nodeMapping);
+    nodeMapping = newMapping;
+
+    // Sort after possibly changing the vertices.
+    var (sortedNewSrc,sortedNewDst) = if updatedSrc.size > 2 then sortEdgeList(updatedSrc, updatedDst)
+                                      else if updatedSrc.size == 2 then sortTwoEdges(updatedSrc, updatedDst)
+                                      else (updatedSrc, updatedDst);
 
     writeln("sortedNewSrc = ", sortedNewSrc);
     writeln("sortedNewDst = ", sortedNewDst);

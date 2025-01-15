@@ -34,6 +34,14 @@ module WellConnectedComponents {
   
   extern proc c_computeMinCut(partition_arr: [] int, src: [] int, dst: [] int, n: int, m: int): int;
 
+  /* Define a custom tuple comparator. */
+  record TupleComparator {
+    proc compare(a: (int, int), b: (int, int)) {
+      if a(0) != b(0) then return a(0)-b(0);
+      else return a(1)-b(1);
+    }
+  }
+
   /* Modified version of the standard set module intersection method to only return the size of
      the intersection. */
   proc setIntersectionSize(const ref a: set(?t, ?), const ref b: set(t, ?)) {
@@ -161,15 +169,6 @@ module WellConnectedComponents {
       var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
 
       return (uniqueSrc, uniqueDst, idx2v);
-    }
-
-
-    /* Define a custom tuple comparator. */
-    record TupleComparator {
-      proc compare(a: (int, int), b: (int, int)) {
-        if a(0) != b(0) then return a(0)-b(0);
-        else return a(1)-b(1);
-      }
     }
 
     /* Function to sort edge lists based on src and dst nodes */
