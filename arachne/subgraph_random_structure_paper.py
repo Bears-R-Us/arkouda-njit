@@ -2,13 +2,13 @@ import arkouda as ak
 import arachne as ar
 import time
 
-ak.connect("n28", 5555)
+ak.connect("n81", 5555)
 
 # Parameters
 p = 0.005
-node_sizes = [2500]
+node_sizes = [15_000]
 seed = 42
-num_tests = 5
+num_tests = 3
 
 # Fixed attributes for subgraph
 subgraph_node_ints = ak.array([10, 10, 10, 10])
@@ -84,10 +84,10 @@ for num_nodes in node_sizes:
     # Initialize averages
     test_results = {
         "VF2-SI": {"monos": 0, "time": 0},
-        "VF2-SI PROBABILITY-MVE": {"monos": 0, "time": 0},
-        "VF2-PS DEFAULT": {"monos": 0, "time": 0},
-        "VF2-PS MVE-REORDERING": {"monos": 0, "time": 0},
-        "VF2-PS PROBABILITY-MVE": {"monos": 0, "time": 0},
+        # "VF2-SI PROBABILITY-MVE": {"monos": 0, "time": 0},
+        # "VF2-PS DEFAULT": {"monos": 0, "time": 0},
+        # "VF2-PS MVE-REORDERING": {"monos": 0, "time": 0},
+        # "VF2-PS PROBABILITY-MVE": {"monos": 0, "time": 0},
     }
 
     # Run tests
@@ -104,50 +104,50 @@ for num_nodes in node_sizes:
         result = len(isos_as_vertices[0]) / len(sg)
         test_results["VF2-SI"]["monos"] += result
         test_results["VF2-SI"]["time"] += (end - start)
+        print("Time: ",end - start )
+        # # VF2-SI PROBABILITY-MVE
+        # start = time.time()
+        # isos_as_vertices = ar.subgraph_isomorphism(
+        #     prop_graph, sg, semantic_check="and",
+        #     algorithm_type="si", reorder_type="probability", return_isos_as="vertices"
+        # )
+        # end = time.time()
+        # result = len(isos_as_vertices[0]) / len(sg)
+        # test_results["VF2-SI PROBABILITY-MVE"]["monos"] += result
+        # test_results["VF2-SI PROBABILITY-MVE"]["time"] += (end - start)
 
-        # VF2-SI PROBABILITY-MVE
-        start = time.time()
-        isos_as_vertices = ar.subgraph_isomorphism(
-            prop_graph, sg, semantic_check="and",
-            algorithm_type="si", reorder_type="probability", return_isos_as="vertices"
-        )
-        end = time.time()
-        result = len(isos_as_vertices[0]) / len(sg)
-        test_results["VF2-SI PROBABILITY-MVE"]["monos"] += result
-        test_results["VF2-SI PROBABILITY-MVE"]["time"] += (end - start)
+        # # VF2-PS DEFAULT
+        # start = time.time()
+        # isos_as_vertices = ar.subgraph_isomorphism(
+        #     prop_graph, sg, semantic_check="and",
+        #     algorithm_type="ps", reorder_type=None, return_isos_as="vertices"
+        # )
+        # end = time.time()
+        # result = len(isos_as_vertices[0]) / len(sg)
+        # test_results["VF2-PS DEFAULT"]["monos"] += result
+        # test_results["VF2-PS DEFAULT"]["time"] += (end - start)
 
-        # VF2-PS DEFAULT
-        start = time.time()
-        isos_as_vertices = ar.subgraph_isomorphism(
-            prop_graph, sg, semantic_check="and",
-            algorithm_type="ps", reorder_type=None, return_isos_as="vertices"
-        )
-        end = time.time()
-        result = len(isos_as_vertices[0]) / len(sg)
-        test_results["VF2-PS DEFAULT"]["monos"] += result
-        test_results["VF2-PS DEFAULT"]["time"] += (end - start)
+        # # VF2-PS MVE-REORDERING
+        # start = time.time()
+        # isos_as_vertices = ar.subgraph_isomorphism(
+        #     prop_graph, sg, semantic_check="and",
+        #     algorithm_type="ps", reorder_type="structural", return_isos_as="vertices"
+        # )
+        # end = time.time()
+        # result = len(isos_as_vertices[0]) / len(sg)
+        # test_results["VF2-PS MVE-REORDERING"]["monos"] += result
+        # test_results["VF2-PS MVE-REORDERING"]["time"] += (end - start)
 
-        # VF2-PS MVE-REORDERING
-        start = time.time()
-        isos_as_vertices = ar.subgraph_isomorphism(
-            prop_graph, sg, semantic_check="and",
-            algorithm_type="ps", reorder_type="structural", return_isos_as="vertices"
-        )
-        end = time.time()
-        result = len(isos_as_vertices[0]) / len(sg)
-        test_results["VF2-PS MVE-REORDERING"]["monos"] += result
-        test_results["VF2-PS MVE-REORDERING"]["time"] += (end - start)
-
-        # VF2-PS PROBABILITY-MVE
-        start = time.time()
-        isos_as_vertices = ar.subgraph_isomorphism(
-            prop_graph, sg, semantic_check="and",
-            algorithm_type="ps", reorder_type="probability", return_isos_as="vertices"
-        )
-        end = time.time()
-        result = len(isos_as_vertices[0]) / len(sg)
-        test_results["VF2-PS PROBABILITY-MVE"]["monos"] += result
-        test_results["VF2-PS PROBABILITY-MVE"]["time"] += (end - start)
+        # # VF2-PS PROBABILITY-MVE
+        # start = time.time()
+        # isos_as_vertices = ar.subgraph_isomorphism(
+        #     prop_graph, sg, semantic_check="and",
+        #     algorithm_type="ps", reorder_type="probability", return_isos_as="vertices"
+        # )
+        # end = time.time()
+        # result = len(isos_as_vertices[0]) / len(sg)
+        # test_results["VF2-PS PROBABILITY-MVE"]["monos"] += result
+        # test_results["VF2-PS PROBABILITY-MVE"]["time"] += (end - start)
 
     # Compute averages
     for test in test_results:
