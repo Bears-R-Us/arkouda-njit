@@ -98,6 +98,23 @@ module MotifCounting {
     }// End of KavoshState
 
 
+    // C header and object files.
+    require "NautyProject/bin/nautyClassify.o",
+            "NautyProject/include/nautyClassify.h",
+            //"NautyProject/include/nauty.h",
+            "NautyProject/bin/nauty.o",
+            "NautyProject/bin/naugraph.o",
+            "NautyProject/bin/nautil.o";   
+    
+    extern proc c_nautyClassify(
+    subgraph: [] int, 
+    subgraphSize: int, 
+    results:[] int,
+    performCheck: int,
+    verbose: int
+    ) : int;
+  
+
   // proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
   proc runMotifCounting(g1: SegGraph,  
               // sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
@@ -332,13 +349,35 @@ module MotifCounting {
 
             var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
             
+            
             // For test purpose assume naugty returned this
             var results: [0..<state.k] int = 0..<state.k;
-            var nautyLabels = results;
+
+            //var subgraphSize = motifSize;
+            //var subgraph = adjMatrix;
+
+            var performCheck: int = 0; // Set to 1 to perform nauty_check, 0 to skip
+            var verbose: int = 0;      // Set to 1 to enable verbose logging
+
+            var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
 
             if logLevel == LogLevel.DEBUG {
-                writeln("Nauty returned: ", nautyLabels, " we are in the way to Classify!");
+                writeln("for subgraph = ",adjMatrix, "Nauty returned: ",
+                                         results, " we are in the way to Classify!", "status = ", status);
+                                         
             }
+
+            // Handle potential errors
+            if status != 0 {
+                writeln("Error: c_nautyClassify failed with status ", status);
+                //return;
+            }
+            // // Print canonical labeling
+            // writeln("Canonical Labeling:");
+            // for i in 0..<subgraphSize {
+            //     writeln("Node ", i, " -> ", results[i]);
+            // }
+            var nautyLabels = results;
 
             var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
             state.localmotifClasses.add(pattern);
