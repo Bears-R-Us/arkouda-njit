@@ -1,9 +1,11 @@
 """Algorithms to create (random) graphs."""
 from __future__ import annotations
-from typing import Tuple, Union
+from typing import Tuple, Union, cast
 import arachne as ar
 import numpy as np
 import arkouda as ak
+from arkouda.client import generic_msg
+from arkouda.pdarrayclass import create_pdarray
 
 __all__ = [
     "complete_graph",
@@ -190,9 +192,8 @@ def rmat(
     scale: int,
     create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
     edge_factor: int = 16,
-    p: Union[float, Tuple[float]] = (0.57, 0.19, 0.19, 0.05),
+    p: Tuple[float] = (0.57, 0.19, 0.19, 0.05),
     weighted: bool = False,
-    permute: bool = True,
 ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Recursive MATrix random graph generator.
@@ -200,26 +201,16 @@ def rmat(
     Parameters
     ----------
     scale : int
-        number of nodes = 2 ** scale
+        Number of vertices is 2**scale.
+    create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+        Arachne graph constructor
     edge_factor : int
-        each node has this many edges
-    p : { float | Tuple[float] }
-        link-formation probabilites. Single float interpreted as upper-left
-        quadrant probability with other quadrants equally sharing the
-        complement. Tuples will be intepreted as (a, b, c, d) as described in
+        Each node has up to this many edges.
+    p : Tuple[float]
+        Link-formation probabilites. Tuples will be intepreted as (a, b, c, d) as described in
         the reference. Defaults to specification from Graph500.
     weighted : bool (default False)
         output uniformly random weights in [0, 1] for each edge.
-    permute : bool (default True)
-        randomly relabel nodes and permute edges
-    
-
-    create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-        Arachne graph constructor
-        constructors supported
-        ar.Graph
-        ar.DiGraph
-        ar.PropGraph
 
     Returns
     -------
@@ -228,59 +219,45 @@ def rmat(
     References
     ----------
     R-MAT: A Recursive Model for Graph Mining.
-        Deepayan Chakrabarti, Yiping Zhan and Christos Faloutsos.
-        Proceedings of the Fourth SIAM International Conference on Data Mining.
-        Apr 22-24 2004
+           Deepayan Chakrabarti, Yiping Zhan and Christos Faloutsos.
+           Proceedings of the Fourth SIAM International Conference on Data Mining.
+           Apr. 22-24, 2004.
 
     Notes
     -----
-    Stolen brazenly from arkouda/toys/connected_components.py and the Graph500
-    benchmark description.
+    Uses the Graph500 RMAT benchmark description algorithm.
     """
     n = 2 ** scale              # number nodes
     m = n * edge_factor         # number edges
 
-    if isinstance(p, float) and 0 <= p <= 1:
-        a = p
-        b = c = d = (1.0 - p) / 3.0
-    elif isinstance(p, tuple) and all(0 <= x <= 1 for x in p) and sum(p) == 1:
+    if isinstance(p, tuple) and all(0 <= x <= 1 for x in p) and sum(p) == 1:
         a, b, c, d = p
     else:
         raise ValueError(f"p = {p} doesn't represent valid probability for RMAT.")
-    ab, cNorm, aNorm = a + b, c / (c + d), a / (a + b)
+    
+    cmd = "buildRMATGraph"
+    args = {  "A": a,
+              "B": b,
+              "C": c,
+              "D": d,
+              "Scale": scale,
+              "EdgeFactor": edge_factor }
 
-    V, U = ak.zeros(m, dtype='int64'), ak.zeros(m, dtype='int64')
-    for i in range(scale):
-        vMask = ak.randint(0, 1, m, dtype='float64') > ab
-        uMask = (ak.randint(0, 1, m, dtype='float64')
-                 > (cNorm * vMask + aNorm * (~vMask)))
-        V += vMask * (2 ** i)
-        U += uMask * (2 ** i)
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    returned_vals = (cast(str, rep_msg).split('+'))
 
-    if permute:
-        # permute vertex labels
-        pi = get_perm(n)
-        V, U = pi[V], pi[U]
-
-        # permute edges
-        pi = get_perm(m)
-        V, U = V[pi], U[pi]
+    U = create_pdarray(returned_vals[0])
+    V = create_pdarray(returned_vals[1])
 
     if weighted:
-        W = ak.uniform(V.size)
+        W = ak.uniform(U.size)
         graph = empty_graph(create_using)
-        if standardize:
-            graph.add_edges_from(V, U, W)
+        graph.add_edges_from(U, V, W)
         return graph
     else:
         graph = empty_graph(create_using)
-        graph.add_edges_from(V, U)
+        graph.add_edges_from(U, V)
         return graph
-
-def get_perm(n: int) -> ak.pdarray:
-    """Create random permutation of [0..n-1]. taken from akgraph.util"""
-    randnums = ak.randint(0, 1, n, dtype=ak.float64)
-    return ak.argsort(randnums)
 
 def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) -> Tuple[ak.pdarray]:
     """Generate the sequential path with n nodes on nodes [0..n-1].
@@ -291,11 +268,7 @@ def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) ->
         number of nodes
 
     create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-        Arachne graph constructor
-        constructors supported
-        ar.Graph
-        ar.DiGraph
-        ar.PropGraph
+        Arachne graph constructor.
 
     Returns
     -------
@@ -307,52 +280,51 @@ def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) ->
     graph.add_edges_from(V,U)
     return graph
 
-def watts_strogatz_graph(n: int, k: int, p: float,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->  Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+def watts_strogatz_graph(n: int, k: int, p: float, 
+                         create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->  Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
-    Generate a small-world network on n nodes.
-
-    Based on the Watts-Strogatz model.
-
-    No self loops or duplicate edges allowed.
-
-    This probably isn't exactly the same as the academic definition
-    but it's fast in arkouda.
+    Generate a small-world network on n nodes based on the Watts-Strogatz model. Each vertex will
+    have an average degree of k. No self loops or duplicated edges allowed.
 
     Parameters
     ----------
     n : int
-        number of nodes to create
+        Number of vertices to create.
     k : int
-        average degree of the graph
+        Average degree of the graph.
     p : float
-        probability to rewire edges
+        Probability to rewire edges.
     
     create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-        Arachne graph constructor
-        constructors supported
-        ar.Graph
-        ar.DiGraph
-        ar.PropGraph
+        Arachne graph constructor.
 
     Returns
     -------
-    graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+    graph : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
 
     """
-    # create initial sources
-    V = ak.broadcast(ak.arange(0, n * k, k), ak.arange(n), n * k)
+    # Create nodes.
+    nodes = ak.arange(n)
 
-    # each source is connected to it's k closest neighbors (alphabetically)
-    krange = ak.arange(-k // 2, k // 2)
-    krange[k // 2 :] += 1
-    idx = ak.arange(V.size) % krange.size
-    U = krange[idx]
-    U[U < 0] = U[U < 0] + n
+    # Used to track the pdarrays that will make up the source and destination arrays.
+    sources = []
+    targets = []
 
-    # pick some random subset of edges to alter
-    changes = ak.randint(0, 1, U.size, dtype=ak.float64) < p
+    # Create the lattice.
+    for j in range(1, k // 2 + 1):
+        a = nodes[j:]
+        b = nodes[0:j]
+        targets.extend([a,b])
+        sources.append(nodes)
+
+    # Concatenate all sources together into U and all targets together into V.
+    U = ak.concatenate(sources)
+    V = ak.concatenate(targets)
+
+    # Pick some random subset of edges to alter.
+    changes = ak.randint(0, 1, V.size, dtype=ak.float64) < p
     n_changes = changes.sum()
-    U[changes] = ak.randint(0, n, n_changes)
+    V[changes] = ak.randint(0, n, n_changes)
 
     graph = empty_graph(create_using)
     if V.size == 0 or U.size == 0:
