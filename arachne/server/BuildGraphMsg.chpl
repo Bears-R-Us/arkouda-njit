@@ -390,8 +390,8 @@ module BuildGraphMsg {
         var start, end:int = 0; 
 
         if !iiBit && !jjBit then; // do nothing;
-        else if iiBit && !jjBit then start += 1; 
-        else if !iiBit && jjBit then end += 1; 
+        else if iiBit && !jjBit then start = 1; 
+        else if !iiBit && jjBit then end = 1; 
         else { start = 1; end = 1; }
 
         return (bit*start, bit*end);
@@ -402,7 +402,7 @@ module BuildGraphMsg {
         var randGen = new randomStream(real);
         var unifRandom = makeDistArray({eRange}, real),
             edges = makeDistArray({eRange}, (int,int));
-        edges = (1,1);
+        edges = (0,0);
 
         // Calculate constants for bit-setting operations.
         const cNorm = c / (1 - (a + b));
@@ -471,9 +471,67 @@ module BuildGraphMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     }
 
+    proc buildBarabasiAlbertGraphMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        var n = msgArgs.getValueOf("N"):int;
+        var m = msgArgs.getValueOf("M"):int;
+        const ref initialSrc = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("Src"),st),int).a;
+        const ref initialDst = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("Dst"),st),int).a;
+        const ref initialRepeatedNodes = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("RepeatedNodes"),st),int).a;
+
+        // Create an arrays with the final number of expected edges.
+        var expectedM = m * (n - 1);
+        var src = makeDistArray(expectedM, int);
+        var dst = makeDistArray(expectedM, int);
+
+        // Add initialSrc and initialDst to src and dst.
+        src[0..m-1] = initialSrc;
+        dst[0..m-1] = initialDst;
+
+        // Start adding the other n - m nodes.
+        var source = initialSrc.size;
+        var nextStart = m;
+        var nextEnd = nextStart + m - 1;
+
+        // Create array to track repeated nodes.
+        var expectedRepeatedNodes = 2 * m * (n - 1);
+        var repeatedNodes = makeDistArray(expectedRepeatedNodes, int);
+        repeatedNodes[0..nextStart*2-1] = initialRepeatedNodes;
+
+        while source < n {
+            // Pick uniformly from repeated nodes.
+            var targets = sample(repeatedNodes[0..nextStart*2-1], m);
+
+            // Modify both src and dst.
+            src[nextStart..nextEnd] = source;
+            dst[nextStart..nextEnd] = targets;
+
+            // Modify repeatedNodes.
+            repeatedNodes[nextStart*2..nextStart*2+m-1] = src[nextStart..nextEnd];
+            repeatedNodes[nextStart*2+m..nextStart*2+2*m-1] = dst[nextStart..nextEnd];
+
+            // Increment counters.
+            source += 1;
+            nextStart += m;
+            nextEnd = nextStart + m - 1;
+        }
+
+        var srcName = st.nextName();
+        var srcEntry = createSymEntry(src);
+        st.addEntry(srcName, srcEntry);
+
+        var dstName = st.nextName();
+        var dstEntry = createSymEntry(dst);
+        st.addEntry(dstName, dstEntry);
+
+        var repMsg = "created " + st.attrib(srcName) + "+ created " + st.attrib(dstName);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
+
     use CommandMap;
     registerFunction("insertComponents", insertComponentsMsg, getModuleName());
     registerFunction("readMatrixMarketFile", readMatrixMarketFileMsg, getModuleName());
     registerFunction("readTSVFile", readTSVFileMsg, getModuleName());
     registerFunction("buildRMATGraph", buildRMATGraphMsg, getModuleName());
+    registerFunction("buildBarabasiAlbertGraph", buildBarabasiAlbertGraphMsg, getModuleName());
 }

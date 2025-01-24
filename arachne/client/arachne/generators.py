@@ -1,6 +1,7 @@
 """Algorithms to create (random) graphs."""
 from __future__ import annotations
 from typing import Tuple, Union, cast
+import random
 import arachne as ar
 import numpy as np
 import arkouda as ak
@@ -9,12 +10,13 @@ from arkouda.pdarrayclass import create_pdarray
 
 __all__ = [
     "complete_graph",
-    "gnp",
     "karate_club_graph",
-    "random_tree",
-    "rmat",
     "path_graph",
-    "watts_strogatz_graph"
+    "random_tree",
+    "gnp_random_graph",
+    "rmat_graph",
+    "watts_strogatz_graph",
+    "barabasi_albert_graph"
 ]
 
 def complete_graph(n: int, create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
@@ -56,54 +58,6 @@ def empty_graph(create_using):
         return ar.PropGraph()
     else:
         raise Exception("Invalid Constructor")
-
-def gnp(n: int, p: float,
-        create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-    , seed: int = None) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
-    """
-    Generate a random binomial graph. Also known as an Erdos-Renyi or completely random graph.
-    Does not allow for the creation of isolates, self-loops, or duplicated edges.
-
-    Parameters
-    ----------
-    n : int
-        number of nodes
-    p : float in [0, 1]
-        probability of edge formation
-
-    create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-        Arachne graph constructor
-        constructors supported
-        ar.Graph
-        ar.DiGraph
-        ar.PropGraph
-
-    Returns
-    -------
-    graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-    
-    """
-    U = ak.broadcast(ak.arange(0, n*n, n), ak.arange(n), n*n)
-    V = ak.arange(U.size) % n
-
-    not_self_loop = V != U
-    filtered_U = U[not_self_loop]
-    filtered_V = V[not_self_loop]
-
-    probabilities = ak.randint(0, 1, filtered_U.size, dtype=ak.float64, seed=seed)
-
-    kept_edges = probabilities < p
-    kept_U = filtered_U[kept_edges]
-    kept_V = filtered_V[kept_edges]
-
-    graph = empty_graph(create_using)
-
-    if V.size == 0 or U.size == 0:
-        return graph
-
-    graph.add_edges_from(kept_U,kept_V)
-
-    return graph
 
 def karate_club_graph(create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
@@ -188,7 +142,28 @@ def random_tree(n: int,create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->
     graph.add_edges_from(V,U)
     return graph
 
-def rmat(
+def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) -> Tuple[ak.pdarray]:
+    """Generate the sequential path with n nodes on nodes [0..n-1].
+    
+    Parameters
+    ----------
+    n : int
+        number of nodes
+
+    create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+        Arachne graph constructor.
+
+    Returns
+    -------
+    graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+    """
+    V = ak.arange(n - 1)
+    U = V + 1
+    graph = empty_graph(create_using)
+    graph.add_edges_from(V,U)
+    return graph
+
+def rmat_graph(
     scale: int,
     create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
     edge_factor: int = 16,
@@ -259,25 +234,52 @@ def rmat(
         graph.add_edges_from(U, V)
         return graph
 
-def path_graph(n: int,create_using: Union[ar.Graph|ar.DiGraph,ar.PropGraph] ) -> Tuple[ak.pdarray]:
-    """Generate the sequential path with n nodes on nodes [0..n-1].
-    
+def gnp_random_graph(n: int, p: float,
+                     create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph], 
+                     seed: int = None) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+    """
+    Generate a random binomial graph. Also known as an Erdos-Renyi or completely random graph.
+    Does not allow for the creation of isolates, self-loops, or duplicated edges.
+
     Parameters
     ----------
     n : int
         number of nodes
+    p : float in [0, 1]
+        probability of edge formation
 
     create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
-        Arachne graph constructor.
+        Arachne graph constructor
+        constructors supported
+        ar.Graph
+        ar.DiGraph
+        ar.PropGraph
 
     Returns
     -------
     graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+    
     """
-    V = ak.arange(n - 1)
-    U = V + 1
+    U = ak.broadcast(ak.arange(0, n*n, n), ak.arange(n), n*n)
+    V = ak.arange(U.size) % n
+
+    not_self_loop = V != U
+    filtered_U = U[not_self_loop]
+    filtered_V = V[not_self_loop]
+
+    probabilities = ak.randint(0, 1, filtered_U.size, dtype=ak.float64, seed=seed)
+
+    kept_edges = probabilities < p
+    kept_U = filtered_U[kept_edges]
+    kept_V = filtered_V[kept_edges]
+
     graph = empty_graph(create_using)
-    graph.add_edges_from(V,U)
+
+    if V.size == 0 or U.size == 0:
+        return graph
+
+    graph.add_edges_from(kept_U,kept_V)
+
     return graph
 
 def watts_strogatz_graph(n: int, k: int, p: float, 
@@ -331,4 +333,34 @@ def watts_strogatz_graph(n: int, k: int, p: float,
         return graph
     graph.add_edges_from(V,U)
 
+    return graph
+
+def barabasi_albert_graph(
+    n: int,
+    m: int,
+    create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
+) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+    """
+    TODO: Add documentation.
+    """
+    # Create star graph.
+    src = ak.full(m, 0, dtype=ak.int64)
+    dst = ak.arange(1, m+1)
+    repeated_nodes = ak.concatenate([src, dst])
+    
+    cmd = "buildBarabasiAlbertGraph"
+    args = {  "N": n,
+              "M": m,
+              "Src": src,
+              "Dst": dst,
+              "RepeatedNodes": repeated_nodes }
+
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    returned_vals = (cast(str, rep_msg).split('+'))
+
+    U = create_pdarray(returned_vals[0])
+    V = create_pdarray(returned_vals[1])
+
+    graph = empty_graph(create_using)
+    graph.add_edges_from(U, V)
     return graph
