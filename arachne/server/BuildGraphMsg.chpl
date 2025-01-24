@@ -397,9 +397,10 @@ module BuildGraphMsg {
         return (bit*start, bit*end);
     }
 
-    proc genRMATgraph(a:real, b:real, c:real, d:real, SCALE:int, nVERTICES:int, nEDGES:int) throws {
+    proc genRMATgraph(a:real, b:real, c:real, d:real, SCALE:int, nVERTICES:int, nEDGES:int, 
+                      seed:int, seeded:bool) throws {
         const vRange = 0..nVERTICES-1, eRange = 0..nEDGES-1;
-        var randGen = new randomStream(real);
+        var randGen = if seeded then new randomStream(real, seed) else new randomStream(real);
         var unifRandom = makeDistArray({eRange}, real),
             edges = makeDistArray({eRange}, (int,int));
         edges = (0,0);
@@ -453,10 +454,14 @@ module BuildGraphMsg {
         var d = msgArgs.getValueOf("D"):real;
         var scale = msgArgs.getValueOf("Scale"):int;
         var edgeFactor = msgArgs.getValueOf("EdgeFactor"):int;
+        var seedValue = msgArgs.getValueOf("Seed");
+
+        var seeded = if seedValue == "None" then false else true;
+        var seed = if seeded then seedValue:int else 0;
 
         var n = 2**scale;
         var m = n * edgeFactor;
-        var (src,dst) = genRMATgraph(a, b, c, d, scale, n, m);
+        var (src,dst) = genRMATgraph(a, b, c, d, scale, n, m, seed, seeded);
 
         var srcName = st.nextName();
         var srcEntry = createSymEntry(src);
@@ -477,6 +482,10 @@ module BuildGraphMsg {
         const ref initialSrc = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("Src"),st),int).a;
         const ref initialDst = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("Dst"),st),int).a;
         const ref initialRepeatedNodes = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("RepeatedNodes"),st),int).a;
+        var seedValue = msgArgs.getValueOf("Seed");
+
+        var seeded = if seedValue == "None" then false else true;
+        var seed = if seeded then seedValue:int else 0;
 
         // Create an arrays with the final number of expected edges.
         var expectedM = m * (n - 1);
@@ -499,7 +508,8 @@ module BuildGraphMsg {
 
         while source < n {
             // Pick uniformly from repeated nodes.
-            var targets = sample(repeatedNodes[0..nextStart*2-1], m);
+            var targets = if seeded then sample(repeatedNodes[0..nextStart*2-1], m, seed=seed)
+                          else sample(repeatedNodes[0..nextStart*2-1], m);
 
             // Modify both src and dst.
             src[nextStart..nextEnd] = source;

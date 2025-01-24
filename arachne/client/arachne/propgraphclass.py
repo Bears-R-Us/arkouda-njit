@@ -387,7 +387,8 @@ class PropGraph(ar.DiGraph):
                              source_column:str,
                              destination_column:str,
                              relationship_columns:Union[List[str]|None] = None,
-                             convert_string_relationships_to_categoricals:bool=True) -> None:
+                             convert_string_relationships_to_categoricals:bool=True,
+                             no_self_loops:bool = True) -> None:
         """Populates the graph object with attributes derived from the columns of a dataframe. Edge
         properties are different from edge relationships where relationships are used to tell apart
         multiple edges. On the other hand, properties are key-value pairs more akin to storing the 
@@ -427,15 +428,20 @@ class PropGraph(ar.DiGraph):
                                         ]
         self.multied = 0 # TODO: Multigraphs are planned work.
 
-        # 2. Store the modified edge attributes into the class variable.
+        # 2. Remove self-loops.
+        self_loops = edge_attributes[source_column] == edge_attributes[destination_column]
+        if no_self_loops:
+            edge_attributes = edge_attributes[~self_loops]
+
+        # 3. Store the modified edge attributes into the class variable.
         self.edge_attributes = edge_attributes
         self.edge_attributes.reset_index(inplace=True)
 
-        # 3. Initialize our src and destination arrays.
+        # 4. Initialize our src and destination arrays.
         src = edge_attributes[source_column]
         dst = edge_attributes[destination_column]
 
-        # 4. Add edge source and destination column names to property graph.
+        # 5. Add edge source and destination column names to property graph.
         self.edge_names = (source_column, destination_column)
 
         ### Build the graph and load in relationships.

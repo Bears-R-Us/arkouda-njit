@@ -168,7 +168,7 @@ def rmat_graph(
     create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
     edge_factor: int = 16,
     p: Tuple[float] = (0.57, 0.19, 0.19, 0.05),
-    weighted: bool = False,
+    seed: int = None
 ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Recursive MATrix random graph generator. Does not allow for the creation of isolates, 
@@ -221,7 +221,8 @@ def rmat_graph(
               "C": c,
               "D": d,
               "Scale": scale,
-              "EdgeFactor": edge_factor }
+              "EdgeFactor": edge_factor,
+              "Seed": seed }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     returned_vals = (cast(str, rep_msg).split('+'))
@@ -229,15 +230,10 @@ def rmat_graph(
     U = create_pdarray(returned_vals[0])
     V = create_pdarray(returned_vals[1])
 
-    if weighted:
-        W = ak.uniform(U.size)
-        graph = empty_graph(create_using)
-        graph.add_edges_from(U, V, W)
-        return graph
-    else:
-        graph = empty_graph(create_using)
-        graph.add_edges_from(U, V)
-        return graph
+    graph = empty_graph(create_using)
+    graph.add_edges_from(U, V)
+
+    return graph
 
 def gnp_random_graph(n: int, p: float,
                      create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph], 
@@ -289,16 +285,13 @@ def gnp_random_graph(n: int, p: float,
     kept_V = filtered_V[kept_edges]
 
     graph = empty_graph(create_using)
-
-    if V.size == 0 or U.size == 0:
-        return graph
-
-    graph.add_edges_from(kept_U,kept_V)
+    graph.add_edges_from(kept_U, kept_V)
 
     return graph
 
-def watts_strogatz_graph(n: int, k: int, p: float, 
-                         create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->  Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+def watts_strogatz_graph(n: int, k: int, p: float,
+                         create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
+                         seed:int = None) ->  Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Generate a small-world network on n nodes based on the Watts-Strogatz model. Each vertex will
     have an average degree of k. Does not allow for the creation of isolates, self-loops, or 
@@ -312,9 +305,10 @@ def watts_strogatz_graph(n: int, k: int, p: float,
         Average degree of the graph.
     p : float
         Probability to rewire edges.
-    
     create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
         Arachne graph constructor.
+    seed: int
+        Set randomness.
 
     Returns
     -------
@@ -346,13 +340,17 @@ def watts_strogatz_graph(n: int, k: int, p: float,
     V = ak.concatenate(targets)
 
     # Pick some random subset of edges to alter.
-    changes = ak.randint(0, 1, V.size, dtype=ak.float64) < p
+    changes = ak.randint(0, 1, V.size, dtype=ak.float64, seed=seed) < p
     n_changes = changes.sum()
-    V[changes] = ak.randint(0, n, n_changes)
+    V[changes] = ak.randint(0, n, n_changes, seed=seed)
+
+    if create_using is ar.DiGraph or create_using is ar.PropGraph:
+        new_U = ak.concatenate([U,V])
+        new_V = ak.concatenate([V,U])
+        U = new_U
+        V = new_V
 
     graph = empty_graph(create_using)
-    if V.size == 0 or U.size == 0:
-        return graph
     graph.add_edges_from(V,U)
 
     return graph
@@ -361,6 +359,7 @@ def barabasi_albert_graph(
     n: int,
     m: int,
     create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
+    seed:int = None
 ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """Returns a random Barabási–Albert graph with preferential attachment.
 
@@ -403,7 +402,8 @@ def barabasi_albert_graph(
               "M": m,
               "Src": src,
               "Dst": dst,
-              "RepeatedNodes": repeated_nodes }
+              "RepeatedNodes": repeated_nodes,
+              "Seed": seed }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
     returned_vals = (cast(str, rep_msg).split('+'))
@@ -411,6 +411,13 @@ def barabasi_albert_graph(
     U = create_pdarray(returned_vals[0])
     V = create_pdarray(returned_vals[1])
 
+    if create_using is ar.DiGraph or create_using is ar.PropGraph:
+        new_U = ak.concatenate([U,V])
+        new_V = ak.concatenate([V,U])
+        U = new_U
+        V = new_V
+
     graph = empty_graph(create_using)
     graph.add_edges_from(U, V)
+    
     return graph
