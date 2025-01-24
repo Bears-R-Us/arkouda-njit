@@ -191,6 +191,10 @@ def rmat_graph(
     -------
     graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
 
+    Raises
+    ------
+    ValueError
+
     References
     ----------
     R-MAT: A Recursive Model for Graph Mining.
@@ -258,8 +262,18 @@ def gnp_random_graph(n: int, p: float,
     Returns
     -------
     graph: Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+
+    Raises
+    ------
+    ValueError
     
     """
+    if p >= 1:
+        raise ValueError("p value must be in the range 0 < p < 1")
+    
+    if p <= 0:
+        raise ValueError("p value must be in the range 0 < p < 1")
+
     U = ak.broadcast(ak.arange(0, n*n, n), ak.arange(n), n*n)
     V = ak.arange(U.size) % n
 
@@ -304,7 +318,13 @@ def watts_strogatz_graph(n: int, k: int, p: float,
     -------
     graph : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
 
+    Raises
+    ------
+    ValueError
     """
+    if k >= n:
+        raise ValueError("k > n, choose smaller k or larger n")
+
     # Create nodes.
     nodes = ak.arange(n)
 
@@ -340,9 +360,36 @@ def barabasi_albert_graph(
     m: int,
     create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph],
 ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
+    """Returns a random Barabási–Albert graph with preferential attachment.
+
+    A graph of $n$ nodes is grown by attaching new nodes each with $m$ edges that are preferentially
+    attached to existing nodes with high degree.
+
+    Parameters
+    ----------
+    n : int
+        Number of nodes
+    m : int
+        Number of edges to attach from a new node to existing nodes
+    create_using : Union[ar.Graph,ar.DiGraph,ar.PropGraph]
+        Graph construction to use
+
+    Returns
+    -------
+    graph : Graph
+
+    Raises
+    ------
+    ValueError
+
+    References
+    ----------
+    .. [1] A. L. Barabási and R. Albert "Emergence of scaling in
+       random networks", Science 286, pp 509-512, 1999.
     """
-    TODO: Add documentation.
-    """
+    if m < 1 or m >=n:
+        raise ValueError("network must have m >= 1 and m < n")
+
     # Create star graph.
     src = ak.full(m, 0, dtype=ak.int64)
     dst = ak.arange(1, m+1)
