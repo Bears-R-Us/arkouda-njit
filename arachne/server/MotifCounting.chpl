@@ -349,7 +349,7 @@ module MotifCounting {
 
             var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
             
-            
+            // var adjMatrix: [0..8] int = [1, 1, 1, 1, 1, 1, 1, 1, 1];
             // For test purpose assume naugty returned this
             var results: [0..<state.k] int = 0..<state.k;
 
@@ -357,7 +357,7 @@ module MotifCounting {
             //var subgraph = adjMatrix;
 
             var performCheck: int = 0; // Set to 1 to perform nauty_check, 0 to skip
-            var verbose: int = 0;      // Set to 1 to enable verbose logging
+            var verbose: int = 1;      // Set to 1 to enable verbose logging
 
             var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
 
@@ -378,7 +378,6 @@ module MotifCounting {
             //     writeln("Node ", i, " -> ", results[i]);
             // }
             var nautyLabels = results;
-
             var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
             state.localmotifClasses.add(pattern);
             
