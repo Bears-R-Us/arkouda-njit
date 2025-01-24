@@ -356,8 +356,8 @@ module MotifCounting {
             //var subgraphSize = motifSize;
             //var subgraph = adjMatrix;
 
-            var performCheck: int = 0; // Set to 1 to perform nauty_check, 0 to skip
-            var verbose: int = 1;      // Set to 1 to enable verbose logging
+            var performCheck: int = 0; // Set to 1 to perform nauty_check, 0 to skip // DECIDE
+            var verbose: int = 1;      // Set to 1 to enable verbose logging  // DECIDE
 
             var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
 
@@ -595,7 +595,7 @@ var pattern: uint(64) = 123456;  // some pattern
 var k = 3;  // size of matrix
 var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, k);
 Also we can make it to accept set of classes then srcNodes and dstNodes will be for all classes and each class
-seperated by a -1, So Harvard team can use it for cisualization purpose
+seperated by a -1, So Harvard team can use it for Visualization purpose
 */
 ////////////////////////////////////////////////////////////////////////////////
 
