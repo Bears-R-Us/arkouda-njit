@@ -171,7 +171,8 @@ def rmat_graph(
     weighted: bool = False,
 ) -> Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
-    Recursive MATrix random graph generator.
+    Recursive MATrix random graph generator. Does not allow for the creation of isolates, 
+    self-loops, or duplicated edges.
 
     Parameters
     ----------
@@ -300,7 +301,8 @@ def watts_strogatz_graph(n: int, k: int, p: float,
                          create_using: Union[ar.Graph,ar.DiGraph,ar.PropGraph]) ->  Union[ar.Graph,ar.DiGraph,ar.PropGraph]:
     """
     Generate a small-world network on n nodes based on the Watts-Strogatz model. Each vertex will
-    have an average degree of k. No self loops or duplicated edges allowed.
+    have an average degree of k. Does not allow for the creation of isolates, self-loops, or 
+    duplicated edges.
 
     Parameters
     ----------
@@ -363,7 +365,8 @@ def barabasi_albert_graph(
     """Returns a random Barabási–Albert graph with preferential attachment.
 
     A graph of $n$ nodes is grown by attaching new nodes each with $m$ edges that are preferentially
-    attached to existing nodes with high degree.
+    attached to existing nodes with high degree. Does not allow for the creation of isolates, 
+    self-loops, or duplicated edges.
 
     Parameters
     ----------
