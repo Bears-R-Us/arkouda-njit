@@ -432,6 +432,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
                          time_limit:int = 0,
                          return_isos_as:str = "vertices",
                          algorithm_type:str = "ps",
+                         match_type: str = "mono",  # New parameter for match type
                          reorder_type:str = None,
                          print_progress_interval:int = 2) -> Union[pdarray,Tuple]:
     """
@@ -471,11 +472,15 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         by `ps` is a paralell and scalable version of the original VF2 algorithm. The version `si`
         is experimental and creates original states based off existing edges only. Experiments show
         that `si` outperforms `ps` for large graphs.
+    match_type : str
+        Determines the type of matching to perform. Accepts `"iso"` for isomorphism or `"mono"` 
+        for monomorphism (default).
     reorder_type : str
         Reorders the subgraph according to "probability" or "structural".
     print_progress_interval : int
         Maintains how often the progress should be printed server-side for how many patterns have
         been found.
+        
 
     Returns
     -------
@@ -505,6 +510,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
              "ReturnIsosAs": return_isos_as,
              "ReorderType": reorder_type,
              "AlgorithmType": algorithm_type,
+             "MatchType": match_type,  # Pass match type to the command
              "PrintProgressInterval": print_progress_interval }
 
     rep_msg = generic_msg(cmd=cmd, args=args)

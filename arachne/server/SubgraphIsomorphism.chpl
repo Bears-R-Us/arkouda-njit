@@ -1084,7 +1084,9 @@ module SubgraphIsomorphism {
   array that maps the isomorphic vertices of `g1` to those of `g2`. */
   proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
               sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, reorderType: string, st: borrowed SymTab) throws {
+              algType: string, returnIsosAs:string, reorderType: string, 
+              matchType: string, st: borrowed SymTab) throws {
+
     var numIso: int = 0;
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
     var semanticAndCheck = if semanticCheckType == "and" then true else false;
@@ -1102,8 +1104,8 @@ module SubgraphIsomorphism {
     var vertexFlagger: [0..<g1.n_vertices] bool = false;
     var edgeFlagger: [0..<g1.n_edges] bool = false;
 
-    var matchType: string; // could be "iso" or "mono"
-    matchType = "iso";
+    // var matchType: string; // could be "iso" or "mono"
+    // matchType = "iso";
     
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;

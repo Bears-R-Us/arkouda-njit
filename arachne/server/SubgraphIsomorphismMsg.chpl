@@ -49,10 +49,13 @@ module SubgraphIsomorphismMsg {
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
     var reorderType = msgArgs.getValueOf("ReorderType");
     var algorithmType = msgArgs.getValueOf("AlgorithmType");
+    var matchType = msgArgs.getValueOf("MatchType");  // Extract match_type from msgArgs
     var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
 
     writeln("\n\n\n\n\n\n");
     writeln("reorderType = ", reorderType);
+    writeln("\n");
+    writeln("matchType = ", matchType); // Debug log for matchType
     writeln("\n\n\n\n\n\n");
      
     // Pull out our graph from the symbol table.
@@ -72,9 +75,15 @@ module SubgraphIsomorphismMsg {
         return new MsgTuple(errorMsg, MsgType.ERROR);
       }
 
+      if matchType != "iso" && matchType != "mono" {
+        var errorMsg = notImplementedError(pn, "unknown VF2 match type");
+        siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+        return new MsgTuple(errorMsg, MsgType.ERROR);
+      }
+
       timer.start();
       var isos = runVF2(g,h,semanticCheckType,sizeLimit,timeLimit,
-                        printProgressInterval,algorithmType,returnIsosAs,reorderType,st);
+                        printProgressInterval,algorithmType,returnIsosAs,reorderType,matchType,st);
       timer.stop();
       outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
