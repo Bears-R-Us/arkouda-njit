@@ -1102,6 +1102,9 @@ module SubgraphIsomorphism {
     var vertexFlagger: [0..<g1.n_vertices] bool = false;
     var edgeFlagger: [0..<g1.n_edges] bool = false;
 
+    var matchType: string; // could be "iso" or "mono"
+    matchType = "iso";
+    
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
@@ -1327,7 +1330,86 @@ module SubgraphIsomorphism {
     } // end of addToTinTout
 
     /* Generate in-neighbors and out-neighbors for a given subgraph state.*/
-    proc addToTinToutMVE(u0_g1: int, u1_g1: int, state: State): bool throws {
+    proc addToTinToutMVE_ISO(u0_g1: int, u1_g1: int, state: State): bool throws {
+      var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int, parSafe=true);
+      var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int, parSafe=true);
+      
+      Tin_u0 = dstRG1[segRG1[u0_g1]..<segRG1[u0_g1 + 1]];
+      Tout_u0 = dstNodesG1[segGraphG1[u0_g1]..<segGraphG1[u0_g1 + 1]];
+      
+      Tin_u1 = dstRG1[segRG1[u1_g1]..<segRG1[u1_g1 + 1]];
+      Tout_u1 = dstNodesG1[segGraphG1[u1_g1]..<segGraphG1[u1_g1 + 1]];
+      
+      Tin_0 = dstRG2[segRG2[0]..<segRG2[1]];
+      Tout_0 = dstNodesG2[segGraphG2[0]..<segGraphG2[1]];
+      
+      Tin_1 = dstRG2[segRG2[1]..<segRG2[2]];
+      Tout_1 = dstNodesG2[segGraphG2[1]..<segGraphG2[2]];
+
+      if !doAttributesMatch(u1_g1, 1, graphNodeAttributes, subgraphNodeAttributes, st) 
+        then return false;
+      
+
+      var eid1 = getEdgeId(u0_g1, u1_g1, dstNodesG1, segGraphG1);
+      var eid2 = getEdgeId(0, 1, dstNodesG2, segGraphG2);
+
+      if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, st) then
+          return false;
+
+
+      var eid1_rev = getEdgeId(u1_g1, u0_g1, dstNodesG1, segGraphG1);
+      var eid2_rev = getEdgeId(1, 0, dstNodesG2, segGraphG2);
+      if eid2_rev != -1 && eid1_rev == -1 then return false;
+
+      // This is the check for Isomorphism
+      if eid2_rev == -1 && eid1_rev != -1 then return false;
+
+      if eid1_rev != -1 && eid2_rev != -1 {
+          if !doAttributesMatch(eid1_rev, eid2_rev, graphEdgeAttributes, subgraphEdgeAttributes, st) then
+            return false;
+        
+      }
+      const cond2 = Tin_u1.size >= Tin_1.size && Tout_u1.size >= Tout_1.size;
+      if !cond2 then return false;
+
+      Nei_u0 += Tin_u0;
+      Nei_u0 += Tout_u0;
+      Nei_u1 += Tin_u1;
+      Nei_u1 += Tout_u1;
+
+      var intersecg1, intersecg2: domain(int, parSafe=false);
+      intersecg1 = Nei_u0 & Nei_u1;
+
+      Nei_0 += Tin_0;
+      Nei_0 += Tout_0;
+      Nei_1 += Tin_1;
+      Nei_1 += Tout_1;
+
+      intersecg2 = Nei_0 & Nei_1;
+
+      if !(intersecg1.size >= intersecg2.size) then return false;
+      
+      state.Tin1 = Tin_u0 | Tin_u1;
+      state.Tout1 = Tout_u0 | Tout_u1;
+
+      state.Tin2 = Tin_0 | Tin_1;
+      state.Tout2 = Tout_0 | Tout_1;
+
+      state.depth += 2;
+      state.core[0] = u0_g1;
+      state.core[1] = u1_g1;
+
+      state.Tin1.remove(u0_g1); state.Tout1.remove(u0_g1);
+      state.Tin1.remove(u1_g1); state.Tout1.remove(u1_g1);
+
+      state.Tin2.remove(0); state.Tout2.remove(0);
+      state.Tin2.remove(1); state.Tout2.remove(1);
+
+      return true;
+    } // end of addToTinToutMVE_ISO
+
+    /* Generate in-neighbors and out-neighbors for a given subgraph state.*/
+    proc addToTinToutMVE_MONO(u0_g1: int, u1_g1: int, state: State): bool throws {
       var Tin_u0, Tout_u0, Tin_u1, Tout_u1, Tin_0, Tin_1, Tout_0, Tout_1: domain(int, parSafe=true);
       var Nei_u0, Nei_u1, Nei_0, Nei_1: domain(int, parSafe=true);
       
@@ -1400,10 +1482,123 @@ module SubgraphIsomorphism {
       state.Tin2.remove(1); state.Tout2.remove(1);
 
       return true;
-    } // end of addToTinToutMVE
-
+    } // end of addToTinToutMVE_MONO
+    
     /* Check to see if the mapping of n1 from g1 to n2 from g2 is feasible. */
-    proc isFeasible(n1: int, n2: int, state: State) throws {
+    proc isFeasible_ISO(n1: int, n2: int, state: State) throws {
+      var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
+      
+      // Process the out-neighbors of g2.
+      var getOutN2 = dstNodesG2[segGraphG2[n2]..<segGraphG2[n2+1]];
+      for Out2 in getOutN2 {
+        if state.core(Out2) != -1 {
+          var Out1 = state.core(Out2);
+          var eid1 = getEdgeId(n1, Out1, dstNodesG1, segGraphG1);
+          var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
+
+          if eid1 == -1 || eid2 == -1 then return false;
+
+          if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, st) then
+            return false;
+
+        } 
+        else {
+          if state.Tin2.contains(Out2) then termin2 += 1;
+          if state.Tout2.contains(Out2) then termout2 += 1;
+          if !state.Tin2.contains(Out2) && !state.Tout2.contains(Out2) then new2 += 1;
+        }
+      }
+        
+      // Process the in-neighbors of g2. 
+      var getInN2 = dstRG2[segRG2[n2]..<segRG2[n2+1]];
+      for In2 in getInN2 {
+        if state.core[In2] != -1 {
+          var In1 = state.core(In2);
+          var eid1 = getEdgeId(In1, n1, dstNodesG1, segGraphG1);
+          var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
+
+          if eid1 == -1 || eid2 == -1 then return false;
+
+          if !doAttributesMatch(eid1, eid2, graphEdgeAttributes, subgraphEdgeAttributes, st) then
+            return false;
+
+        } 
+        else {
+          if state.Tin2.contains(In2) then termin2 += 1;
+          if state.Tout2.contains(In2) then termout2 += 1;
+          if !state.Tin2.contains(In2) && !state.Tout2.contains(In2) then new2 += 1;
+        }
+      }
+        
+      // Process the out-neighbors of g1. 
+      //var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+      // for Out1 in getOutN1 {
+      //   if !state.isMappedn1(Out1) {
+      //     if state.Tin1.contains(Out1) then termin1 += 1;
+      //     if state.Tout1.contains(Out1) then termout1 += 1;
+      //     if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
+      //   }
+      // }
+        
+      // Process the out-neighbors of g1. 
+      var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
+      for Out1 in getOutN1 {
+        if state.isMappedn1(Out1) { // Find corresponding vertex in g2
+          var Out2 = -1;
+          for i in state.D_core do
+              if state.core[i] == Out1 then Out2 = i; // So Out1 is mapped to Out2
+          // Check if such edge exists in g2 or not
+          var eid2 = getEdgeId(n2, Out2, dstNodesG2, segGraphG2);
+          if eid2 == -1 then return false;
+
+        }
+        else{// it means out1 is NOT already mapped
+          if state.Tin1.contains(Out1) then termin1 += 1;
+          if state.Tout1.contains(Out1) then termout1 += 1;
+          if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
+        }
+      }
+      // // Process the in-neighbors of g1.
+      // var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+      // for In1 in getInN1 {
+      //   if !state.isMappedn1(In1) {
+      //     if state.Tin1.contains(In1) then termin1 += 1;
+      //     if state.Tout1.contains(In1) then termout1 += 1;
+      //     if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
+      //   }
+      // }
+
+      // Process the in-neighbors of g1.
+      var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
+      for In1 in getInN1 {
+        if state.isMappedn1(In1) { // Find corresponding vertex in g2
+          var In2 = -1;
+          for i in state.D_core do
+            if state.core[i] == In1 then In2 = i;
+          
+          var eid2 = getEdgeId(In2, n2, dstNodesG2, segGraphG2);
+          if eid2 == -1 then return false;
+        }
+        else{
+          if state.Tin1.contains(In1) then termin1 += 1;
+          if state.Tout1.contains(In1) then termout1 += 1;
+          if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
+        }
+      }
+
+      if !(termin2 <= termin1 && termout2 <= termout1 && 
+          (termin2 + termout2 + new2) <= (termin1 + termout1 + new1)
+        ) then return false;
+
+        if !doAttributesMatch(n1, n2, graphNodeAttributes, subgraphNodeAttributes, st) 
+          then return false;
+
+      return true;
+    } // end of isFeasible_ISO
+    
+    /* Check to see if the mapping of n1 from g1 to n2 from g2 is feasible. */
+    /* JUST COPY AND RENAMED*/
+    proc isFeasible_MONO(n1: int, n2: int, state: State) throws {
       var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
       
       // Process the out-neighbors of g2.
@@ -1476,7 +1671,7 @@ module SubgraphIsomorphism {
           then return false;
 
       return true;
-    } // end of isFeasible
+    } // end of isFeasible_MONO
 
     /** Return the unmapped vertices for g1 and g2. */
     proc getBothUnmappedNodes(state: State): ([0..<state.n1]int, int) throws {
@@ -1574,7 +1769,11 @@ module SubgraphIsomorphism {
         // if stopper.read() then continue;
         // TODO: TURN BACK ON FOR PRODUCTION.
 
-        if isFeasible(n1, n2, state) {
+        // if isFeasible(n1, n2, state) {
+
+        if (matchType == "iso" && isFeasible_ISO(n1, n2, state)) || 
+           (matchType == "mono" && isFeasible_MONO(n1, n2, state)) {
+            
           // Work on a clone, not the original state
           var newState = state.clone();
 
@@ -1602,7 +1801,14 @@ module SubgraphIsomorphism {
 
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
-          var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          
+          // var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+
+          var edgeChecked = if matchType == "iso" then 
+                                addToTinToutMVE_ISO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState)
+                            else 
+                                addToTinToutMVE_MONO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+
           if edgeChecked {
             var newMappings = vf2Helper(initialState, 2);
             for mapping in newMappings do solutions.pushBack(mapping);
