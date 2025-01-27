@@ -2,11 +2,11 @@ import arkouda as ak
 import arachne as ar
 import time
 
-ak.connect("n81", 5555)
+ak.connect("n119", 5555)
 
 # Parameters
-p = 0.005
-node_sizes = [15_000]
+p = 0.0005
+node_sizes = [100_000]
 seed = 42
 num_tests = 3
 
@@ -47,7 +47,7 @@ for num_nodes in node_sizes:
 
     # Generate the property graph
     start = time.time()
-    temp_prop_graph = ar.gnp(num_nodes, p, create_using=ar.PropGraph, seed=seed)
+    temp_prop_graph = ar.gnp_random_graph(num_nodes, p, create_using=ar.PropGraph, seed=seed)
     end = time.time()
     build_time = end - start
 
@@ -98,13 +98,28 @@ for num_nodes in node_sizes:
         start = time.time()
         isos_as_vertices = ar.subgraph_isomorphism(
             prop_graph, sg, semantic_check="and",
+            match_type = "iso",
             algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
         )
         end = time.time()
         result = len(isos_as_vertices[0]) / len(sg)
         test_results["VF2-SI"]["monos"] += result
         test_results["VF2-SI"]["time"] += (end - start)
-        print("Time: ",end - start )
+        print("iso Time: ",end - start )
+        print("We found: ",result )        
+
+        start = time.time()
+        isos_as_vertices = ar.subgraph_isomorphism(
+            prop_graph, sg, semantic_check="and",
+            match_type = "mono",
+            algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
+        )
+        end = time.time()
+        result = len(isos_as_vertices[0]) / len(sg)
+        test_results["VF2-SI"]["monos"] += result
+        test_results["VF2-SI"]["time"] += (end - start)
+        print("mono Time: ",end - start )        
+        print("We found: ",result )        
         # # VF2-SI PROBABILITY-MVE
         # start = time.time()
         # isos_as_vertices = ar.subgraph_isomorphism(
