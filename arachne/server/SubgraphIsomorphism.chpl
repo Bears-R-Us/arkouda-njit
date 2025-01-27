@@ -1688,6 +1688,21 @@ module SubgraphIsomorphism {
         writeln("\n\nVF2_si_Timer",VF2_si_Timer.elapsed());
         writeln("\n\n");
 
+        /* Module-level maps must be cleared. */
+        edgeCategoricalProbabilityDistributions.clear();
+        edgeStringsProbabilityDistributions.clear();
+        edgeIntProbabilityDistributions.clear();
+        edgeUIntProbabilityDistributions.clear();
+        edgeRealProbabilityDistributions.clear();
+        edgeBoolProbabilityDistributions.clear();
+
+        nodeCategoricalProbabilityDistributions.clear();
+        nodeStringsProbabilityDistributions.clear();
+        nodeIntProbabilityDistributions.clear();
+        nodeUIntProbabilityDistributions.clear();
+        nodeRealProbabilityDistributions.clear();
+        nodeBoolProbabilityDistributions.clear();
+
         allMappingsArrayD = makeDistDom(allmappings.size);
         allMappingsArray = allmappings;
       //} 
