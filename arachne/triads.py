@@ -1,6 +1,7 @@
 import arkouda as ak
 import arachne as ar
 import pandas as pd
+import numpy as np
 import argparse
 import time
 import sys
@@ -51,6 +52,9 @@ def get_triads(idx:str):
     src12 = [0, 1, 1, 2, 0]
     dst12 = [1, 0, 2, 0, 2]
 
+    src13 = [3, 3, 1, 2]
+    dst13 = [1, 0, 2, 3]
+
     triads = { "1": (src1, dst1),
                "2": (src2, dst2),
                "3": (src3, dst3),
@@ -62,7 +66,8 @@ def get_triads(idx:str):
                "9": (src9, dst9),
                "10": (src10, dst10),
                "11": (src11, dst11),
-               "12": (src12, dst12)
+               "12": (src12, dst12),
+               "13": (src13, dst13)
                }
     
     return triads[idx]
@@ -85,8 +90,7 @@ def get_small_world_random_graph(n, k, p, seed):
 
     return G
 
-def add_attributes(graph, num_node_attributes, num_edge_attributes, 
-                   node_lbl_prob, edge_rel_prob, seed):
+def add_attributes(graph, num_node_lbls, num_edge_lbls, vals_per_lbl, seed):
     nodes = graph.nodes()
     edges = graph.edges()
 
@@ -96,15 +100,11 @@ def add_attributes(graph, num_node_attributes, num_edge_attributes,
     node_attributes = []
     edge_attributes = []
 
-    for i in range(num_node_attributes):
-        node_attributes.append(
-            ak.where(ak.randint(0,1,n,seed=seed*i,dtype=ak.float64) < node_lbl_prob, 0, 1)
-        )
+    for i in range(num_node_lbls):
+        node_attributes.append(ak.randint(0,vals_per_lbl,n,seed=seed*i,dtype=ak.int64))
 
-    for i in range(num_edge_attributes):
-        edge_attributes.append(
-            ak.where(ak.randint(0,1,m,seed=seed*i,dtype=ak.float64) < edge_rel_prob, 0, 1)
-        )
+    for i in range(num_edge_lbls):
+        edge_attributes.append(ak.randint(0,vals_per_lbl,m,seed=seed*i,dtype=ak.int64))
 
     lbls_dict = {"lbl"+str(idx):attribute for idx, attribute in enumerate(node_attributes)}
     rels_dict = {"rel"+str(idx):attribute for idx, attribute in enumerate(edge_attributes)}
@@ -122,6 +122,7 @@ def add_attributes(graph, num_node_attributes, num_edge_attributes,
     graph.load_node_attributes(node_df, node_column="nodes")
 
 def to_glasgow_format(graph, file_name):
+    print("Converting inputted graph to Glasgow format...")
     # Extract edges
     internal_src, internal_dst = graph._internal_edges()
     src = internal_src.to_list()  
@@ -156,14 +157,16 @@ def to_glasgow_format(graph, file_name):
         node_data = [f"{node}," for node in num_nodes]
 
     # Write to file
-    print("Write to CSV")
-    with open(file_name, "w") as f:
+    print(f"Writing graph to {file_name}...")
+    path_to_write = "/scratch/users/md724/SI_Paper_Graphs/" + file_name
+    with open(path_to_write, "w") as f:
         f.write("\n".join(edge_data) + "\n")
         f.write("\n".join(node_data))
 
-    print(f"Graph saved to {file_name}")
+    print(f"Graph saved to {file_name}.\n")
 
 def to_vf3p_format(graph, file_name):
+    print("Converting inputted graph to VF3P format...")
     src, dst = graph._internal_edges()
     src_list = src.to_list()
     dst_list = dst.to_list()
@@ -178,6 +181,7 @@ def to_vf3p_format(graph, file_name):
     lines.append(str(len(nodes)))
     lines.append("")
 
+    print("Preparing node data...")
     if not node_df.empty:
         for node in nodes:
             row = node_df[node_df['nodes'] == node]
@@ -188,6 +192,7 @@ def to_vf3p_format(graph, file_name):
             lines.append(f"{node} 0")
     lines.append("")
             
+    print("Preparing edge data...")
     for node in nodes:
         node_edges = []
         while curr_idx < len(src_list) and src_list[curr_idx] == node:
@@ -197,17 +202,16 @@ def to_vf3p_format(graph, file_name):
         lines.append(str(len(node_edges)))
         for i in node_edges:
             edge_str = f"{src_list[i]} {dst_list[i]}"
-            if not edge_df.empty:
-                attrs = " ".join(str(edge_df.iloc[i][col]) for col in edge_df.columns)
-                edge_str += f" {attrs}"
             lines.append(edge_str)
         if node != nodes[-1]: # Don't add empty line after last node
             lines.append("")
 
-    with open(file_name, "w") as f:
+    print(f"Writing graph to {file_name}...")
+    path_to_write = "/scratch/users/md724/SI_Paper_Graphs/" + file_name
+    with open(path_to_write, "w") as f:
         f.write("\n".join(lines) + "\n")
 
-    print(f"Graph saved to {file_name}")
+    print(f"Graph saved to {file_name}\n")
 
 def get_real_world_graph(absolute_path_to_file, file_type, src_col, dst_col):
     G = ar.PropGraph()
@@ -223,6 +227,54 @@ def get_real_world_graph(absolute_path_to_file, file_type, src_col, dst_col):
     print(f"Built real-world graph with {len(G):,} vertices and {G.size():,} edges.")
 
     return G
+
+def run_benchmark(G, H, idx, trials, prob_reorder, match_type):
+    print(f"Beginning the search for triad {idx} with {trials} iterations...")
+    r_s_si = np.array([])
+    r_p_si = np.array([])
+    for trial in range(1, trials+1):
+        print(f"Running trial {trial}...")
+        start = time.time()
+        monos1 = ar.subgraph_isomorphism(G, H, algorithm_type="si",reorder_type="structural", 
+                                         return_isos_as="vertices",match_type=match_type)
+        end = time.time()
+        r_s_si = np.append(r_s_si, end-start)
+        print(f"Structural SI took: {end-start:.4f} sec(s)")
+        print(f"Structural SI found: {len(monos1[0])/len(H):,} {match_type}s")
+
+        if prob_reorder:
+            start = time.time()
+            monos2 = ar.subgraph_isomorphism(G, H, algorithm_type="si",reorder_type="probability", 
+                                             return_isos_as="vertices",match_type=match_type)
+            end = time.time()
+            r_p_si = np.append(r_p_si, end-start)
+            print(f"Probability SI took: {end-start:.4f} sec(s)")
+            print(f"Probability SI found: {len(monos2[0])/len(H):,} {match_type}s")
+        
+        print()
+    
+    print("Final results structural SI:")
+    print(f"         min = {np.min(r_s_si):.4f}")
+    print(f"         max = {np.max(r_s_si):.4f}")
+    print(f"        mean = {np.mean(r_s_si):.4f}")
+    print(f"    variance = {np.var(r_s_si):.4f}")
+    print(f"         std = {np.std(r_s_si):.4f}")
+    print(f"         iqr = {(np.percentile(r_s_si, 75) - np.percentile(r_s_si, 25)):.4f}")
+    print(f"      95 per = {np.percentile(r_s_si, 95):.4f}")
+    print(f"      99 per = {np.percentile(r_s_si, 99):.4f}")
+    print(f"trimmed mean = {np.mean(r_s_si[np.abs(r_s_si-np.mean(r_s_si))<2*np.std(r_s_si)]):.4f}")
+
+    if prob_reorder:
+        print(f"         min = {np.min(r_p_si):.4f}")
+        print(f"         max = {np.max(r_p_si):.4f}")
+        print(f"        mean = {np.mean(r_p_si):.4f}")
+        print(f"    variance = {np.var(r_p_si):.4f}")
+        print(f"         std = {np.std(r_p_si):.4f}")
+        print(f"         iqr = {(np.percentile(r_p_si, 75) - np.percentile(r_p_si, 25)):.4f}")
+        print(f"      95 per = {np.percentile(r_p_si, 95):.4f}")
+        print(f"      99 per = {np.percentile(r_p_si, 99):.4f}")
+        print(f"trimmed mean = {np.mean(r_p_si[np.abs(r_p_si-np.mean(r_p_si))<2*np.std(r_p_si)]):.4f}")
+    
 
 def create_parser():
     # Arkouda things.
@@ -251,14 +303,15 @@ def create_parser():
     parser.add_argument("--seed", type=int, help="Random seed")
 
     # Vertex and edge attribute parameters.
+    parser.add_argument("--data_injection", action="store_true", help="Run data injection harness?")
     parser.add_argument("--num_node_lbls", type=int, help="Number of node labels")
-    parser.add_argument("--num_edge_rels", type=int, help="Number of edge relationships")
+    parser.add_argument("--num_edge_lbls", type=int, help="Number of edge labels")
+    parser.add_argument("--vals_per_lbl", type=int, help="Number of values per label.")
 
     # Experimental parameters.
     parser.add_argument("--trials", type=int, help="Number of trials")
-    parser.add_argument("--lbl_prob", type=float, default=0.6, help="Binary probability of lbl 0")
-    parser.add_argument("--rel_prob", type=float, default=0.6, help="Binary probability of rel 0")
     parser.add_argument("--prob_reorder", action="store_true", help="Run probability reorder?")
+    parser.add_argument("--match_type", type=str, help="iso or mono")
 
     # Graph conversion parameters.
     parser.add_argument("--subgraph_to_glasgow", action="store_true", 
@@ -269,6 +322,8 @@ def create_parser():
                         help="Saves subgraph in VF3P format. Exits out after saving graph.")
     parser.add_argument("--graph_to_vf3p", action="store_true",
                         help="Saves graph in VF3P format. Exits out after saving graph.")
+    parser.add_argument("--write_all", action="store_true",
+                        help="Writes both subgraph and graph to VF3P and Glasgow formats.")
     parser.add_argument("--fileid", type=str, help="ID of real-world file.")
 
     return parser
@@ -288,39 +343,47 @@ if __name__ == "__main__":
     print(f"Data graph construction took: {end-start:.4f} sec(s)")
 
     start = time.time()
-    add_attributes(H, args.num_node_lbls, args.num_edge_rels, 
-                   args.lbl_prob, args.rel_prob, args.seed)
+    add_attributes(H, args.num_node_lbls, args.num_edge_lbls, args.vals_per_lbl, args.seed)
     end = time.time()
     print(f"Adding attributes to data graph took: {end-start:2f} sec(s)")
     print()
 
     if args.subgraph_to_glasgow:
         file_name = "triad_" + str(args.idx) + "_" + str(args.seed) + "_" + \
-                    str(args.num_node_lbls) + "_" + str(args.num_edge_rels)
+                    str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
         to_glasgow_format(H, file_name + ".csv")
         ak.shutdown()
         sys.exit()
 
     if args.subgraph_to_vf3p:
         file_name = "triad_" + str(args.idx) + "_" + str(args.seed) + "_" + \
-                    str(args.num_node_lbls) + "_" + str(args.num_edge_rels)
+                    str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
         to_vf3p_format(H, file_name + ".grf")
         ak.shutdown()
         sys.exit()
+
+    if args.write_all:
+        file_name = "triad_" + str(args.idx) + "_" + str(args.seed) + "_" + \
+            str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
+        to_glasgow_format(H, file_name + ".csv")
+        file_name = "triad_" + str(args.idx) + "_" + str(args.seed) + "_" + \
+            str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
+        to_vf3p_format(H, file_name + ".grf")
+
 
     start = time.time()
     if args.gnp:
         G = get_gnp_random_graph(args.n, args.p, args.seed)
         file_name = "gnp_" + str(args.n) + "_" + str(args.p) + "_" + str(args.seed) + "_" + \
-                    str(args.num_node_lbls) + "_" + str(args.num_edge_rels)
+                    str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
     elif args.scale_free:
         G = get_scale_free_random_graph(args.n, args.m, args.seed)
         file_name = "sf_" + str(args.n) + "_" + str(args.m) + "_" + str(args.seed) + "_" + \
-            str(args.num_node_lbls) + "_" + str(args.num_edge_rels)
+                    str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
     elif args.small_world:
         G = get_small_world_random_graph(args.n, args.k, args.p, args.seed)
         file_name = "sw_" + str(args.n) + "_" + str(args.k) + "_" + str(args.p) + "_" + \
-                    str(args.seed) + "_" + str(args.num_node_lbls) + "_" + str(args.num_edge_rels)
+                    str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
     elif args.real:
         G = get_real_world_graph(args.filepath, args.filetype, args.src_col, args.dst_col)
     else:
@@ -329,15 +392,14 @@ if __name__ == "__main__":
     print(f"Host graph construction took: {end-start:.4f} sec(s)")
         
     start = time.time()
-    add_attributes(G, args.num_node_lbls, args.num_edge_rels, 
-                   args.lbl_prob, args.rel_prob, args.seed)
+    add_attributes(G, args.num_node_lbls, args.num_edge_lbls, args.vals_per_lbl, args.seed)
     end = time.time()
     print(f"Adding attributes to host graph took: {end-start:2f} sec(s)")
     print()
 
     if args.real and (args.graph_to_glasgow or args.graph_to_vf3p):
         file_name = f"{args.fileid}_" + str(args.seed) + "_" +\
-                    str(args.num_node_lbls) + "_" + str(args.num_edge_rels)
+                    str(args.num_node_lbls) + "_" + str(args.num_edge_lbls) + "_" + str(args.vals_per_lbl)
 
     if args.graph_to_glasgow:
         to_glasgow_format(G, file_name + ".csv")
@@ -349,24 +411,15 @@ if __name__ == "__main__":
         ak.shutdown()
         sys.exit()
 
-    print(f"Beginning the search for triad {args.idx} with {args.trials} iterations...")
-    for trial in range(1, args.trials+1):
-        print(f"Running trial {trial}...")
-        start = time.time()
-        monos1 = ar.subgraph_isomorphism(G, H, algorithm_type="si",reorder_type="structural", 
-                                            return_isos_as="vertices")
-        end = time.time()
-        print(f"Structural SI took: {end-start:.4f} sec(s)")
-        print(f"Structural SI found: {len(monos1[0])/len(H):,} monos")
+    if args.write_all:
+        to_glasgow_format(G, file_name + ".csv")
+        to_vf3p_format(G, file_name + ".grf")
+        ak.shutdown()
+        sys.exit()
 
-        if args.prob_reorder:
-            start = time.time()
-            monos2 = ar.subgraph_isomorphism(G, H, algorithm_type="si",reorder_type="probability", 
-                                                return_isos_as = "vertices")
-            end = time.time()
-            print(f"Probability SI took: {end-start:.4f} sec(s)")
-            print(f"Probability SI found: {len(monos2[0])/len(H):,} monos")
-        
-        print()
+    if args.data_injection:
+        run_benchmark(G, H, args.idx, args.trials, args.prob_reorder, args.match_type)
+    else:
+        run_benchmark(G, H, args.idx, args.trials, args.prob_reorder, args.match_type)
 
     ak.shutdown()
