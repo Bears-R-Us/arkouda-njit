@@ -6,7 +6,7 @@ ak.connect("n119", 5555)
 
 # Parameters
 p = 0.0005
-node_sizes = [100_000]
+node_sizes = [120_000]
 seed = 42
 num_tests = 3
 
@@ -17,8 +17,8 @@ subgraph_edge_ints = ak.array([5, 5, 5, 5])
 subgraph_edge_bools = ak.array([True, True, True, True])
 
 # Subgraph structure
-src_list = [2, 3, 1, 3]
-dst_list = [3, 1, 2, 0]
+src_list = [2, 0, 1, 1]
+dst_list = [0, 1, 2, 3]
 src_subgraph = ak.array(src_list)
 dst_subgraph = ak.array(dst_list)
 
@@ -85,7 +85,7 @@ for num_nodes in node_sizes:
     test_results = {
         "VF2-SI": {"monos": 0, "time": 0},
         # "VF2-SI PROBABILITY-MVE": {"monos": 0, "time": 0},
-        # "VF2-PS DEFAULT": {"monos": 0, "time": 0},
+        "VF2-PS DEFAULT": {"monos": 0, "time": 0},
         # "VF2-PS MVE-REORDERING": {"monos": 0, "time": 0},
         # "VF2-PS PROBABILITY-MVE": {"monos": 0, "time": 0},
     }
@@ -98,7 +98,7 @@ for num_nodes in node_sizes:
         start = time.time()
         isos_as_vertices = ar.subgraph_isomorphism(
             prop_graph, sg, semantic_check="and",
-            match_type = "iso",
+            match_type = "mono",
             algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
         )
         end = time.time()
@@ -109,11 +109,17 @@ for num_nodes in node_sizes:
         print("We found: ",result )        
 
         start = time.time()
-        isos_as_vertices = ar.subgraph_isomorphism(
-            prop_graph, sg, semantic_check="and",
-            match_type = "mono",
-            algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
-        )
+        # isos_as_vertices = ar.subgraph_isomorphism(
+        #     prop_graph, sg, semantic_check="and",
+        #     match_type = "mono",
+        #     algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
+        # )
+        isos_as_vertices = ar.subgraph_isomorphism(prop_graph, sg, 
+                                           semantic_check = "and", algorithm_type = "ps", 
+                                           reorder_type = None, return_isos_as = "vertices")
+
+        print(f"We found {len(isos_as_vertices[0])/len(sg)} monos inside of the graph")
+        
         end = time.time()
         result = len(isos_as_vertices[0]) / len(sg)
         test_results["VF2-SI"]["monos"] += result
