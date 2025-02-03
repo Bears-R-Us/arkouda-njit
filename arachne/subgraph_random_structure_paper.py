@@ -2,23 +2,25 @@ import arkouda as ak
 import arachne as ar
 import time
 
-ak.connect("n119", 5555)
+ak.connect("n120", 5555)
 
 # Parameters
 p = 0.0005
-node_sizes = [120_000]
+node_sizes = [60_000]
 seed = 42
 num_tests = 3
 
 # Fixed attributes for subgraph
-subgraph_node_ints = ak.array([10, 10, 10, 10])
-subgraph_node_bools = ak.array([True, True, True, True])
-subgraph_edge_ints = ak.array([5, 5, 5, 5])
-subgraph_edge_bools = ak.array([True, True, True, True])
+subgraph_node_ints = ak.array([10, 10,10])
+subgraph_node_bools = ak.array([True, True, True])
+subgraph_edge_ints = ak.array([5, 5, 5, 5, 5])
+subgraph_edge_bools = ak.array([True, True, True, True, True])
 
 # Subgraph structure
-src_list = [2, 0, 1, 1]
-dst_list = [0, 1, 2, 3]
+src_list = [0, 1, 1, 2, 0]
+dst_list = [1, 0, 2, 0, 2]
+
+ 
 src_subgraph = ak.array(src_list)
 dst_subgraph = ak.array(dst_list)
 
@@ -98,7 +100,7 @@ for num_nodes in node_sizes:
         start = time.time()
         isos_as_vertices = ar.subgraph_isomorphism(
             prop_graph, sg, semantic_check="and",
-            match_type = "mono",
+            match_type = "iso",
             algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
         )
         end = time.time()
@@ -108,24 +110,24 @@ for num_nodes in node_sizes:
         print("iso Time: ",end - start )
         print("We found: ",result )        
 
-        start = time.time()
-        # isos_as_vertices = ar.subgraph_isomorphism(
-        #     prop_graph, sg, semantic_check="and",
-        #     match_type = "mono",
-        #     algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
-        # )
-        isos_as_vertices = ar.subgraph_isomorphism(prop_graph, sg, 
-                                           semantic_check = "and", algorithm_type = "ps", 
-                                           reorder_type = None, return_isos_as = "vertices")
+        # start = time.time()
+        # # isos_as_vertices = ar.subgraph_isomorphism(
+        # #     prop_graph, sg, semantic_check="and",
+        # #     match_type = "mono",
+        # #     algorithm_type="si", reorder_type="structural", return_isos_as="vertices"
+        # # )
+        # isos_as_vertices = ar.subgraph_isomorphism(prop_graph, sg, 
+        #                                    semantic_check = "and", algorithm_type = "ps", 
+        #                                    reorder_type = None, return_isos_as = "vertices")
 
-        print(f"We found {len(isos_as_vertices[0])/len(sg)} monos inside of the graph")
+        # print(f"We found {len(isos_as_vertices[0])/len(sg)} monos inside of the graph")
         
-        end = time.time()
-        result = len(isos_as_vertices[0]) / len(sg)
-        test_results["VF2-SI"]["monos"] += result
-        test_results["VF2-SI"]["time"] += (end - start)
-        print("mono Time: ",end - start )        
-        print("We found: ",result )        
+        # end = time.time()
+        # result = len(isos_as_vertices[0]) / len(sg)
+        # test_results["VF2-SI"]["monos"] += result
+        # test_results["VF2-SI"]["time"] += (end - start)
+        # print("mono Time: ",end - start )        
+        # print("We found: ",result )        
         # # VF2-SI PROBABILITY-MVE
         # start = time.time()
         # isos_as_vertices = ar.subgraph_isomorphism(
