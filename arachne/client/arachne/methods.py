@@ -639,3 +639,127 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     #       in Chapel, to get the vertices for cluster c would look like this:
     #            clusters[seg[c]..<seg[c+1]]
     return int(rep_msg)
+@typechecked
+def cluster_modifier_two(graph: Graph, file_path: str, output_folder_path: str,
+                              output_filename: str = None,
+                              output_type: Literal["post", "during", "debug"] = "post",
+                              connectedness_criterion: Literal["log10", "log2",
+                                                               "sqrt", "mult"] = "log10",
+                              connectedness_criterion_mult_value: float = None,
+                              pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
+    """
+    Executes parallel well-connected components on a given graph and its clustering. Each induced
+    cluster subgraph is checked for multiple connected components. If it is composed of more
+    than one connected component, each is assigned to a new cluster identifier. Each of these 
+    clusters is then checked against a metric (`connectedness_criterion`) to consider if it is 
+    well-connected or not. If it is not well-connected, the minimum cut is calculated via VieCut and 
+    the cluster is partitioned. Then, the process is repeated until all the clusters are deemed 
+    to be well-connected.
+
+    Parameters
+    ----------
+    graph : Graph
+        The input graph.
+    file_path : str
+        The file containing the clusters each vertex belongs to. NOTE: Must be the absolute path
+        to the file.
+    output_folder_path : str
+        The output folder path to where the new clusters are to be written to. NOTE: Must be the 
+        absolute path to the folder.
+    output_filename : str
+        If not specified, the default output filename will be extrapolated from the name of the
+        file specified by `file_path`. If the name of the input file is `foo.tsv` and the 
+        `output_type` is `post` then the output filename will be `foo_wcc_output_post.tsv`.
+    output_type : str
+        If "post" then output is written at the end of WCC. If "during" then output is written as
+        soon as a cluster is considered well-connected. If "debug" then verbose output is written
+        as soon as a cluster is considered well-connected. NOTE: The "debug" mode is intended to be
+        used ONLY with small graphs and clusters. If used with large graphs and clusters, then the
+        verbose output is going to clog the whole output folder.
+    connectedness_criterion : str
+        Specifies the function criterion that should be met for a cluster to be considered
+        well-connected. The default is `log10` where if the number of vertices is `n` and the
+        minimum cut is `cut` then the inequality `cut > log10(n)` must be true. The other options
+        are "log2", "sqrt", and "mult". If "mult" is specified, then 
+        `connectedness_criterion_mult_value` must also be specified.
+    connectedness_criterion_mult_value : real
+        If "mult" is specified as the criterion for `connectedness_criterion`, then the value of
+        this must be some nonnegative `int` or `float`.
+    pre_filter_min_size : int
+        The minimum size of each cluster prior to establishing if the connectedness criterion is
+        met or not. The cluster sizes kept are any strictly greater than `pre_filter_min_size`. 
+        Defaults to 10.
+    post_filter_min_size : int
+        The minimum size of each cluster after the connectedness criterion is established to be
+        unsatisfactory and the cluster is partitioned. The cluster sizes kept are strictly greater
+        than `post_filter_min_size`. Defaults to 10.
+
+    Returns
+    -------
+    int
+        The number of clusters that are found to be well-connected.
+    
+    See Also
+    --------
+    connected_components
+
+    Notes
+    -----
+    Work in progress
+
+    Raises
+    ------
+    TypeError, ValueError, RuntimeError, FileExistsError
+    """
+    default_name_used = False
+    if output_filename is None:
+        try:
+            default_name_used = True
+            output_filename = Path(file_path).stem
+        except TypeError:
+            print("Error: `file_path` is not a valid path.")
+
+    if connectedness_criterion == "mult" and connectedness_criterion_mult_value is None:
+        raise ValueError(("Connectedness criterion is `mult` and requires a valid "
+                          "`connectedness_criterion_mult_value`."))
+
+    if output_folder_path[-1] != "/":
+        output_folder_path = output_folder_path + "/"
+
+    output_path = ""
+    if default_name_used:
+        if output_type == "during":
+            output_path = output_folder_path + output_filename + "_wcc_output_during.tsv"
+        elif output_type == "post":
+            output_path = output_folder_path + output_filename + "_wcc_output_post.tsv"
+        elif output_type == "debug":
+            output_path = output_folder_path + output_filename + "_wcc_output_debug"
+        else:
+            raise ValueError(f"The output type {output_type} is not recognized.")
+    else:
+        output_path = output_folder_path + output_filename
+
+    if os.path.exists(output_path) and output_type == "during":
+        raise FileExistsError(f"File {output_filename} already exists.")
+
+    # Explicit value needed for Chapel FCF.
+    connectedness_criterion_mult_value = 0.0
+
+    cmd = "clusterModifierTwo"
+    args = { "GraphName":graph.name,
+             "FilePath": file_path,
+             "OutputPath": output_path,
+             "OutputType": output_type,
+             "ConnectednessCriterion": connectedness_criterion,
+             "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
+             "PreFilterMinSize": pre_filter_min_size,
+             "PostFilterMinSize": post_filter_min_size}
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    print("Cluster files written to: ", output_path)
+
+    # TODO: For now returns the number of clusters. In future will return two arrays, one to store
+    #       the vertices in all the clusters and the other to store the information to segment this
+    #       array to extract what vertices belong to one cluster. For example, indexing this array
+    #       in Chapel, to get the vertices for cluster c would look like this:
+    #            clusters[seg[c]..<seg[c+1]]
+    return int(rep_msg)
