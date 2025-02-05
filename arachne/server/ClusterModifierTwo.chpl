@@ -34,6 +34,22 @@ module ClusterModifierTwo {
   
   extern proc c_computeMinCut(partition_arr: [] int, src: [] int, dst: [] int, n: int, m: int): int;
 
+  // C header and object files.
+  require "Clustering_Algorithms/bin/run_leiden.o",
+          "Clustering_Algorithms/src/run_leiden.h";
+
+  extern proc c_runLeiden(
+    src: [] int,
+    dst: [] int,
+    NumEdges: int,
+    NumNodes: int,
+    modularity_option: int,
+    resolution: real,
+    communities: [] int,
+    numCommunities: int
+  ): int;
+
+
   /* Modified version of the standard set module intersection method to only return the size of
      the intersection. */
   proc setIntersectionSize(const ref a: set(?t, ?), const ref b: set(t, ?)) {
@@ -86,6 +102,30 @@ module ClusterModifierTwo {
                             else if connectednessCriterion == "mult" then multCriterion
                             else log10Criterion;
     
+    // Example graph
+    var src: [0..7] int = [0, 1, 2, 3, 4, 5, 6, 7];
+    var dst: [0..7] int = [1, 2, 3, 4, 5, 6, 7, 0];
+    var NumEdges: int = src.size;  // Number of edges
+    var NumNodes: int = 8;         // Number of nodes
+
+    // Array to store community assignments
+    var communities: [0..NumNodes-1] int;
+
+    // Variable to store number of communities
+    var numCommunities: int(64) = 0;
+
+    // Printing the initialized arrays
+    writeln("Src: ", src);
+    writeln("Dst: ", dst);
+    writeln("NumEdges: ", NumEdges);
+    writeln("NumNodes: ", NumNodes);
+    writeln("Communities: ", communities);
+    writeln("numCommunities: ", numCommunities);
+
+    c_runLeiden(src, dst, NumEdges, NumNodes, 1, 0.5, communities, numCommunities);
+    writeln("AFTEER");
+    writeln("Communities: ", communities);
+    writeln("numCommunities: ", numCommunities);
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
       ID is mapped to all of the vertices with that cluster ID. 
@@ -115,7 +155,7 @@ module ClusterModifierTwo {
           else {
             if logLevel == LogLevel.DEBUG {
               var outMsg = "Vertex not found in the graph: " + originalNode:string;
-              wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
             }
           }
         }
@@ -123,7 +163,7 @@ module ClusterModifierTwo {
       reader.close();
       file.close();
       var outMsg = "Number of clusters originally found in file: " + clusters.size:string;
-      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
       return clusters;
     }
@@ -309,7 +349,7 @@ module ClusterModifierTwo {
         if logLevel == LogLevel.DEBUG {
           var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
                     + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
-          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         return;
       }
@@ -343,10 +383,10 @@ module ClusterModifierTwo {
     proc wcc(g1: SegGraph): int throws {
       var outMsg = "Graph loaded with " + g1.n_vertices:string + " vertices and " 
                  + g1.n_edges:string + " edges.";
-      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       var originalClusters = readClustersFile(inputcluster_filePath);
-      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
+      cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),
                      "Reading clusters file finished.");
 
       var newClusterIds: chpl__processorAtomicType(int) = 0;
@@ -388,7 +428,7 @@ module ClusterModifierTwo {
             if logLevel == LogLevel.DEBUG {
               var outMsg = "Original cluster " + key:string + " was split up into " 
                         + tempMap.size:string + " clusters.";
-              wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
             }
           } else {
             if originalClusters[key].size > preFilterMinSize {
@@ -400,21 +440,21 @@ module ClusterModifierTwo {
         }
       }
       outMsg = "Splitting up clusters yielded " + newClusters.size:string + " new clusters.";
-      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       forall key in newClusters.keysToArray() with (ref newClusters) {
         ref clusterToAdd = newClusters[key];
         if logLevel == LogLevel.DEBUG {
           var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
                     + newClusterIdToOriginalClusterId[key]:string + ".";
-          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         wccRecursiveChecker(clusterToAdd, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
       
       outMsg = "WCC found " + globalId.read():string + " clusters to be well-connected.";
-      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
       return globalId.read();
     } // end of wcc

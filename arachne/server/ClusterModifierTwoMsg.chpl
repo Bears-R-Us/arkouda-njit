@@ -21,7 +21,7 @@ module ClusterModifierTwoMsg {
   // Server message logger. 
   private config const logLevel = ServerConfig.logLevel;
   private config const logChannel = ServerConfig.logChannel;
-  const wccLogger = new Logger(logLevel, logChannel);
+  const cm2Logger = new Logger(logLevel, logChannel);
 
   proc ClusterModifierTwoMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
 		param pn = Reflection.getRoutineName();
@@ -43,7 +43,7 @@ module ClusterModifierTwoMsg {
 		var g = gEntry.graph;
 
 		// Generate neighbors as sets for graph.
-		wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
+		cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
 		g.generateNeighborsAsSet(st);
 		
 		var timer:stopwatch;
@@ -54,12 +54,12 @@ module ClusterModifierTwoMsg {
 													     preFilterMinSize, postFilterMinSize);
 			timer.stop();
 			outMsg = "Cluster Modifier Two took " + timer.elapsed():string + " sec";
-			wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+			cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 			return new MsgTuple(numClusters:string, MsgType.NORMAL);
 		} else {
 			var errorMsg = notImplementedError(pn, "Cluster_Modifier_Two for directed graphs");
-			wccLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+			cm2Logger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
 			return new MsgTuple(errorMsg, MsgType.ERROR);
 		}
   } // end of ClusterModifierTwoMsg

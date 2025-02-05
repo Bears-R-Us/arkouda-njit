@@ -25,7 +25,8 @@ __all__ = [ "read_matrix_market_file",
             "triangle_centrality",
             "connected_components",
             "diameter",
-            "well_connected_components"
+            "well_connected_components",
+            "cluster_modifier_two"
            ]
 
 @typechecked
