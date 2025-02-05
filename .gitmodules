@@ -1,0 +1,3 @@
+[submodule "arachne/server/NautyProject"]
+	path = arachne/server/NautyProject
+	url = https://github.com/mdindoost/NautyToChapel
