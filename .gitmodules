@@ -1,3 +1,6 @@
 [submodule "arachne/server/NautyProject"]
 	path = arachne/server/NautyProject
 	url = https://github.com/mdindoost/NautyToChapel
+[submodule "arachne/server/Clustering_Algorithms"]
+	path = arachne/server/Clustering_Algorithms
+	url = https://github.com/mdindoost/Clustering_Algorithms.git
