@@ -36,7 +36,9 @@ module ClusterModifierTwo {
 
   // C header and object files.
   require "Clustering_Algorithms/bin/run_leiden.o",
-          "Clustering_Algorithms/src/run_leiden.h";
+          "Clustering_Algorithms/src/run_leiden.h",
+          "-ligraph",
+          "-llibleidenalg";
 
   extern proc c_runLeiden(
     src: [] int,
@@ -102,30 +104,32 @@ module ClusterModifierTwo {
                             else if connectednessCriterion == "mult" then multCriterion
                             else log10Criterion;
     
-    // Example graph
-    var src: [0..7] int = [0, 1, 2, 3, 4, 5, 6, 7];
-    var dst: [0..7] int = [1, 2, 3, 4, 5, 6, 7, 0];
-    var NumEdges: int = src.size;  // Number of edges
-    var NumNodes: int = 8;         // Number of nodes
+    // // Example graph
+    // var src: [0..7] int = [0, 1, 2, 3, 4, 5, 6, 7];
+    // var dst: [0..7] int = [1, 2, 3, 4, 5, 6, 7, 0];
+    // var NumEdges: int = src.size;  // Number of edges
+    // var NumNodes: int = 8;         // Number of nodes
 
-    // Array to store community assignments
-    var communities: [0..NumNodes-1] int;
+    // // Array to store community assignments
+    // var communities: [0..NumNodes-1] int;
 
-    // Variable to store number of communities
-    var numCommunities: int(64) = 0;
+    // // Variable to store number of communities
+    // var numCommunities: int(64) = 0;
 
-    // Printing the initialized arrays
-    writeln("Src: ", src);
-    writeln("Dst: ", dst);
-    writeln("NumEdges: ", NumEdges);
-    writeln("NumNodes: ", NumNodes);
-    writeln("Communities: ", communities);
-    writeln("numCommunities: ", numCommunities);
+    // // Printing the initialized arrays
+    // writeln("Src: ", src);
+    // writeln("Dst: ", dst);
+    // writeln("NumEdges: ", NumEdges);
+    // writeln("NumNodes: ", NumNodes);
+    // writeln("Communities: ", communities);
+    // writeln("numCommunities: ", numCommunities);
 
-    c_runLeiden(src, dst, NumEdges, NumNodes, 1, 0.5, communities, numCommunities);
-    writeln("AFTEER");
-    writeln("Communities: ", communities);
-    writeln("numCommunities: ", numCommunities);
+    // c_runLeiden(src, dst, NumEdges, NumNodes, 1, 0.5, communities, numCommunities);
+    
+    // writeln("AFTEER");
+    // writeln("Communities: ", communities);
+    // var numCom = max reduce communities;
+    // writeln("numCom: ", numCom);
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
       ID is mapped to all of the vertices with that cluster ID. 
@@ -323,64 +327,210 @@ module ClusterModifierTwo {
       return reducedPartition;
     }
 
+    /* Returns first node found with lowest possible degree < threshold, or -1 if no such node exists */
+    proc findMinDegreeNode(ref members: set(int), threshold: int) throws {
+        writeln("Finding min degree node with threshold: ", threshold);
+        
+        // If threshold is 1, we can return immediately since no node can have degree < 1
+        if threshold <= 1 {
+            writeln("  Threshold <= 1, no need to check for lower degrees");
+            return -1;
+        }
+        
+        // Start from degree 1 and work up to threshold-1
+        // Note: We don't need to check for degree 0 as those would be singleton nodes
+        for degree in 1..<threshold {
+            writeln("  Checking for nodes with degree: ", degree);
+            // Return the first node we find with this degree
+            for v in members {
+                var nodeDegree = calculateClusterDegree(members, v);
+                if nodeDegree == degree {
+                    writeln("  Found node ", v, " with degree ", degree);
+                    return v;
+                }
+            }
+        }
+        writeln("  No nodes found with degree < ", threshold);
+        return -1;  // No node found with degree < threshold
+    }
+
+    /* Try to determine if cluster is not well-connected by removing low degree nodes */
+    proc quickMinCutCheck(ref vertices: set(int)) throws {
+        writeln("Starting quick mincut check");
+        var currentVertices = vertices;
+        var removedNodes = new set(int);  // Track removed nodes
+        
+        while currentVertices.size > 0 {
+            var criterionValue = criterionFunction(currentVertices.size, connectednessCriterionMultValue):int;
+            // var minDegreeThreshold = criterionValue + 1;
+            var minDegreeThreshold = criterionValue;
+            writeln("Current cluster size: ", currentVertices.size, ", criterion value: ", criterionValue);
+            
+            var nodeToRemove = findMinDegreeNode(currentVertices, minDegreeThreshold);
+            if nodeToRemove == -1 {
+                writeln("No more low degree nodes found - need proper mincut check");
+                vertices = currentVertices;  // Update original vertices to current state
+                return (false, removedNodes);
+            }
+            
+            // Remove the node and track it
+            currentVertices.remove(nodeToRemove);
+            removedNodes.add(nodeToRemove);
+            writeln("Removed node ", nodeToRemove, ", remaining vertices: ", currentVertices.size);
+            
+            // If we've removed enough nodes that criterionValue can't be met
+            if currentVertices.size <= criterionValue {
+                writeln("Criterion value can't be met after removals");
+                vertices = currentVertices;  // Update original vertices to current state
+                return (true, removedNodes);
+            }
+        }
+        vertices = currentVertices;  // Update original vertices to current state
+        return (true, removedNodes);
+    }
+
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
-       well-connected or not, and if not calls itself on the new generated partitions. */
-    proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
-      var (src, dst, mapper) = getEdgeList(vertices);
-
-      // If the generated edge list is empty, then return.
-      if src.size < 1 then return;
-
-      var n = mapper.size;
-      var m = src.size;
-
-      var partitionArr: [{0..<n}] int;
-      var cut = c_computeMinCut(partitionArr, src, dst, n, m);
-
-      var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-      if cut > criterionValue { // Cluster is well-connected.
-        var currentId = globalId.fetchAdd(1);
-        if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
-        else if outputType == "during" then writeClustersToFile(vertices, currentId);
-        for v in vertices {
-          finalVertices.pushBack(v);
-          finalClusters.pushBack(currentId);
+       well-connected or not, and if not calls itself on the new generated partitions/clusters. */
+    /* Modified */   
+    proc cmTwoRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
+        writeln("-+-+-+-+-Cluster ", id, " starting check");
+        writeln("at the beginning vertices: ", vertices);
+        
+        // First try quick mincut check
+        var (quickResult, removedNodes) = quickMinCutCheck(vertices);
+        if quickResult {
+            writeln("Quick mincut determined cluster ", id, " is not well-connected");
+            writeln("Removed nodes: ", removedNodes);
+            writeln("Remaining vertices: ", vertices.size);
+            
+            // If we don't have enough vertices remaining, return
+            if vertices.size <= postFilterMinSize {
+                writeln("Remaining vertices too small (", vertices.size, " <= ", postFilterMinSize, "), skipping");
+                return;
+            }
         }
-        if logLevel == LogLevel.DEBUG {
-          var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
-                    + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
-          cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        
+        // Check removedNodes against vertices
+        writeln("after quickMinCutCheck vertices: ", vertices);
+
+        // Either quick check didn't determine result, or we have enough vertices to continue
+        var (src, dst, mapper) = getEdgeList(vertices);
+
+        // If the generated edge list is empty, then return
+        if src.size < 1 {
+            writeln("Empty edge list for cluster ", id, ", returning");
+            return;
         }
+
+        var n = mapper.size;
+        var m = src.size;
+        
+        writeln("src: ", src);
+        writeln("dst: ", dst);
+        writeln("m: ", m);
+        writeln("n: ", n);
+
+        // If quick check didn't determine result, check if cluster is well-connected using min-cut
+        if !quickResult {
+            var partitionArr: [{0..<n}] int;
+            var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+            var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
+
+            writeln("cut: ", cut);
+            writeln("criterionValue: ", criterionValue);
+
+            if cut > criterionValue { // Cluster is well-connected
+                writeln("Cluster ", id, " IS well-connected!");
+                var currentId = globalId.fetchAdd(1);
+                if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
+                else if outputType == "during" then writeClustersToFile(vertices, currentId);
+                for v in vertices {
+                    finalVertices.pushBack(v);
+                    finalClusters.pushBack(currentId);
+                }
+                if logLevel == LogLevel.DEBUG {
+                    var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
+                                + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
+                    cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                }
+                return;
+            }
+        }
+
+        // If we're here, cluster is not well-connected (either from quick check or min-cut)
+        writeln("-+-+-+-+-Cluster ", id, " is NOT well-connected");
+        
+        // Run Leiden algorithm to get communities
+        var communities: [0..<n] int;
+        var numCommunities: int(64) = 0;
+        
+        writeln("Running Leiden algorithm...");
+        c_runLeiden(src, dst, m, n, 1, 0.5, communities, numCommunities);
+
+        writeln("node       : ", communities.domain);
+        writeln("communities: ", communities);
+
+        // Convert communities into sets
+        var communityMap = new map(int, set(int));
+        for (vertex, community) in zip(communities.domain, communities) {
+            if !communityMap.contains(community) {
+                communityMap[community] = new set(int);
+            }
+            communityMap[community].add(mapper[vertex]);
+        }
+        
+        writeln("communityMap: ", communityMap);
+
+        // If Leiden couldn't split the cluster (only one community found),
+        // fall back to using the min-cut partitions
+        if communityMap.size <= 1 {
+            writeln("Leiden couldn't split cluster ", id, ", falling back to min-cut partitions");
+            var cluster1, cluster2 = new set(int);
+            var partitionArr: [{0..<n}] int;
+            var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+                
+            // Separate vertices into two partitions using the min-cut result
+            for (v,p) in zip(partitionArr.domain, partitionArr) {
+                if p == 1 then cluster1.add(mapper[v]);
+                else cluster2.add(mapper[v]);
+            }
+            
+            writeln("Min-cut partition sizes - cluster1: ", cluster1.size, ", cluster2: ", cluster2.size);
+                
+            // Make sure the partitions meet the minimum size
+            if cluster1.size > postFilterMinSize {
+                writeln("Recursing on cluster1 from cluster ", id);
+                cmTwoRecursiveChecker(cluster1, id, depth+1);
+            } else {
+                writeln("cluster1 too small (", cluster1.size, " <= ", postFilterMinSize, "), skipping");
+            }
+            
+            if cluster2.size > postFilterMinSize {
+                writeln("Recursing on cluster2 from cluster ", id);
+                cmTwoRecursiveChecker(cluster2, id, depth+1);
+            } else {
+                writeln("cluster2 too small (", cluster2.size, " <= ", postFilterMinSize, "), skipping");
+            }
+        }
+        else {
+            writeln("Leiden found ", communityMap.size, " communities");
+            // Recurse on each Leiden community that meets the size threshold
+            for community in communityMap.keys() {
+                ref communitySet = communityMap[community];
+                if communitySet.size > postFilterMinSize {
+                    writeln("Recursing on Leiden community ", community, " (size ", communitySet.size, ") from cluster ", id);
+                    cmTwoRecursiveChecker(communitySet, id, depth+1);
+                } else {
+                    writeln("Leiden community ", community, " too small (", communitySet.size, " <= ", postFilterMinSize, "), skipping");
+                }
+            }
+        }
+        writeln("Finished processing cluster ", id);
         return;
-      }
-      else { // Cluster is not well-connected.
-        var cluster1, cluster2 = new set(int);
-        
-        // Separate vertices into two partitions.
-        for (v,p) in zip(partitionArr.domain, partitionArr) {
-          if p == 1 then cluster1.add(mapper[v]);
-          else cluster2.add(mapper[v]);
-        }
-        
-        // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
-        if cluster1.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var inPartition = removeDegreeOne(cluster1);
-          var inPartition = cluster1;
-          wccRecursiveChecker(inPartition, id, depth+1);
-        }
-        if cluster2.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var outPartition = removeDegreeOne(cluster2);
-          var outPartition = cluster2;
-          wccRecursiveChecker(outPartition, id, depth+1);
-        }
-      }
-      return;
     }
 
     /* Main executing function for well-connected components. */
-    proc wcc(g1: SegGraph): int throws {
+    proc cmTwo(g1: SegGraph): int throws {
       var outMsg = "Graph loaded with " + g1.n_vertices:string + " vertices and " 
                  + g1.n_edges:string + " edges.";
       cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -418,7 +568,7 @@ module ClusterModifierTwo {
                 tempMap[c] = s;
               }
             }
-            for c in tempMap.keys() { // NOTE: Could be parallel.
+            for c in tempMap.keys() { // NOTE: Could be parallel.Oliver why we did'nt ??
               var newId = newClusterIds.fetchAdd(1);
               if tempMap[c].size > preFilterMinSize {
                 newClusters[newId] = tempMap[c];
@@ -449,17 +599,17 @@ module ClusterModifierTwo {
                     + newClusterIdToOriginalClusterId[key]:string + ".";
           cm2Logger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
-        wccRecursiveChecker(clusterToAdd, key, 0);
+        cmTwoRecursiveChecker(clusterToAdd, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
       
-      outMsg = "WCC found " + globalId.read():string + " clusters to be well-connected.";
+      outMsg = "CM2 found " + globalId.read():string + " clusters to be well-connected.";
       cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
       return globalId.read();
-    } // end of wcc
+    } // end of cmTwo
     
-    var numClusters = wcc(g1);
+    var numClusters = cmTwo(g1);
     return numClusters;
   } // end of runCM2
 } // end of ClusterModifierTwo module
