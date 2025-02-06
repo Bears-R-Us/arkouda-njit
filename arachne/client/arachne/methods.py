@@ -17,6 +17,7 @@ __all__ = [ "read_matrix_market_file",
             "read_tsv_file",
             "bfs_layers",
             "subgraph_isomorphism",
+            "subgraph_monomorphism",
             "triangles",
             "squares",
             "k_truss",
@@ -427,14 +428,13 @@ def diameter(graph: Graph) -> int:
 
 @typechecked
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
-                         semantic_check:str = None,
+                         semantic_check:bool = False,
                          size_limit:int = None,
-                         time_limit:int = 0,
+                         time_limit:int = None,
+                         print_progress_interval:int = None,
                          return_isos_as:str = "vertices",
-                         algorithm_type:str = "ps",
-                         match_type: str = "mono",  # New parameter for match type
-                         reorder_type:str = None,
-                         print_progress_interval:int = 2) -> Union[pdarray,Tuple]:
+                         algorithm_type:str = "si",
+                         reorder_type:str = "structural" ) -> Union[pdarray,Tuple,int]:
     """
     Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
     are isomorphic to the subgraph. Uses parallel implementation of the VF2 algorithm 
@@ -446,11 +446,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         Host graph that will be searched into. 
     subgraph : PropGraph
         Subgraph (pattern/query) that is being searched for.
-    semantic_check : str
-        Enables semantic checking on the attributes of the graphs. If `None` then no semantic 
-        checking is performed. If `"and"` then all attributes must match for every vertex and edge 
-        in both the graph and subgraph. If `"or"` then at least one attribute must match for every 
-        vertex and edge in both the graph and subgraph.
+    semantic_check : bool
+        TODO: UPDATE.
     time_limit : int
         Enables a time limit to return whatever motifs have been found up to that minute.
     size_limit : int
@@ -466,7 +463,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         ordered list of subgraph vertices. If `"edges"` then the edges that make up each isomorphism
         in the original graph are returned. If `"complete"` then both vertices AND edges are
         returned with a mapper to faciliatate finding which subgraph vertex is mapped to a given 
-        host graph vertex per subgraph slice.
+        host graph vertex per subgraph slice. If `"count"` then only the count is returned.
     algorithm_type : str
         There are currently two versions of subgraph isomorphism available. The version denoted
         by `ps` is a paralell and scalable version of the original VF2 algorithm. The version `si`
@@ -496,6 +493,106 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         Selected with `return_isos_as = "edges"`.
     (pdarray,pdarray,pdarray,pdarray)
         All the vertex and edge information combined. Selected with `return_isos_as = "complete"`.
+    int
+        The count of isomorphisms found.
+    
+    See Also
+    --------
+    triangles, k_truss
+    """
+    cmd = "subgraphIsomorphism"
+    args = { "MainGraphName":graph.name,
+             "SubGraphName":subgraph.name,
+             "SemanticCheck": semantic_check,
+             "SizeLimit": size_limit,
+             "TimeLimit": time_limit,
+             "ReturnIsosAs": return_isos_as,
+             "ReorderType": reorder_type,
+             "AlgorithmType": algorithm_type,
+             "MatchType": "isomorphism",
+             "PrintProgressInterval": print_progress_interval }
+
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    returned_vals = (cast(str, rep_msg).split('+'))
+
+    if return_isos_as == "complete":
+        return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]),
+                create_pdarray(returned_vals[2]), create_pdarray(returned_vals[3]))
+
+    if return_isos_as == "edges":
+        return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
+
+    if return_isos_as == "vertices":
+        return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
+    
+    return int(rep_msg)
+
+@typechecked
+def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
+                          semantic_check:bool = False,
+                          size_limit:int = None,
+                          time_limit:int = None,
+                          print_progress_interval:int = None,
+                          return_isos_as:str = "vertices",
+                          algorithm_type:str = "si",
+                          reorder_type:str = "structural" ) -> Union[pdarray,Tuple,int]:
+    """
+    Given a graph and a subgraph, perform a search in graph matching all possible subgraphs that
+    are isomorphic to the subgraph. Uses parallel implementation of the VF2 algorithm 
+    (https://ieeexplore.ieee.org/document/1323804).
+
+    Parameters
+    ----------
+    graph : PropGraph
+        Host graph that will be searched into. 
+    subgraph : PropGraph
+        Subgraph (pattern/query) that is being searched for.
+    semantic_check : bool
+        TODO: UPDATE.
+    time_limit : int
+        Enables a time limit to return whatever motifs have been found up to that minute.
+    size_limit : int
+        Caps the number of isomorphisms returned. If `None` then no size limit is enforced. Due to
+        the highly parallel nature of subgraph isomorphism, the actual returned number of 
+        isomorphisms will always be greater than or equal to `size_limit`. This is due to the fact
+        that some parallel tasks may still be in the process of adding a found isomorphism after
+        the size limit has been reached. This is allowed to prevent the `size_limit` check from 
+        cutting up isomorphisms before they are fully formed and leaving partially found
+        isomorphisms in the results.
+    return_isos_as : str
+        If `"vertices"` then the found isomorphism are returned as vertices corresponding to the
+        ordered list of subgraph vertices. If `"edges"` then the edges that make up each isomorphism
+        in the original graph are returned. If `"complete"` then both vertices AND edges are
+        returned with a mapper to faciliatate finding which subgraph vertex is mapped to a given 
+        host graph vertex per subgraph slice. If `"count"` then only the count is returned.
+    algorithm_type : str
+        There are currently two versions of subgraph isomorphism available. The version denoted
+        by `ps` is a paralell and scalable version of the original VF2 algorithm. The version `si`
+        is experimental and creates original states based off existing edges only. Experiments show
+        that `si` outperforms `ps` for large graphs.
+    reorder_type : str
+        Reorders the subgraph according to "probability" or "structural".
+    print_progress_interval : int
+        Maintains how often the progress should be printed server-side for how many patterns have
+        been found.
+        
+
+    Returns
+    -------
+    (pdarray,pdarray)
+        If there are `n` vertices in the subgraph and the graph has `k` subgraphs that are 
+        isomorphic, then the size of the returned `pdarray` is `n*k`. The array can be thought of as
+        a segmented array where slices of size `n` will give a complete subgraph from the main 
+        graph. Selected with `return_isos_as = "vertices"`.
+    (pdarray,pdarray)
+        If there are `m` edges in the subgraph and the graph has `k` subgraphs that are isomorphic, 
+        then the size of the returned `pdarray` is `m*k`. The array can be thought of as a segmented
+        array where slices of size `m` will give a complete subgraph from the main graph.
+        Selected with `return_isos_as = "edges"`.
+    (pdarray,pdarray,pdarray,pdarray)
+        All the vertex and edge information combined. Selected with `return_isos_as = "complete"`.
+    int
+        The count of monomorphisms found.
     
     See Also
     --------
@@ -510,7 +607,7 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
              "ReturnIsosAs": return_isos_as,
              "ReorderType": reorder_type,
              "AlgorithmType": algorithm_type,
-             "MatchType": match_type,  # Pass match type to the command
+             "MatchType": "monomorphism",
              "PrintProgressInterval": print_progress_interval }
 
     rep_msg = generic_msg(cmd=cmd, args=args)
@@ -523,7 +620,10 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
     if return_isos_as == "edges":
         return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
 
-    return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
+    if return_isos_as == "vertices":
+        return (create_pdarray(returned_vals[0]), create_pdarray(returned_vals[1]))
+    
+    return int(rep_msg)
 
 @typechecked
 def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,

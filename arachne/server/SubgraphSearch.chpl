@@ -1,4 +1,4 @@
-module SubgraphIsomorphism {
+module SubgraphSearch {
   // Chapel modules.
   use Reflection;
   use List;
@@ -254,6 +254,22 @@ module SubgraphIsomorphism {
   var nodeUIntProbabilityDistributions = new map(string, map(uint, real));
   var nodeRealProbabilityDistributions = new map(string, map(real, real));
   var nodeBoolProbabilityDistributions = new map(string, map(bool, real));
+
+  proc clearModuleLevelProbabilityMaps() {
+    edgeCategoricalProbabilityDistributions.clear();
+    edgeStringsProbabilityDistributions.clear();
+    edgeIntProbabilityDistributions.clear();
+    edgeUIntProbabilityDistributions.clear();
+    edgeRealProbabilityDistributions.clear();
+    edgeBoolProbabilityDistributions.clear();
+
+    nodeCategoricalProbabilityDistributions.clear();
+    nodeStringsProbabilityDistributions.clear();
+    nodeIntProbabilityDistributions.clear();
+    nodeUIntProbabilityDistributions.clear();
+    nodeRealProbabilityDistributions.clear();
+    nodeBoolProbabilityDistributions.clear();
+  }
 
   /* Generates the probability distribution for given subgraph attributes derived from the host
      graph. */
@@ -1082,20 +1098,18 @@ module SubgraphIsomorphism {
   /* Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
   searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
   array that maps the isomorphic vertices of `g1` to those of `g2`. */
-  proc runVF2(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
-              sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, reorderType: string, 
-              matchType: string, st: borrowed SymTab) throws {
+  proc runMatcher(g1: SegGraph, g2: SegGraph, semanticCheck: string, returnIsosAs:string,
+                  sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
+                  algType: string, returnIsosAs:string, reorderType: string, 
+                  matchType: string, st: borrowed SymTab) throws {
 
     var numIso: int = 0;
     var numIsoAtomic: chpl__processorAtomicType(int) = 0;
-    var semanticAndCheck = if semanticCheckType == "and" then true else false;
-    var semanticOrCheck = if semanticCheckType == "or" then true else false;
-    // var semanticNoneCheck = if semanticCheckType == "none" then true else false;
-    // writeln("semanticNoneCheck = ", semanticNoneCheck);
+    var semanticCheck = semanticCheck:bool;
     var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
     var limitSize:bool = if matchLimit > 0 then true else false;
     var limitTime:bool = if timeLimit > 0 then true else false;
+    var countOnly:bool = if returnIsosAs == "count" then true else false;
     var printProgressCheck:bool = if printProgressInterval > 0 then true else false;
     var stopper:atomic bool = false;
     timeLimit *= 60;
@@ -1138,7 +1152,6 @@ module SubgraphIsomorphism {
     }
 
     // Reorder the subgraph vertices and edges. If algtype is "si" the reorder flag will be igored!
-    //var newOrdering = if reorder then getSubgraphReordering(g2, st) else new map(int, int);
     var newOrdering = if reorderType != "None" then getSubgraphReordering(g2, reorderType, st) 
                       else new map(int, int);
 
@@ -1177,16 +1190,6 @@ module SubgraphIsomorphism {
     var nG2 = nodeMapGraphG2.size;
     var mG2 = srcNodesG2.size;
 
-    // writeln("********************************************************************");
-    // writeln("Initial srcNodesG2: ", srcNodesG2);
-    // writeln("Initial dstNodesG2: ", dstNodesG2);
-    // writeln("Initial segGraphG2: ", segGraphG2);
-    // writeln("Initial nG2: ", nG2);
-    // writeln("Initial mG2: ", mG2);
-    // writeln("Initial subgraphEdgeAttributes: ", subgraphEdgeAttributes);
-    // writeln("Initial subgraphNodeAttributes: ", subgraphNodeAttributes);
-    // writeln("********************************************************************");
-
     // Check to see if there are vertex and edge attributes.
     var noVertexAttributes = if subgraphNodeAttributes.size == 0 then true else false;
     var noEdgeAttributes = if subgraphEdgeAttributes.size == 0 then true else false;
@@ -1196,8 +1199,8 @@ module SubgraphIsomorphism {
     var timer:stopwatch;
     timer.start();
 
-    /* Pick the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
-    proc vertexPickerStructral() throws {
+    /* Validates the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
+    proc vertexValidator() throws {
       var Tin_0 = segRG2[1] - segRG2[0];
       var Tout_0 = segGraphG2[1] - segGraphG2[0];
 
@@ -1868,108 +1871,36 @@ module SubgraphIsomorphism {
     var allMappingsArrayD = makeDistDom(1);
     var allMappingsArray: [allMappingsArrayD] int;
 
-    // Call out to one of the vf2 procedures.
     if algType == "ps" {
       var allmappings = VF2PS(g1, g2);
+      allMappingsArrayD = makeDistDom(allmappings.size);
+      allMappingsArray = allmappings;
+    }
+    else if algType == "si" {
+      var vertexValidatorTimer:stopwatch;
+      vertexValidatorTimer.start();
+      vertexValidator();
+      vertexValidatorTimer.stop();
+      var outMsg = "Vertex validator took: " + vertexValidatorTimer.elapsed():string + " sec";
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+      var countTrue = + reduce vertexFlagger;
+      outMsg = "Vertex validator approved %i out of %i vertices".format(countTrue, g1.n_vertices);
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+      var siTimer:stopwatch;
+      siTimer.start();
+      var allmappings = VF2SIFromVertices(g1,g2);
+      siTimer.stop();
+      outMsg = "SI took: " + siTimer.elapsed():string + " sec";
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       allMappingsArrayD = makeDistDom(allmappings.size);
       allMappingsArray = allmappings;
     }
+    clearModuleLevelProbabilityMaps();
 
-    if algType == "si" {
-      var pickerTimer:stopwatch;
-      //if reorderType == "structural" {
-        pickerTimer.start();
-
-        vertexPickerStructral();
-        var outMsg = "Vertex picker took: " + pickerTimer.elapsed():string + " sec";
-        pickerTimer.reset();
-        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-        var countTrue = + reduce vertexFlagger;
-        writeln("Number nodes that we picked: ", countTrue, " out of ", g1.n_vertices);
-
-        var VF2_si_Timer:stopwatch;
-        VF2_si_Timer.start();
-        var allmappings = VF2SIFromVertices(g1,g2);
-        VF2_si_Timer.stop();
-        writeln("\n\nVF2_si_Timer",VF2_si_Timer.elapsed());
-        writeln("\n\n");
-
-        /* Module-level maps must be cleared. */
-        edgeCategoricalProbabilityDistributions.clear();
-        edgeStringsProbabilityDistributions.clear();
-        edgeIntProbabilityDistributions.clear();
-        edgeUIntProbabilityDistributions.clear();
-        edgeRealProbabilityDistributions.clear();
-        edgeBoolProbabilityDistributions.clear();
-
-        nodeCategoricalProbabilityDistributions.clear();
-        nodeStringsProbabilityDistributions.clear();
-        nodeIntProbabilityDistributions.clear();
-        nodeUIntProbabilityDistributions.clear();
-        nodeRealProbabilityDistributions.clear();
-        nodeBoolProbabilityDistributions.clear();
-
-        allMappingsArrayD = makeDistDom(allmappings.size);
-        allMappingsArray = allmappings;
-      //} 
-      
-      // else if reorderType == "probability" {
-      //           pickerTimer.start();
-
-      //           edgePickerStructural(true);
-      //           var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
-      //           writeln("edgeFlagger.size = ", edgeFlagger);
-      //           pickerTimer.reset();
-      //           siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-      //           var allmappings = VF2SIFromEdges(g1,g2);
-
-      //           allMappingsArrayD = makeDistDom(allmappings.size);
-      //           allMappingsArray = allmappings;
-      // }
-
-      // } else if !noEdgeAttributes && noVertexAttributes { // Graph only has edge attributes.
-      //   pickerTimer.start();
-      //   edgePicker();
-      //   var outMsg = "Edge picker took: " + pickerTimer.elapsed():string + " sec";
-      //   pickerTimer.reset();
-      //   siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      //   // writeln("//////////////////////////////////////////////////////");
-      //   // writeln("*******************VF2SIFromEdges 1*******************");
-      //   var allmappings = VF2SIFromEdges(g1,g2);
-
-      //   allMappingsArrayD = makeDistDom(allmappings.size);
-      //   allMappingsArray = allmappings;
-      // } else if !noVertexAttributes && !noVertexAttributes { // Graph has both attributes.
-      //   pickerTimer.start();
-      //   edgePicker(true);
-      //   var outMsg = "Combined picker took: " + pickerTimer.elapsed():string + " sec";
-      //   // writeln("edgeFlagger.size = ", edgeFlagger);
-      //   pickerTimer.reset();
-      //   siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      //   // writeln("//////////////////////////////////////////////////////");
-      //   // writeln("*******************VF2SIFromEdges 2*******************");
-      //   var allmappings = VF2SIFromEdges(g1,g2);
-
-      //   allMappingsArrayD = makeDistDom(allmappings.size);
-      //   allMappingsArray = allmappings;
-      // } else { // Graph has no attributes.
-      //   edgeFlagger = true;
-      //   // writeln("//////////////////////////////////////////////////////");
-      //   // writeln("*******************VF2SIFromEdges 3******************");
-      //   // writeln("*******************edgeFlagger == ",edgeFlagger,"******************");
-        
-      //   var allmappings = VF2SIFromEdges(g1,g2);
-      //   // writeln("allmappings.size = ", allmappings.size);
-      //   allMappingsArrayD = makeDistDom(allmappings.size);
-      //   allMappingsArray = allmappings;
-      // }
-    }
-    timer.stop();
-
-    var isoArr = nodeMapGraphG1[allMappingsArray]; // Map vertices back to original values.
+    var isoArr = nodeMapGraphG1[allMappingsArray];
     var tempArr: [0..0] int;
 
     var numSubgraphVertices = nodeMapGraphG2.size;

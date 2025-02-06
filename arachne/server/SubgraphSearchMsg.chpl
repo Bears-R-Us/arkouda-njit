@@ -1,4 +1,4 @@
-module SubgraphIsomorphismMsg {
+module SubgraphSearchMsg {
   // Chapel modules.
   use Reflection;
   use Map;
@@ -6,7 +6,7 @@ module SubgraphIsomorphismMsg {
   
   // Arachne modules.
   use GraphArray;
-  use SubgraphIsomorphism; 
+  use SubgraphSearch; 
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -36,14 +36,14 @@ module SubgraphIsomorphismMsg {
   
   :returns: MsgTuple
   */
-  proc subgraphIsomorphismMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+  proc subgraphSearchMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
     param pn = Reflection.getRoutineName();
     var repMsg, outMsg:string;
 
     // Extract messages sent from Python.
     var graphEntryName = msgArgs.getValueOf("MainGraphName");
     var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
-    var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
+    var semanticCheck = msgArgs.getValueOf("SemanticCheckType");
     var sizeLimit = msgArgs.getValueOf("SizeLimit");
     var timeLimit = msgArgs.getValueOf("TimeLimit"):int;
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
@@ -82,8 +82,9 @@ module SubgraphIsomorphismMsg {
       }
 
       timer.start();
-      var isos = runVF2(g,h,semanticCheckType,sizeLimit,timeLimit,
-                        printProgressInterval,algorithmType,returnIsosAs,reorderType,matchType,st);
+      var isos = runMatcher(g,h,semanticCheck,returnIsosAs,sizeLimit,timeLimit,
+                            printProgressInterval,algorithmType,returnIsosAs,reorderType,
+                            matchType,st);
       timer.stop();
       outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
@@ -130,6 +131,9 @@ module SubgraphIsomorphismMsg {
                + "+ created " + st.attrib(isosAsVerticesMapperName)
                + "+ created " + st.attrib(isosAsEdgesSrcName)
                + "+ created " + st.attrib(isosAsEdgesDstName);
+      } else if {
+        var count = isos[0];
+        repMsg = count:string;
       } else {
         var errorMsg = notImplementedError(pn, "return_isos_as type");
         siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
@@ -140,12 +144,12 @@ module SubgraphIsomorphismMsg {
 
       return new MsgTuple(repMsg, MsgType.NORMAL);
     } else {
-      var errorMsg = notImplementedError(pn, "subgraph isomorphism for undirected graphs");
+      var errorMsg = notImplementedError(pn, "subgraph %s for undirected graphs".format(matchType));
       siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
       return new MsgTuple(errorMsg, MsgType.ERROR);
     }
-  } // end of subgraphIsomorphismMsg
+  } // end of subgraphSearchMsg
 
   use CommandMap;
-  registerFunction("subgraphIsomorphism", subgraphIsomorphismMsg, getModuleName());
+  registerFunction("subgraphSearch", subgraphSearchMsg, getModuleName());
 } // end of module
