@@ -1101,6 +1101,7 @@ module SubgraphSearch {
     var timer:stopwatch;
     timer.start();
 
+    var validatedVertices = new list(int, parSafe=true);
     /* Validates the vertices from the host graph that can be mapped to vertex 0 in the data graph. */
     proc vertexValidator() throws {
       var Tin_0 = segRG2[1] - segRG2[0];
@@ -1704,11 +1705,13 @@ module SubgraphSearch {
       return allCounts;
     }
 
-    /* Executes state injection. */
-    proc stateInjection(g1: SegGraph, g2: SegGraph) throws {
+    /* Executes edge-centric state injection. */
+    proc edgeCentricStateInjection(g1: SegGraph, g2: SegGraph) throws {
       var solutions: list(int, parSafe=true);
       var counts: chpl__processorAtomicType(int) = 0;
       forall edgeIndex in 0..<mG1 with(ref solutions) {
+        if limitTime || limitSize then if stopper.read() then continue;
+
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
 
@@ -1742,7 +1745,52 @@ module SubgraphSearch {
       for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
 
       return subIsoArrToReturn;
-    } // end of stateInjection
+    } // end of edgeCentricStateInjection
+
+    /* Executes vertex-centric state injection. */
+    proc vertexCentricStateInjection(g1: SegGraph, g2: SegGraph) throws {
+      var solutions: list(int, parSafe=true);
+      var counts: chpl__processorAtomicType(int) = 0;
+      forall u in validatedVertices with(ref solutions) {
+        if limitTime || limitSize then if stopper.read() then continue;
+
+        const ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
+        for v in outNeighbors {
+          if u != v {
+            var initialState = new State(g1.n_vertices, g2.n_vertices);
+
+            var edgeChecked:bool;
+            if findingIsos then 
+              edgeChecked = addToTinToutMVE_ISO(u, v, initialState);
+            else 
+              edgeChecked = addToTinToutMVE_MONO(u, v, initialState);
+
+            if edgeChecked {
+              var newMappings: list(int, parSafe=true);
+              var newCounts: chpl__processorAtomicType(int);
+              if countOnly && (limitSize || limitTime || printProgressCheck) {
+                newCounts = recursiveMatchCounterVerbose(initialState, 2);
+                counts.add(newCounts.read());
+              } else if countOnly {
+                newCounts = recursiveMatchCounterFast(initialState, 2);
+                counts.add(newCounts.read());
+              } else if !countOnly && (limitSize || limitTime) {
+                newMappings = recursiveMatchSaverVerbose(initialState, 2);
+                for mapping in newMappings do solutions.pushBack(mapping);
+              } else {
+                newMappings = recursiveMatchSaverFast(initialState, 2);
+                for mapping in newMappings do solutions.pushBack(mapping);
+              }
+            }
+          }
+        }
+      }
+      if countOnly then solutions.pushBack(counts.read());
+      var subIsoArrToReturn: [0..#solutions.size](int);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+
+      return subIsoArrToReturn;
+    } // end of vertexCentricStateInjection
 
     /* Executes VF2PS. */
     proc VF2PS(g1: SegGraph, g2: SegGraph) throws {
@@ -1777,7 +1825,7 @@ module SubgraphSearch {
       vf2psTimer.start();
       var allmappings = VF2PS(g1, g2);
       vf2psTimer.stop();
-      var outMsg = "VF2PS took: " + vf2psTimer.elapsed():string + " sec";
+      var outMsg = "VF2PS took: " + vf2psTimer.elapsed():string + " sec(s)";
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       allMappingsArrayD = makeDistDom(allmappings.size);
@@ -1788,28 +1836,50 @@ module SubgraphSearch {
       vertexValidatorTimer.start();
       vertexValidator();
       vertexValidatorTimer.stop();
-      var outMsg = "Vertex validator took: " + vertexValidatorTimer.elapsed():string + " sec";
+      var outMsg = "Vertex validator took: " + vertexValidatorTimer.elapsed():string + " sec(s)";
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       var countTrue = + reduce vertexFlagger;
       outMsg = "Vertex validator approved %i out of %i vertices".format(countTrue, g1.n_vertices);
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-      var siTimer:stopwatch;
-      siTimer.start();
-      var allmappings = stateInjection(g1,g2);
-      siTimer.stop();
-      outMsg = "SI took: " + siTimer.elapsed():string + " sec";
+      var selectedPercentage = countTrue:real / g1.n_vertices:real;
+      outMsg = "Ratio of vertices that were validated: %.5dr".format(selectedPercentage);
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-      allMappingsArrayD = makeDistDom(allmappings.size);
-      allMappingsArray = allmappings;
+      if selectedPercentage > 0.05 {
+        var siTimer:stopwatch;
+        siTimer.start();
+        var allmappings = edgeCentricStateInjection(g1,g2);
+        siTimer.stop();
+        outMsg = "Edge-Centric SI took: " + siTimer.elapsed():string + " sec(s)";
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        allMappingsArrayD = makeDistDom(allmappings.size);
+        allMappingsArray = allmappings;
+      } else {
+        var validatedVerticesTimer:stopwatch;
+        validatedVerticesTimer.start();
+        forall (u,i) in zip(vertexFlagger,vertexFlagger.domain) with (ref validatedVertices) do 
+          if u == true then validatedVertices.pushBack(i);
+        validatedVerticesTimer.stop();
+        outMsg = "Building validated vertices took: " + validatedVerticesTimer.elapsed():string + " sec(s)";
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
+        var siTimer:stopwatch;
+        siTimer.start();
+        var allmappings = vertexCentricStateInjection(g1,g2);
+        siTimer.stop();
+        outMsg = "Vertex-Centric SI took: " + siTimer.elapsed():string + " sec(s)";
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        allMappingsArrayD = makeDistDom(allmappings.size);
+        allMappingsArray = allmappings;
+      }
     }
     clearModuleLevelProbabilityMaps();
 
     var isoArr = nodeMapGraphG1[allMappingsArray];
     var tempArr: [0..0] int;
-    if returnIsosAs == "count" then return(isoArr, tempArr, tempArr, tempArr);
+    if returnIsosAs == "count" then return(allMappingsArray, tempArr, tempArr, tempArr);
 
     var numSubgraphVertices = nodeMapGraphG2.size;
     var numSubgraphEdges = srcNodesG2.size;
