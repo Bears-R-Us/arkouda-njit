@@ -428,7 +428,6 @@ def diameter(graph: Graph) -> int:
 
 @typechecked
 def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
-                         semantic_check:bool = False,
                          size_limit:int = None,
                          time_limit:int = None,
                          print_progress_interval:int = None,
@@ -446,8 +445,6 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         Host graph that will be searched into. 
     subgraph : PropGraph
         Subgraph (pattern/query) that is being searched for.
-    semantic_check : bool
-        TODO: UPDATE.
     time_limit : int
         Enables a time limit to return whatever motifs have been found up to that minute.
     size_limit : int
@@ -500,10 +497,9 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
     --------
     triangles, k_truss
     """
-    cmd = "subgraphIsomorphism"
+    cmd = "subgraphSearch"
     args = { "MainGraphName":graph.name,
              "SubGraphName":subgraph.name,
-             "SemanticCheck": semantic_check,
              "SizeLimit": size_limit,
              "TimeLimit": time_limit,
              "ReturnIsosAs": return_isos_as,
@@ -529,7 +525,6 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
 
 @typechecked
 def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
-                          semantic_check:bool = False,
                           size_limit:int = None,
                           time_limit:int = None,
                           print_progress_interval:int = None,
@@ -547,8 +542,6 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
         Host graph that will be searched into. 
     subgraph : PropGraph
         Subgraph (pattern/query) that is being searched for.
-    semantic_check : bool
-        TODO: UPDATE.
     time_limit : int
         Enables a time limit to return whatever motifs have been found up to that minute.
     size_limit : int
@@ -598,11 +591,10 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
     --------
     triangles, k_truss
     """
-    cmd = "subgraphIsomorphism"
+    cmd = "subgraphSearch"
     args = { "MainGraphName":graph.name,
              "SubGraphName":subgraph.name,
-             "SemanticCheckType": str(semantic_check).lower(),
-             "SizeLimit": str(size_limit).lower(),
+             "SizeLimit": size_limit,
              "TimeLimit": time_limit,
              "ReturnIsosAs": return_isos_as,
              "ReorderType": reorder_type,
