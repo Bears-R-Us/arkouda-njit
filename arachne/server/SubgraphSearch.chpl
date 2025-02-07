@@ -15,8 +15,8 @@ module SubgraphSearch {
   // Arachne modules.
   use GraphArray;
   use Utils;
-  use SubgraphIsomorphismMsg;
-  use WellConnectedComponents; // for edge list sort
+  use SubgraphSearchMsg;
+  use WellConnectedComponents;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -114,81 +114,45 @@ module SubgraphSearch {
     strings and then compared. Users should be encouraged to maintain their own integer 
     categorical consistencies and use integer attribute matching instead.
   */
-  proc doAttributesMatch(graphIdx, subgraphIdx, const ref graphAttributes, const ref subgraphAttributes, 
+  proc doAttributesMatch(graphIdx, subgraphIdx, 
+                         const ref graphAttributes, const ref subgraphAttributes, 
                          st: borrowed SymTab) throws {
-    // writeln("doAttributesMatch call to check g1 index: ",graphIdx, " with g2 index: ", subgraphIdx);
     var outerMatch:bool = true;
     var matchCounter:int = 0;
-    // writeln(" graphAttributes.size = ",  graphAttributes.size);
-    // writeln(" subgraphAttributes.size = ",  subgraphAttributes.size);
-    
+
     if graphAttributes.size <= 0 && subgraphAttributes.size <= 0 then return true;
     if graphAttributes.size <= 0 && subgraphAttributes.size >= 1 then return false;
     if graphAttributes.size >= 1 && subgraphAttributes.size <= 0 then return true;
 
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
-      // writeln("Checking subgraph attribute key: ", k);
-      // writeln("Checking subgraph attribute value type: ", v[1]);
-      
-      // check if attribute exists in graph
-      if !graphAttributes.contains(k) {
-        // writeln("Graph does not contain attribute key: ", k);
-        continue;
-      }
+      if !graphAttributes.contains(k) then continue; // Check if attribute exists in graph.
+      if v[1] != graphAttributes[k][1] then continue; // Check if types are the same.
 
-      // check if types are same
-      if v[1] != graphAttributes[k][1] {
-        // writeln("Type mismatch for key: ", k, " (subgraph type: ", v[1], ", graph type: ", graphAttributes[k][1], ")");
-        continue;
-      }      
-
-      var innerMatch:bool;
-
-      // writeln("Matched key: ", k, " with type: ", v[1]);
-
-      // Check the actual data.
+      var innerMatch:bool; // To be used in operation outerMatch && innerMatch.
       select v[1] {
         when "Categorical" {
-          
-          // writeln("Processing Categorical attribute for key: ", k);
-
           var subgraphArrEntry = (st.registry.tab(v[0])):shared CategoricalRegEntry;
           const ref subgraphArr = toSymEntry(getGenericTypedArrayEntry(subgraphArrEntry.codes, st), int).a;
-          const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);
-          //writeln("Subgraph categorical labels: ", subgraphCats);
+          const ref subgraphCats = getSegString(subgraphArrEntry.categories, st);     
 
           var graphArrEntry = (st.registry.tab(graphAttributes[k][0])):shared CategoricalRegEntry;
           const ref graphArr = toSymEntry(getGenericTypedArrayEntry(graphArrEntry.codes, st), int).a;
-          const ref graphCats = getSegString(graphArrEntry.categories, st);
-          //writeln("Graph categorical labels: ", graphCats);
+          const ref graphCats = getSegString(graphArrEntry.categories, st);               
 
           innerMatch = (subgraphCats[subgraphArr[subgraphIdx]] == graphCats[graphArr[graphIdx]]);
-          //writeln("Categorical match result: ", innerMatch);
-
           matchCounter += 1;
         }
         when "Strings" {
-          // writeln("Processing String attribute for key: ", k);
-
           var subgraphStrings = getSegString(v[0], st);
           var graphStrings = getSegString(graphAttributes[k][0], st);
-          // writeln("Subgraph string labels: ", subgraphStrings);
-          // writeln("Graph string labels: ", graphStrings);
 
           innerMatch = subgraphStrings[subgraphIdx] == graphStrings[graphIdx];
-          // writeln("String match result: ", innerMatch);
-
           matchCounter += 1;
         }
         when "pdarray" {
-          // writeln("Processing pdarray attribute for key: ", k);
-
           var subgraphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(v[0], st);
           var graphArrEntry: borrowed GenSymEntry = getGenericTypedArrayEntry(graphAttributes[k][0], st);
-          if subgraphArrEntry.dtype != graphArrEntry.dtype {
-            // writeln("Type mismatch in pdarray for key: ", k);
-            continue;
-          }
+          if subgraphArrEntry.dtype != graphArrEntry.dtype then continue;
 
           var etype = subgraphArrEntry.dtype;
           select etype {
@@ -217,26 +181,14 @@ module SubgraphSearch {
               matchCounter += 1;
             }
           }
-          // writeln("pdarray match result for key: ", k, " is: ", innerMatch);
-
         }
       }
-      // writeln("Match result for key: ", k, " is: ", innerMatch);
-
       outerMatch = outerMatch && innerMatch;
-      
     }
     
     // This means no attributes in the subgraph were matched with attributes in the main graph.
-    // This can be caused by none of the attribute names or types matching.
-    if matchCounter == 0 {
-      // writeln("No attributes matched between subgraph and main graph.");
-      return false;
-    }
-    // writeln("Final match result: ", outerMatch);
-
-
-    
+    // This can be caused by none of the attribute names, types, or data matching.
+    if matchCounter == 0 then return false;
     return outerMatch;
   } // end of doAttributesMatch
 
@@ -255,6 +207,7 @@ module SubgraphSearch {
   var nodeRealProbabilityDistributions = new map(string, map(real, real));
   var nodeBoolProbabilityDistributions = new map(string, map(bool, real));
 
+  /* Clears the module-level probability maps above. */
   proc clearModuleLevelProbabilityMaps() {
     edgeCategoricalProbabilityDistributions.clear();
     edgeStringsProbabilityDistributions.clear();
@@ -269,17 +222,16 @@ module SubgraphSearch {
     nodeUIntProbabilityDistributions.clear();
     nodeRealProbabilityDistributions.clear();
     nodeBoolProbabilityDistributions.clear();
-  }
+  } // end of clearModuleLevelProbabilityMaps
 
   /* Generates the probability distribution for given subgraph attributes derived from the host
      graph. */
   proc generateProbabilityDistribution(const ref subgraphAttributes, const ref graphAttributes, 
                                        attributeBelongsTo:string, st: borrowed SymTab) throws {
     for (k,v) in zip(subgraphAttributes.keys(), subgraphAttributes.values()) {
-      if !graphAttributes.contains(k) then continue; // check if attribute exists in graph
-      if v[1] != graphAttributes[k][1] then continue; // check if types are same
+      if !graphAttributes.contains(k) then continue; // Check if attribute exists in graph.
+      if v[1] != graphAttributes[k][1] then continue; // Check if types are the same.
 
-      // Check the actual data.
       select v[1] {
         when "Categorical" {
           var graphArrEntry = (st.registry.tab(graphAttributes[k][0])):shared CategoricalRegEntry;
@@ -288,7 +240,8 @@ module SubgraphSearch {
           
           var (values, counts) = uniqueSort(graphArr);
           var probMap = new map(string, real);
-          for (v,c) in zip (values,counts) do probMap.add(graphCats[v], c:real / graphArr.size:real);
+          for (v,c) in zip (values,counts) do 
+            probMap.add(graphCats[v], c:real / graphArr.size:real);
 
           if attributeBelongsTo == "edge" then 
             edgeCategoricalProbabilityDistributions.add(k, probMap);
@@ -301,7 +254,8 @@ module SubgraphSearch {
           
           var values = getSegString(uo, uv, st);
           var probMap = new map(string, real);
-          for (v,c) in zip (counts.domain, counts) do probMap.add(values[v], c:real / graphStrings.size:real);
+          for (v,c) in zip (counts.domain, counts) do 
+            probMap.add(values[v], c:real / graphStrings.size:real);
 
           if attributeBelongsTo == "edge" then 
             edgeStringsProbabilityDistributions.add(k, probMap);
@@ -320,7 +274,8 @@ module SubgraphSearch {
               
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(int, real);
-              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              for (v,c) in zip (values,counts) do 
+                probMap.add(v, c:real / graphArr.size:real);
 
               if attributeBelongsTo == "edge" then 
                 edgeIntProbabilityDistributions.add(k, probMap);
@@ -332,7 +287,8 @@ module SubgraphSearch {
               
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(uint, real);
-              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              for (v,c) in zip (values,counts) do 
+                probMap.add(v, c:real / graphArr.size:real);
 
               if attributeBelongsTo == "edge" then 
                 edgeUIntProbabilityDistributions.add(k, probMap);
@@ -344,7 +300,8 @@ module SubgraphSearch {
               
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(real, real);
-              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              for (v,c) in zip (values,counts) do 
+                probMap.add(v, c:real / graphArr.size:real);
 
               if attributeBelongsTo == "edge" then 
                 edgeRealProbabilityDistributions.add(k, probMap);
@@ -356,7 +313,8 @@ module SubgraphSearch {
               
               var (values, counts) = uniqueSort(graphArr);
               var probMap = new map(bool, real);
-              for (v,c) in zip (values,counts) do probMap.add(v, c:real / graphArr.size:real);
+              for (v,c) in zip (values,counts) do 
+                probMap.add(v, c:real / graphArr.size:real);
 
               if attributeBelongsTo == "edge" then 
                 edgeBoolProbabilityDistributions.add(k, probMap);
@@ -367,7 +325,7 @@ module SubgraphSearch {
         }
       }
     }
-  }
+  } // end of generateProbabilityDistribution
 
   /* Given a subgraph and host graph probability distribution, generates the probability of each
      vertex and edge with given attributes to appear in the host graph. */
@@ -472,7 +430,7 @@ module SubgraphSearch {
     }
 
     return (edgeProbabilities, nodeProbabilities);
-  }
+  } // end of getSubgraphProbabilities
 
   /* Computes the degree of a graph when only source and destination arrays are known. */
   proc computeDegrees(src, dst) throws {
@@ -500,7 +458,7 @@ module SubgraphSearch {
     var totalDegree = inDegree + outDegree;
 
     return (uniqueNodes, nodeToIndex, inDegree, outDegree, totalDegree);
-  }
+  } // end of computeDegrees
 
   /* When some vertex u is reindexed, then the degrees need to be updated. */
   proc updateDegrees(src, dst, uniqueNodes) throws {
@@ -520,7 +478,7 @@ module SubgraphSearch {
     var totalDegree = inDegree + outDegree;
 
     return (inDegree, outDegree, totalDegree);
-  }
+  } // end of updateDegrees
 
   /* Define a custom tuple comparator. */
   record CandidatesComparator {
@@ -532,10 +490,12 @@ module SubgraphSearch {
       else if a[1] == b[1] && a[2] == b[2] then return b[3] - a[3];
       else return b[3] - a[3];
     }
-  }
+  } // end of CandidatesComparator
 
   /* Generates a mapping of old vertex identifiers to new vertex identifiers. */
   proc getSubgraphReordering(subgraph: SegGraph, reorderType: string, st: borrowed SymTab) throws {
+    var outMsg:string;
+    
     // Extract copies and references to subgraph source and destination arrays.
     var srcTemp = toSymEntry(subgraph.getComp("SRC_SDI"), int).a;
     var dstTemp = toSymEntry(subgraph.getComp("DST_SDI"), int).a;
@@ -554,18 +514,10 @@ module SubgraphSearch {
     
     // Get the probabilities of each edge and vertex from the subgraph appearing in the main graph.
     var (edgeProbabilities, nodeProbabilities) = getSubgraphProbabilities(subgraph, st);
-
-    writeln("initial srcTemp = ", srcTemp);
-    writeln("initial dstTemp = ", dstTemp);
-    writeln("uniqueNodes     = ", uniqueNodes);
-    writeln("inDegree        = ", inDegree);
-    writeln("outDegree       = ", outDegree);
-    writeln("totalDegree     = ", totalDegree);
-    writeln("edgeProbabilities     = ", edgeProbabilities);
-    writeln("nodeProbabilities     = ", nodeProbabilities);
-
     if (reorderType == "structural") || (reorderType == "probability" && edgeAttributes.size == 0) { 
-      writeln("Entering structural and/or vertex probability reordering of subgraph.");
+      outMsg = "Entering %s reordering of subgraph...".format(reorderType);
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
       // There are no edge attributes, focus on vertices and/or structure.
       // Create an array of tuples tracking vertex probability, highest degree, and out-degree.
       var candidates = makeDistArray(uniqueNodes.size, (int,real,int,int));
@@ -574,13 +526,11 @@ module SubgraphSearch {
       sort(candidates, comparator=candidatesComparator);
       var replacedNodes = new list(int);
 
-      writeln("candidates = ", candidates);
-
       // Select and remap the first given node.
-      writeln("\nSelecting and remapping the first given node...");
       var selectedNode = candidates[0][0];
       var sortedIndex = 0;
-      writef("Initially selected node %i was given sorted index %i\n", selectedNode, sortedIndex);
+      outMsg = "Initially selected node %i was given sorted index %i".format(selectedNode, sortedIndex);
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       // Swap the selected node with the first sorted index.
       for i in srcTemp.domain {
@@ -592,11 +542,9 @@ module SubgraphSearch {
       }
       replacedNodes.pushBack(uniqueNodes[sortedIndex]);
 
-      writeln("replacedNodes = ", replacedNodes);
-      writeln("updated srcTemp = ", srcTemp);
-      writeln("updated dstTemp = ", dstTemp);
+      outMsg = "First node remapping finished, while loop begins...";
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-      writeln("\nFirst node remapping finished, while loop begins...");
       // Loop until all vertices have been remapped.
       while replacedNodes.size < uniqueNodes.size {
         var currentNode = replacedNodes.last;
@@ -616,13 +564,8 @@ module SubgraphSearch {
         var outNeighbors = outNeighborsList.toArray();
         sort(outNeighbors, comparator=candidatesComparator);
 
-        writef("\nChecking node %i with out-neighbors ", currentNode);
-        write(outNeighbors);
-        write("...\n");
-        writeln("uniqueNodes = ", uniqueNodes);
-        writeln("inDegree    = ", inDegree);
-        writeln("outDegree   = ", outDegree);
-        writeln("totalDegree = ", totalDegree);
+        outMsg = "Checking node %i...".format(currentNode);
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         // If there are out-neighbors then perform the same swapping steps as above.
         if outNeighbors.size > 0 {
@@ -636,14 +579,12 @@ module SubgraphSearch {
             if dstTemp[i] == nextNode then dstTemp[i] = uniqueNodes[sortedIndex];
             else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = nextNode;
           }    
-
           replacedNodes.pushBack(uniqueNodes[sortedIndex]);
 
-          writef("Next selected node %i was given sorted index %i\n", nextNode, sortedIndex);
-          writeln("replacedNodes   = ", replacedNodes);
-          writeln("updated srcTemp = ", srcTemp);
-          writeln("updated dstTemp = ", dstTemp);    
-        } else { // If there are no out-neighbors, then pick the next node from the remaining vertices.
+          outMsg = "Next selected node %i was given sorted index %i".format(nextNode, sortedIndex);
+          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        } else { 
+          // If there are no out-neighbors, then pick the next node from the remaining vertices.
           // Assemble remaining candidates, checking their probabilities and structure.
           var remainingCandidatesList = new list((int,real,int,int));
           for i in uniqueNodes.domain {
@@ -657,8 +598,6 @@ module SubgraphSearch {
           }
           var remainingCandidates = remainingCandidatesList.toArray();
           sort(remainingCandidates, comparator=candidatesComparator);
-
-          writeln("remainingCandidates = ", remainingCandidates);
           if remainingCandidates.size > 0 {
             // Select first remaining candidate.
             var selectedNode = remainingCandidates[0][0];
@@ -671,19 +610,18 @@ module SubgraphSearch {
               if dstTemp[i] == selectedNode then dstTemp[i] = uniqueNodes[sortedIndex];
               else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
             }
-
             replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-            writef("Next selected node (no out-neighbors) %i was given sorted index %i\n", selectedNode, sortedIndex);
-            writeln("replacedNodes   = ", replacedNodes);
-            writeln("updated srcTemp = ", srcTemp);
-            writeln("updated dstTemp = ", dstTemp);
+            outMsg = "Next selected node (no out-neighbors) %i was given sorted index %i\n".format(selectedNode, sortedIndex);
+            siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           }
         }
       }
     } else { 
-      writeln("Entering edge probability reordering of subgraph.");
+      outMsg = "Entering edge probability reordering of subgraph...";
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
       // There are edge attributes. Use edge probabilities.
-      // Candidates are edge tuples, edge probability, and source and destination vertex probs.
+      // Candidates are edge tuples, edge probability, src vertex probs, and dst vertex probs.
       // It break ties on destination and source vertex probabilities, respectively.
       var candidates = makeDistArray(srcTemp.size, (int, real, int, int));
       for i in candidates.domain {
@@ -698,17 +636,14 @@ module SubgraphSearch {
       sort(candidates, comparator=candidatesComparator);
       var replacedNodes = new list(int);
 
-      writeln("candidates = ", candidates);
-
-      // Select and remap both of the vertices of the first given edge.
-      writeln("\nSelecting and remapping the first given edge...");
       // First selected edge.
       var e = candidates[0][0];
       var pickedSrc = src[e];
       var pickedDst = dst[e];
       
       if pickedSrc == 1 && pickedSrc == 0 {
-        writeln("Entering special case where pickedSrc and pickedDst of edge 0 are 1--->0.");
+        outMsg = "Entering special case where pickedSrc and pickedDst of edge 0 are 1-->0.";
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         for i in srcTemp.domain {
           if srcTemp[i] == 0 then srcTemp[i] = 1;
           if dstTemp[i] == 1 then dstTemp[i] = 0;
@@ -719,7 +654,8 @@ module SubgraphSearch {
         // Firstly, vertex u...
         var selectedNode = src[e];
         var sortedIndex = 0;
-        writef("Source node %i was given sorted index %i\n", selectedNode, sortedIndex);
+        outMsg = "Source node %i was given sorted index %i\n".format(selectedNode, sortedIndex);
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         for i in srcTemp.domain {
           if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
           else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
@@ -728,14 +664,12 @@ module SubgraphSearch {
           else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
         }
         replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-        writeln("replacedNodes = ", replacedNodes);
-        writeln("updated srcTemp = ", srcTemp);
-        writeln("updated dstTemp = ", dstTemp);
 
         // Secondly, vertex v...
         selectedNode = dstTemp[e];
         sortedIndex = 1;
-        writef("Destination node %i was given sorted index %i\n", selectedNode, sortedIndex);
+        outMsg = "Destination node %i was given sorted index %i\n".format(selectedNode, sortedIndex);
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         for i in srcTemp.domain {
           if srcTemp[i] == selectedNode then srcTemp[i] = uniqueNodes[sortedIndex];
           else if srcTemp[i] == uniqueNodes[sortedIndex] then srcTemp[i] = selectedNode;
@@ -744,16 +678,13 @@ module SubgraphSearch {
           else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = selectedNode;
         }
         replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-        writeln("replacedNodes = ", replacedNodes);
-        writeln("updated srcTemp = ", srcTemp);
-        writeln("updated dstTemp = ", dstTemp);
       }
 
-      writeln("\nFirst edge remapping finished, while loop begins...");
+      outMsg = "First edge remapping finished, while loop begins...";
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       // Loop until all vertices have been remapped.
       while replacedNodes.size < uniqueNodes.size {
         var currentNode = replacedNodes.last;
-        writeln("currentNode = ", currentNode );
         var (inDegree, outDegre, totalDegree) = updateDegrees(srcTemp, dstTemp, uniqueNodes);
 
         // Select the out-neighbors of the current vertex and sort them based on candidacy. 
@@ -770,13 +701,8 @@ module SubgraphSearch {
         var outNeighbors = outNeighborsList.toArray();
         sort(outNeighbors, comparator=candidatesComparator);
 
-        writef("\nChecking node %i with out-neighbors ", currentNode);
-        write(outNeighbors);
-        write("...\n");
-        writeln("uniqueNodes = ", uniqueNodes);
-        writeln("inDegree    = ", inDegree);
-        writeln("outDegree   = ", outDegree);
-        writeln("totalDegree = ", totalDegree);
+        outMsg = "Checking node %i...".format(currentNode);
+        siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
         // If there are out-neighbors then perform the same swapping steps as above.
         if outNeighbors.size > 0 {
@@ -790,14 +716,10 @@ module SubgraphSearch {
             if dstTemp[i] == nextNode then dstTemp[i] = uniqueNodes[sortedIndex];
             else if dstTemp[i] == uniqueNodes[sortedIndex] then dstTemp[i] = nextNode;
           }    
-
           replacedNodes.pushBack(uniqueNodes[sortedIndex]);
+          outMsg = "Next selected node %i was given sorted index %i".format(nextNode, sortedIndex);
+          siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-          writef("Next selected node %i was given sorted index %i\n", nextNode, sortedIndex);
-          writeln("replacedNodes   = ", replacedNodes);
-          writeln("updated srcTemp = ", srcTemp);
-          writeln("updated dstTemp = ", dstTemp);    
-        } else { 
           // If there are no out-neighbors, then pick the next node from the remaining vertices.
           // Assemble remaining candidates, checking their probabilities and structure.
           var remainingCandidatesList = new list((int,real,int,int));
@@ -813,7 +735,6 @@ module SubgraphSearch {
           var remainingCandidates = remainingCandidatesList.toArray();
           sort(remainingCandidates, comparator=candidatesComparator);
 
-          writeln("remainingCandidates = ", remainingCandidates);
           if remainingCandidates.size > 0 {
             // Select first remaining candidate.
             var selectedNode = remainingCandidates[0][0];
@@ -828,10 +749,8 @@ module SubgraphSearch {
             }
 
             replacedNodes.pushBack(uniqueNodes[sortedIndex]);
-            writef("Next selected node (no out-neighbors) %i was given sorted index %i\n", selectedNode, sortedIndex);
-            writeln("replacedNodes   = ", replacedNodes);
-            writeln("updated srcTemp = ", srcTemp);
-            writeln("updated dstTemp = ", dstTemp);
+            outMsg = "Next selected node (no out-neighbors) %i was given sorted index %i\n".format(selectedNode, sortedIndex);
+            siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           }
         }
       }
@@ -842,15 +761,11 @@ module SubgraphSearch {
       reordering[u] = uNew;
       reordering[v] = vNew;
     }
-
-    writeln("reorder = ", reordering);
-
     return reordering;
-  }
+  } // end of getSubgraphReordering
 
   /* Given a new permutation, reorder given attributes. Used for subgraph reordering. */
   proc getReorderedAttributes(attributes, perm, st) throws {
-    writeln("\nCreating reordered attributes...");
     var newAttributeMap = new map(string, (string, string));
     
     // Loop over edge attributes. Making new symbol table entries and saving them.
@@ -897,11 +812,8 @@ module SubgraphSearch {
 
           select etype {
             when (DType.Int64) {
-              const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a;
-              writeln("subgraphArr = ", subgraphArr);
+              const ref subgraphArr = toSymEntry(subgraphArrEntry, int).a; 
               var newArr = subgraphArr[perm];
-              writeln("newArr = ", newArr);
-              writeln();
 
               var name = st.nextName();
               st.addEntry(name, new shared SymEntry(newArr));
@@ -925,9 +837,7 @@ module SubgraphSearch {
             }
             when (DType.Bool) {
               const ref subgraphArr = toSymEntry(subgraphArrEntry, bool).a;
-              writeln("subgraphArr = ", subgraphArr);
               var newArr = subgraphArr[perm];
-              writeln("newArr = ", newArr);
 
               var name = st.nextName();
               st.addEntry(name, new shared SymEntry(newArr));
@@ -937,10 +847,8 @@ module SubgraphSearch {
         }
       }
     }
-
-    writeln();
     return newAttributeMap;
-  }
+  } // end of getReorderedAttributes
 
   /* Used to ensure that the first edge is of type 0 --> 1 */
   proc checkAndChangeFirstEdge(in src, in dst, in nodeMapping) throws {
@@ -952,7 +860,8 @@ module SubgraphSearch {
 
     // Firstly, vertex u...
     var selectedNode = src[0];
-    writef("Source node %i was given sorted index %i\n", selectedNode, 0);
+    var outMsg = "Source node %i was given sorted index %i".format(selectedNode, 0);
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     for i in src.domain {
       if src[i] == selectedNode then src[i] = 0;
       else if src[i] == 0 then src[i] = selectedNode;
@@ -963,7 +872,8 @@ module SubgraphSearch {
 
     // Secondly, vertex v...
     selectedNode = dst[0];
-    writef("Destination node %i was given sorted index %i\n", selectedNode, 1);
+    outMsg = "Destination node %i was given sorted index %i".format(selectedNode, 1);
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     for i in src.domain {
       if src[i] == selectedNode then src[i] = 1;
       else if src[i] == 1 then src[i] = selectedNode;
@@ -979,7 +889,7 @@ module SubgraphSearch {
     }
 
     return (src, dst, nodeMapping);
-  }
+  } // end of checkAndChangeFirstEdge
 
   /* Used to sort two edges since the default sorting being utilized was returning wrong info. */
   proc sortTwoEdges(in src, in dst) throws {
@@ -999,11 +909,12 @@ module SubgraphSearch {
     }
 
     return (src, dst);
-  }
+  } // end of sortTwoEdges
 
   /* Given a node mapping of original vertex names to new vertex names and the original subgraph, 
      returns new structural and attribute arrays following the new reordering. */
   proc getReorderedSubgraph(in nodeMapping, originalSubgraph, st) throws {
+    var outMsg:string;
     const ref src = toSymEntry(originalSubgraph.getComp("SRC_SDI"), int).a;
     const ref dst = toSymEntry(originalSubgraph.getComp("DST_SDI"), int).a;
     const ref nodeMap = toSymEntry(originalSubgraph.getComp("VERTEX_MAP_SDI"), int).a;
@@ -1011,21 +922,21 @@ module SubgraphSearch {
     var edgeAttributes = originalSubgraph.getEdgeAttributes();
 
     // Generate new source and destination arrays.
+    outMsg = "Generating new source and destination arrays...";
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     var newSrc = makeDistArray(src.size, int);
     var newDst = makeDistArray(dst.size, int);
     for (s, d, i, j) in zip(src, dst, newSrc.domain, newDst.domain) {
       newSrc[i] = nodeMapping[s];
       newDst[j] = nodeMapping[d];
     }
-    writeln("newSrc = ", newSrc);
-    writeln("newDst = ", newDst);
 
     // Sort the newly created edge list.
+    outMsg = "Sorting newly created edge list with %i edges...".format(newSrc.size);
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     var (srcToCheck,dstToCheck) = if newSrc.size > 2 then sortEdgeList(newSrc, newDst)
                                   else if newSrc.size == 2 then sortTwoEdges(newSrc, newDst)
                                   else (newSrc, newDst);
-    writeln("srcToCheck = ", srcToCheck);
-    writeln("dstToCheck = ", dstToCheck);
 
     // Check the edge list to make sure the first edge is 0 --> 1. If not, then it updates the
     // vertex names one last time.
@@ -1037,9 +948,6 @@ module SubgraphSearch {
                                       else if updatedSrc.size == 2 then sortTwoEdges(updatedSrc, updatedDst)
                                       else (updatedSrc, updatedDst);
 
-    writeln("sortedNewSrc = ", sortedNewSrc);
-    writeln("sortedNewDst = ", sortedNewDst);
-
     // Get the permutation that sorts the edges. This is needed to sort the attributes.
     var edgePerm = makeDistArray(src.size, int);
     for (i, sns, snd) in zip(edgePerm.domain, sortedNewSrc, sortedNewDst) {
@@ -1047,29 +955,30 @@ module SubgraphSearch {
         if sns == ns && snd == nd then edgePerm[i] = j;
       }
     }
-    writeln("edgePerm = ", edgePerm);
 
     // Get the permutation that sorts the nodes. This is needed to sort the attributes.
     var newNodeMap = nodeMap;
     for (u,i) in zip(newNodeMap, newNodeMap.domain) do u = nodeMapping[i];
     var nodePerm = argsortDefault(newNodeMap);
     var sortedNodeMap = newNodeMap[nodePerm];
-    writeln("newNodeMap = ", newNodeMap);
-    writeln("nodePerm = ", nodePerm);
-    writeln("sortedNodeMap = ", sortedNodeMap);
 
     // Reorder the attributes.
+    outMsg = "Reordering %i edge attributes...".format(edgeAttributes.size);
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     var reorderedEdgeAttributes = getReorderedAttributes(edgeAttributes, edgePerm, st);
+
+    outMsg = "Reordering %i node attributes...".format(nodeAttributes.size);
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     var reorderedNodeAttributes = getReorderedAttributes(nodeAttributes, nodePerm, st);
 
     // Created reversed arrays.
     var srcR = sortedNewDst;
     var dstR = sortedNewSrc;
     var (sortedSrcR, sortedDstR) = sortEdgeList(srcR, dstR);
-    writeln("sortedSrcR = ", sortedSrcR);
-    writeln("sortedDstR = ", sortedDstR);
-
+    
     // Generate segments arrays for both regular and reversed arrays.
+    outMsg = "Finalizing regular and reversed arrays...";
+    siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
     var (srcUnique, srcCounts) = Unique.uniqueFromSorted(sortedNewSrc);
     var neis = makeDistArray(nodeMap.size, int);
     neis = 0; 
@@ -1078,7 +987,6 @@ module SubgraphSearch {
     var completeSegs = makeDistArray(nodeMap.size + 1, int);
     completeSegs[0] = 0;
     completeSegs[1..] = segs;
-    writeln("completeSegs = ", completeSegs);
 
     var (srcRUnique, srcRCounts) = Unique.uniqueFromSorted(sortedSrcR);
     var neisR = makeDistArray(nodeMap.size, int);
@@ -1088,38 +996,36 @@ module SubgraphSearch {
     var completeSegsR = makeDistArray(nodeMap.size + 1, int);
     completeSegsR[0] = 0;
     completeSegsR[1..] = segsR;
-    writeln("completeSegsR = ", completeSegsR);
 
     return (sortedNewSrc, sortedNewDst, completeSegs, sortedNodeMap, 
             sortedSrcR, sortedDstR, completeSegsR, 
             reorderedEdgeAttributes, reorderedNodeAttributes);
-  }
+  } // end of getReorderedSubgraph
 
-  /* Executes the VF2 subgraph isomorphism finding procedure. Instances of the subgraph `g2` are
-  searched for amongst the subgraphs of `g1` and the isomorphic ones are returned through an
-  array that maps the isomorphic vertices of `g1` to those of `g2`. */
-  proc runMatcher(g1: SegGraph, g2: SegGraph, semanticCheck: string, returnIsosAs:string,
-                  sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-                  algType: string, returnIsosAs:string, reorderType: string, 
-                  matchType: string, st: borrowed SymTab) throws {
-
+  /* Executes one of the subgraph searching procedures. */
+  proc runSearch(g1: SegGraph, g2: SegGraph, returnIsosAs:string,
+                  sizeLimitS: string, timeLimitS: string, printProgressIntervalS: string,
+                  algType: string, reorderType: string, matchType: string, 
+                  st: borrowed SymTab) throws {
+    // Function variable initialization.
     var numIso: int = 0;
-    var numIsoAtomic: chpl__processorAtomicType(int) = 0;
-    var semanticCheck = semanticCheck:bool;
-    var matchLimit = if sizeLimit != "none" then sizeLimit:int else 0;
-    var limitSize:bool = if matchLimit > 0 then true else false;
+    var numMatchesAtomic: chpl__processorAtomicType(int) = 0;
+    var sizeLimit = if sizeLimitS != "None" then sizeLimitS:int else 0;
+    var timeLimit = if timeLimitS != "None" then sizeLimitS:int else 0;
+    var printProgressInterval = if printProgressIntervalS != "None" then printProgressIntervalS:int
+                                else 0;
+    var limitSize:bool = if sizeLimit > 0 then true else false;
     var limitTime:bool = if timeLimit > 0 then true else false;
     var countOnly:bool = if returnIsosAs == "count" then true else false;
     var printProgressCheck:bool = if printProgressInterval > 0 then true else false;
+    var findingIsos:bool = if matchType == "isomorphism" then true else false;
+    var findingMonos:bool = if matchType == "monomorphism" then true else false;
+
     var stopper:atomic bool = false;
     timeLimit *= 60;
 
-    // Used for the pickers.
+    // Used for the validator.
     var vertexFlagger: [0..<g1.n_vertices] bool = false;
-    var edgeFlagger: [0..<g1.n_edges] bool = false;
-
-    // var matchType: string; // could be "iso" or "mono"
-    // matchType = "iso";
     
     // Extract the g1/G/g information from the SegGraph data structure.
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -1137,10 +1043,6 @@ module SubgraphSearch {
     var graphEdgeAttributes = g1.getEdgeAttributes();
     var subgraphEdgeAttributesOriginal = g2.getEdgeAttributes();
 
-    writeln("graphNodeAttributes = ", graphNodeAttributes);
-    writeln("subgraphNodeAttributesOriginal = ", subgraphNodeAttributesOriginal);
-    writeln("graphEdgeAttributes = ", graphEdgeAttributes);
-    writeln("subgraphEdgeAttributesOriginal = ", subgraphEdgeAttributesOriginal);
     // Generate the probability distributions for each attribute. Will be stored in module-level
     // maps for each datatype. This is only performed for the attributes that exist in both the
     // subgraph and the graph.
@@ -1212,96 +1114,7 @@ module SubgraphSearch {
           vertexFlagger[v] = true;
         }
       }
-
-    }
-
-    /* Pick the edges from the host graph that can be mapped to edge 0 of the data graph. */
-    proc edgePickerStructural(checkVertices:bool = false) throws {
-      // Get the first edge of the subgraph. Since the edge list is pre-sorted, then the first edge
-      // will always be at index 0.
-      var uSubgraph = srcNodesG2[0];
-      var vSubgraph = dstNodesG2[0];
-
-      // Get in-degree and out-degree for source vertex of first edge.
-      var Tin_uSubgraph = segRG2[uSubgraph+1] - segRG2[uSubgraph];
-      var Tout_uSubgraph = segGraphG2[uSubgraph+1] - segGraphG2[uSubgraph];
-
-      // Get in-degree and out-degree for destination vertex of first edge.
-      var Tin_vSubgraph = segRG2[vSubgraph+1] - segRG2[vSubgraph];
-      var Tout_vSubgraph = segGraphG2[vSubgraph+1] - segGraphG2[vSubgraph];
-
-      forall e in 0..<g1.n_edges {
-        var u = srcNodesG1[e];
-        var v = dstNodesG1[e];
-
-        var Tin_u = segRG1[u+1] - segRG1[u];
-        var Tout_u = segGraphG1[u+1] - segGraphG1[u];
-
-        //if checkVertices {
-          //if semanticAndCheck {
-            if !(doAttributesMatch(u, uSubgraph, graphNodeAttributes, subgraphNodeAttributes, st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph))
-              then continue;
-          //}  
-          //else { /* Do nothing. */ }
-        //}
-
-        var Tin_v = segRG1[v+1] - segRG1[v];
-        var Tout_v = segGraphG1[v+1] - segGraphG1[v];
-
-        if semanticAndCheck {
-          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
-            then edgeFlagger[e] = true;
-        } else if semanticOrCheck {
-          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
-            then edgeFlagger[e] = true;
-        } else { edgeFlagger[e] = true; }
-      }
-    }
-
-    /* Pick the edges from the host graph that can be mapped to edge 0 of the data graph. */
-    proc edgePicker(checkVertices:bool = false) throws {
-      // Get the first edge of the subgraph. Since the edge list is pre-sorted, then the first edge
-      // will always be at index 0.
-      var uSubgraph = srcNodesG2[0];
-      var vSubgraph = dstNodesG2[0];
-
-      // Get in-degree and out-degree for source vertex of first edge.
-      var Tin_uSubgraph = segRG2[uSubgraph+1] - segRG2[uSubgraph];
-      var Tout_uSubgraph = segGraphG2[uSubgraph+1] - segGraphG2[uSubgraph];
-
-      // Get in-degree and out-degree for destination vertex of first edge.
-      var Tin_vSubgraph = segRG2[vSubgraph+1] - segRG2[vSubgraph];
-      var Tout_vSubgraph = segGraphG2[vSubgraph+1] - segGraphG2[vSubgraph];
-
-      forall e in 0..<g1.n_edges {
-        var u = srcNodesG1[e];
-        var v = dstNodesG1[e];
-
-        var Tin_u = segRG1[u+1] - segRG1[u];
-        var Tout_u = segGraphG1[u+1] - segGraphG1[u];
-
-        if checkVertices {
-          if semanticAndCheck {
-            if !(doAttributesMatch(u, uSubgraph, graphNodeAttributes, subgraphNodeAttributes, "and", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph))
-              then continue;
-          } else if semanticOrCheck {
-            if !(doAttributesMatch(u, uSubgraph, graphNodeAttributes, subgraphNodeAttributes, "or", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph))
-              then continue;
-          } else { /* Do nothing. */ }
-        }
-
-        var Tin_v = segRG1[v+1] - segRG1[v];
-        var Tout_v = segGraphG1[v+1] - segGraphG1[v];
-
-        if semanticAndCheck {
-          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "and", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
-            then edgeFlagger[e] = true;
-        } else if semanticOrCheck {
-          if doAttributesMatch(e, 0, graphEdgeAttributes, subgraphEdgeAttributes, "or", st) && (Tin_u >= Tin_uSubgraph) && (Tout_u >= Tout_uSubgraph) && (Tin_v >= Tin_vSubgraph) && (Tout_v >= Tout_vSubgraph)
-            then edgeFlagger[e] = true;
-        } else { edgeFlagger[e] = true; }
-      }
-    }
+    } //end of vertexValidator
 
     /* Generate in-neighbors and out-neighbors for a given subgraph state.*/
     proc addToTinTout (u: int, v: int, state: State): int throws {
@@ -1536,16 +1349,6 @@ module SubgraphSearch {
       }
         
       // Process the out-neighbors of g1. 
-      //var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
-      // for Out1 in getOutN1 {
-      //   if !state.isMappedn1(Out1) {
-      //     if state.Tin1.contains(Out1) then termin1 += 1;
-      //     if state.Tout1.contains(Out1) then termout1 += 1;
-      //     if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
-      //   }
-      // }
-        
-      // Process the out-neighbors of g1. 
       var getOutN1 = dstNodesG1[segGraphG1[n1]..<segGraphG1[n1+1]];
       for Out1 in getOutN1 {
         if state.isMappedn1(Out1) { // Find corresponding vertex in g2
@@ -1563,15 +1366,6 @@ module SubgraphSearch {
           if !state.Tin1.contains(Out1) && !state.Tout1.contains(Out1) then new1 += 1;
         }
       }
-      // // Process the in-neighbors of g1.
-      // var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
-      // for In1 in getInN1 {
-      //   if !state.isMappedn1(In1) {
-      //     if state.Tin1.contains(In1) then termin1 += 1;
-      //     if state.Tout1.contains(In1) then termout1 += 1;
-      //     if !state.Tin1.contains(In1) && !state.Tout1.contains(In1) then new1 += 1;
-      //   }
-      // }
 
       // Process the in-neighbors of g1.
       var getInN1 = dstRG1[segRG1[n1]..<segRG1[n1+1]];
@@ -1602,7 +1396,6 @@ module SubgraphSearch {
     } // end of isFeasible_ISO
     
     /* Check to see if the mapping of n1 from g1 to n2 from g2 is feasible. */
-    /* JUST COPY AND RENAMED*/
     proc isFeasible_MONO(n1: int, n2: int, state: State) throws {
       var termout1, termout2, termin1, termin2, new1, new2 : int = 0;
       
@@ -1722,62 +1515,36 @@ module SubgraphSearch {
     } // end of getCandidatePairsOpti
 
     /* Print the progress when this function is called and X minutes have passed. */
-    var lastPrintedMinute: atomic int;
-    proc printProgress() throws {
+    var lastPrintedMinute: chpl__processorAtomicType(int);
+    proc printProgress(timer, printProgressInterval, lastPrintedMinute) throws {
       const elapsedMinutes = timer.elapsed() / 60;
       const currentMinute = elapsedMinutes:int / printProgressInterval;
 
       if currentMinute > lastPrintedMinute.read() {
         if lastPrintedMinute.compareAndSwap(currentMinute - 1, currentMinute) {
-          var outMsg = "Motifs found so far: " + numIsoAtomic.read():string;
+          var outMsg = "%ss found so far: %i".format(matchType, numMatchesAtomic.read());
           siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
       }
-    }
+    } // end of printProgress
 
-    /* Perform the vf2 recursive steps returning all found isomorphisms.*/
-    proc vf2Helper(state: owned State, depth: int): list(int,parSafe=true) throws {
+    /* Perform the recursive steps as defined in the VF2-PS paper to return all found matches.*/
+    proc recursiveMatchSaverFast(state: owned State, depth: int): list(int,parSafe=true) throws {
       var allmappings: list(int, parSafe=true);
-
-      // Prints the progress every X number of minutes.
-      // if printProgress then printProgress();
-      // TODO: TURN BACK ON FOR PRODUCTION.
       
       // Base case: the depth is equivalent to the number of vertices in the subgraph.
       if depth == g2.n_vertices {
         allmappings.pushBack(state.core);
-        // numIsoAtomic.add(1);
-        // TODO: TURN BACK ON FOR PRODUCTION.
         return allmappings;
       }
-
-      // Stop execution if flagged.
-      // if stopper.read() then return;
-      // TODO: TURN BACK ON FOR PRODUCTION.
-
-      // Early termination checks for both time and size limits, if enabled.
-      // if limitSize && numIsoAtomic.read() >= matchLimit {
-      //   stopper.testAndSet();
-      //   return;
-      // }
-      // if limitTime && timer.elapsed():int >= timeLimit {
-      //   stopper.testAndSet();
-      //   return;
-      // }
-      // TODO: TURN BACK ON FOR PRODUCTION.
 
       // Generate candidate pairs (n1, n2) for mapping
       var candidatePairs = getCandidatePairsOpti(state);
 
       // Iterate in parallel over candidate pairs
       forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
-        // if stopper.read() then continue;
-        // TODO: TURN BACK ON FOR PRODUCTION.
 
-        // if isFeasible(n1, n2, state) {
-
-        if (matchType == "iso" && isFeasible_ISO(n1, n2, state)) || 
-           (matchType == "mono" && isFeasible_MONO(n1, n2, state)) {
+        if (findingIsos && isFeasible_ISO(n1,n2,state))||(findingMonos && isFeasible_MONO(n1,n2,state)) {
             
           // Work on a clone, not the original state
           var newState = state.clone();
@@ -1787,7 +1554,7 @@ module SubgraphSearch {
 
           // Recursive call with updated state and increased depth
           var newMappings: list(int, parSafe=true);
-          newMappings = vf2Helper(newState, depth + 1);
+          newMappings = recursiveMatchSaverFast(newState, depth + 1);
 
           // Use a loop to add elements from newMappings to allmappings
           for mapping in newMappings do allmappings.pushBack(mapping);
@@ -1795,71 +1562,205 @@ module SubgraphSearch {
       }
       return allmappings;
     }
-    
-    /* Executes VF2SIFromVertices. */
-    proc VF2SIFromVertices(g1: SegGraph, g2: SegGraph) throws {
-      // writeln("*********************VF2SIFromVertices*******************");
-      var solutions: list(int, parSafe=true);
-      forall edgeIndex in 0..mG1-1 with(ref solutions) {
-        // if stopper.read() then continue;
-        // TODO: TURN BACK ON FOR PRODUCTION.
 
+    /* Perform the recursive steps as defined in the VF2-PS paper to return all found matches.
+       To be used when the number of matches are to be printed in intervals or returned incomplete.
+    */
+    proc recursiveMatchSaverVerbose(state: owned State, depth: int): list(int,parSafe=true) throws {
+      var allmappings: list(int, parSafe=true);
+
+      // Prints the progress every X number of minutes.
+      if printProgressCheck then printProgress(timer, printProgressInterval, lastPrintedMinute);
+      
+      // Base case: the depth is equivalent to the number of vertices in the subgraph.
+      if depth == g2.n_vertices {
+        allmappings.pushBack(state.core);
+        numMatchesAtomic.add(1);
+        return allmappings;
+      }
+
+      // Stop execution if flagged.
+      if stopper.read() then return allmappings;
+
+      // Early termination checks for both time and size limits, if enabled.
+      if limitSize && numMatchesAtomic.read() >= sizeLimit {
+        stopper.testAndSet();
+        return allmappings;
+      }
+      if limitTime && timer.elapsed():int >= timeLimit {
+        stopper.testAndSet();
+        return allmappings;
+      }
+
+      // Generate candidate pairs (n1, n2) for mapping
+      var candidatePairs = getCandidatePairsOpti(state);
+
+      // Iterate in parallel over candidate pairs
+      forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+        if stopper.read() then continue;
+
+        if (findingIsos && isFeasible_ISO(n1,n2,state))||(findingMonos && isFeasible_MONO(n1,n2,state)) {
+            
+          // Work on a clone, not the original state
+          var newState = state.clone();
+
+          // Update state with the new mapping
+          addToTinTout(n1, n2, newState);
+
+          // Recursive call with updated state and increased depth
+          var newMappings: list(int, parSafe=true);
+          newMappings = recursiveMatchSaverVerbose(newState, depth + 1);
+
+          // Use a loop to add elements from newMappings to allmappings
+          for mapping in newMappings do allmappings.pushBack(mapping);
+        }
+      }
+      return allmappings;
+    }
+
+    /* Perform the recursive steps as defined in the VF2-PS paper to return count of found matches.
+       Designed to be a low-memory way to ONLY count matches and not save them. */
+    proc recursiveMatchCounterFast(state: owned State, depth: int): chpl__processorAtomicType(int) throws {
+      var allCounts: chpl__processorAtomicType(int) = 0;
+      
+      // Base case: the depth is equivalent to the number of vertices in the subgraph.
+      if depth == g2.n_vertices {
+        allCounts.add(1);
+        return allCounts;
+      }
+
+      // Generate candidate pairs (n1, n2) for mapping
+      var candidatePairs = getCandidatePairsOpti(state);
+
+      // Iterate in parallel over candidate pairs
+      forall (n1, n2) in candidatePairs with (ref state, ref allCounts) {
+        if (findingIsos && isFeasible_ISO(n1,n2,state))||(findingMonos && isFeasible_MONO(n1,n2,state)) {
+          var newState = state.clone();
+
+          // Update state with the new mapping
+          addToTinTout(n1, n2, newState);
+
+          // Recursive call with updated state and increased depth.
+          var newCounts = recursiveMatchCounterFast(newState, depth + 1);
+
+          // Update count.
+          allCounts.add(newCounts.read());
+        }
+      }
+      return allCounts;
+    }
+
+    /* Perform the recursive steps as defined in the VF2-PS paper to return count of found matches.
+       Designed to be a low-memory way to ONLY count matches and not save them. To be used when the 
+       number of matches are to be printed in intervals or returned incomplete. */
+    proc recursiveMatchCounterVerbose(state: owned State, depth: int): chpl__processorAtomicType(int) throws {
+      var allCounts: chpl__processorAtomicType(int) = 0;
+
+      // Prints the progress every X number of minutes.
+      if printProgressCheck then printProgress(timer, printProgressInterval, lastPrintedMinute);
+      
+      // Base case: the depth is equivalent to the number of vertices in the subgraph.
+      if depth == g2.n_vertices {
+        allCounts.add(1);
+        numMatchesAtomic.add(1);
+        return allCounts;
+      }
+
+      // Stop execution if flagged.
+      if stopper.read() then return allCounts;
+
+      // Early termination checks for both time and size limits, if enabled.
+      if limitSize && numMatchesAtomic.read() >= sizeLimit {
+        stopper.testAndSet();
+        return allCounts;
+      }
+      if limitTime && timer.elapsed():int >= timeLimit {
+        stopper.testAndSet();
+        return allCounts;
+      }
+
+      // Generate candidate pairs (n1, n2) for mapping
+      var candidatePairs = getCandidatePairsOpti(state);
+
+      // Iterate in parallel over candidate pairs
+      forall (n1, n2) in candidatePairs with (ref state, ref allCounts) {
+        if stopper.read() then continue;
+
+        if (findingIsos && isFeasible_ISO(n1,n2,state))||(findingMonos && isFeasible_MONO(n1,n2,state)) {
+            
+          // Work on a clone, not the original state
+          var newState = state.clone();
+
+          // Update state with the new mapping
+          addToTinTout(n1, n2, newState);
+
+          // Recursive call with updated state and increased depth
+          var newCounts = recursiveMatchCounterVerbose(newState, depth + 1);
+
+          // Update count.
+          allCounts.add(newCounts.read());
+        }
+      }
+      return allCounts;
+    }
+
+    /* Executes state injection. */
+    proc stateInjection(g1: SegGraph, g2: SegGraph) throws {
+      var solutions: list(int, parSafe=true);
+      var counts: chpl__processorAtomicType(int) = 0;
+      forall edgeIndex in 0..<mG1 with(ref solutions) {
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
-          
-          // var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
 
-          var edgeChecked = if matchType == "iso" then 
-                                addToTinToutMVE_ISO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState)
-                            else 
-                                addToTinToutMVE_MONO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          var edgeChecked:bool;
+          if findingIsos then 
+            edgeChecked = addToTinToutMVE_ISO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
+          else 
+            edgeChecked = addToTinToutMVE_MONO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
 
           if edgeChecked {
-            var newMappings = vf2Helper(initialState, 2);
-            for mapping in newMappings do solutions.pushBack(mapping);
+            var newMappings: list(int, parSafe=true);
+            var newCounts: chpl__processorAtomicType(int);
+            if countOnly && (limitSize || limitTime || printProgressCheck) {
+              newCounts = recursiveMatchCounterVerbose(initialState, 2);
+              counts.add(newCounts.read());
+            } else if countOnly {
+              newCounts = recursiveMatchCounterFast(initialState, 2);
+              counts.add(newCounts.read());
+            } else if !countOnly && (limitSize || limitTime) {
+              newMappings = recursiveMatchSaverVerbose(initialState, 2);
+              for mapping in newMappings do solutions.pushBack(mapping);
+            } else {
+              newMappings = recursiveMatchSaverFast(initialState, 2);
+              for mapping in newMappings do solutions.pushBack(mapping);
+            }
           }
-          // else {
-          //   writeln("--------------------->addToTinToutMVE returned false");
-          // }
         }
       }
+      if countOnly then solutions.pushBack(counts.read());
       var subIsoArrToReturn: [0..#solutions.size](int);
       for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
 
       return subIsoArrToReturn;
-    } // end of VF2SIFrom Vertices
-
-    /* Executes VF2SIFromEdges. */
-    proc VF2SIFromEdges(g1: SegGraph, g2: SegGraph) throws {
-      var solutions: list(int, parSafe=true);
-    //   writeln("srcNodesG1 = ", srcNodesG1);
-    //   writeln("dstNodesG1 = ", dstNodesG1);
-    //   writeln("srcNodesG2 = ", srcNodesG2);
-    //   writeln("dstNodesG2 = ", dstNodesG2);
-      forall edgeIndex in 0..mG1-1 with(ref solutions) {
-        // if stopper.read() then continue;
-        // TODO: TURN BACK ON FOR PRODUCTION.
-
-        if edgeFlagger[edgeIndex] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
-          var initialState = new State(g1.n_vertices, g2.n_vertices);
-          var edgeChecked = addToTinToutMVE(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-        //   writeln("edgeIndex = ", edgeIndex, " edgeChecked = ", edgeChecked, "initialState = ", initialState);
-          if edgeChecked {
-            var newMappings = vf2Helper(initialState, 2);
-            for mapping in newMappings do solutions.pushBack(mapping);
-          }
-        }
-      }
-      var subIsoArrToReturn: [0..#solutions.size](int);
-      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
-
-      return subIsoArrToReturn;
-    } // end of VF2SIFromEdges
+    } // end of stateInjection
 
     /* Executes VF2PS. */
     proc VF2PS(g1: SegGraph, g2: SegGraph) throws {
       var initialState = new State(g1.n_vertices, g2.n_vertices);
-      var solutions = vf2Helper(initialState, 0);
+      var solutions: list(int, parSafe=true);
+      var counts: chpl__processorAtomicType(int);
+
+      if countOnly && (limitSize || limitTime || printProgressCheck) {
+        counts = recursiveMatchCounterVerbose(initialState, 0);
+      } else if countOnly {
+        counts = recursiveMatchCounterFast(initialState, 0);
+      } else if !countOnly && (limitSize || limitTime) {
+        solutions = recursiveMatchSaverVerbose(initialState, 0);
+      } else {
+        solutions = recursiveMatchSaverFast(initialState, 0);
+      }
+
+      if countOnly then solutions.pushBack(counts.read());
       
       var subIsoArrToReturn: [0..#solutions.size](int);
       for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
@@ -1872,7 +1773,13 @@ module SubgraphSearch {
     var allMappingsArray: [allMappingsArrayD] int;
 
     if algType == "ps" {
+      var vf2psTimer:stopwatch;
+      vf2psTimer.start();
       var allmappings = VF2PS(g1, g2);
+      vf2psTimer.stop();
+      var outMsg = "VF2PS took: " + vf2psTimer.elapsed():string + " sec";
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
       allMappingsArrayD = makeDistDom(allmappings.size);
       allMappingsArray = allmappings;
     }
@@ -1890,7 +1797,7 @@ module SubgraphSearch {
 
       var siTimer:stopwatch;
       siTimer.start();
-      var allmappings = VF2SIFromVertices(g1,g2);
+      var allmappings = stateInjection(g1,g2);
       siTimer.stop();
       outMsg = "SI took: " + siTimer.elapsed():string + " sec";
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -1902,6 +1809,7 @@ module SubgraphSearch {
 
     var isoArr = nodeMapGraphG1[allMappingsArray];
     var tempArr: [0..0] int;
+    if returnIsosAs == "count" then return(isoArr, tempArr, tempArr, tempArr);
 
     var numSubgraphVertices = nodeMapGraphG2.size;
     var numSubgraphEdges = srcNodesG2.size;
@@ -1931,5 +1839,5 @@ module SubgraphSearch {
 
       return (srcPerIso, dstPerIso, tempArr, tempArr);
     }
-  } //end of runVF2
+  } //end of runSearch
 }

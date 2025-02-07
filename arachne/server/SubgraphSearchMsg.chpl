@@ -43,20 +43,13 @@ module SubgraphSearchMsg {
     // Extract messages sent from Python.
     var graphEntryName = msgArgs.getValueOf("MainGraphName");
     var subgraphEntryName = msgArgs.getValueOf("SubGraphName");
-    var semanticCheck = msgArgs.getValueOf("SemanticCheckType");
     var sizeLimit = msgArgs.getValueOf("SizeLimit");
-    var timeLimit = msgArgs.getValueOf("TimeLimit"):int;
+    var timeLimit = msgArgs.getValueOf("TimeLimit");
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
     var reorderType = msgArgs.getValueOf("ReorderType");
     var algorithmType = msgArgs.getValueOf("AlgorithmType");
-    var matchType = msgArgs.getValueOf("MatchType");  // Extract match_type from msgArgs
-    var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
-
-    writeln("\n\n\n\n\n\n");
-    writeln("reorderType = ", reorderType);
-    writeln("\n");
-    writeln("matchType = ", matchType); // Debug log for matchType
-    writeln("\n\n\n\n\n\n");
+    var matchType = msgArgs.getValueOf("MatchType");
+    var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval");
      
     // Pull out our graph from the symbol table.
     var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
@@ -66,27 +59,20 @@ module SubgraphSearchMsg {
     var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
     var h = hEntry.graph;
 
-    // Execute sequential VF2 subgraph isomorphism.
     var timer:stopwatch;
     if g.isDirected() {
       if algorithmType != "ps" && algorithmType != "si" {
-        var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
-        siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-        return new MsgTuple(errorMsg, MsgType.ERROR);
-      }
-
-      if matchType != "iso" && matchType != "mono" {
-        var errorMsg = notImplementedError(pn, "unknown VF2 match type");
+        var errorMsg = notImplementedError(pn, "unknown algorithm type");
         siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
         return new MsgTuple(errorMsg, MsgType.ERROR);
       }
 
       timer.start();
-      var isos = runMatcher(g,h,semanticCheck,returnIsosAs,sizeLimit,timeLimit,
-                            printProgressInterval,algorithmType,returnIsosAs,reorderType,
-                            matchType,st);
+      var isos = runSearch(g,h,returnIsosAs,sizeLimit,timeLimit,printProgressInterval,algorithmType,
+                           reorderType,matchType,st);
       timer.stop();
-      outMsg = "VF2%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
+      outMsg = "runSearch took %r sec".format(timer.elapsed());
+      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       if returnIsosAs == "vertices" {
         var isosAsVerticesName = st.nextName();
@@ -131,15 +117,14 @@ module SubgraphSearchMsg {
                + "+ created " + st.attrib(isosAsVerticesMapperName)
                + "+ created " + st.attrib(isosAsEdgesSrcName)
                + "+ created " + st.attrib(isosAsEdgesDstName);
-      } else if {
-        var count = isos[0];
+      } else if returnIsosAs == "count" {
+        var count = isos[0][0];
         repMsg = count:string;
       } else {
-        var errorMsg = notImplementedError(pn, "return_isos_as type");
+        var errorMsg = notImplementedError(pn, "return_isos_as == %s".format(returnIsosAs));
         siLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
         return new MsgTuple(errorMsg, MsgType.ERROR);
       }
-      siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       siLogger.info(getModuleName(),getRoutineName(),getLineNumber(),repMsg);
 
       return new MsgTuple(repMsg, MsgType.NORMAL);
