@@ -329,28 +329,28 @@ module ClusterModifierTwo {
 
     /* Returns first node found with lowest possible degree < threshold, or -1 if no such node exists */
     proc findMinDegreeNode(ref members: set(int), threshold: int) throws {
-        writeln("Finding min degree node with threshold: ", threshold);
+        //writeln("Finding min degree node with threshold: ", threshold);
         
         // If threshold is 1, we can return immediately since no node can have degree < 1
         if threshold <= 1 {
-            writeln("  Threshold <= 1, no need to check for lower degrees");
-            return -1;
+          //writeln("  Threshold <= 1, no need to check for lower degrees");
+          return -1;
         }
         
         // Start from degree 1 and work up to threshold-1
         // Note: We don't need to check for degree 0 as those would be singleton nodes
         for degree in 1..<threshold {
-            writeln("  Checking for nodes with degree: ", degree);
+          //writeln("  Checking for nodes with degree: ", degree);
             // Return the first node we find with this degree
-            for v in members {
-                var nodeDegree = calculateClusterDegree(members, v);
-                if nodeDegree == degree {
-                    writeln("  Found node ", v, " with degree ", degree);
-                    return v;
-                }
-            }
+          for v in members {
+            var nodeDegree = calculateClusterDegree(members, v);
+              if nodeDegree == degree {
+                //writeln("  Found node ", v, " with degree ", degree);
+                return v;
+              }
+          }
         }
-        writeln("  No nodes found with degree < ", threshold);
+        //writeln("  No nodes found with degree < ", threshold);
         return -1;  // No node found with degree < threshold
     }
 
