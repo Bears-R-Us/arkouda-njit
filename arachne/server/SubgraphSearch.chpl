@@ -1621,13 +1621,13 @@ module SubgraphSearch {
 
     /* Perform the recursive steps as defined in the VF2-PS paper to return count of found matches.
        Designed to be a low-memory way to ONLY count matches and not save them. */
-    proc recursiveMatchCounterFast(state: owned State, depth: int): chpl__processorAtomicType(int) throws {
+    proc recursiveMatchCounterFast(state: owned State, depth: int): int throws {
       var allCounts: chpl__processorAtomicType(int) = 0;
       
       // Base case: the depth is equivalent to the number of vertices in the subgraph.
       if depth == g2.n_vertices {
         allCounts.add(1);
-        return allCounts;
+        return allCounts.read();
       }
 
       // Generate candidate pairs (n1, n2) for mapping
@@ -1645,16 +1645,16 @@ module SubgraphSearch {
           var newCounts = recursiveMatchCounterFast(newState, depth + 1);
 
           // Update count.
-          allCounts.add(newCounts.read());
+          allCounts.add(newCounts);
         }
       }
-      return allCounts;
+      return allCounts.read();
     }
 
     /* Perform the recursive steps as defined in the VF2-PS paper to return count of found matches.
        Designed to be a low-memory way to ONLY count matches and not save them. To be used when the 
        number of matches are to be printed in intervals or returned incomplete. */
-    proc recursiveMatchCounterVerbose(state: owned State, depth: int): chpl__processorAtomicType(int) throws {
+    proc recursiveMatchCounterVerbose(state: owned State, depth: int): int throws {
       var allCounts: chpl__processorAtomicType(int) = 0;
 
       // Prints the progress every X number of minutes.
@@ -1664,20 +1664,20 @@ module SubgraphSearch {
       if depth == g2.n_vertices {
         allCounts.add(1);
         numMatchesAtomic.add(1);
-        return allCounts;
+        return allCounts.read();
       }
 
       // Stop execution if flagged.
-      if stopper.read() then return allCounts;
+      if stopper.read() then return allCounts.read();
 
       // Early termination checks for both time and size limits, if enabled.
       if limitSize && numMatchesAtomic.read() >= sizeLimit {
         stopper.testAndSet();
-        return allCounts;
+        return allCounts.read();
       }
       if limitTime && timer.elapsed():int >= timeLimit {
         stopper.testAndSet();
-        return allCounts;
+        return allCounts.read();
       }
 
       // Generate candidate pairs (n1, n2) for mapping
@@ -1699,10 +1699,10 @@ module SubgraphSearch {
           var newCounts = recursiveMatchCounterVerbose(newState, depth + 1);
 
           // Update count.
-          allCounts.add(newCounts.read());
+          allCounts.add(newCounts);
         }
       }
-      return allCounts;
+      return allCounts.read();
     }
 
     /* Executes edge-centric state injection. */
@@ -1723,13 +1723,13 @@ module SubgraphSearch {
 
           if edgeChecked {
             var newMappings: list(int, parSafe=true);
-            var newCounts: chpl__processorAtomicType(int);
+            var newCounts: int;
             if countOnly && (limitSize || limitTime || printProgressCheck) {
               newCounts = recursiveMatchCounterVerbose(initialState, 2);
-              counts.add(newCounts.read());
+              counts.add(newCounts);
             } else if countOnly {
               newCounts = recursiveMatchCounterFast(initialState, 2);
-              counts.add(newCounts.read());
+              counts.add(newCounts);
             } else if !countOnly && (limitSize || limitTime) {
               newMappings = recursiveMatchSaverVerbose(initialState, 2);
               for mapping in newMappings do solutions.pushBack(mapping);
@@ -1767,13 +1767,13 @@ module SubgraphSearch {
 
             if edgeChecked {
               var newMappings: list(int, parSafe=true);
-              var newCounts: chpl__processorAtomicType(int);
+              var newCounts: int;
               if countOnly && (limitSize || limitTime || printProgressCheck) {
                 newCounts = recursiveMatchCounterVerbose(initialState, 2);
-                counts.add(newCounts.read());
+                counts.add(newCounts);
               } else if countOnly {
                 newCounts = recursiveMatchCounterFast(initialState, 2);
-                counts.add(newCounts.read());
+                counts.add(newCounts);
               } else if !countOnly && (limitSize || limitTime) {
                 newMappings = recursiveMatchSaverVerbose(initialState, 2);
                 for mapping in newMappings do solutions.pushBack(mapping);
@@ -1796,12 +1796,12 @@ module SubgraphSearch {
     proc VF2PS(g1: SegGraph, g2: SegGraph) throws {
       var initialState = new State(g1.n_vertices, g2.n_vertices);
       var solutions: list(int, parSafe=true);
-      var counts: chpl__processorAtomicType(int);
+      var counts: chpl__processorAtomicType(int) = 0;
 
       if countOnly && (limitSize || limitTime || printProgressCheck) {
-        counts = recursiveMatchCounterVerbose(initialState, 0);
+        counts.add(recursiveMatchCounterVerbose(initialState, 0));
       } else if countOnly {
-        counts = recursiveMatchCounterFast(initialState, 0);
+        counts.add(recursiveMatchCounterFast(initialState, 0));
       } else if !countOnly && (limitSize || limitTime) {
         solutions = recursiveMatchSaverVerbose(initialState, 0);
       } else {
