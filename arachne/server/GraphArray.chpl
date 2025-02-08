@@ -31,6 +31,9 @@ module GraphArray {
         VERTEX_MAP_SDI,     // int array where VERTEX_MAP_SDI[u] gives the original value of u
         RANGES_SDI,         // int array with tuple of low values per locale of SRC_SDI
         RANGES_R_SDI,       // int array with tuple of low values per locale of SRC_R_SDI
+        
+        // The key is the attribute (column) name and the value is a tuple of symbol table
+        // identifier and data type.
         VERTEX_LABELS,      // map of type (string, (string,string))
         EDGE_RELATIONSHIPS, // map of type (string, (string,string))
         VERTEX_PROPERTIES,  // map of type (string, (string,string))

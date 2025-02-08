@@ -5,6 +5,8 @@ module BuildGraphMsg {
     use Time; 
     use Sort; 
     use List;
+    use Random;
+    use ChplConfig;
 
     // Package modules.
     use CopyAggregation;
@@ -382,10 +384,164 @@ module BuildGraphMsg {
         else repMsg += "+ nil";
         
         return new MsgTuple(repMsg, MsgType.NORMAL);
-    } // end of readMatrixMarketFileMsg
+    } // end of readTSVFileMsg
+
+    proc assignQuadrant(iiBit:bool, jjBit:bool, bit:int):(int,int) {
+        var start, end:int = 0; 
+
+        if !iiBit && !jjBit then; // do nothing;
+        else if iiBit && !jjBit then start = 1; 
+        else if !iiBit && jjBit then end = 1; 
+        else { start = 1; end = 1; }
+
+        return (bit*start, bit*end);
+    }
+
+    proc genRMATgraph(a:real, b:real, c:real, d:real, SCALE:int, nVERTICES:int, nEDGES:int, 
+                      seed:int, seeded:bool) throws {
+        const vRange = 0..nVERTICES-1, eRange = 0..nEDGES-1;
+        var randGen = if seeded then new randomStream(real, seed) else new randomStream(real);
+        var unifRandom = makeDistArray({eRange}, real),
+            edges = makeDistArray({eRange}, (int,int));
+        edges = (0,0);
+
+        // Calculate constants for bit-setting operations.
+        const cNorm = c / (1 - (a + b));
+        const aNorm = a / (a + b);
+        const ab = a + b;
+
+        // For each bit, generate the indices of each quadrant that the edges will be in.
+        for s in 1..SCALE {
+            randGen.fill(unifRandom);
+            var iiBit = unifRandom > ab;
+
+            randGen.fill(unifRandom);
+            var jjBit = unifRandom > (cNorm * iiBit:real + aNorm * (!iiBit):real);
+            
+            edges += assignQuadrant(iiBit, jjBit, 2**(s-1));
+        }
+
+        // Transfer edges from array of tuples to source and destination arrays.
+        var src = makeDistArray({eRange}, int);
+        var dst = makeDistArray({eRange}, int);
+        forall (e,s,d) in zip(edges,src,dst) { (s,d) = e; }
+
+        // Create a random permutation of the vertex names.
+        var originalIndices = makeDistArray({vRange}, int);
+        forall (o,i) in zip(originalIndices,originalIndices.domain) do o = i;
+        var permutation = permute(originalIndices);
+
+        // Change the edges to the new permutation of vertex names.
+        if ChplConfig.CHPL_COMM == "none" {
+            forall e in edges.domain with (var agg = new SrcAggregator(int)) {
+                src[e] = permutation[src[e]];
+                dst[e] = permutation[dst[e]];
+            }
+        } else {
+            forall e in edges.domain with (var agg = new SrcAggregator(int)) {
+                agg.copy(src[e], permutation[src[e]]);
+                agg.copy(dst[e], permutation[dst[e]]);
+            }
+        }
+
+        return (src, dst);
+    }
+
+    proc buildRMATGraphMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        var a = msgArgs.getValueOf("A"):real;
+        var b = msgArgs.getValueOf("B"):real;
+        var c = msgArgs.getValueOf("C"):real;
+        var d = msgArgs.getValueOf("D"):real;
+        var scale = msgArgs.getValueOf("Scale"):int;
+        var edgeFactor = msgArgs.getValueOf("EdgeFactor"):int;
+        var seedValue = msgArgs.getValueOf("Seed");
+
+        var seeded = if seedValue == "None" then false else true;
+        var seed = if seeded then seedValue:int else 0;
+
+        var n = 2**scale;
+        var m = n * edgeFactor;
+        var (src,dst) = genRMATgraph(a, b, c, d, scale, n, m, seed, seeded);
+
+        var srcName = st.nextName();
+        var srcEntry = createSymEntry(src);
+        st.addEntry(srcName, srcEntry);
+
+        var dstName = st.nextName();
+        var dstEntry = createSymEntry(dst);
+        st.addEntry(dstName, dstEntry);
+
+        var repMsg = "created " + st.attrib(srcName) + "+ created " + st.attrib(dstName);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
+
+    proc buildBarabasiAlbertGraphMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+        var n = msgArgs.getValueOf("N"):int;
+        var m = msgArgs.getValueOf("M"):int;
+        const ref initialSrc = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("Src"),st),int).a;
+        const ref initialDst = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("Dst"),st),int).a;
+        const ref initialRepeatedNodes = toSymEntry(getGenericTypedArrayEntry(msgArgs.getValueOf("RepeatedNodes"),st),int).a;
+        var seedValue = msgArgs.getValueOf("Seed");
+
+        var seeded = if seedValue == "None" then false else true;
+        var seed = if seeded then seedValue:int else 0;
+
+        // Create an arrays with the final number of expected edges.
+        var expectedM = m * (n - 1);
+        var src = makeDistArray(expectedM, int);
+        var dst = makeDistArray(expectedM, int);
+
+        // Add initialSrc and initialDst to src and dst.
+        src[0..m-1] = initialSrc;
+        dst[0..m-1] = initialDst;
+
+        // Start adding the other n - m nodes.
+        var source = initialSrc.size;
+        var nextStart = m;
+        var nextEnd = nextStart + m - 1;
+
+        // Create array to track repeated nodes.
+        var expectedRepeatedNodes = 2 * m * (n - 1);
+        var repeatedNodes = makeDistArray(expectedRepeatedNodes, int);
+        repeatedNodes[0..nextStart*2-1] = initialRepeatedNodes;
+
+        while source < n {
+            // Pick uniformly from repeated nodes.
+            var targets = if seeded then sample(repeatedNodes[0..nextStart*2-1], m, seed=seed)
+                          else sample(repeatedNodes[0..nextStart*2-1], m);
+
+            // Modify both src and dst.
+            src[nextStart..nextEnd] = source;
+            dst[nextStart..nextEnd] = targets;
+
+            // Modify repeatedNodes.
+            repeatedNodes[nextStart*2..nextStart*2+m-1] = src[nextStart..nextEnd];
+            repeatedNodes[nextStart*2+m..nextStart*2+2*m-1] = dst[nextStart..nextEnd];
+
+            // Increment counters.
+            source += 1;
+            nextStart += m;
+            nextEnd = nextStart + m - 1;
+        }
+
+        var srcName = st.nextName();
+        var srcEntry = createSymEntry(src);
+        st.addEntry(srcName, srcEntry);
+
+        var dstName = st.nextName();
+        var dstEntry = createSymEntry(dst);
+        st.addEntry(dstName, dstEntry);
+
+        var repMsg = "created " + st.attrib(srcName) + "+ created " + st.attrib(dstName);
+
+        return new MsgTuple(repMsg, MsgType.NORMAL);
+    }
 
     use CommandMap;
     registerFunction("insertComponents", insertComponentsMsg, getModuleName());
     registerFunction("readMatrixMarketFile", readMatrixMarketFileMsg, getModuleName());
     registerFunction("readTSVFile", readTSVFileMsg, getModuleName());
+    registerFunction("buildRMATGraph", buildRMATGraphMsg, getModuleName());
+    registerFunction("buildBarabasiAlbertGraph", buildBarabasiAlbertGraphMsg, getModuleName());
 }
