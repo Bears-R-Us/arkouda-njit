@@ -28,6 +28,171 @@ module MotifCounting {
   use SymArrayDmap;
   use Logging;
 
+
+/* 
+ * Configuration record for sampling parameters
+ * Allows users to customize all aspects of the sampling process
+ */
+record SamplingConfig {
+    /* Statistical parameters */
+    var confidenceLevel: real = 0.95;    // Confidence level (e.g., 0.95 for 95%)
+    var marginOfError: real = 0.1;       // Desired margin of error (e.g., 0.1 for ±10%)
+    var pilotFraction: real = 0.02;      // Fraction of vertices to sample in pilot (e.g., 0.02 for 2%)
+    
+    /* Stratification parameters */
+    var numStrata: int = 3;              // Number of strata to use
+    var strategyType: string = "degree"; // Stratification strategy: "degree", "community", or "uniform"
+    var minSampleSize: int = 30;         // Minimum samples per stratum for statistical validity
+    
+    /* Error handling parameters */
+    var minStratumSize: int = 100;       // Minimum stratum size for valid sampling
+    var maxRetries: int = 3;             // Maximum retries for failed sampling attempts
+    
+    /* Validation */
+    proc isValid() {
+        if confidenceLevel <= 0.0 || confidenceLevel >= 1.0 then return false;
+        if marginOfError <= 0.0 || marginOfError >= 1.0 then return false;
+        if pilotFraction <= 0.0 || pilotFraction >= 1.0 then return false;
+        if numStrata < 1 then return false;
+        if minSampleSize < 1 then return false;
+        if minStratumSize < minSampleSize then return false;
+        if maxRetries < 1 then return false;
+        return true;
+    }
+}
+
+/*
+ * Enhanced Sampling State class
+ * Manages the state of the sampling process including stratification and variance estimation
+ */
+class SamplingState {
+    var Sconfig: SamplingConfig;
+    var strata: [0..#Sconfig.numStrata] Stratum;       // Fixed-size array of strata
+    var localVariance: [0..#Sconfig.numStrata] atomic real;   // Fixed-size array for variance
+    var samplingErrors: domain(int);     // Track problematic strata
+    
+    /* Sampling statistics */
+    var totalSampledVertices: atomic int;
+    var successfulSamples: atomic int;
+    var failedSamples: atomic int;
+    
+    proc init(Sconfig: SamplingConfig) {
+        this.Sconfig = Sconfig;
+        this.strata = [i in 0..#Sconfig.numStrata] new Stratum(i);
+        this.localVariance = [i in 0..#Sconfig.numStrata] atomic real(0.0);
+        this.samplingErrors = {1..0};
+        init this;  // Required for proper initialization
+    }
+    
+    /* 
+     * Records sampling error for a stratum
+     * Returns: true if max retries not exceeded, false otherwise
+     */
+    proc recordError(stratumId: int): bool {
+        this.failedSamples.add(1);
+        if this.samplingErrors.contains(stratumId) {
+            var currentRetries = this.samplingErrors.size;
+            return currentRetries < this.Sconfig.maxRetries;
+        }
+        this.samplingErrors.add(stratumId);
+        return true;
+    }
+    
+    /*
+     * Checks if sampling results are statistically valid
+     * Returns: (bool, string) tuple - (isValid, error message)
+     */
+    proc validateResults(): (bool, string) {
+        var totalSamples = this.successfulSamples.read();
+        if totalSamples < Sconfig.minSampleSize {
+            return (false, "Insufficient total samples: " + totalSamples:string + 
+                   " < minimum required: " + Sconfig.minSampleSize:string);
+        }
+        
+        var errorMsg: string;
+        forall stratum in strata with (ref errorMsg) {
+            if stratum.sampleSize.read() < Sconfig.minSampleSize {
+                errorMsg += "Stratum " + stratum.id:string + " has insufficient samples. ";
+            }
+        }
+        if errorMsg.length > 0 then return (false, errorMsg);
+        
+        var failureRate = (this.failedSamples.read():real / 
+                          (this.successfulSamples.read() + this.failedSamples.read()));
+        if failureRate > 0.1 {  // More than 10% failure rate
+            return (false, "High sampling failure rate: " + (failureRate*100):string + "%");
+        }
+        
+        return (true, "");
+    }
+}
+/*
+ * Enhanced Stratum record with additional error checking and statistics
+ */
+record Stratum {
+    var id: int;
+    var size: atomic int;
+    var sampleSize: atomic int;
+    var vertices: domain(int, parSafe=true);
+    var validSamples: atomic int;
+    var samplingErrors: atomic int;
+    
+    /*
+     * Checks if the stratum is valid for sampling
+     * Returns: (bool, string) tuple - (isValid, error message)
+     */
+    proc isValid(Sconfig: SamplingConfig): (bool, string) {
+        if size.read() < Sconfig.minStratumSize {
+            return (false, "Stratum " + id:string + " size (" + size.read():string + 
+                   ") below minimum required (" + Sconfig.minStratumSize:string + ")");
+        }
+        if vertices.size < Sconfig.minSampleSize {
+            return (false, "Insufficient vertices in stratum " + id:string + 
+                   " for minimum sample size");
+        }
+        return (true, "");
+    }
+}
+/*
+ * Stratifies the graph based on the chosen strategy
+ * Returns: A new SamplingState instance or throws on invalid configuration
+ */
+proc stratifyGraph(n: int, ref nodeDegree: [] int, Sconfig: SamplingConfig) throws {
+    if !Sconfig.isValid() {
+        throw new Error("Invalid sampling configuration");
+    }
+    
+    var samplingState = new owned SamplingState(Sconfig);
+    
+    select Sconfig.strategyType {
+        when "degree" {
+            stratifyByDegree(n, nodeDegree, samplingState);
+        }
+        when "community" {
+            stratifyByCommunity(n, nodeDegree, samplingState);
+        }
+        when "uniform" {
+            stratifyUniformly(n, samplingState);
+        }
+        otherwise {
+            throw new Error("Unknown stratification strategy: " + Sconfig.strategyType);
+        }
+    }
+    
+    // Validate strata
+    for stratum in samplingState.strata {
+        var (isValid, errorMsg) = stratum.isValid(Sconfig);
+        if !isValid {
+            writeln("Warning: ", errorMsg);
+            if !samplingState.recordError(stratum.id) {
+                throw new Error("Max retries exceeded for stratum " + stratum.id:string);
+            }
+        }
+    }
+    
+    return samplingState;
+}
+
     class KavoshState {
         var n: int;
         var k: int;
@@ -116,10 +281,14 @@ module MotifCounting {
   
 
   // proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
-  proc runMotifCounting(g1: SegGraph,  
-              // sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-               motifSize: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
+  proc runMotifCounting(g1: SegGraph, motifSize: int, printProgressInterval: int,
+                     algType: string, returnIsosAs: string, st: borrowed SymTab
+                     ) throws {
+
+var useSampling: bool = true;
+var Sconfig: SamplingConfig; 
+
+
     var numIso: int = 0;
 
     // Extract the g1/G/g information from the SegGraph data structure.
@@ -643,6 +812,49 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
             writeln("\nglobalClasses.size: ", globalClasses.size);
         }
     }// End of Enumerate
+
+    if useSampling {
+        writeln("Starting motif sampling with configuration:");
+        writeln("  Confidence Level: ", Sconfig.confidenceLevel * 100, "%");
+        writeln("  Margin of Error: ±", Sconfig.marginOfError * 100, "%");
+        writeln("  Stratification Strategy: ", Sconfig.strategyType);
+        writeln("  Number of Strata: ", Sconfig.numStrata);
+        
+        var samplingState = stratifyGraph(n, nodeDegree, Sconfig);
+        
+        // Run sampling and collect statistics
+        var startTime = getCurrentTime();
+        try {
+            runSamplingProcess(samplingState, g1, motifSize, maxDeg);
+        } catch e {
+            writeln("Error during sampling: ", e.message());
+            writeln("Falling back to full enumeration...");
+            useSampling = false;
+        }
+        if useSampling {
+            var (isValid, errorMsg) = samplingState.validateResults();
+            if !isValid {
+                writeln("Warning: Sampling results may be unreliable - ", errorMsg);
+            }
+            
+            // Print sampling statistics
+            writeln("\nSampling Statistics:");
+            writeln("  Total Vertices Sampled: ", samplingState.totalSampledVertices.read());
+            writeln("  Successful Samples: ", samplingState.successfulSamples.read());
+            writeln("  Failed Samples: ", samplingState.failedSamples.read());
+            writeln("  Time Taken: ", getCurrentTime() - startTime, " seconds");
+            
+            for stratum in samplingState.strata {
+                writeln("\nStratum ", stratum.id, " Statistics:");
+                writeln("  Size: ", stratum.size.read());
+                writeln("  Samples: ", stratum.validSamples.read());
+                writeln("  Sampling Errors: ", stratum.samplingErrors.read());
+            }
+        }
+    }
+
+
+
 
 
     writeln("**********************************************************************");
