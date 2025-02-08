@@ -67,9 +67,10 @@ record SamplingConfig {
  */
 class SamplingState {
     var Sconfig: SamplingConfig;
-    var strata: [0..#Sconfig.numStrata] Stratum;       // Fixed-size array of strata
-    var localVariance: [0..#Sconfig.numStrata] atomic real;   // Fixed-size array for variance
-    var samplingErrors: domain(int);     // Track problematic strata
+    var strata: [0..#Sconfig.numStrata] Stratum;
+    var D: domain(1);                   // Domain for atomic array
+    var localVariance: [D] atomic real; // Atomic array using domain
+    var samplingErrors: domain(int);
     
     /* Sampling statistics */
     var totalSampledVertices: atomic int;
@@ -79,15 +80,21 @@ class SamplingState {
     proc init(Sconfig: SamplingConfig) {
         this.Sconfig = Sconfig;
         this.strata = [i in 0..#Sconfig.numStrata] new Stratum(i);
-        this.localVariance = [i in 0..#Sconfig.numStrata] atomic real(0.0);
+        this.D = {0..#Sconfig.numStrata};
+        init this;
+        
+        // Initialize atomic values
+        forall l in localVariance do l.write(0.0);
+        
+        // Initialize other atomics
+        this.totalSampledVertices.write(0);
+        this.successfulSamples.write(0);
+        this.failedSamples.write(0);
+        
         this.samplingErrors = {1..0};
-        init this;  // Required for proper initialization
     }
     
-    /* 
-     * Records sampling error for a stratum
-     * Returns: true if max retries not exceeded, false otherwise
-     */
+    /* Rest of the methods remain the same */
     proc recordError(stratumId: int): bool {
         this.failedSamples.add(1);
         if this.samplingErrors.contains(stratumId) {
@@ -98,27 +105,25 @@ class SamplingState {
         return true;
     }
     
-    /*
-     * Checks if sampling results are statistically valid
-     * Returns: (bool, string) tuple - (isValid, error message)
-     */
     proc validateResults(): (bool, string) {
         var totalSamples = this.successfulSamples.read();
         if totalSamples < Sconfig.minSampleSize {
             return (false, "Insufficient total samples: " + totalSamples:string + 
-                   " < minimum required: " + Sconfig.minSampleSize:string);
+                " < minimum required: " + Sconfig.minSampleSize:string);
         }
         
+        var hasError = false;
         var errorMsg: string;
-        forall stratum in strata with (ref errorMsg) {
+        forall stratum in strata with (ref errorMsg, ref hasError) {
             if stratum.sampleSize.read() < Sconfig.minSampleSize {
+                hasError = true;
                 errorMsg += "Stratum " + stratum.id:string + " has insufficient samples. ";
             }
         }
-        if errorMsg.length > 0 then return (false, errorMsg);
+        if hasError then return (false, errorMsg);
         
         var failureRate = (this.failedSamples.read():real / 
-                          (this.successfulSamples.read() + this.failedSamples.read()));
+                        (this.successfulSamples.read() + this.failedSamples.read()));
         if failureRate > 0.1 {  // More than 10% failure rate
             return (false, "High sampling failure rate: " + (failureRate*100):string + "%");
         }
@@ -126,6 +131,7 @@ class SamplingState {
         return (true, "");
     }
 }
+
 /*
  * Enhanced Stratum record with additional error checking and statistics
  */
@@ -168,9 +174,9 @@ proc stratifyGraph(n: int, ref nodeDegree: [] int, Sconfig: SamplingConfig) thro
         when "degree" {
             stratifyByDegree(n, nodeDegree, samplingState);
         }
-        when "community" {
-            stratifyByCommunity(n, nodeDegree, samplingState);
-        }
+        // when "community" {
+        //     stratifyByCommunity(n, nodeDegree, samplingState);
+        // }
         when "uniform" {
             stratifyUniformly(n, samplingState);
         }
@@ -333,7 +339,276 @@ var Sconfig: SamplingConfig;
     }
     var maxDeg = max reduce nodeDegree;
 
+//////////////////////////////////////////////////////////////////////////
+/*
+ * Stratifies vertices based on their degrees
+ * Divides vertices into strata based on degree ranges
+ */
+proc stratifyByDegree(n: int, ref nodeDegree: [] int, ref samplingState: SamplingState) {
+    // Calculate degree boundaries for stratification
+    var sortedDegrees = nodeDegree;
+    sort(sortedDegrees);
+    var strataBoundaries: [0..#(samplingState.Sconfig.numStrata-1)] int;
+    
+    // Calculate boundaries for each stratum
+    for i in 0..#(samplingState.Sconfig.numStrata-1) {
+        var idx = ((i + 1) * n / samplingState.Sconfig.numStrata): int;
+        strataBoundaries[i] = sortedDegrees[idx];
+    }
+    
+    // Assign vertices to strata based on their degrees
+    forall v in 0..<n {
+        var stratumId = samplingState.Sconfig.numStrata - 1;  // Default to highest stratum
+        for i in 0..#(samplingState.Sconfig.numStrata-1) {
+            if nodeDegree[v] <= strataBoundaries[i] {
+                stratumId = i;
+                break;
+            }
+        }
+        
+        // Add vertex to appropriate stratum
+        samplingState.strata[stratumId].vertices.add(v);
+        samplingState.strata[stratumId].size.add(1);
+    }
+    
+    // Set initial sample sizes based on pilot fraction
+    forall stratum in samplingState.strata {
+        var initialSize = (stratum.size.read() * samplingState.Sconfig.pilotFraction): int;
+        stratum.sampleSize.write(max(initialSize, samplingState.Sconfig.minSampleSize));
+    }
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Degree-based stratification completed:");
+        for i in 0..#samplingState.Sconfig.numStrata {
+            writeln("Stratum ", i, ":");
+            writeln("  Size: ", samplingState.strata[i].size.read());
+            writeln("  Sample size: ", samplingState.strata[i].sampleSize.read());
+            if i < samplingState.Sconfig.numStrata-1 {
+                writeln("  Degree boundary: <= ", strataBoundaries[i]);
+            }
+        }
+    }
+}
 
+/*
+ * Stratifies vertices uniformly
+ * Divides vertices into equal-sized strata regardless of their properties
+ */
+proc stratifyUniformly(n: int, ref samplingState: SamplingState) {
+    var verticesPerStratum = (n / samplingState.Sconfig.numStrata): int;
+    var remainingVertices = n % samplingState.Sconfig.numStrata;
+    
+    // Distribute vertices evenly across strata
+    forall v in 0..<n {
+        var stratumId = v / verticesPerStratum;
+        if stratumId >= samplingState.Sconfig.numStrata {
+            stratumId = samplingState.Sconfig.numStrata - 1;
+        }
+        
+        // Add vertex to stratum
+        samplingState.strata[stratumId].vertices.add(v);
+        samplingState.strata[stratumId].size.add(1);
+    }
+    
+    // Set initial sample sizes based on pilot fraction
+    forall stratum in samplingState.strata {
+        var initialSize = (stratum.size.read() * samplingState.Sconfig.pilotFraction): int;
+        stratum.sampleSize.write(max(initialSize, samplingState.Sconfig.minSampleSize));
+    }
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("Uniform stratification completed:");
+        for i in 0..#samplingState.Sconfig.numStrata {
+            writeln("Stratum ", i, ":");
+            writeln("  Size: ", samplingState.strata[i].size.read());
+            writeln("  Sample size: ", samplingState.strata[i].sampleSize.read());
+        }
+    }
+}
+/*
+ * Executes the sampling-based motif counting process
+ * Parameters:
+ * - samplingState: The state object managing sampling configuration and results
+ * - g1: The input graph
+ * - motifSize: Size of motifs to count
+ * - maxDeg: Maximum degree in the graph
+ * - globalMotifCount: Reference to global motif counter
+ * - globalClasses: Reference to global classes set
+ */
+proc runSamplingProcess(ref samplingState: SamplingState, 
+                       g1: SegGraph, 
+                       motifSize: int, 
+                       maxDeg: int,
+                       ref globalMotifCount: atomic int,
+                       ref globalClasses: set(uint(64), parSafe=true)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Starting sampling process with motif size: ", motifSize);
+    }
+
+    // Run pilot sampling first to estimate variance
+    // runPilotSampling(samplingState, g1, motifSize, maxDeg, globalClasses);
+    runPilotSampling(samplingState, motifSize, maxDeg, globalClasses);
+
+    // Adjust sample sizes based on pilot results
+    adjustSampleSizes(samplingState);
+
+    // Run main sampling
+    // runMainSampling(samplingState, g1, motifSize, maxDeg, globalMotifCount, globalClasses);
+    runMainSampling(samplingState, motifSize, maxDeg, globalMotifCount, globalClasses);
+}
+
+/*
+ * Runs initial pilot sampling to estimate variance
+ */
+proc runPilotSampling(ref samplingState: SamplingState, 
+                     motifSize: int, 
+                     maxDeg: int,
+                     ref globalClasses: set(uint(64), parSafe=true)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Starting pilot sampling...");
+    }
+
+    forall s in samplingState.strata with (ref globalClasses) {
+        var pilotSampleSize = (s.size.read() * samplingState.Sconfig.pilotFraction): int;
+        pilotSampleSize = max(pilotSampleSize, samplingState.Sconfig.minSampleSize);
+        
+        var sampledCount: atomic int;
+        var localClasses: set(uint(64), parSafe=false);
+        
+        forall v in s.vertices with (ref sampledCount, ref localClasses, var rng = new randomStream(real)) {
+            // Only sample if we haven't reached our target
+            if sampledCount.read() >= pilotSampleSize then continue;
+            
+            // Probabilistic sampling
+            if rng.getNext() <= samplingState.Sconfig.pilotFraction {
+                var state = new KavoshState(g1.n_vertices, motifSize, maxDeg);
+                
+                // Initialize root vertex
+                state.setSubgraph(0, 0, 1);      // Set count to 1
+                state.setSubgraph(0, 1, v);      // Set the vertex
+                state.visited.clear();           
+                state.visited.add(v);
+                
+                // Explore from this vertex
+                Explore(state, v, 1, motifSize - 1);
+                
+                // Update counts
+                sampledCount.add(1);
+                samplingState.totalSampledVertices.add(1);
+                samplingState.successfulSamples.add(1);
+                
+                // Update local classes and variance estimate
+                localClasses += state.localmotifClasses;
+                if state.localmotifClasses.size > 0 {
+                    samplingState.localVariance[s.id].write(state.localmotifClasses.size:real);
+                }
+            }
+        }
+        
+        // Update global classes atomically at the end of stratum processing
+        globalClasses += localClasses;
+    }
+}
+/*
+ * Adjusts sample sizes based on pilot results
+ */
+proc adjustSampleSizes(ref samplingState: SamplingState) {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Adjusting sample sizes based on pilot results...");
+    }
+
+    var totalSize = + reduce [s in samplingState.strata] s.size.read();
+    var zScore = getZScore(samplingState.Sconfig.confidenceLevel);
+    
+    forall stratum in samplingState.strata {
+        var variance = samplingState.localVariance[stratum.id].read();
+        var newSize = (
+            (zScore * sqrt(variance) * stratum.size.read()) /
+            (samplingState.Sconfig.marginOfError * sqrt(totalSize))
+        ): int;
+        
+        // Ensure we don't exceed stratum size and meet minimum requirements
+        newSize = min(max(newSize, samplingState.Sconfig.minSampleSize), stratum.size.read());
+        stratum.sampleSize.write(newSize);
+    }
+}
+
+/*
+ * Runs the main sampling process after pilot sampling
+ */
+proc runMainSampling(ref samplingState: SamplingState, 
+                    motifSize: int, 
+                    maxDeg: int,
+                    ref globalMotifCount: atomic int,
+                    ref globalClasses: set(uint(64), parSafe=true)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("Starting main sampling process...");
+    }
+
+    forall s in samplingState.strata with (ref globalClasses, ref globalMotifCount) {
+        var targetSampleSize = s.sampleSize.read();
+        var sampledCount: atomic int;
+        var localClasses: set(uint(64), parSafe=false);
+        var localMotifCount: atomic int;
+        
+        forall v in s.vertices with (ref sampledCount, ref localClasses, ref localMotifCount, ref s, 
+                                   var rng = new randomStream(real)) {
+            if sampledCount.read() >= targetSampleSize then continue;
+            
+            // Calculate sampling probability based on target sample size
+            var samplingProb = (targetSampleSize: real) / s.size.read();
+            
+            if rng.getNext() <= samplingProb {
+                var state = new KavoshState(g1.n_vertices, motifSize, maxDeg);
+                
+                // Initialize root vertex
+                state.setSubgraph(0, 0, 1);
+                state.setSubgraph(0, 1, v);
+                state.visited.clear();
+                state.visited.add(v);
+                
+                // Explore from this vertex
+                Explore(state, v, 1, motifSize - 1);
+                
+                // Update local counts with scaling
+                var scaleFactor = s.size.read() / targetSampleSize;
+                localMotifCount.add(state.localsubgraphCount * scaleFactor);
+                localClasses += state.localmotifClasses;
+                
+                // Update sampling statistics
+                sampledCount.add(1);
+                samplingState.totalSampledVertices.add(1);
+                samplingState.successfulSamples.add(1);
+                s.validSamples.add(1);
+            }
+        }
+        
+        // Update global counters atomically at the end of stratum processing
+        globalMotifCount.add(localMotifCount.read());
+        globalClasses += localClasses;
+        
+        if sampledCount.read() < targetSampleSize {
+            s.samplingErrors.add(1);
+            if !samplingState.recordError(s.id) {
+                throw new Error("Failed to achieve target sample size for stratum " + 
+                              s.id:string);
+            }
+        }
+    }
+}
+
+/*
+ * Helper function to get z-score for confidence level
+ */
+proc getZScore(confidenceLevel: real): real {
+    select confidenceLevel {
+        when 0.90 do return 1.645;
+        when 0.95 do return 1.96;
+        when 0.99 do return 2.576;
+        otherwise do return 1.96;  // Default to 95% confidence
+    }
+}
+//////////////////////////////////////////////////////////////////////////
     // All motif counting and classify variables
     var globalMotifCount: atomic int;
     var globalClasses: set(uint(64), parSafe=true);
@@ -813,6 +1088,8 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
         }
     }// End of Enumerate
 
+
+
     if useSampling {
         writeln("Starting motif sampling with configuration:");
         writeln("  Confidence Level: ", Sconfig.confidenceLevel * 100, "%");
@@ -823,46 +1100,41 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
         var samplingState = stratifyGraph(n, nodeDegree, Sconfig);
         
         // Run sampling and collect statistics
-        var startTime = getCurrentTime();
         try {
-            runSamplingProcess(samplingState, g1, motifSize, maxDeg);
+            runSamplingProcess(samplingState, g1, motifSize, maxDeg, globalMotifCount, globalClasses);
+            
+            var (isValid, errorMsg) = samplingState.validateResults();
+            if !isValid {
+                writeln("Warning: Sampling results may be unreliable - ", errorMsg);
+                writeln("Falling back to full enumeration...");
+                useSampling = false;
+            } else {
+                // Print sampling statistics
+                writeln("\nSampling Statistics:");
+                writeln("  Total Vertices Sampled: ", samplingState.totalSampledVertices.read());
+                writeln("  Successful Samples: ", samplingState.successfulSamples.read());
+                writeln("  Failed Samples: ", samplingState.failedSamples.read());
+                
+                for stratum in samplingState.strata {
+                    writeln("\nStratum ", stratum.id, " Statistics:");
+                    writeln("  Size: ", stratum.size.read());
+                    writeln("  Samples: ", stratum.validSamples.read());
+                    writeln("  Sampling Errors: ", stratum.samplingErrors.read());
+                }
+            }
         } catch e {
             writeln("Error during sampling: ", e.message());
             writeln("Falling back to full enumeration...");
             useSampling = false;
         }
-        if useSampling {
-            var (isValid, errorMsg) = samplingState.validateResults();
-            if !isValid {
-                writeln("Warning: Sampling results may be unreliable - ", errorMsg);
-            }
-            
-            // Print sampling statistics
-            writeln("\nSampling Statistics:");
-            writeln("  Total Vertices Sampled: ", samplingState.totalSampledVertices.read());
-            writeln("  Successful Samples: ", samplingState.successfulSamples.read());
-            writeln("  Failed Samples: ", samplingState.failedSamples.read());
-            writeln("  Time Taken: ", getCurrentTime() - startTime, " seconds");
-            
-            for stratum in samplingState.strata {
-                writeln("\nStratum ", stratum.id, " Statistics:");
-                writeln("  Size: ", stratum.size.read());
-                writeln("  Samples: ", stratum.validSamples.read());
-                writeln("  Sampling Errors: ", stratum.samplingErrors.read());
-            }
-        }
     }
 
-
-
-
-
-    writeln("**********************************************************************");
-
-    writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
-    writeln("Maximum degree: ", maxDeg);
-
-    Enumerate(g1.n_vertices, motifSize, maxDeg );
+    // Only run full enumeration if sampling failed or wasn't used
+    if !useSampling {
+        writeln("Starting full enumeration with k=", k, " on a graph of ", n, " vertices.");
+        writeln("Maximum degree: ", maxDeg);
+        Enumerate(g1.n_vertices, motifSize, maxDeg);
+    }
     // Oliver: Now you can make your src and dst based on Classes that I gathered in 
     // motifClasses and return them to users 
     // we should decide to keep or delete (allmotifs list)
