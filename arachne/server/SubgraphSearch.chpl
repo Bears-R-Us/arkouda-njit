@@ -1878,7 +1878,7 @@ module SubgraphSearch {
     clearModuleLevelProbabilityMaps();
 
     var isoArr = nodeMapGraphG1[allMappingsArray];
-    var tempArr: [0..0] int;
+    var tempArr = makeDistArray(0, int);
     if returnIsosAs == "count" then return(allMappingsArray, tempArr, tempArr, tempArr);
 
     var numSubgraphVertices = nodeMapGraphG2.size;
