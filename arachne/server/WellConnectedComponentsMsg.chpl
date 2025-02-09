@@ -77,4 +77,4 @@ module WellConnectedComponentsMsg {
 
   use CommandMap;
   registerFunction("wellConnectedComponents", wellConnectedComponentsMsg, getModuleName());
-} // end of module
+} // end of WellConnectedComponentsMsg module

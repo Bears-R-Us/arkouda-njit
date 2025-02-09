@@ -11,6 +11,8 @@ module WellConnectedComponentsDistributed {
   use Math;
   use Search;
   use CTypes;
+  use CommDiagnostics;
+  import CopyAggregation.SrcAggregator;
 
   // Arachne modules.
   import WellConnectedComponentsMsg.wccLogger;
@@ -138,8 +140,8 @@ module WellConnectedComponentsDistributed {
 
     /* Returns the edge list of the induced subgraph given a set of vertices. */
     proc getEdgeList(ref vertices: set(int)) throws {
-      var srcList = new list(int);
-      var dstList = new list(int);
+      var srcList = new list(int, parSafe=true);
+      var dstList = new list(int, parSafe=true);
 
       var v2idx = new map(int, int);
       var idx2v = vertices.toArray();
@@ -149,8 +151,13 @@ module WellConnectedComponentsDistributed {
 
       // Gather the edges of the subgraph induced by the given vertices.
       for u in vertices {
-        const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-        for v in neighbors {
+        var start = segGraphG1[u];
+        var end = segGraphG1[u+1];
+        var neighbors: [0..<end-start] int;
+        forall (i,s) in zip(neighbors.domain, start..<end) with (var agg = new SrcAggregator(int)) {
+          agg.copy(neighbors[i], dstNodesG1[s]);
+        }
+        forall v in neighbors with (ref srcList, ref dstList, ref v2idx) {
           if v2idx.contains(v) {
             srcList.pushBack(v2idx[u]);
             dstList.pushBack(v2idx[v]);
@@ -166,6 +173,39 @@ module WellConnectedComponentsDistributed {
       // TODO: Do we actually need to sort and remove multiple edges? If the input graph is simple, 
       //       wouldn't any induced subgraphs also be simple?
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
+      var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
+
+      return (uniqueSrc, uniqueDst, idx2v);
+    }
+
+    /* Similar to above, but we can assume src and dst already contain a subset of vertices. */
+    proc getEdgeList(ref vertices, ref src, ref dst) throws {
+      var srcList = new list(int);
+      var dstList = new list(int);
+
+      var v2idx = new map(int, int);
+      var idx2v = vertices.toArray();
+      sort(idx2v);
+
+      for (v,idx) in zip(idx2v, idx2v.domain) do v2idx[v] = idx;
+
+      for (u,v) in zip(src,dst) {
+        if vertices.contains(u) && vertices.contains(v) {
+          srcList.pushBack(v2idx[u]);
+          dstList.pushBack(v2idx[v]);
+        } else {
+          continue;
+        }
+      }
+
+      // Convert lists to arrays since we need arrays for our edge list processing methods.
+      var newSrc = srcList.toArray();
+      var newDst = dstList.toArray();
+
+      // Sort the redges and remove any multiples if they exist.
+      // TODO: Do we actually need to sort and remove multiple edges? If the input graph is simple, 
+      //       wouldn't any induced subgraphs also be simple?
+      var (sortedSrc, sortedDst) = sortEdgeList(newSrc, newDst);
       var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
 
       return (uniqueSrc, uniqueDst, idx2v);
@@ -284,9 +324,7 @@ module WellConnectedComponentsDistributed {
 
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
        well-connected or not, and if not calls itself on the new generated partitions. */
-    proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
-      var (src, dst, mapper) = getEdgeList(vertices);
-
+    proc wccRecursiveChecker(ref vertices, ref src, ref dst, ref mapper, id: int, depth: int) throws {
       // If the generated edge list is empty, then return.
       if src.size < 1 then return;
 
@@ -323,16 +361,12 @@ module WellConnectedComponentsDistributed {
         
         // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
         if cluster1.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var inPartition = removeDegreeOne(cluster1);
-          var inPartition = cluster1;
-          wccRecursiveChecker(inPartition, id, depth+1);
+          var (cluster1Src, cluster1Dst, cluster1Mapper) = getEdgeList(cluster1, src, dst);
+          wccRecursiveChecker(cluster1, cluster1Src, cluster1Dst, cluster1Mapper, id, depth+1);
         }
         if cluster2.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var outPartition = removeDegreeOne(cluster2);
-          var outPartition = cluster2;
-          wccRecursiveChecker(outPartition, id, depth+1);
+          var (cluster2Src, cluster2Dst, cluster2Mapper) = getEdgeList(cluster2, src, dst);
+          wccRecursiveChecker(cluster2, cluster2Src, cluster2Dst, cluster2Mapper, id, depth+1);
         }
       }
       return;
@@ -377,14 +411,11 @@ module WellConnectedComponentsDistributed {
       //
       // NOTE: This is probably not even needed here. We could add a pre-filtering step to run this
       //       during graph construction or as a totally separate process instead of here.
+      if logLevel == LogLevel.DEBUG then startCommDiagnostics();
       coforall loc in Locales do on loc {
         var originalClusters = originalClustersDistributed[loc.id][0];
         var newClusterIds: atomic int = 1;
         for key in originalClusters.keysToArray() {
-          if logLevel == LogLevel.DEBUG {
-            var outMsg = "Running CC on cluster " + key:string + " on locale " + loc.id:string + ".";
-            wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-          }
           var (src, dst, mapper) = getEdgeList(originalClusters[key]);
           if src.size > 0 { // If no edges were generated, then do not process this component.
             // Call connected components and decide if multiple connected components exist or not.
@@ -414,11 +445,17 @@ module WellConnectedComponentsDistributed {
                 }
               }
               if logLevel == LogLevel.DEBUG {
-                var outMsg = "Original cluster " + key:string + " was split up into " 
-                          + tempMap.size:string + " clusters.";
+                var outMsg = "Original cluster " + key:string + " processed on locale " + 
+                             loc.id:string + " was split up into " + tempMap.size:string + 
+                             " clusters.";
                 wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
               }
             } else {
+                if logLevel == LogLevel.DEBUG {
+                  var outMsg = "Cluster " + key:string + " processed on locale " + loc.id:string + 
+                               " was NOT split up into multiple clusters.";
+                  wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                }
               if originalClusters[key].size > preFilterMinSize {
                 var nextId = newClusterIds.fetchAdd(1);
                 var tempId = nextId:string + loc.id:string;
@@ -430,16 +467,34 @@ module WellConnectedComponentsDistributed {
           }
         }
       }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for initial CC run on all clusters.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+
+      // Reduce all distributed new cluster amounts. 
       var newClusterAmount:atomic int = 0;
       coforall loc in Locales with (ref newClusterAmount) do on loc {
         newClusterAmount.add(newClustersDistributed[loc.id][0].size);
       }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for reducing distributed new cluster amounts.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
 
-      // Reduce from distributed arrays to array on locale 0.
+      // Reduce from distributed arrays new cluster ID to original cluster ID to array on locale 0.
       if logLevel == LogLevel.DEBUG {
         for m in newClusterIdToOriginalClusterIdDistributed {
           newClusterIdToOriginalClusterId.extend(m[0]);
         }
+        var outMsg = "Communication statistics for reducing new to old cluster ID maps.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
       }
 
       outMsg = "Splitting up clusters yielded " + newClusterAmount.read():string + " new clusters.";
@@ -455,14 +510,30 @@ module WellConnectedComponentsDistributed {
                       " on locale " + loc.id:string + ".";
             wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
           }
-          wccRecursiveChecker(clusterToAdd, key, 0);
+          var (src, dst, mapper) = getEdgeList(clusterToAdd);
+          wccRecursiveChecker(clusterToAdd, src, dst, mapper, key, 0);
         }
       }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for wccRecursiveChecker.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+      
       if outputType == "post" then writeClustersToFile();
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for writing out file with post.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
       
       outMsg = "WCC found " + globalId.read():string + " clusters to be well-connected.";
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
+      if logLevel == LogLevel.DEBUG then stopCommDiagnostics();
+      if logLevel == LogLevel.DEBUG then resetCommDiagnostics();
       return globalId.read();
     } // end of wcc
     

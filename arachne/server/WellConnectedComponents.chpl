@@ -13,7 +13,7 @@ module WellConnectedComponents {
   use CTypes;
 
   // Arachne modules.
-  use WellConnectedComponentsMsg;
+  import WellConnectedComponentsMsg.wccLogger;
   use GraphArray;
   use Utils;
   use ConnectedComponents;
