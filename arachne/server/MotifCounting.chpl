@@ -37,7 +37,11 @@ record SamplingConfig {
     /* Statistical parameters */
     var confidenceLevel: real = 0.95;    // Confidence level (e.g., 0.95 for 95%)
     var marginOfError: real = 0.1;       // Desired margin of error (e.g., 0.1 for ±10%)
-    var pilotFraction: real = 0.02;      // Fraction of vertices to sample in pilot (e.g., 0.02 for 2%)
+    var pilotFraction: real = 0.05;     // Fraction of vertices to sample in pilot (e.g., 0.02 for 2%)
+                                        // Just a hunch for now. It should be adjusted based on tests
+                                        // For small graphs (< 1000 nodes): 0.02-0.05
+                                        // For medium graphs (1000-100K nodes): 0.01-0.02
+                                        // For large graphs (>100K nodes): 0.001-0.01
     
     /* Stratification parameters */
     var numStrata: int = 3;              // Number of strata to use
@@ -291,7 +295,7 @@ proc stratifyGraph(n: int, ref nodeDegree: [] int, Sconfig: SamplingConfig) thro
                      algType: string, returnIsosAs: string, st: borrowed SymTab
                      ) throws {
 
-var useSampling: bool = true;
+var useSampling: bool = false;
 var Sconfig: SamplingConfig; 
 
 
