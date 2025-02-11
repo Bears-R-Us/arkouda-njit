@@ -447,6 +447,7 @@ class StratifiedStats {
                 // Fallback to proportional allocation if no variance information
                 size = (totalSampleSize * (strataSize:real / 
                        samplingState.totalSampledVertices.read())): int;
+                       writeln("samplingState.totalSampledVertices inside calculateNeymanAllocation ", samplingState.totalSampledVertices.read());
             }
             
             // Ensure minimum size requirements
@@ -1193,55 +1194,6 @@ proc calculateScaleFactor(strataSize: int, sampleSize: int): real {
     return strataSize:real / sampleSize:real;
 }
 
-/*
- * Report comprehensive sampling statistics
- */
-proc reportSamplingStatistics(samplingState: borrowed SamplingState) {
-    writeln("\nSampling Statistics Report:");
-    writeln("===========================");
-    
-    const totalVertices = + reduce [s in samplingState.strata] s.size.read();
-    const totalSampled = + reduce [s in samplingState.strata] s.validSamples.read();
-    
-    writeln("Overall Statistics:");
-    writeln("  Total vertices: ", totalVertices);
-    writeln("  Total sampled: ", totalSampled);
-    writeln("  Overall sampling rate: ", 
-            (totalSampled:real / totalVertices:real * 100):real:string(6), "%");
-    
-    writeln("\nPer-Stratum Statistics:");
-    for stratum in samplingState.strata {
-        writeln("  Stratum ", stratum.id, ":");
-        const stratumSize = stratum.size.read();
-        const sampledSize = stratum.validSamples.read();
-        const samplingRate = (sampledSize:real / stratumSize:real * 100):real;
-        
-        writeln("    Size: ", stratumSize);
-        writeln("    Sampled: ", sampledSize);
-        writeln("    Sampling rate: ", samplingRate:string(6), "%");
-        
-        if stratum.motifStats.sampledVertices.read() > 0 {
-            const variance = stratum.motifStats.getVariance();
-            const stdError = stratum.motifStats.getStandardError();
-            writeln("    Variance: ", variance:string(6));
-            writeln("    Standard Error: ", stdError:string(6));
-            
-            // Calculate confidence interval
-            const z = getZScore(samplingState.Sconfig.confidenceLevel);
-            const marginError = z * stdError;
-            writeln("    Margin of Error: ±", marginError:string(6));
-        }
-    }
-    
-    // Calculate overall confidence level achieved
-    const avgStdError = calculateOverallStandardError(samplingState);
-    const achievedMarginError = getZScore(samplingState.Sconfig.confidenceLevel) * avgStdError;
-    
-    writeln("\nConfidence Metrics:");
-    writeln("  Confidence Level: ", samplingState.Sconfig.confidenceLevel * 100, "%");
-    writeln("  Achieved Margin of Error: ±", achievedMarginError:string(6));
-    writeln("  Target Margin of Error: ±", samplingState.Sconfig.marginOfError * 100, "%");
-}
 
 /*
  * Calculate overall standard error across all strata
@@ -1328,6 +1280,8 @@ proc calculateOptimalSampleSizes(samplingState: borrowed SamplingState): [] int 
             // If no variance information, allocate proportionally to stratum size
             size = (requiredTotalSamples * (strataSize:real / 
                    samplingState.totalSampledVertices.read())): int;
+            writeln("samplingState.totalSampledVertices inside calculateOptimalSampleSizes ", samplingState.totalSampledVertices.read());
+
         }
         
         // Ensure minimum and maximum constraints
@@ -1444,6 +1398,7 @@ proc sampleNextBatch(samplingState: borrowed SamplingState, n: int, k: int): dom
             if rng.next() <= (batchTarget:real / stratum.size.read()) {
                 localVertices.add(v);
                 sampledInBatch.add(1);
+                samplingState.totalSampledVertices.add(1);
             }
         }
         
@@ -1479,7 +1434,8 @@ proc SampledEnumerateWithDynamicAdjustment(n: int, k: int, maxDeg: int,
             writeln("    Target sample size: ", stratum.sampleSize.read());
         }
         var currentTotal = samplingState.totalSampledVertices.read();
-        
+        writeln("samplingState.totalSampledVertices inside SampledEnumerateWithDynamicAdjustment ", samplingState.totalSampledVertices.read());
+
         // Consider adjustment if enough new samples since last adjustment
         if currentTotal - lastAdjustmentCount >= checkInterval && 
            adjustmentCount < maxAdjustments {
@@ -1555,6 +1511,91 @@ proc exploreVertices(sampledVertices: domain(int, parSafe=true),
         globalMotifCount.add(scaledCount);
         globalClasses += state.localmotifClasses;
     }
+}
+/*
+ * Comprehensive sampling report combining runtime statistics and detailed analysis
+ */
+proc printComprehensiveSamplingReport(samplingState: borrowed SamplingState, 
+                                    globalMotifCount: atomic int,
+                                    globalClasses: set(uint(64), parSafe=true),
+                                    timeTaken: real) throws{
+    writeln("\n============= Sampling-based Motif Census Report =============");
+    
+    // Configuration Summary
+    writeln("\n1. Configuration Parameters:");
+    writeln("  - Confidence Level: ", samplingState.Sconfig.confidenceLevel * 100, "%");
+    writeln("  - Margin of Error: ±", samplingState.Sconfig.marginOfError * 100, "%");
+    writeln("  - Strategy: ", samplingState.Sconfig.strategyType);
+    writeln("  - Number of Strata: ", samplingState.Sconfig.numStrata);
+    writeln("  - Pilot Fraction: ", samplingState.Sconfig.pilotFraction * 100, "%");
+    writeln("  - Effective Vertex Range (N-K): ", samplingState.Sconfig.effectiveN);
+    
+    // Runtime Statistics
+    writeln("\n2. Runtime Statistics:");
+    writeln("  - Total Vertices Sampled: ", samplingState.totalSampledVertices.read());
+    writeln("  - Execution Time: ", timeTaken:real, " seconds");
+
+    // Per-Stratum Details
+    writeln("\n3. Stratum-wise Analysis:");
+    for stratum in samplingState.strata {
+        writeln("\n  Stratum ", stratum.id, ":");
+        
+        // Population Statistics
+        writeln("    Population Statistics:");
+        writeln("    - Total Size: ", stratum.size.read());
+        writeln("    - Number of Vertices: ", stratum.vertices.size);
+        writeln("    - Valid Samples: ", stratum.validSamples.read());
+        writeln("    - Target Sample Size: ", stratum.sampleSize.read());
+        
+        // Degree Range (if using degree-based stratification)
+        if samplingState.Sconfig.strategyType == "degree" {
+            writeln("    Degree Range:");
+            writeln("    - Lower Bound: ", stratum.lowerBound.read());
+            writeln("    - Upper Bound: ", stratum.upperBound.read());
+        }
+        
+        // Motif Statistics
+        writeln("    Motif Analysis:");
+        writeln("    - Total Motifs Found: ", stratum.motifStats.totalMotifs.read());
+        writeln("    - Sampled Vertices: ", stratum.motifStats.sampledVertices.read());
+        writeln("    - Unique Patterns: ", stratum.motifStats.getUniquePatternCount());
+        writeln("    - Mean Motifs per Vertex: ", stratum.motifStats.getMean():real);
+        writeln("    - Standard Error: ", stratum.motifStats.getStandardError():real);
+        writeln("    - Variance: ", stratum.motifStats.getVariance():real);
+        
+        // Pattern Distribution
+        writeln("    Pattern Distribution:");
+        for pattern in stratum.motifStats.patternCounts.keys() {
+            writeln("      Pattern ", pattern, ": ", stratum.motifStats.patternCounts[pattern].read());
+        }
+        
+        // Confidence Intervals
+        var (lower, upper) = stratum.motifStats.getConfidenceInterval(samplingState.Sconfig.confidenceLevel);
+        writeln("    Statistical Bounds:");
+        writeln("    - Confidence Interval: [", lower:real, ", ", upper:real, "]");
+        
+        // Sampling Rate
+        var samplingRate = (stratum.validSamples.read():real / stratum.size.read():real) * 100;
+        writeln("    Sampling Rate: ", samplingRate:real, "%");
+    }
+
+    // Global Results
+    writeln("\n4. Global Results:");
+    writeln("  - Total Motifs (Scaled): ", globalMotifCount.read());
+    writeln("  - Unique Motif Classes: ", globalClasses.size);
+    writeln("  - Motif Class IDs: ", globalClasses);
+    
+    // Quality Metrics
+    writeln("\n5. Quality Assessment:");
+    var totalVariance = + reduce [s in samplingState.strata] s.motifStats.getVariance();
+    var avgVariance = totalVariance / samplingState.Sconfig.numStrata;
+    writeln("  - Average Variance: ", avgVariance:real);
+    
+    var coverageRate = (samplingState.totalSampledVertices.read():real / 
+                       samplingState.Sconfig.effectiveN:real) * 100;
+    writeln("  - Overall Vertex Coverage: ", coverageRate:real, "%");
+    
+    writeln("\n==========================================================");
 }
 ////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2031,9 +2072,13 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
         }
     }// End of Enumerate
 
+    var timer:stopwatch;
 
     writeln("**********************************************************************");
     if useSampling {
+        timer.start();
+
+
         // Initialize sampling components
         var Sconfig = new SamplingConfig(g1.n_vertices, motifSize);
         var validator = new SamplingValidator(Sconfig.numStrata);
@@ -2047,6 +2092,11 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
             SampledEnumerateWithDynamicAdjustment(n, motifSize, maxDeg,
                                                  samplingState, globalMotifCount,
                                                  globalClasses);
+            timer.stop();
+            
+            // Print detailed sampling report
+            printComprehensiveSamplingReport(samplingState, globalMotifCount, 
+                                        globalClasses, timer.elapsed());
         } catch e {
             writeln("Sampling failed: ", e.message());
             writeln("Falling back to full enumeration...");
