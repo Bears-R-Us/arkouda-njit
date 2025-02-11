@@ -405,8 +405,7 @@ module WellConnectedComponentsDistributed {
       var newClusterIdToOriginalClusterIdDistributed: [localeDom][{0..<1}] map(int, int);
 
       // Transfer the data from locale 0 to the distributed cluster map.
-      // TODO: Could be parallelized, but requires the map to use the built-in update procedure
-      //       and an updated object.
+      if logLevel == LogLevel.DEBUG then startCommDiagnostics();
       for (clusterId,clusterVertices) in zip(originalClusters.keys(),originalClusters.values()) {
         const targetLocale = clusterId % numLocales;
         if logLevel == LogLevel.DEBUG {
@@ -417,6 +416,12 @@ module WellConnectedComponentsDistributed {
         on Locales[targetLocale] {
           originalClustersDistributed[targetLocale][0].add(clusterId,clusterVertices);
         }
+      }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics transfering components for locale 0 to all others.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
       }
       
       // NOTE: The parallelization is across locales, but work within the locales is sequential.
@@ -443,7 +448,7 @@ module WellConnectedComponentsDistributed {
             // cluster if it is composed of only one connected component.
             if multipleComponents {
               var tempMap = new map(int, set(int));
-              for (c,v) in zip(components,components.domain) { // NOTE: Could be parallel.
+              for (c,v) in zip(components,components.domain) {
                 if tempMap.contains(c) then tempMap[c].add(mapper[v]);
                 else {
                   var s = new set(int);
@@ -451,7 +456,7 @@ module WellConnectedComponentsDistributed {
                   tempMap[c] = s;
                 }
               }
-              for c in tempMap.keys() { // NOTE: Could be parallel.
+              for c in tempMap.keys() {
                 var nextId = newClusterIds.fetchAdd(1);
                 var tempId = nextId:string + loc.id:string;
                 var newId = tempId:int;

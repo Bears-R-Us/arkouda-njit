@@ -171,6 +171,39 @@ module WellConnectedComponents {
       return (uniqueSrc, uniqueDst, idx2v);
     }
 
+    /* Similar to above, but we can assume src and dst already contain a subset of vertices. */
+    proc getEdgeList(ref vertices, ref src, ref dst) throws {
+      var srcList = new list(int);
+      var dstList = new list(int);
+
+      var v2idx = new map(int, int);
+      var idx2v = vertices.toArray();
+      sort(idx2v);
+
+      for (v,idx) in zip(idx2v, idx2v.domain) do v2idx[v] = idx;
+
+      for (u,v) in zip(src,dst) {
+        if vertices.contains(u) && vertices.contains(v) {
+          srcList.pushBack(v2idx[u]);
+          dstList.pushBack(v2idx[v]);
+        } else {
+          continue;
+        }
+      }
+
+      // Convert lists to arrays since we need arrays for our edge list processing methods.
+      var newSrc = srcList.toArray();
+      var newDst = dstList.toArray();
+
+      // Sort the redges and remove any multiples if they exist.
+      // TODO: Do we actually need to sort and remove multiple edges? If the input graph is simple, 
+      //       wouldn't any induced subgraphs also be simple?
+      var (sortedSrc, sortedDst) = sortEdgeList(newSrc, newDst);
+      var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
+
+      return (uniqueSrc, uniqueDst, idx2v);
+    }
+
     /* Function to sort edge lists based on src and dst nodes */
     proc sortEdgeList(ref src: [] int, ref dst: [] int) {
       // Move elements of src and dst to an array of tuples.
@@ -284,9 +317,7 @@ module WellConnectedComponents {
 
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
        well-connected or not, and if not calls itself on the new generated partitions. */
-    proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
-      var (src, dst, mapper) = getEdgeList(vertices);
-
+    proc wccRecursiveChecker(ref vertices, ref src, ref dst, ref mapper, id: int, depth: int) throws {
       // If the generated edge list is empty, then return.
       if src.size < 1 then return;
 
@@ -320,19 +351,21 @@ module WellConnectedComponents {
           if p == 1 then cluster1.add(mapper[v]);
           else cluster2.add(mapper[v]);
         }
+
+        // Convert src and dst to original vertex names.
+        for (u,v,i) in zip(src,dst,src.domain) {
+          src[i] = mapper[u];
+          dst[i] = mapper[v];
+        }
         
         // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
         if cluster1.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var inPartition = removeDegreeOne(cluster1);
-          var inPartition = cluster1;
-          wccRecursiveChecker(inPartition, id, depth+1);
+          var (cluster1Src, cluster1Dst, cluster1Mapper) = getEdgeList(cluster1, src, dst);
+          wccRecursiveChecker(cluster1, cluster1Src, cluster1Dst, cluster1Mapper, id, depth+1);
         }
         if cluster2.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var outPartition = removeDegreeOne(cluster2);
-          var outPartition = cluster2;
-          wccRecursiveChecker(outPartition, id, depth+1);
+          var (cluster2Src, cluster2Dst, cluster2Mapper) = getEdgeList(cluster2, src, dst);
+          wccRecursiveChecker(cluster2, cluster2Src, cluster2Dst, cluster2Mapper, id, depth+1);
         }
       }
       return;
@@ -369,7 +402,7 @@ module WellConnectedComponents {
           // cluster if it is composed of only one connected component.
           if multipleComponents {
             var tempMap = new map(int, set(int));
-            for (c,v) in zip(components,components.domain) { // NOTE: Could be parallel.
+            for (c,v) in zip(components,components.domain) {
               if tempMap.contains(c) then tempMap[c].add(mapper[v]);
               else {
                 var s = new set(int);
@@ -377,7 +410,7 @@ module WellConnectedComponents {
                 tempMap[c] = s;
               }
             }
-            for c in tempMap.keys() { // NOTE: Could be parallel.
+            for c in tempMap.keys() {
               var newId = newClusterIds.fetchAdd(1);
               if tempMap[c].size > preFilterMinSize {
                 newClusters[newId] = tempMap[c];
@@ -408,7 +441,8 @@ module WellConnectedComponents {
                     + newClusterIdToOriginalClusterId[key]:string + ".";
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
-        wccRecursiveChecker(clusterToAdd, key, 0);
+        var (src, dst, mapper) = getEdgeList(clusterToAdd);
+        wccRecursiveChecker(clusterToAdd, src, dst, mapper, key, 0);
       }
       if outputType == "post" then writeClustersToFile();
       
