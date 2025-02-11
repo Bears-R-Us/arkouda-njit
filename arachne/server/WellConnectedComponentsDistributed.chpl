@@ -1,4 +1,4 @@
-module WellConnectedComponents {
+module WellConnectedComponentsDistributed {
   // Chapel modules.
   use Reflection;
   use Map;
@@ -11,6 +11,9 @@ module WellConnectedComponents {
   use Math;
   use Search;
   use CTypes;
+  use CommDiagnostics;
+  import CopyAggregation.SrcAggregator;
+  import CopyAggregation.DstAggregator;
 
   // Arachne modules.
   import WellConnectedComponentsMsg.wccLogger;
@@ -72,20 +75,27 @@ module WellConnectedComponents {
   proc sqrtCriterion(n:int,  m:real) { return floor(sqrt(n:real)/5); }
   proc multCriterion(n:int,  m:real) { return floor(m*n:real); }
 
-  proc runWCC (g1: SegGraph, st: borrowed SymTab, 
-               inputcluster_filePath: string, outputPath: string, outputType: string,
-               connectednessCriterion: string, connectednessCriterionMultValue: real, 
-               preFilterMinSize: int, postFilterMinSize: int): int throws {
+  proc runWCCDistributed(g1: SegGraph, st: borrowed SymTab, 
+                         inputcluster_filePath: string, outputPath: string, outputType: string,
+                         connectednessCriterion: string, connectednessCriterionMultValue: real, 
+                         preFilterMinSize: int, postFilterMinSize: int): int throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
     var nodeMapGraphG1 = toSymEntry(g1.getComp("VERTEX_MAP_SDI"), int).a;
     var neighborsSetGraphG1 = toSymEntry(g1.getComp("NEIGHBORS_SET_SDI"), set(int)).a;
-    
-    var finalVertices = new list(int, parSafe=true);
-    var finalClusters = new list(int, parSafe=true);
-    var globalId:atomic int = 0;
 
+    // Make block-distributed domain where each locale will own an index of the distributed array.
+    var localeDom = blockDist.createDomain(0..<numLocales);
+    var finalVerticesDistributed: [localeDom][{0..<1}] list(int, parSafe=true);
+    var finalClustersDistributed: [localeDom][{0..<1}] list(int, parSafe=true);
+    var globalIdDistributed: [localeDom][{0..<1}] chpl__processorAtomicType(int);
+    coforall loc in Locales do on loc { globalIdDistributed[loc.id][0].write(1); }
+
+    // Make locale 0 versions of finalVertices and finalClusters for output.
+    var finalDom = {0..1};
+    var finalVertices: [finalDom] int;
+    var finalClusters: [finalDom] int;
     
     var newClusterIdToOriginalClusterId = new map(int, int);
     var criterionFunction = if connectednessCriterion == "log10" then log10Criterion
@@ -138,8 +148,8 @@ module WellConnectedComponents {
 
     /* Returns the edge list of the induced subgraph given a set of vertices. */
     proc getEdgeList(ref vertices: set(int)) throws {
-      var srcList = new list(int);
-      var dstList = new list(int);
+      var srcList = new list(int, parSafe=true);
+      var dstList = new list(int, parSafe=true);
 
       var v2idx = new map(int, int);
       var idx2v = vertices.toArray();
@@ -149,8 +159,13 @@ module WellConnectedComponents {
 
       // Gather the edges of the subgraph induced by the given vertices.
       for u in vertices {
-        const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
-        for v in neighbors {
+        var start = segGraphG1[u];
+        var end = segGraphG1[u+1];
+        var neighbors: [0..<end-start] int;
+        forall (i,s) in zip(neighbors.domain, start..<end) with (var agg = new SrcAggregator(int)) {
+          agg.copy(neighbors[i], dstNodesG1[s]);
+        }
+        forall v in neighbors with (ref srcList, ref dstList, ref v2idx) {
           if v2idx.contains(v) {
             srcList.pushBack(v2idx[u]);
             dstList.pushBack(v2idx[v]);
@@ -329,12 +344,15 @@ module WellConnectedComponents {
 
       var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
       if cut > criterionValue { // Cluster is well-connected.
-        var currentId = globalId.fetchAdd(1);
+        var localeId = here.id;
+        var nextId = globalIdDistributed[localeId][0].fetchAdd(1);
+        var tempId = nextId:string + localeId:string;
+        var currentId = tempId:int;
         if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
         else if outputType == "during" then writeClustersToFile(vertices, currentId);
         for v in vertices {
-          finalVertices.pushBack(v);
-          finalClusters.pushBack(currentId);
+          finalVerticesDistributed[localeId][0].pushBack(v);
+          finalClustersDistributed[localeId][0].pushBack(currentId);
         }
         if logLevel == LogLevel.DEBUG {
           var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
@@ -381,78 +399,205 @@ module WellConnectedComponents {
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
                      "Reading clusters file finished.");
 
-      var newClusterIds: chpl__processorAtomicType(int) = 0;
-      var newClusters = new map(int, set(int));
+      // Make block-distributed arrays to store clusters across locales.
+      var originalClustersDistributed: [localeDom][{0..<1}] map(int, set(int));
+      var newClustersDistributed: [localeDom][{0..<1}] map(int, set(int));
+      var newClusterIdToOriginalClusterIdDistributed: [localeDom][{0..<1}] map(int, int);
+
+      // Transfer the data from locale 0 to the distributed cluster map.
+      if logLevel == LogLevel.DEBUG then startCommDiagnostics();
+      for (clusterId,clusterVertices) in zip(originalClusters.keys(),originalClusters.values()) {
+        const targetLocale = clusterId % numLocales;
+        if logLevel == LogLevel.DEBUG {
+          var outMsg = "Moving cluster " + clusterId:string + " to locale " + targetLocale:string + 
+                       ".";
+          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        }
+        on Locales[targetLocale] {
+          originalClustersDistributed[targetLocale][0].add(clusterId,clusterVertices);
+        }
+      }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics transfering components for locale 0 to all others.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
       
+      // NOTE: The parallelization is across locales, but work within the locales is sequential.
+      //
       // NOTE: Sequential for now since connected components is highly parallel. We need to discuss
       //       the tradeoff if it is more important to run connected components on the original
       //       clusters in parallel or run connected components in parallel.
       //
-      // NOTE: This is probably noy even needed here. We could add a pre-filtering step to run this
+      // NOTE: This is probably not even needed here. We could add a pre-filtering step to run this
       //       during graph construction or as a totally separate process instead of here.
-      for key in originalClusters.keysToArray() {
-        var (src, dst, mapper) = getEdgeList(originalClusters[key]);
-        if src.size > 0 { // If no edges were generated, then do not process this component.
-          // Call connected components and decide if multiple connected components exist or not.
-          var components = connectedComponents(src, dst, mapper.size);
-          var multipleComponents:bool = false;
-          for c in components do if c != 0 { multipleComponents = true; break; }
-          
-          // Add each vertex in each connected component to its own cluster, or just add the whole
-          // cluster if it is composed of only one connected component.
-          if multipleComponents {
-            var tempMap = new map(int, set(int));
-            for (c,v) in zip(components,components.domain) {
-              if tempMap.contains(c) then tempMap[c].add(mapper[v]);
-              else {
-                var s = new set(int);
-                s.add(mapper[v]);
-                tempMap[c] = s;
+      if logLevel == LogLevel.DEBUG then startCommDiagnostics();
+      coforall loc in Locales do on loc {
+        var originalClusters = originalClustersDistributed[loc.id][0];
+        var newClusterIds: atomic int = 1;
+        for key in originalClusters.keysToArray() {
+          var (src, dst, mapper) = getEdgeList(originalClusters[key]);
+          if src.size > 0 { // If no edges were generated, then do not process this component.
+            // Call connected components and decide if multiple connected components exist or not.
+            var components = connectedComponentsLocal(src, dst, mapper.size);
+            var multipleComponents:bool = false;
+            for c in components do if c != 0 { multipleComponents = true; break; }
+            
+            // Add each vertex in each connected component to its own cluster, or just add the whole
+            // cluster if it is composed of only one connected component.
+            if multipleComponents {
+              var tempMap = new map(int, set(int));
+              for (c,v) in zip(components,components.domain) {
+                if tempMap.contains(c) then tempMap[c].add(mapper[v]);
+                else {
+                  var s = new set(int);
+                  s.add(mapper[v]);
+                  tempMap[c] = s;
+                }
               }
-            }
-            for c in tempMap.keys() {
-              var newId = newClusterIds.fetchAdd(1);
-              if tempMap[c].size > preFilterMinSize {
-                newClusters[newId] = tempMap[c];
-                newClusterIdToOriginalClusterId[newId] = key;
+              for c in tempMap.keys() {
+                var nextId = newClusterIds.fetchAdd(1);
+                var tempId = nextId:string + loc.id:string;
+                var newId = tempId:int;
+                if tempMap[c].size > preFilterMinSize {
+                  newClustersDistributed[loc.id][0][newId] = tempMap[c];
+                  newClusterIdToOriginalClusterIdDistributed[loc.id][0].add(newId,key);
+                }
               }
-            }
-            if logLevel == LogLevel.DEBUG {
-              var outMsg = "Original cluster " + key:string + " was split up into " 
-                        + tempMap.size:string + " clusters.";
-              wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-            }
-          } else {
-            if originalClusters[key].size > preFilterMinSize {
-              var newId = newClusterIds.fetchAdd(1);
-              newClusters[newId] = originalClusters[key];
-              newClusterIdToOriginalClusterId[newId] = key;
+              if logLevel == LogLevel.DEBUG {
+                var outMsg = "Original cluster " + key:string + " processed on locale " + 
+                             loc.id:string + " was split up into " + tempMap.size:string + 
+                             " clusters.";
+                wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+              }
+            } else {
+                if logLevel == LogLevel.DEBUG {
+                  var outMsg = "Cluster " + key:string + " processed on locale " + loc.id:string + 
+                               " was NOT split up into multiple clusters.";
+                  wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+                }
+              if originalClusters[key].size > preFilterMinSize {
+                var nextId = newClusterIds.fetchAdd(1);
+                var tempId = nextId:string + loc.id:string;
+                var newId = tempId:int;
+                newClustersDistributed[loc.id][0][newId] = originalClusters[key];
+                newClusterIdToOriginalClusterIdDistributed[loc.id][0].add(newId,key);
+              }
             }
           }
         }
       }
-      outMsg = "Splitting up clusters yielded " + newClusters.size:string + " new clusters.";
-      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-      forall key in newClusters.keysToArray() with (ref newClusters) {
-        ref clusterToAdd = newClusters[key];
-        if logLevel == LogLevel.DEBUG {
-          var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
-                    + newClusterIdToOriginalClusterId[key]:string + ".";
-          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        }
-        var (src, dst, mapper) = getEdgeList(clusterToAdd);
-        wccRecursiveChecker(clusterToAdd, src, dst, mapper, key, 0);
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for initial CC run on all clusters.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
       }
-      if outputType == "post" then writeClustersToFile();
+
+      // Reduce all distributed new cluster amounts. 
+      var newClusterAmount:atomic int = 0;
+      coforall loc in Locales with (ref newClusterAmount) do on loc {
+        newClusterAmount.add(newClustersDistributed[loc.id][0].size);
+      }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for reducing distributed new cluster amounts.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+
+      // Reduce from distributed arrays new cluster ID to original cluster ID to array on locale 0.
+      if logLevel == LogLevel.DEBUG {
+        for m in newClusterIdToOriginalClusterIdDistributed {
+          newClusterIdToOriginalClusterId.extend(m[0]);
+        }
+        var outMsg = "Communication statistics for reducing new to old cluster ID maps.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+
+      outMsg = "Splitting up clusters yielded " + newClusterAmount.read():string + " new clusters.";
+      wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      // Process the new clusters on the locales they live in.
+      coforall loc in Locales do on loc {
+        var newClusters = newClustersDistributed[loc.id][0];
+        forall key in newClusters.keysToArray() with (ref newClusters) {
+          ref clusterToAdd = newClusters[key];
+          if logLevel == LogLevel.DEBUG {
+            var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
+                      + newClusterIdToOriginalClusterIdDistributed[loc.id][0][key]:string + 
+                      " on locale " + loc.id:string + ".";
+            wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          }
+          var (src, dst, mapper) = getEdgeList(clusterToAdd);
+          wccRecursiveChecker(clusterToAdd, src, dst, mapper, key, 0);
+        }
+      }
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for wccRecursiveChecker.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+
+      // Get how many vertices were finally kept after running WCC.
+      var finalNumVertices: [{0..<numLocales}] int = 0;
+      coforall loc in Locales do on loc { 
+        finalNumVertices[loc.id] = finalVerticesDistributed[loc.id][0].size;
+      }
+      var finalNumVerticesScan = + scan finalNumVertices;
+      var finalOffsets: [{0..finalNumVerticesScan.size}] int;
+      finalOffsets[0] = 0;
+      finalOffsets[1..] = finalNumVerticesScan;
+
+      // Resize our locale 0 array that will write out based on the above information.
+      var finalTotalVertices = + reduce finalNumVertices;
+      finalDom = {0..<finalTotalVertices};
+      coforall loc in Locales do on loc { // Transfer data from locales to locale 0 array.
+        var localRange = 0..<finalVerticesDistributed[loc.id][0].size;
+        var toRange = finalOffsets[loc.id]..<finalOffsets[loc.id+1];
+        forall (l,t) in zip(localRange, toRange) with (var agg = new DstAggregator(int)) {
+          agg.copy(finalVertices[t], finalVerticesDistributed[loc.id][0][l]);
+          agg.copy(finalClusters[t], finalClustersDistributed[loc.id][0][l]);
+        }
+      }
+
+      // Modify the cluster labels to start from 0.
+      var tempSet = new set(int, parSafe=true);
+      forall c in finalClusters with (ref tempSet) do tempSet.add(c);
+      var idx2c = tempSet.toArray();
+      var c2idx = new map(int, int, parSafe=true);
+      sort(idx2c);
+      forall (c,idx) in zip(idx2c, idx2c.domain) with (ref c2idx) do c2idx.add(c,idx);
+      forall (c,idx) in zip(finalClusters, 0..<finalClusters.size) with (ref finalClusters) do
+        finalClusters[idx] = c2idx[c];
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for reducing final vertices and clusters.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+
       
-      outMsg = "WCC found " + globalId.read():string + " clusters to be well-connected.";
+      if outputType == "post" then writeClustersToFile();
+      if logLevel == LogLevel.DEBUG {
+        var outMsg = "Communication statistics for writing out file with post.";
+        wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        printCommDiagnosticsTable();
+        resetCommDiagnostics();
+      }
+      
+      outMsg = "WCC found " + tempSet.size:string + " clusters to be well-connected.";
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
-      return globalId.read();
+      if logLevel == LogLevel.DEBUG then stopCommDiagnostics();
+      if logLevel == LogLevel.DEBUG then resetCommDiagnostics();
+      return tempSet.size;
     } // end of wcc
     
     var numClusters = wcc(g1);
     return numClusters;
-  } // end of runWCC
-} // end of WellConnectedComponents module
+  } // end of runWCCDistributed
+} // end of WellConnectedComponentsDistributed module
