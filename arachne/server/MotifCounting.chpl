@@ -34,7 +34,7 @@ module MotifCounting {
         var n: int;
         var k: int;
         var maxDeg: int;
-        var visited: domain(int, parSafe=false);
+        var visited: domain(int, parSafe=true);
 
         // Convert 2D arrays to 1D
         // For subgraph: original was [0..<k, 0..<k+1]
@@ -235,6 +235,8 @@ module MotifCounting {
             halt("Error: Didn't find exactly k vertices");
         }
 
+sort(chosenVerts); // For the bug!
+
         // Step 2: Create adjacency matrix
         // Use 1D array for k x k matrix, initialized to 0
         var adjMatrix: [0..#(state.k * state.k)] int = 0;
@@ -273,14 +275,72 @@ module MotifCounting {
         return (adjMatrix, chosenVerts);
     }// End of prepareNaugtyArguments
 
+proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
     
-    proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
-        if logLevel == LogLevel.DEBUG {
-            writeln("===== generatePatternDirect called =====");
-            writeln("Original chosenVerts: ", chosenVerts);
-            writeln("Nauty labels: ", nautyLabels);
+    if chosenVerts.size < state.k || nautyLabels.size < state.k {
+        halt("Error: Arrays smaller than expected size");
+    }
+    
+    // Step 1: Create normalized adjacency matrix
+    var adjMatrix: [0..#(state.k * state.k)] int = 0;
+    
+    // Fill adjacency matrix using Nauty's labeling
+    for i in 0..#state.k {
+        for j in 0..#state.k {
+            if i != j {
+                var u = chosenVerts[nautyLabels[i] + 1];
+                var w = chosenVerts[nautyLabels[j] + 1];
+                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                if eid != -1 {
+                    adjMatrix[i * state.k + j] = 1;
+                }
+            }
         }
+    }
 
+    // Step 2: Create a canonical ordering based on vertex properties
+    var vertexSignatures: [0..#state.k] (int, int, int);  // (outDegree, inDegree, originalLabel)
+    for i in 0..#state.k {
+        var outDeg = 0;
+        var inDeg = 0;
+        for j in 0..#state.k {
+            if adjMatrix[i * state.k + j] == 1 then outDeg += 1;
+            if adjMatrix[j * state.k + i] == 1 then inDeg += 1;
+        }
+        vertexSignatures[i] = (outDeg, inDeg, i);
+    }
+
+    // Sort vertices by their signatures
+    sort(vertexSignatures);
+
+    // Step 3: Generate pattern using sorted order
+    var pattern: uint(64) = 0;
+    var pos = 0;
+    
+    // Create pattern by reading matrix in sorted vertex order
+    for i in 0..#state.k {
+        for j in 0..#state.k {
+            if i != j {
+                var srcIdx = vertexSignatures[i][2];  // original index
+                var dstIdx = vertexSignatures[j][2];  // original index
+                if adjMatrix[srcIdx * state.k + dstIdx] == 1 {
+                    pattern |= 1:uint(64) << pos;
+                }
+            }
+            pos += 1;
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Vertex signatures: ", vertexSignatures);
+        writeln("Generated pattern: ", pattern);
+        writeln("Original vertices: ", nodeMapGraphG1[chosenVerts]);
+    }
+
+    return pattern;
+}
+
+    proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
         var pattern: uint(64) = 0;
         var pos = 0;
 
@@ -303,15 +363,7 @@ module MotifCounting {
         }
 
         if logLevel == LogLevel.DEBUG {
-            writeln("Generated pattern= ", pattern);
-            writeln("\nEquivalent Adjacency Matrix (2D visualization):");
-            for i in 0..#state.k {
-                for j in 0..#state.k {
-                    var bitPos = i * state.k + j;
-                    write(if (pattern & (1:uint(64) << bitPos)) != 0 then 1 else 0, " ");
-                }
-                writeln();
-            }
+            writeln("Generated pattern= ", pattern, " Nauty labels: ", nautyLabels, " Original chosenVerts: ", nodeMapGraphG1[chosenVerts]);
         }
         return pattern;
     }// End of generatePatternDirect
@@ -359,14 +411,13 @@ module MotifCounting {
             //var subgraphSize = motifSize;
             //var subgraph = adjMatrix;
 
-            var performCheck: int = 0; // Set to 1 to perform nauty_check, 0 to skip // DECIDE
+            var performCheck: int = 1; // Set to 1 to perform nauty_check, 0 to skip // DECIDE
             var verbose: int = 0;      // Set to 1 to enable verbose logging  // DECIDE
 
             var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
 
             if logLevel == LogLevel.DEBUG {
-                writeln("for subgraph = ",adjMatrix, "Nauty returned: ",
-                                         results, " we are in the way to Classify!", "status = ", status);
+
                                          
             }
 
@@ -381,7 +432,13 @@ module MotifCounting {
             //     writeln("Node ", i, " -> ", results[i]);
             // }
             var nautyLabels = results;
-            var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
+            //var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
+            
+            var pattern = generateCanonicalPattern(chosenVerts, nautyLabels, state);
+
+            writeln("subgraph = ",adjMatrix, " Nauty returned: ",
+                                         results," status =", status , "pattern = ", pattern);
+            
             state.localmotifClasses.add(pattern);
             
             if logLevel == LogLevel.DEBUG {
@@ -523,11 +580,11 @@ module MotifCounting {
 //////////////////////////////Check it, I didn't check it as much as other functions
 ///////////////////////////////////////////////////
 proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
-    if logLevel == LogLevel.DEBUG {
+    //if logLevel == LogLevel.DEBUG {
         writeln("===== patternToAdjMatrixAndEdges called =====");
         writeln("Input pattern: ", pattern);
         writeln("k value: ", k);
-    }
+    //}
 
     var adjMatrix: [0..#(k * k)] int = 0;
     var edgeCount = 0;
@@ -559,7 +616,7 @@ proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
         }
     }
 
-    if logLevel == LogLevel.DEBUG {
+    //if logLevel == LogLevel.DEBUG {
         writeln("\nReconstructed Adjacency Matrix (2D visualization):");
         for i in 0..#k {
             for j in 0..#k {
@@ -588,7 +645,7 @@ proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
         writeln("Original pattern: ", pattern);
         writeln("Patterns match: ", verifyPattern == pattern);
         writeln();
-    }
+    //}
 
     return (adjMatrix, srcNodes, dstNodes);
 }
@@ -610,7 +667,8 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
             writeln("Enumerate: starting enumeration over all vertices");
         }
 
-        forall v in 0..<n with (ref globalClasses, ref globalMotifCount) {
+        // forall v in 0..<n with (ref globalClasses, ref globalMotifCount) {
+        forall v in 0..<n-k+1 with (ref globalClasses, ref globalMotifCount) {
             if logLevel == LogLevel.DEBUG {
                 writeln("Root = ", v, " (", v+1, "/", n, ")");
             }
@@ -666,7 +724,10 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
     writeln("\nglobalClasses.size: ", globalClasses.size);
     
 
-
+for elem in globalClasses {
+    writeln("elem = ", elem);
+  patternToAdjMatrixAndEdges(elem, 3);
+}
 
     writeln("**********************************************************************");
 
