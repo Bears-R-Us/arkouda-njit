@@ -29,6 +29,27 @@ module MotifCounting {
   use SymArrayDmap;
   use Logging;
 
+// TreeNode class to represent nodes in our pattern classification tree
+class TreeNode {
+    var left: unmanaged TreeNode?;   // Left child (no edge)
+    var right: unmanaged TreeNode?;  // Right child (edge exists)
+    var pattern: uint(64);           // Pattern stored at leaf nodes
+    var isLeaf: bool = false;        // Flag to mark leaf nodes
+
+    // Constructor
+    proc init() {
+        this.left = nil;
+        this.right = nil;
+        this.pattern = 0;
+        this.isLeaf = false;
+    }
+
+    // Destructor to handle memory management
+    proc deinit() {
+        if left != nil then delete left;
+        if right != nil then delete right;
+    }
+}
 
     class KavoshState {
         var n: int;
@@ -210,60 +231,121 @@ module MotifCounting {
         }
     }// End of initChildSet
 
-    proc prepareNaugtyArguments(ref state: KavoshState) throws {
+proc prepareNaugtyArguments(ref state: KavoshState) throws {
+    try {
         if logLevel == LogLevel.DEBUG {
             writeln("===== prepareNaugtyArguments called =====");
         }
 
-        // Step 1: Build array of chosen vertices
+        // Step 1: Build array of chosen vertices with bounds checking
         var chosenVerts: [1..state.k] int;
         var idx = 1;
+        var totalVertices = 0;
         
-        // Gather vertices level by level
+        // First pass: validate total vertex count
         for level in 0..<state.k {
-            const vertCount = state.getSubgraph(level, 0);  // Get count for this level
+            const vertCount = state.getSubgraph(level, 0);
+            if vertCount < 0 {
+                writeln("Error state at level ", level);
+                writeln("Current state: ", state);
+                writeln("VertCount: ", vertCount);
+                throw new Error("Invalid vertex count at level " + level:string);
+            }
+            totalVertices += vertCount;
+            if logLevel == LogLevel.DEBUG {
+                writeln("Level ", level, " has ", vertCount, " vertices");
+            }
+        }
+        
+        if totalVertices != state.k {
+            writeln("Vertex count mismatch:");
+            writeln("Found: ", totalVertices);
+            writeln("Expected: ", state.k);
+            throw new Error("Total vertices mismatch");
+        }
+
+        // Second pass: collect vertices with detailed validation
+        var usedVertices: domain(int);  // Track used vertices to check duplicates
+        for level in 0..<state.k {
+            const vertCount = state.getSubgraph(level, 0);
+            if logLevel == LogLevel.DEBUG {
+                writeln("Processing level ", level, " with ", vertCount, " vertices");
+            }
+            
             for pos in 1..vertCount {
                 if idx > state.k {
-                    halt("Error: More vertices than expected");
+                    writeln("Error: Index ", idx, " exceeds k=", state.k);
+                    writeln("Level: ", level, " Position: ", pos);
+                    throw new Error("Vertex index exceeds k");
                 }
-                chosenVerts[idx] = state.getSubgraph(level, pos);
+                
+                const vertex = state.getSubgraph(level, pos);
+                if vertex < 0 {
+                    writeln("Error: Negative vertex value ", vertex);
+                    writeln("Level: ", level, " Position: ", pos);
+                    throw new Error("Invalid vertex value");
+                }
+                
+                if usedVertices.contains(vertex) {
+                    writeln("Error: Duplicate vertex ", vertex);
+                    writeln("Level: ", level, " Position: ", pos);
+                    throw new Error("Duplicate vertex found");
+                }
+                
+                chosenVerts[idx] = vertex;
+                usedVertices.add(vertex);
+                
+                if logLevel == LogLevel.DEBUG {
+                    writeln("Added vertex ", vertex, " at index ", idx);
+                }
                 idx += 1;
             }
         }
 
+        // Verify vertex collection
         if idx - 1 != state.k {
-            halt("Error: Didn't find exactly k vertices");
+            writeln("Error: Collected ", idx-1, " vertices but expected ", state.k);
+            throw new Error("Vertex collection mismatch");
         }
 
-sort(chosenVerts); // For the bug!
+        // Create a copy for sorting to preserve original order
+        var sortedVerts = chosenVerts;
+        sort(sortedVerts);
 
-        // Step 2: Create adjacency matrix
-        // Use 1D array for k x k matrix, initialized to 0
+        if logLevel == LogLevel.DEBUG {
+            writeln("Original vertices: ", chosenVerts);
+            writeln("Sorted vertices: ", sortedVerts);
+        }
+
+        // Step 2: Create adjacency matrix with bounds checking
         var adjMatrix: [0..#(state.k * state.k)] int = 0;
 
-        // Step 3: Fill adjacency matrix
-        // For each pair of vertices, check if edge exists
+        // Step 3: Fill adjacency matrix using original vertex order
+        var edgeCount = 0;
         for i in 0..#state.k {
+            if i+1 > state.k {
+                writeln("Warning: Index i=", i+1, " exceeds k=", state.k);
+                continue;
+            }
             for j in 0..#state.k {
-                if i != j {  // Skip self-loops
-                    var u = chosenVerts[i+1];  // +1 because chosenVerts is 1-based
+                if j+1 > state.k {
+                    writeln("Warning: Index j=", j+1, " exceeds k=", state.k);
+                    continue;
+                }
+                if i != j {
+                    var u = chosenVerts[i+1];
                     var w = chosenVerts[j+1];
                     var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
                     if eid != -1 {
                         adjMatrix[i * state.k + j] = 1;
+                        edgeCount += 1;
                     }
                 }
             }
         }
 
         if logLevel == LogLevel.DEBUG {
-            // Print detailed debug information
-            writeln("\nChosen vertices:");
-            for i in 1..state.k {
-                writeln("Position ", i-1, " -> Vertex ", chosenVerts[i]);
-            }
-
-            writeln("\nAdjacency Matrix (2D visualization):");
+            writeln("\nAdjacency Matrix (", edgeCount, " edges):");
             for i in 0..#state.k {
                 for j in 0..#state.k {
                     write(adjMatrix[i * state.k + j], " ");
@@ -272,8 +354,23 @@ sort(chosenVerts); // For the bug!
             }
         }
 
-        return (adjMatrix, chosenVerts);
-    }// End of prepareNaugtyArguments
+        // Final validation
+        if edgeCount == 0 {
+            writeln("Warning: No edges found in adjacency matrix", "Vertices: ", chosenVerts);
+            writeln();
+        }
+
+        return (adjMatrix, sortedVerts);
+    } catch e {
+        writeln("----------------------------------------");
+        writeln("ERROR in prepareNaugtyArguments");
+        writeln("Error: ", e.message());
+        writeln("State k: ", state.k);
+        writeln("State subgraphCount: ", state.localsubgraphCount);
+        writeln("----------------------------------------");
+        halt();
+    }
+}
 
 proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
     
@@ -332,9 +429,8 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
     }
 
     if logLevel == LogLevel.DEBUG {
-        writeln("Vertex signatures: ", vertexSignatures);
-        writeln("Generated pattern: ", pattern);
-        writeln("Original vertices: ", nodeMapGraphG1[chosenVerts]);
+        writeln("Vertex signatures: ", vertexSignatures, " Generated pattern: ", pattern, " Original vertices: ", nodeMapGraphG1[chosenVerts]);
+
     }
 
     return pattern;
@@ -370,7 +466,8 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
 
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainedToVisit = 0 (which means we have chosen k vertices).
-    proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
+ proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
+    try {
         if logLevel == LogLevel.DEBUG {
             writeln("===== Explore called =====");
             writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
@@ -386,115 +483,110 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
             writeln("==========================");
         }
 
-        // Base case: all k vertices chosen, now we have found a motif
         if remainedToVisit == 0 {
-            state.localsubgraphCount += 1;
+            try {
+                state.localsubgraphCount += 1;
+                var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
+                var results: [0..<state.k] int = 0..<state.k;
+                var performCheck: int = 1;
+                var verbose: int = 0;
 
-            if logLevel == LogLevel.DEBUG {
-                writeln("Found complete subgraph #", state.localsubgraphCount);
-                for l in 0..<state.k {
-                    write("Level ", l, ": ");
-                    for x in 1..state.getSubgraph(l, 0) {
-                        write(state.getSubgraph(l, x), " ");
-                    }
-                    writeln();
+                var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
+
+                if status != 0 {
+                    writeln("----------------------------------------");
+                    writeln("ERROR: Nauty Classification Failed");
+                    writeln("Root: ", root, " Level: ", level);
+                    writeln("Status: ", status);
+                    writeln("AdjMatrix: ", adjMatrix);
+                    writeln("ChosenVerts: ", chosenVerts);
+                    writeln("----------------------------------------");
+                    halt();
                 }
-                writeln("Now we make adjMatrix to pass to Naugty");
+
+                var nautyLabels = results;
+                //var pattern = generateCanonicalPattern(chosenVerts, nautyLabels, state);
+                var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
+                writeln("subgraph = ", adjMatrix, " Nauty returned: ", results, " status =", status, "pattern = ", pattern);
+                state.localmotifClasses.add(pattern);
+                
+                if logLevel == LogLevel.DEBUG {
+                    writeln("state.localmotifClasses: ", state.localmotifClasses);
+                }
+                return;
+            } catch e {
+                writeln("----------------------------------------");
+                writeln("ERROR in Base Case Processing");
+                writeln("Location: root=", root, " level=", level);
+                writeln("Error: ", e.message());
+                writeln("State: localsubgraphCount=", state.localsubgraphCount);
+                writeln("----------------------------------------");
+                halt();
             }
-
-            var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
-            
-            // var adjMatrix: [0..8] int = [1, 1, 1, 1, 1, 1, 1, 1, 1];
-            // For test purpose assume naugty returned this
-            var results: [0..<state.k] int = 0..<state.k;
-
-            //var subgraphSize = motifSize;
-            //var subgraph = adjMatrix;
-
-            var performCheck: int = 1; // Set to 1 to perform nauty_check, 0 to skip // DECIDE
-            var verbose: int = 0;      // Set to 1 to enable verbose logging  // DECIDE
-
-            var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
-
-            if logLevel == LogLevel.DEBUG {
-
-                                         
-            }
-
-            // Handle potential errors
-            if status != 0 {
-                writeln("Error: c_nautyClassify failed with status ", status);
-                //return;
-            }
-            // // Print canonical labeling
-            // writeln("Canonical Labeling:");
-            // for i in 0..<subgraphSize {
-            //     writeln("Node ", i, " -> ", results[i]);
-            // }
-            var nautyLabels = results;
-            //var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
-            
-            var pattern = generateCanonicalPattern(chosenVerts, nautyLabels, state);
-
-            writeln("subgraph = ",adjMatrix, " Nauty returned: ",
-                                         results," status =", status , "pattern = ", pattern);
-            
-            state.localmotifClasses.add(pattern);
-            
-            if logLevel == LogLevel.DEBUG {
-                writeln("state.localmotifClasses: ", state.localmotifClasses);
-            }
-            return;
         }
 
         // Get children for this level
-        initChildSet(state, root, level);
-        const childCount = state.getChildSet(level, 0);
+        try {
+            initChildSet(state, root, level);
+            const childCount = state.getChildSet(level, 0);
 
-        // Try all possible selection sizes at this level, from 1 to remainedToVisit
-        for selSize in 1..remainedToVisit {
-            if childCount < selSize {
-                // Not enough children to form this selection
-                if logLevel == LogLevel.DEBUG {
-                    writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
+            for selSize in 1..remainedToVisit {
+                if childCount < selSize {
+                    if logLevel == LogLevel.DEBUG {
+                        writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
+                    }
+                    for i in 1..childCount {
+                        state.visited.remove(state.getChildSet(level, i));
+                    }
+                    return;
                 }
-                // Unmark visited children before returning
-                for i in 1..childCount {
-                    state.visited.remove(state.getChildSet(level, i));
-                }
-                return;
-            }
 
-            // Initial selection: pick the first selSize children
-            state.setSubgraph(level, 0, selSize);
-            for i in 1..selSize {
-                state.setSubgraph(level, i, state.getChildSet(level, i));
-                state.setIndexMap(level, i, i);
-            }
-
-            if logLevel == LogLevel.DEBUG {
-                writeln("Exploring with initial selection of size ", selSize, " at level ", level);
-                write("Selected vertices: ");
+                state.setSubgraph(level, 0, selSize);
                 for i in 1..selSize {
-                    write(state.getSubgraph(level, i), " ");
+                    state.setSubgraph(level, i, state.getChildSet(level, i));
+                    state.setIndexMap(level, i, i);
                 }
-                writeln("we will Recurse with chosen selection");
-                writeln();
+
+                if logLevel == LogLevel.DEBUG {
+                    writeln("Exploring with initial selection of size ", selSize, " at level ", level);
+                    write("Selected vertices: ");
+                    for i in 1..selSize {
+                        write(state.getSubgraph(level, i), " ");
+                    }
+                    writeln("we will Recurse with chosen selection");
+                    writeln();
+                }
+
+                Explore(state, root, level+1, remainedToVisit - selSize);
+                ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
             }
 
-            // Recurse with chosen selection
-            Explore(state, root, level+1, remainedToVisit - selSize);
+            for i in 1..childCount {
+                state.visited.remove(state.getChildSet(level, i));
+            }
+            state.setSubgraph(level, 0, 0);
 
-            // Generate other combinations using revolve-door algorithm
-            ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
+        } catch e {
+            writeln("----------------------------------------");
+            writeln("ERROR in Child Processing");
+            writeln("Location: root=", root, " level=", level);
+            writeln("Error: ", e.message());
+            writeln("ChildCount: ", state.getChildSet(level, 0));
+            writeln("RemainedToVisit: ", remainedToVisit);
+            writeln("----------------------------------------");
+            halt();
         }
-
-        // Cleanup: Unmark visited children before going up
-        for i in 1..childCount {
-            state.visited.remove(state.getChildSet(level, i));
-        }
-        state.setSubgraph(level, 0, 0);
-    }// End of Explore
+    } catch e {
+        writeln("----------------------------------------");
+        writeln("ERROR in Explore");
+        writeln("Location: root=", root, " level=", level);
+        writeln("Error: ", e.message());
+        writeln("RemainedToVisit: ", remainedToVisit);
+        writeln("State: subgraphCount=", state.localsubgraphCount);
+        writeln("----------------------------------------");
+        halt();
+    }
+}
 
 
     // I read this for implementing revolving door 
@@ -576,78 +668,273 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
         }
     }// End of reverseGenerator
 
+// Build tree from patterns in globalClasses
+proc buildPatternTree(globalClasses: set(uint(64)), motifSize: int) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== Building Pattern Tree =====");
+        writeln("Number of patterns: ", globalClasses.size);
+        writeln("Motif size: ", motifSize);
+    }
+
+    var root = new unmanaged TreeNode();
+    var patternCount = 0;
+
+    // Process each pattern
+    for pattern in globalClasses {
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nProcessing pattern ", patternCount, ": ", pattern);
+        }
+
+        // Convert pattern to adjacency matrix
+        var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, motifSize);
+        var currentNode = root;
+
+        // Follow or create path in tree based on edges
+        for i in 0..#motifSize {
+            for j in 0..#motifSize {
+                if i != j {  // Skip self-loops
+                    if adjMatrix[i * motifSize + j] == 1 {
+                        // Edge exists - go right
+                        if currentNode.right == nil {
+                            currentNode.right = new unmanaged TreeNode();
+                            if logLevel == LogLevel.DEBUG {
+                                writeln("Created right node for edge ", i, "->", j);
+                            }
+                        }
+                        currentNode = currentNode.right!;
+                    } else {
+                        // No edge - go left
+                        if currentNode.left == nil {
+                            currentNode.left = new unmanaged TreeNode();
+                            if logLevel == LogLevel.DEBUG {
+                                writeln("Created left node for no edge ", i, "->", j);
+                            }
+                        }
+                        currentNode = currentNode.left!;
+                    }
+                }
+            }
+        }
+
+        // Store pattern at leaf
+        currentNode.pattern = pattern;
+        currentNode.isLeaf = true;
+        patternCount += 1;
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Stored pattern at leaf: ", pattern);
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nTree construction complete.");
+        writeln("Total patterns processed: ", patternCount);
+    }
+
+    return root;
+}
+
+// Function to collect unique patterns from tree
+proc collectUniquePatterns(root: unmanaged TreeNode) {
+    var uniquePatterns: set(uint(64));
+    
+    // Helper function for recursive traversal
+    proc traverse(node: unmanaged TreeNode) {
+        if node.isLeaf {
+            uniquePatterns.add(node.pattern);
+            if logLevel == LogLevel.DEBUG {
+                writeln("Found leaf pattern: ", node.pattern);
+            }
+        } else {
+            if node.left != nil then traverse(node.left!);
+            if node.right != nil then traverse(node.right!);
+        }
+    }
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== Collecting Unique Patterns =====");
+    }
+
+    traverse(root);
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("Found ", uniquePatterns.size, " unique patterns");
+        writeln("Patterns: ", uniquePatterns);
+    }
+
+    return uniquePatterns;
+}
+proc processPatternTree() throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== Starting Pattern Classification =====");
+        writeln("Initial global classes: ", globalClasses.size);
+    }
+
+    // Build and process pattern tree
+    var root = buildPatternTree(globalClasses, motifSize);
+    var uniquePatterns = collectUniquePatterns(root);
+
+    // Print results
+    writeln("\nPattern Classification Results:");
+    writeln("Original patterns: ", globalClasses.size);
+    writeln("Unique patterns after tree classification: ", uniquePatterns.size);
+
+    // Optional: Replace global classes with unique patterns
+    globalClasses.clear();
+    for pattern in uniquePatterns {
+        globalClasses.add(pattern);
+    }
+
+    // Clean up
+    delete root;
+
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== Pattern Classification Complete =====");
+    }
+}
 //////////////////////////////Oliver: in case you needed!///////////////////////////////////////////////////
 //////////////////////////////Check it, I didn't check it as much as other functions
 ///////////////////////////////////////////////////
 proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
-    //if logLevel == LogLevel.DEBUG {
-        writeln("===== patternToAdjMatrixAndEdges called =====");
-        writeln("Input pattern: ", pattern);
-        writeln("k value: ", k);
-    //}
+   writeln("===== patternToAdjMatrixAndEdges called =====");
+   writeln("Input pattern: ", pattern);
+   writeln("k value: ", k);
 
-    var adjMatrix: [0..#(k * k)] int = 0;
-    var edgeCount = 0;
+   var adjMatrix: [0..#(k * k)] int = 0;
+   var edgeCount = 0;
+   var pos = 0;
+   
+   // First pass to count edges
+   for i in 0..#k {
+       for j in 0..#k {
+           if i != j {  // Skip self-loops but still increment pos
+               if (pattern & (1:uint(64) << pos)) != 0 {
+                   adjMatrix[i * k + j] = 1;
+                   edgeCount += 1;
+               }
+           }
+           pos += 1;
+       }
+   }
+
+   // Create arrays for edges
+   var srcNodes: [0..#edgeCount] int;
+   var dstNodes: [0..#edgeCount] int;
+   var edgeIdx = 0;
+
+   // Second pass to populate edge arrays
+   for i in 0..#k {
+       for j in 0..#k {
+           if adjMatrix[i * k + j] == 1 {
+               srcNodes[edgeIdx] = i;
+               dstNodes[edgeIdx] = j;
+               edgeIdx += 1;
+           }
+       }
+   }
+
+   writeln("\nReconstructed Adjacency Matrix (2D visualization):");
+   for i in 0..#k {
+       for j in 0..#k {
+           write(adjMatrix[i * k + j], " ");
+       }
+       writeln();
+   }
+
+   writeln("\nEdge List:");
+   for i in 0..#edgeCount {
+       writeln(srcNodes[i], " -> ", dstNodes[i]);
+   }
+
+   // Verify by converting back
+   var verifyPattern: uint(64) = 0;
+   pos = 0;  // Reset pos for verification
+   for i in 0..#k {
+       for j in 0..#k {
+           if i != j {  // Match same skip logic as above
+               if adjMatrix[i * k + j] == 1 {
+                   verifyPattern |= 1:uint(64) << pos;
+               }
+           }
+           pos += 1;
+       }
+   }
+   
+   writeln("\nVerification - pattern from reconstructed matrix: ", verifyPattern);
+   writeln("Original pattern: ", pattern);
+   writeln("Patterns match: ", verifyPattern == pattern);
+   writeln();
+
+   return (adjMatrix, srcNodes, dstNodes);
+}
+
+
+proc verifyPatterns(globalClasses: set(uint(64)), motifSize: int) throws {
+    writeln("\n===== Running Nauty Verification on Found Patterns =====");
     
-    // First pass to count edges
-    for i in 0..#k {
-        for j in 0..#k {
-            var bitPos = i * k + j;
-            if (pattern & (1:uint(64) << bitPos)) != 0 {
-                adjMatrix[i * k + j] = 1;
-                edgeCount += 1;
+    var uniqueMotifClasses: set(uint(64));
+    
+    for pattern in globalClasses {
+        var (adjMatrix, _, _) = patternToAdjMatrixAndEdges(pattern, motifSize);
+        var results: [0..<motifSize] int;
+        var status = c_nautyClassify(adjMatrix, motifSize, results, 0, 1);
+        
+        writeln("\nOriginal pattern: ", pattern);
+        writeln("Nauty labeling: ", results);
+        
+        if status != 0 {
+            writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
+            continue;
+        }
+        
+        // Check if canonical form [0,1,2]
+        var isCanonical = true;
+        for i in 0..<motifSize {
+            if results[i] != i {
+                isCanonical = false;
+                break;
             }
+        }
+        
+        if isCanonical {
+            uniqueMotifClasses.add(pattern);
+            writeln("Added to unique classes (canonical form)");
+        } else {
+            // Generate new pattern based on Nauty's labeling
+            var nautyPattern = generateNautyPattern(adjMatrix, results, motifSize);
+            writeln("Generated new pattern: ", nautyPattern);
+            uniqueMotifClasses.add(nautyPattern);
+            writeln("Added new pattern from non-canonical form");
         }
     }
-
-    // Create arrays for edges
-    var srcNodes: [0..#edgeCount] int;
-    var dstNodes: [0..#edgeCount] int;
-    var edgeIdx = 0;
-
-    // Second pass to populate edge arrays
-    for i in 0..#k {
-        for j in 0..#k {
-            if adjMatrix[i * k + j] == 1 {
-                srcNodes[edgeIdx] = i;
-                dstNodes[edgeIdx] = j;
-                edgeIdx += 1;
-            }
-        }
-    }
-
-    //if logLevel == LogLevel.DEBUG {
-        writeln("\nReconstructed Adjacency Matrix (2D visualization):");
-        for i in 0..#k {
-            for j in 0..#k {
-                write(adjMatrix[i * k + j], " ");
-            }
-            writeln();
-        }
-
-        writeln("\nEdge List:");
-        for i in 0..#edgeCount {
-            writeln(srcNodes[i], " -> ", dstNodes[i]);
-        }
-
-        // Verify by converting back
-        var verifyPattern: uint(64) = 0;
-        var pos = 0;
-        for i in 0..#k {
-            for j in 0..#k {
-                if adjMatrix[i * k + j] == 1 {
-                    verifyPattern |= 1:uint(64) << pos;
+    
+    writeln("\nSummary:");
+    writeln("Original patterns: ", globalClasses.size);
+    writeln("Unique patterns: ", uniqueMotifClasses.size);
+    writeln("Patterns: ", uniqueMotifClasses);
+    
+    return uniqueMotifClasses;
+}
+// New function to create pattern from adjMatrix and Nauty labeling
+proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
+    var pattern: uint(64) = 0;
+    var pos = 0;
+    
+    // Look at each possible edge in the new ordering
+    for i in 0..#motifSize {
+        for j in 0..#motifSize {
+            if i != j {
+                // Check if edge exists after applying Nauty's labeling
+                var src = nautyLabels[i];
+                var dst = nautyLabels[j];
+                if adjMatrix[src * motifSize + dst] == 1 {
+                    pattern |= 1:uint(64) << pos;
                 }
-                pos += 1;
             }
+            pos += 1;
         }
-        writeln("\nVerification - pattern from reconstructed matrix: ", verifyPattern);
-        writeln("Original pattern: ", pattern);
-        writeln("Patterns match: ", verifyPattern == pattern);
-        writeln();
-    //}
-
-    return (adjMatrix, srcNodes, dstNodes);
+    }
+    return pattern;
 }
 
 /* Example usage:
@@ -717,19 +1004,36 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
     // Oliver: Now you can make your src and dst based on Classes that I gathered in 
     // motifClasses and return them to users 
     // we should decide to keep or delete (allmotifs list)
+
+
     
-    
+
+    writeln("**********************************************************************");
+
+
     writeln("\nglobalMotifCount: ", globalMotifCount.read());
     writeln("\nglobalClasses: ", globalClasses);
     writeln("\nglobalClasses.size: ", globalClasses.size);
-    
-
-for elem in globalClasses {
-    writeln("elem = ", elem);
-  patternToAdjMatrixAndEdges(elem, 3);
-}
-
     writeln("**********************************************************************");
+for elem in globalClasses {
+    patternToAdjMatrixAndEdges(elem, 3);
+}
+    writeln("**********************************************************************");
+    writeln("**********************************************************************");
+writeln("\nglobalClasses.size: ", globalClasses.size);
+try {
+    verifyPatterns(globalClasses, motifSize);
+    // writeln("Found ", count, " truly unique patterns after Nauty verification");
+} catch e {
+    writeln("Error during isomorphism checking: ", e.message());
+}
+// // Add pattern tree classification
+// try {
+//     processPatternTree();
+// } catch e {
+//     writeln("Error in pattern classification: ", e.message());
+// }
+
 
     // writeln("\nallmotifs List size: ", allmotifs.size);
     // writeln("\nNumber of found motif Classes: ", motifClasses.size);
@@ -738,6 +1042,10 @@ for elem in globalClasses {
     var tempArr: [0..0] int;
     var srcPerMotif = makeDistArray(2*2, int);
     var dstPerMotif = makeDistArray(2*2, int);
+
+    srcPerMotif[srcPerMotif.domain.low] = globalClasses.size;
+    dstPerMotif[dstPerMotif.domain.low] = globalMotifCount.read();
+
     return (srcPerMotif, dstPerMotif, tempArr, tempArr);
   }// End of runMotifCounting
 
