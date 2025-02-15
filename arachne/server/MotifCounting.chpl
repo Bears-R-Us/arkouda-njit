@@ -122,20 +122,20 @@ class TreeNode {
 
 
     // C header and object files.
-    require "NautyProject/bin/nautyClassify.o",
-            "NautyProject/include/nautyClassify.h",
-            //"NautyProject/include/nauty.h",
-            "NautyProject/bin/nauty.o",
-            "NautyProject/bin/naugraph.o",
-            "NautyProject/bin/nautil.o";   
-    
-    extern proc c_nautyClassify(
-    subgraph: [] int, 
-    subgraphSize: int, 
-    results:[] int,
-    performCheck: int,
-    verbose: int
-    ) : int;
+require "nauty-wrapper/bin/nautyClassify.o",
+        "nauty-wrapper/include/nautyClassify.h",
+        "nauty-wrapper/bin/nauty.o",
+        "nauty-wrapper/bin/naugraph.o",
+        "nauty-wrapper/bin/nautil.o";
+
+// The function signature stays the same, just uses int64_t
+extern proc c_nautyClassify(
+    subgraph: [] int(64), 
+    subgraphSize: int(64), 
+    results: [] int(64),
+    performCheck: int(64),
+    verbose: int(64)
+) : int(64);
   
 
   // proc runMotifCounting(g1: SegGraph, g2: SegGraph, semanticCheckType: string, 
@@ -375,7 +375,7 @@ proc prepareNaugtyArguments(ref state: KavoshState) throws {
 proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, ref state: KavoshState): uint(64) throws {
     
     if chosenVerts.size < state.k || nautyLabels.size < state.k {
-        halt("Error: Arrays smaller than expected size");
+        //halt("Error: Arrays smaller than expected size");
     }
     
     // Step 1: Create normalized adjacency matrix
@@ -495,19 +495,31 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
 
                 if status != 0 {
                     writeln("----------------------------------------");
-                    writeln("ERROR: Nauty Classification Failed");
-                    writeln("Root: ", root, " Level: ", level);
-                    writeln("Status: ", status);
-                    writeln("AdjMatrix: ", adjMatrix);
-                    writeln("ChosenVerts: ", chosenVerts);
+                    writeln("$$ ERROR: Nauty Classification Failed");
+                    writeln("$$ Root: ", root, " Level: ", level);
+                    writeln("$$ Status: ", status);
+                    writeln("$$ AdjMatrix: ", adjMatrix);
+                    writeln("$$ ChosenVerts: ", chosenVerts);
+                    writeln("$$ results: ", results);
                     writeln("----------------------------------------");
-                    halt();
+                    if status == -5 {
+                        status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
+                        // if status != 0 {
+                        //     writeln("ERROR Again: Nauty Classification Failed");
+                        //     halt();
+                        // }
+                    }
+                    //halt();
                 }
 
                 var nautyLabels = results;
                 //var pattern = generateCanonicalPattern(chosenVerts, nautyLabels, state);
                 var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
-                writeln("subgraph = ", adjMatrix, " Nauty returned: ", results, " status =", status, "pattern = ", pattern);
+                
+                if logLevel == LogLevel.DEBUG {    
+                    writeln("subgraph = ", adjMatrix, " Nauty returned: ", results, " status =", status, "pattern = ", pattern);
+                }
+                
                 state.localmotifClasses.add(pattern);
                 
                 if logLevel == LogLevel.DEBUG {
@@ -521,7 +533,7 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
                 writeln("Error: ", e.message());
                 writeln("State: localsubgraphCount=", state.localsubgraphCount);
                 writeln("----------------------------------------");
-                halt();
+                //halt();
             }
         }
 
@@ -574,7 +586,7 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
             writeln("ChildCount: ", state.getChildSet(level, 0));
             writeln("RemainedToVisit: ", remainedToVisit);
             writeln("----------------------------------------");
-            halt();
+            //halt();
         }
     } catch e {
         writeln("----------------------------------------");
@@ -584,7 +596,7 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
         writeln("RemainedToVisit: ", remainedToVisit);
         writeln("State: subgraphCount=", state.localsubgraphCount);
         writeln("----------------------------------------");
-        halt();
+        //halt();
     }
 }
 
@@ -668,283 +680,134 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
         }
     }// End of reverseGenerator
 
-// Build tree from patterns in globalClasses
-proc buildPatternTree(globalClasses: set(uint(64)), motifSize: int) throws {
-    if logLevel == LogLevel.DEBUG {
-        writeln("===== Building Pattern Tree =====");
-        writeln("Number of patterns: ", globalClasses.size);
-        writeln("Motif size: ", motifSize);
-    }
-
-    var root = new unmanaged TreeNode();
-    var patternCount = 0;
-
-    // Process each pattern
-    for pattern in globalClasses {
-        if logLevel == LogLevel.DEBUG {
-            writeln("\nProcessing pattern ", patternCount, ": ", pattern);
-        }
-
-        // Convert pattern to adjacency matrix
-        var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, motifSize);
-        var currentNode = root;
-
-        // Follow or create path in tree based on edges
-        for i in 0..#motifSize {
-            for j in 0..#motifSize {
-                if i != j {  // Skip self-loops
-                    if adjMatrix[i * motifSize + j] == 1 {
-                        // Edge exists - go right
-                        if currentNode.right == nil {
-                            currentNode.right = new unmanaged TreeNode();
-                            if logLevel == LogLevel.DEBUG {
-                                writeln("Created right node for edge ", i, "->", j);
-                            }
-                        }
-                        currentNode = currentNode.right!;
-                    } else {
-                        // No edge - go left
-                        if currentNode.left == nil {
-                            currentNode.left = new unmanaged TreeNode();
-                            if logLevel == LogLevel.DEBUG {
-                                writeln("Created left node for no edge ", i, "->", j);
-                            }
-                        }
-                        currentNode = currentNode.left!;
-                    }
-                }
-            }
-        }
-
-        // Store pattern at leaf
-        currentNode.pattern = pattern;
-        currentNode.isLeaf = true;
-        patternCount += 1;
-
-        if logLevel == LogLevel.DEBUG {
-            writeln("Stored pattern at leaf: ", pattern);
-        }
-    }
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("\nTree construction complete.");
-        writeln("Total patterns processed: ", patternCount);
-    }
-
-    return root;
-}
-
-// Function to collect unique patterns from tree
-proc collectUniquePatterns(root: unmanaged TreeNode) {
-    var uniquePatterns: set(uint(64));
-    
-    // Helper function for recursive traversal
-    proc traverse(node: unmanaged TreeNode) {
-        if node.isLeaf {
-            uniquePatterns.add(node.pattern);
-            if logLevel == LogLevel.DEBUG {
-                writeln("Found leaf pattern: ", node.pattern);
-            }
-        } else {
-            if node.left != nil then traverse(node.left!);
-            if node.right != nil then traverse(node.right!);
-        }
-    }
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("===== Collecting Unique Patterns =====");
-    }
-
-    traverse(root);
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("Found ", uniquePatterns.size, " unique patterns");
-        writeln("Patterns: ", uniquePatterns);
-    }
-
-    return uniquePatterns;
-}
-proc processPatternTree() throws {
-    if logLevel == LogLevel.DEBUG {
-        writeln("===== Starting Pattern Classification =====");
-        writeln("Initial global classes: ", globalClasses.size);
-    }
-
-    // Build and process pattern tree
-    var root = buildPatternTree(globalClasses, motifSize);
-    var uniquePatterns = collectUniquePatterns(root);
-
-    // Print results
-    writeln("\nPattern Classification Results:");
-    writeln("Original patterns: ", globalClasses.size);
-    writeln("Unique patterns after tree classification: ", uniquePatterns.size);
-
-    // Optional: Replace global classes with unique patterns
-    globalClasses.clear();
-    for pattern in uniquePatterns {
-        globalClasses.add(pattern);
-    }
-
-    // Clean up
-    delete root;
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("===== Pattern Classification Complete =====");
-    }
-}
-//////////////////////////////Oliver: in case you needed!///////////////////////////////////////////////////
-//////////////////////////////Check it, I didn't check it as much as other functions
-///////////////////////////////////////////////////
-proc patternToAdjMatrixAndEdges(pattern: uint(64), k: int) throws {
-   writeln("===== patternToAdjMatrixAndEdges called =====");
-   writeln("Input pattern: ", pattern);
-   writeln("k value: ", k);
-
-   var adjMatrix: [0..#(k * k)] int = 0;
-   var edgeCount = 0;
-   var pos = 0;
-   
-   // First pass to count edges
-   for i in 0..#k {
-       for j in 0..#k {
-           if i != j {  // Skip self-loops but still increment pos
-               if (pattern & (1:uint(64) << pos)) != 0 {
-                   adjMatrix[i * k + j] = 1;
-                   edgeCount += 1;
-               }
-           }
-           pos += 1;
-       }
-   }
-
-   // Create arrays for edges
-   var srcNodes: [0..#edgeCount] int;
-   var dstNodes: [0..#edgeCount] int;
-   var edgeIdx = 0;
-
-   // Second pass to populate edge arrays
-   for i in 0..#k {
-       for j in 0..#k {
-           if adjMatrix[i * k + j] == 1 {
-               srcNodes[edgeIdx] = i;
-               dstNodes[edgeIdx] = j;
-               edgeIdx += 1;
-           }
-       }
-   }
-
-   writeln("\nReconstructed Adjacency Matrix (2D visualization):");
-   for i in 0..#k {
-       for j in 0..#k {
-           write(adjMatrix[i * k + j], " ");
-       }
-       writeln();
-   }
-
-   writeln("\nEdge List:");
-   for i in 0..#edgeCount {
-       writeln(srcNodes[i], " -> ", dstNodes[i]);
-   }
-
-   // Verify by converting back
-   var verifyPattern: uint(64) = 0;
-   pos = 0;  // Reset pos for verification
-   for i in 0..#k {
-       for j in 0..#k {
-           if i != j {  // Match same skip logic as above
-               if adjMatrix[i * k + j] == 1 {
-                   verifyPattern |= 1:uint(64) << pos;
-               }
-           }
-           pos += 1;
-       }
-   }
-   
-   writeln("\nVerification - pattern from reconstructed matrix: ", verifyPattern);
-   writeln("Original pattern: ", pattern);
-   writeln("Patterns match: ", verifyPattern == pattern);
-   writeln();
-
-   return (adjMatrix, srcNodes, dstNodes);
-}
 
 
-proc verifyPatterns(globalClasses: set(uint(64)), motifSize: int) throws {
-    writeln("\n===== Running Nauty Verification on Found Patterns =====");
-    
-    var uniqueMotifClasses: set(uint(64));
-    
-    for pattern in globalClasses {
-        var (adjMatrix, _, _) = patternToAdjMatrixAndEdges(pattern, motifSize);
-        var results: [0..<motifSize] int;
-        var status = c_nautyClassify(adjMatrix, motifSize, results, 0, 1);
-        
-        writeln("\nOriginal pattern: ", pattern);
-        writeln("Nauty labeling: ", results);
-        
-        if status != 0 {
-            writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
-            continue;
-        }
-        
-        // Check if canonical form [0,1,2]
-        var isCanonical = true;
-        for i in 0..<motifSize {
-            if results[i] != i {
-                isCanonical = false;
-                break;
-            }
-        }
-        
-        if isCanonical {
-            uniqueMotifClasses.add(pattern);
-            writeln("Added to unique classes (canonical form)");
-        } else {
-            // Generate new pattern based on Nauty's labeling
-            var nautyPattern = generateNautyPattern(adjMatrix, results, motifSize);
-            writeln("Generated new pattern: ", nautyPattern);
-            uniqueMotifClasses.add(nautyPattern);
-            writeln("Added new pattern from non-canonical form");
-        }
-    }
-    
-    writeln("\nSummary:");
-    writeln("Original patterns: ", globalClasses.size);
-    writeln("Unique patterns: ", uniqueMotifClasses.size);
-    writeln("Patterns: ", uniqueMotifClasses);
-    
-    return uniqueMotifClasses;
-}
-// New function to create pattern from adjMatrix and Nauty labeling
-proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
-    var pattern: uint(64) = 0;
+    proc patternToAdjMatrix(pattern: uint(64), k: int) throws {
+    writeln("===== patternToAdjMatrix called =====");
+    writeln("Input pattern: ", pattern);
+    writeln("k value: ", k);
+
+    var adjMatrix: [0..#(k * k)] int = 0;
+    var edgeCount = 0;
     var pos = 0;
     
-    // Look at each possible edge in the new ordering
-    for i in 0..#motifSize {
-        for j in 0..#motifSize {
-            if i != j {
-                // Check if edge exists after applying Nauty's labeling
-                var src = nautyLabels[i];
-                var dst = nautyLabels[j];
-                if adjMatrix[src * motifSize + dst] == 1 {
-                    pattern |= 1:uint(64) << pos;
+    // First pass to count edges
+    for i in 0..#k {
+        for j in 0..#k {
+            if i != j {  // Skip self-loops but still increment pos
+                if (pattern & (1:uint(64) << pos)) != 0 {
+                    adjMatrix[i * k + j] = 1;
+                    edgeCount += 1;
                 }
             }
             pos += 1;
         }
     }
-    return pattern;
-}
 
-/* Example usage:
-var pattern: uint(64) = 123456;  // some pattern
-var k = 3;  // size of matrix
-var (adjMatrix, srcNodes, dstNodes) = patternToAdjMatrixAndEdges(pattern, k);
-Also we can make it to accept set of classes then srcNodes and dstNodes will be for all classes and each class
-seperated by a -1, So Harvard team can use it for Visualization purpose
-*/
-////////////////////////////////////////////////////////////////////////////////
+    return (adjMatrix);
+    }
+
+
+    /* This function takes a set of patterns (represented as uint64) and motif size,
+    runs Nauty on each pattern to find canonical forms, and returns:
+    1. A set of unique motif classes
+    2. A flat array containing all adjacency matrices of the unique motifs
+    */
+    proc verifyPatterns(globalClasses: set(uint(64)), motifSize: int) throws {
+        var uniqueMotifClasses: set(uint(64));
+        var motifCount = 0;
+
+        var motifArr: [0..#(globalClasses.size * motifSize * motifSize)] int;
+        
+        // Process each pattern found
+        for pattern in globalClasses {
+            if pattern == 0 {
+                writeln("$$$$$$$$$$$$$$$$$$$$We had BROKEN C we found and ignored it$$$$$$$$$$$$$$$$$$$$$$$");
+                continue;
+            }
+
+            // Convert pattern to adjacency matrix
+            var adjMatrix = patternToAdjMatrix(pattern, motifSize);
+            var results: [0..<motifSize] int;
+            // Run Nauty on the adjacency matrix
+            var status = c_nautyClassify(adjMatrix, motifSize, results, 1, 1);
+            
+            if status != 0 {
+                writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
+                continue;
+            }
+            
+            // Check if Nauty returned canonical form equal to [0,1,2]
+            var isCanonical = true;
+            for i in 0..<motifSize {
+                if results[i] != i {
+                    isCanonical = false;
+                    break;
+                }
+            }
+            
+            var matrixToAdd: [0..#(motifSize * motifSize)] int;
+            if isCanonical {
+                // If canonical, add original pattern and matrix
+                uniqueMotifClasses.add(pattern);
+                matrixToAdd = adjMatrix;
+            } else {
+                // If not canonical, generate new pattern from Nauty's labeling
+                var nautyPattern = generateNautyPattern(adjMatrix, results, motifSize);
+                uniqueMotifClasses.add(nautyPattern);
+                matrixToAdd = patternToAdjMatrix(nautyPattern, motifSize);
+            }
+
+            // Add matrix to motifArr - each matrix takes motifSize^2 elements
+            var startIdx = motifCount * motifSize * motifSize;
+            for i in 0..#(motifSize * motifSize) {
+                motifArr[startIdx + i] = matrixToAdd[i];
+            }
+            motifCount += 1;
+        }
+
+        // Create final array with exact size needed for found motifs
+        var finalMotifArr: [0..#(motifCount * motifSize * motifSize)] int;
+        for i in 0..#(motifCount * motifSize * motifSize) {
+            finalMotifArr[i] = motifArr[i];
+        }
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("\nSummary:");
+            writeln("Original patterns: ", globalClasses.size);
+            writeln("Unique patterns: ", uniqueMotifClasses.size);
+            writeln("Motif array size: ", finalMotifArr.size);
+            // Calculate expected size
+            writeln("Expected size (uniquePatterns × motifSize²): ", 
+                    uniqueMotifClasses.size * motifSize * motifSize);
+        }
+    
+    return (uniqueMotifClasses, finalMotifArr);
+    }
+    // New function to create pattern from adjMatrix and Nauty labeling
+    proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
+        var pattern: uint(64) = 0;
+        var pos = 0;
+        
+        // Look at each possible edge in the new ordering
+        for i in 0..#motifSize {
+            for j in 0..#motifSize {
+                if i != j {
+                    // Check if edge exists after applying Nauty's labeling
+                    var src = nautyLabels[i];
+                    var dst = nautyLabels[j];
+                    if adjMatrix[src * motifSize + dst] == 1 {
+                        pattern |= 1:uint(64) << pos;
+                    }
+                }
+                pos += 1;
+            }
+        }
+        return pattern;
+    }
+
+
+    ///////////////////////////////Main Code/////////////////////////////////////////////////
 
 
     // Enumerate: Iterates over all vertices as potential roots
@@ -1015,38 +878,27 @@ seperated by a -1, So Harvard team can use it for Visualization purpose
     writeln("\nglobalClasses: ", globalClasses);
     writeln("\nglobalClasses.size: ", globalClasses.size);
     writeln("**********************************************************************");
-for elem in globalClasses {
-    patternToAdjMatrixAndEdges(elem, 3);
-}
+
     writeln("**********************************************************************");
     writeln("**********************************************************************");
-writeln("\nglobalClasses.size: ", globalClasses.size);
-try {
-    verifyPatterns(globalClasses, motifSize);
-    // writeln("Found ", count, " truly unique patterns after Nauty verification");
-} catch e {
-    writeln("Error during isomorphism checking: ", e.message());
-}
-// // Add pattern tree classification
-// try {
-//     processPatternTree();
-// } catch e {
-//     writeln("Error in pattern classification: ", e.message());
-// }
+    //try {
+        var (uniqueMotifClasses, finalMotifArr) = verifyPatterns(globalClasses, motifSize);
+        // writeln("Found ", count, " truly unique patterns after Nauty verification");
+    // } catch e {
+    //     writeln("Error during isomorphism checking: ", e.message());
+    // }
+    writeln("\nglobalMotifCount: ", globalMotifCount.read());
+    writeln("\n uniqueMotifClasses: ", uniqueMotifClasses);
+    writeln("\n finalMotifArr.size: ", finalMotifArr.size);
 
-
-    // writeln("\nallmotifs List size: ", allmotifs.size);
-    // writeln("\nNumber of found motif Classes: ", motifClasses.size);
-    // // To read the final count:
-    // writeln("\nallMotifCounts: ", allMotifCounts.read());
     var tempArr: [0..0] int;
     var srcPerMotif = makeDistArray(2*2, int);
     var dstPerMotif = makeDistArray(2*2, int);
 
-    srcPerMotif[srcPerMotif.domain.low] = globalClasses.size;
-    dstPerMotif[dstPerMotif.domain.low] = globalMotifCount.read();
+    srcPerMotif[srcPerMotif.domain.low] = uniqueMotifClasses.size;
+    // dstPerMotif[dstPerMotif.domain.low] = globalMotifCount.read();
 
-    return (srcPerMotif, dstPerMotif, tempArr, tempArr);
+    return (srcPerMotif, finalMotifArr, tempArr, tempArr);
   }// End of runMotifCounting
 
 }// End of MotifCounting Module
