@@ -125,8 +125,11 @@ class TreeNode {
 require "nauty-wrapper/bin/nautyClassify.o",
         "nauty-wrapper/include/nautyClassify.h",
         "nauty-wrapper/bin/nauty.o",
+        "nauty-wrapper/bin/nautil.o",
         "nauty-wrapper/bin/naugraph.o",
-        "nauty-wrapper/bin/nautil.o";
+        "nauty-wrapper/bin/schreier.o",
+        "nauty-wrapper/bin/naurng.o",
+        "nauty-wrapper/bin/nausparse.o";
 
 // The function signature stays the same, just uses int64_t
 extern proc c_nautyClassify(
