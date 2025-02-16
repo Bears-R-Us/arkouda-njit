@@ -469,8 +469,7 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
 
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainedToVisit = 0 (which means we have chosen k vertices).
- proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
-    try {
+    proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
         if logLevel == LogLevel.DEBUG {
             writeln("===== Explore called =====");
             writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
@@ -486,122 +485,115 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
             writeln("==========================");
         }
 
+        // Base case: all k vertices chosen, now we have found a motif
         if remainedToVisit == 0 {
-            try {
-                state.localsubgraphCount += 1;
-                var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
-                var results: [0..<state.k] int = 0..<state.k;
-                var performCheck: int = 1;
-                var verbose: int = 0;
+            state.localsubgraphCount += 1;
 
-                var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
-
-                if status != 0 {
-                    writeln("----------------------------------------");
-                    writeln("$$ ERROR: Nauty Classification Failed");
-                    writeln("$$ Root: ", root, " Level: ", level);
-                    writeln("$$ Status: ", status);
-                    writeln("$$ AdjMatrix: ", adjMatrix);
-                    writeln("$$ ChosenVerts: ", chosenVerts);
-                    writeln("$$ results: ", results);
-                    writeln("----------------------------------------");
-                    if status == -5 {
-                        status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
-                        // if status != 0 {
-                        //     writeln("ERROR Again: Nauty Classification Failed");
-                        //     halt();
-                        // }
+            if logLevel == LogLevel.DEBUG {
+                writeln("Found complete subgraph #", state.localsubgraphCount);
+                for l in 0..<state.k {
+                    write("Level ", l, ": ");
+                    for x in 1..state.getSubgraph(l, 0) {
+                        write(state.getSubgraph(l, x), " ");
                     }
-                    //halt();
+                    writeln();
                 }
-
-                var nautyLabels = results;
-                //var pattern = generateCanonicalPattern(chosenVerts, nautyLabels, state);
-                var pattern = generatePatternDirect(chosenVerts, nautyLabels, state);
-                
-                if logLevel == LogLevel.DEBUG {    
-                    writeln("subgraph = ", adjMatrix, " Nauty returned: ", results, " status =", status, "pattern = ", pattern);
-                }
-                
-                state.localmotifClasses.add(pattern);
-                
-                if logLevel == LogLevel.DEBUG {
-                    writeln("state.localmotifClasses: ", state.localmotifClasses);
-                }
-                return;
-            } catch e {
-                writeln("----------------------------------------");
-                writeln("ERROR in Base Case Processing");
-                writeln("Location: root=", root, " level=", level);
-                writeln("Error: ", e.message());
-                writeln("State: localsubgraphCount=", state.localsubgraphCount);
-                writeln("----------------------------------------");
-                //halt();
+                writeln("Now we make adjMatrix to pass to Naugty");
             }
+
+            var (adjMatrix, chosenVerts) = prepareNaugtyArguments(state);
+            
+            // var adjMatrix: [0..8] int = [1, 1, 1, 1, 1, 1, 1, 1, 1];
+            // For test purpose assume naugty returned this
+            var results: [0..<state.k] int = 0..<state.k;
+
+            //var subgraphSize = motifSize;
+            //var subgraph = adjMatrix;
+
+            var performCheck: int = 1; // Set to 1 to perform nauty_check, 0 to skip // DECIDE
+            var verbose = 0;
+
+            if logLevel == LogLevel.DEBUG{
+                verbose = 1; // Set to 1 to enable verbose logging
+            }
+
+            var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
+
+            if logLevel == LogLevel.DEBUG {
+                writeln("for subgraph = ",adjMatrix, "Nauty returned: ",
+                                         results, " we are in the way to Classify!", "status = ", status);
+                                         
+            }
+
+            // Handle potential errors
+            if status != 0 {
+                writeln("Error: c_nautyClassify failed with status ", status);
+                //return;
+            }
+            // // Print canonical labeling
+            // writeln("Canonical Labeling:");
+            // for i in 0..<subgraphSize {
+            //     writeln("Node ", i, " -> ", results[i]);
+            // }
+            //var nautyLabels = results;
+            var pattern = generatePatternDirect(chosenVerts, results, state);
+            state.localmotifClasses.add(pattern);
+            
+            if logLevel == LogLevel.DEBUG {
+                writeln("state.localmotifClasses: ", state.localmotifClasses);
+            }
+            return;
         }
 
         // Get children for this level
-        try {
-            initChildSet(state, root, level);
-            const childCount = state.getChildSet(level, 0);
+        initChildSet(state, root, level);
+        const childCount = state.getChildSet(level, 0);
 
-            for selSize in 1..remainedToVisit {
-                if childCount < selSize {
-                    if logLevel == LogLevel.DEBUG {
-                        writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
-                    }
-                    for i in 1..childCount {
-                        state.visited.remove(state.getChildSet(level, i));
-                    }
-                    return;
-                }
-
-                state.setSubgraph(level, 0, selSize);
-                for i in 1..selSize {
-                    state.setSubgraph(level, i, state.getChildSet(level, i));
-                    state.setIndexMap(level, i, i);
-                }
-
+        // Try all possible selection sizes at this level, from 1 to remainedToVisit
+        for selSize in 1..remainedToVisit {
+            if childCount < selSize {
+                // Not enough children to form this selection
                 if logLevel == LogLevel.DEBUG {
-                    writeln("Exploring with initial selection of size ", selSize, " at level ", level);
-                    write("Selected vertices: ");
-                    for i in 1..selSize {
-                        write(state.getSubgraph(level, i), " ");
-                    }
-                    writeln("we will Recurse with chosen selection");
-                    writeln();
+                    writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
                 }
-
-                Explore(state, root, level+1, remainedToVisit - selSize);
-                ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
+                // Unmark visited children before returning
+                for i in 1..childCount {
+                    state.visited.remove(state.getChildSet(level, i));
+                }
+                return;
             }
 
-            for i in 1..childCount {
-                state.visited.remove(state.getChildSet(level, i));
+            // Initial selection: pick the first selSize children
+            state.setSubgraph(level, 0, selSize);
+            for i in 1..selSize {
+                state.setSubgraph(level, i, state.getChildSet(level, i));
+                state.setIndexMap(level, i, i);
             }
-            state.setSubgraph(level, 0, 0);
 
-        } catch e {
-            writeln("----------------------------------------");
-            writeln("ERROR in Child Processing");
-            writeln("Location: root=", root, " level=", level);
-            writeln("Error: ", e.message());
-            writeln("ChildCount: ", state.getChildSet(level, 0));
-            writeln("RemainedToVisit: ", remainedToVisit);
-            writeln("----------------------------------------");
-            //halt();
+            if logLevel == LogLevel.DEBUG {
+                writeln("Exploring with initial selection of size ", selSize, " at level ", level);
+                write("Selected vertices: ");
+                for i in 1..selSize {
+                    write(state.getSubgraph(level, i), " ");
+                }
+                writeln("we will Recurse with chosen selection");
+                writeln();
+            }
+
+            // Recurse with chosen selection
+            Explore(state, root, level+1, remainedToVisit - selSize);
+
+            // Generate other combinations using revolve-door algorithm
+            ForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state);
         }
-    } catch e {
-        writeln("----------------------------------------");
-        writeln("ERROR in Explore");
-        writeln("Location: root=", root, " level=", level);
-        writeln("Error: ", e.message());
-        writeln("RemainedToVisit: ", remainedToVisit);
-        writeln("State: subgraphCount=", state.localsubgraphCount);
-        writeln("----------------------------------------");
-        //halt();
-    }
-}
+
+        // Cleanup: Unmark visited children before going up
+        for i in 1..childCount {
+            state.visited.remove(state.getChildSet(level, i));
+        }
+        state.setSubgraph(level, 0, 0);
+    }// End of Explore
+
 
 
     // I read this for implementing revolving door 
@@ -717,6 +709,8 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
     2. A flat array containing all adjacency matrices of the unique motifs
     */
     proc verifyPatterns(globalClasses: set(uint(64)), motifSize: int) throws {
+                writeln("=============== verify Patterns=============== ");
+
         var uniqueMotifClasses: set(uint(64));
         var motifCount = 0;
 
@@ -732,8 +726,16 @@ proc generateCanonicalPattern(ref chosenVerts: [] int, ref nautyLabels: [] int, 
             // Convert pattern to adjacency matrix
             var adjMatrix = patternToAdjMatrix(pattern, motifSize);
             var results: [0..<motifSize] int;
+            
+            var performCheck = 1;
+            var verbose = 0;
+            
+            if logLevel == LogLevel.DEBUG{
+                verbose = 1; // Set to 1 to enable verbose logging
+            }
+
             // Run Nauty on the adjacency matrix
-            var status = c_nautyClassify(adjMatrix, motifSize, results, 1, 1);
+            var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
             
             if status != 0 {
                 writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
