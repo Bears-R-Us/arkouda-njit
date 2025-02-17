@@ -59,7 +59,7 @@ module MotifCountingMsg {
     // var hEntry: borrowed GraphSymEntry = getGraphSymEntry(subgraphEntryName, st); 
     // var h = hEntry.graph;
 
-    // Execute sequential VF2 subgraph isomorphism.
+    // Execute Motif Counting subgraph.
     var timer:stopwatch;
     if g.isDirected() {
       if algorithmType != "ps" && algorithmType != "si" {
@@ -73,7 +73,7 @@ module MotifCountingMsg {
       var isos = runMotifCounting(g,motifSize,
                         printProgressInterval,algorithmType,returnIsosAs,st);
       timer.stop();
-      outMsg = "Kavosh%s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
+      outMsg = "Motif Counting %s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
 
       if returnIsosAs == "vertices" {
         var isosAsVerticesName = st.nextName();
