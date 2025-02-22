@@ -28,6 +28,47 @@ module MotifCounting {
   use SegmentedString;
   use SymArrayDmap;
   use Logging;
+    
+    /* New ASWS-specific records and classes */
+    record ASWSConfig {
+        var n: int;              // Graph size
+        var k: int;              // Motif size
+        var initialWavefrontSize: int;
+        var hubPercentile: real;
+        var minSamplesPerStratum: int;
+        
+        proc init(n: int, k: int) {
+            this.n = n;
+            this.k = k;
+            this.initialWavefrontSize = min(100, n); // Start small
+            this.hubPercentile = 0.9;                // Top 10% as hubs
+            this.minSamplesPerStratum = 30;          // Statistical minimum
+            init this;
+        }
+    }
+    
+    /* Manages the wavefront sampling state */
+    class WavefrontState {
+        var ASconfig: ASWSConfig;
+        var wavefront: domain(int, parSafe=true);
+        var hubSet: domain(int, parSafe=true);
+        var sampledVertices: domain(int, parSafe=true);
+        var fingerprints: [0..#ASconfig.n] real;
+        var timer: stopwatch;
+        
+        proc init(ASconfig: ASWSConfig) {
+            this.ASconfig = ASconfig;
+            this.wavefront = {1..0};
+            this.hubSet = {1..0};
+            this.sampledVertices = {1..0};
+            var a1: [0..#ASconfig.n] real;
+            this.fingerprints = a1;
+            this.timer = new stopwatch();
+            init this;
+        }
+    }
+
+
 
     class KavoshState {
         var n: int;
@@ -172,16 +213,337 @@ module MotifCounting {
         }
         var maxDeg = max reduce nodeDegree;
 
+// To Oliver: I know that it seems CRAZY but information in globalMotifCount + globalMotifSet == globalMotifMap
+// for inknown reason I couldnt remove globalMotifCount and globalMotifSet. I got so many errors
 
         // All motif counting and classify variables
         var globalMotifCount: atomic int;
-        var globalClasses: set(uint(64), parSafe=true);
+        var globalMotifSet: set(uint(64), parSafe=true);
         // Initiate it to 0
         globalMotifCount.write(0);
         // A global map to track pattern counts across all threads
-        var globalClassCounts: map(uint(64), int);
+        var globalMotifMap: map(uint(64), int);
         var syncVar: sync bool;
 
+        var doSampling: bool = true;
+        var doMOtifDetail: bool = true;
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+   /* Identifies hub vertices based on degree */
+proc identifyHubs(ref state: WavefrontState, nodeDegree: [] int) {
+    writeln("\n=== Starting Hub Identification ===");
+    writeln("- Graph size: ", state.ASconfig.n);
+    writeln("- Hub percentile: ", state.ASconfig.hubPercentile);
+    
+    state.timer.start();
+    
+    // Create a copy for sorting
+    var sortedDegrees = nodeDegree;
+    sort(sortedDegrees, new ReverseComparator());
+    
+    writeln("- Degree distribution:");
+    writeln("  * Max degree: ", sortedDegrees[0]);
+    writeln("  * Median degree: ", sortedDegrees[sortedDegrees.size/2]);
+    writeln("  * Min degree: ", sortedDegrees[sortedDegrees.size-1]);
+    
+    // Calculate hub threshold
+    var hubIndex = (state.ASconfig.n * (1.0 - state.ASconfig.hubPercentile)): int;
+    var hubThreshold = sortedDegrees[hubIndex];
+    
+    writeln("- Hub threshold: ", hubThreshold);
+    
+    // Identify hubs
+    var hubCount = 0;
+    ref hubSetRef = state.hubSet;  // Get reference before forall
+    
+    forall v in 0..#state.ASconfig.n with (ref hubSetRef, + reduce hubCount) {
+        if nodeDegree[v] >= hubThreshold {
+            hubSetRef.add(v);
+            hubCount += 1;
+        }
+    }
+
+    state.timer.stop();
+    
+    writeln("=== Hub Identification Complete ===");
+    writeln("- Identified ", hubCount, " hubs");
+    writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+    writeln();
+}
+
+    /* Initializes the wavefront with strategic vertices */
+    proc initializeWavefront(ref state: WavefrontState, nodeDegree: [] int) {
+            writeln("\n=== Initializing Wavefront ===");
+            writeln("- Target size: ", state.ASconfig.initialWavefrontSize);
+        
+        
+        state.timer.clear();
+        state.timer.start();
+        
+        // Always include hubs in initial wavefront
+        state.wavefront = state.hubSet;
+        
+            writeln("- Added ", state.hubSet.size, " hubs to wavefront");
+                
+        // Add more vertices if needed
+        if state.wavefront.size < state.ASconfig.initialWavefrontSize {
+            var remainingNeeded = state.ASconfig.initialWavefrontSize - state.wavefront.size;
+            
+                writeln("- Selecting ", remainingNeeded, " additional vertices");
+            
+            
+            // Select additional vertices based on degree diversity
+            var rng = new randomStream(real);
+            var degreeBins: [0..4] domain(int, parSafe=true); // 5 degree ranges
+            
+            // Categorize non-hub vertices by degree
+            var maxDeg = max reduce nodeDegree;
+            forall v in 0..#state.ASconfig.n with (ref degreeBins) {
+                if !state.hubSet.contains(v) {
+                    var bin = (nodeDegree[v] * 5 / maxDeg): int;
+                    bin = min(4, bin); // Ensure within bounds
+                    degreeBins[bin].add(v);
+                }
+            }
+            
+            // Select proportionally from each bin
+            var addedCount = 0;
+            for bin in 0..4 {
+                var toSelect = (remainingNeeded / 5): int;
+                if degreeBins[bin].size > 0 {
+                    for v in degreeBins[bin] {
+                        if addedCount >= remainingNeeded then break;
+                        if rng.next() < 0.5 { // Randomize selection
+                            state.wavefront.add(v);
+                            addedCount += 1;
+                        }
+                    }
+                }
+            }
+        }
+        
+        state.timer.stop();
+        
+            writeln("=== Wavefront Initialization Complete ===");
+            writeln("- Final wavefront size: ", state.wavefront.size);
+            writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+            writeln();
+    }
+
+ /* Computes structural fingerprints for vertices */
+proc computeFingerprints(ref state: WavefrontState, 
+                       ref nodeNeighbours: [] domain(int),
+                       ref nodeDegree: [] int) {
+    writeln("\n=== Computing Structural Fingerprints ===");
+    
+    state.timer.clear();
+    state.timer.start();
+    
+    // Get references before forall
+    ref fingerprintsRef = state.fingerprints;
+    ref wavefrontRef = state.wavefront;
+    
+    // For prototype: simple fingerprint based on degree and local clustering
+    forall v in wavefrontRef with (ref fingerprintsRef) {
+        // Compute local clustering coefficient
+        var neighborEdges = 0;
+        var possibleEdges = 0;
+        
+        for u in nodeNeighbours[v] {
+            for w in nodeNeighbours[v] {
+                if u != w {
+                    possibleEdges += 1;
+                    if nodeNeighbours[u].contains(w) {
+                        neighborEdges += 1;
+                    }
+                }
+            }
+        }
+        
+        var clustering = if possibleEdges > 0 then neighborEdges:real / possibleEdges:real 
+                       else 0.0;
+        
+        // Combine degree and clustering for fingerprint
+        fingerprintsRef[v] = nodeDegree[v]:real / max(1, max reduce nodeDegree) +
+                              clustering;
+                              
+        writeln("  Vertex ", v, ":");
+        writeln("    - Degree: ", nodeDegree[v]);
+        writeln("    - Clustering: ", clustering);
+        writeln("    - Fingerprint: ", fingerprintsRef[v]);
+    }
+    
+    state.timer.stop();
+    
+    writeln("=== Fingerprint Computation Complete ===");
+    writeln("- Processed ", wavefrontRef.size, " vertices");
+    writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+    writeln();
+}
+    /* Expands the wavefront based on structural diversity */
+    proc expandWavefront(ref state: WavefrontState,
+                        ref nodeNeighbours: [] domain(int)) {
+            writeln("\n=== Expanding Wavefront ===");
+            writeln("- Current size: ", state.wavefront.size);
+        
+        
+        state.timer.clear();
+        state.timer.start();
+        
+        var candidateSet: domain(int, parSafe=true);
+        var expansionSize = state.wavefront.size; // Double the size each time
+        
+        // Collect neighbors of current wavefront
+        forall v in state.wavefront with (ref candidateSet) {
+            for u in nodeNeighbours[v] {
+                if !state.wavefront.contains(u) && !state.sampledVertices.contains(u) {
+                    candidateSet.add(u);
+                }
+            }
+        }
+        
+            writeln("- Found ", candidateSet.size, " candidate vertices");
+        
+        
+        // Select diverse candidates based on fingerprints
+        if candidateSet.size > 0 {
+            var selectedCount = 0;
+            var lastFingerprint = -1.0;
+            
+            // Sort candidates by fingerprint difference
+            var candidateArray: [0..#candidateSet.size] (real, int);
+            var idx = 0;
+            for v in candidateSet {
+                candidateArray[idx] = (state.fingerprints[v], v);
+                idx += 1;
+            }
+            sort(candidateArray);
+            
+            // Select vertices with diverse fingerprints
+            for (fp, v) in candidateArray {
+                if selectedCount >= expansionSize then break;
+                if lastFingerprint < 0.0 || abs(fp - lastFingerprint) > 0.1 {
+                    state.wavefront.add(v);
+                    state.sampledVertices.add(v);
+                    lastFingerprint = fp;
+                    selectedCount += 1;
+                }
+            }
+        }
+        
+        state.timer.stop();
+        
+            writeln("=== Wavefront Expansion Complete ===");
+            writeln("- New wavefront size: ", state.wavefront.size);
+            writeln("- Total sampled vertices: ", state.sampledVertices.size);
+            writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+            writeln();
+        
+    }
+
+    /* Processes current wavefront to find motifs */
+    proc processWavefront(ref state: WavefrontState,
+                         ref globalMotifCount: atomic int,
+                         ref globalMotifSet: set(uint(64))) throws{
+            writeln("\n=== Processing Wavefront for Motifs ===");
+            writeln("- Vertices to process: ", state.wavefront.size);
+        
+        
+        state.timer.clear();
+        state.timer.start();
+        
+        // // Create state for motif exploration
+        // var kState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
+        
+        // Process each vertex in wavefront
+        forall v in state.wavefront with (ref globalMotifSet, ref globalMotifCount) {
+            // Create a new KavoshState for this thread/vertex
+            var localKavoshState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
+  
+            // Initialize for this vertex
+            localKavoshState.setSubgraph(0, 0, 1);      // Set count to 1
+            localKavoshState.setSubgraph(0, 1, v);      // Set the vertex
+            localKavoshState.visited.clear();           // Clear visited for next vertex
+            localKavoshState.visited.add(v);
+            
+            // Explore motifs from this vertex
+            Explore(localKavoshState, v, 1, state.ASconfig.k - 1);
+            
+            // Update global counts
+            globalMotifCount.add(localKavoshState.localsubgraphCount);
+            globalMotifSet += localKavoshState.localmotifClasses;
+            
+                writeln("  Processed vertex ", v, ":");
+                writeln("    - Found ", localKavoshState.localsubgraphCount, " motifs");
+                writeln("    - New patterns: ", localKavoshState.localmotifClasses.size);
+            
+        }
+        
+        state.timer.stop();
+        
+            writeln("=== Wavefront Processing Complete ===");
+            writeln("- Total motifs found: ", globalMotifCount.read());
+            writeln("- Unique patterns: ", globalMotifSet.size);
+            writeln("- Unique patterns: ", globalMotifSet);
+            writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+            writeln();
+        
+    }
+
+    /* Main ASWS sampling procedure */
+    proc runASWS(n: int, k: int,
+                 ref nodeDegree: [] int,
+                 ref nodeNeighbours: [] domain(int),
+                 ref globalMotifCount: atomic int,
+                 ref globalMotifSet: set(uint(64))) throws{
+        
+        writeln("\n========== Starting ASWS Sampling ==========");
+        
+        // Initialize configuration
+        var ASconfig = new ASWSConfig(n, k);
+        var state = new WavefrontState(ASconfig);
+        var totalTimer: stopwatch;
+        totalTimer.start();
+        
+        // Step 1: Identify hubs
+        identifyHubs(state, nodeDegree);
+        
+        // Step 2: Initialize wavefront
+        initializeWavefront(state, nodeDegree);
+        
+        // Main sampling loop
+        var iteration = 0;
+        const maxIterations = 5;  // For prototype, we can adjust this
+        
+        while iteration < maxIterations {
+            writeln("\nIteration ", iteration + 1, " of ", maxIterations);
+            
+            // Update fingerprints
+            computeFingerprints(state, nodeNeighbours, nodeDegree);
+            
+            // Process current wavefront
+            processWavefront(state, globalMotifCount, globalMotifSet);
+            
+            // Expand wavefront
+            expandWavefront(state, nodeNeighbours);
+            
+            iteration += 1;
+        }
+        
+        totalTimer.stop();
+        
+        writeln("\n========== ASWS Sampling Complete ==========");
+        writeln("Final Statistics:");
+        writeln("- Total vertices sampled: ", state.sampledVertices.size);
+        writeln("- Final wavefront size: ", state.wavefront.size);
+        writeln("- Total motifs found: ", globalMotifCount.read());
+        writeln("- Unique patterns discovered: ", globalMotifSet.size);
+        writeln("- Total time: ", totalTimer.elapsed(), " seconds");
+        writeln("============================================\n");
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Gathers unique valid neighbors for the current level.
         proc initChildSet(ref state: KavoshState, root: int, level: int) throws {
             if logLevel == LogLevel.DEBUG {
@@ -550,23 +912,27 @@ module MotifCounting {
         1. A set of unique motif classes
         2. A flat array containing all adjacency matrices of the unique motifs
         */
-        proc verifyPatterns(globalClasses: set(uint(64)), globalCounts: map(uint(64), int), motifSize: int) throws {
+        proc verifyPatterns(globalMotifSet: set(uint(64)), globalCounts: map(uint(64), int), motifSize: int) throws {
             var uniqueMotifClasses: set(uint(64));
             var uniqueMotifCounts: map(uint(64), int);
             var motifCount = 0;
             
             writeln("\n=== Starting Pattern Verification ===");
-            writeln("Total patterns found before verification: ", globalClasses.size);
+            writeln(globalMotifSet.size, " patterns found before verification: ");
+            writeln("Total patterns found before verification: ", globalMotifSet);
+            writeln("globalCounts: ", globalCounts);
+            writeln("globalCounts.size: ", globalCounts.size);
+
             writeln("Pattern counts before verification:");
             for pattern in globalCounts.keys() {
                 writeln("Pattern ", pattern, ": ", globalCounts[pattern], " occurrences");
             }
             writeln("=====================================\n");
             
-            var motifArr: [0..#(globalClasses.size * motifSize * motifSize)] int;
+            var motifArr: [0..#(globalMotifSet.size * motifSize * motifSize)] int;
             
             // Process each pattern found
-            for pattern in globalClasses {
+            for pattern in globalMotifSet {
                 if pattern == 0 {
                     writeln("Ignoring broken pattern");
                     continue;
@@ -632,9 +998,9 @@ module MotifCounting {
             var finalCountArr: [0..#motifCount] int;
             
             writeln("\n=== Verification Results ===");
-            writeln("Started with total patterns: ", globalClasses.size);
+            writeln("Started with total patterns: ", globalMotifSet.size);
             writeln("Found unique canonical patterns: ", uniqueMotifClasses.size);
-            writeln("Filtered out non-canonical patterns: ", globalClasses.size - uniqueMotifClasses.size);
+            writeln("Filtered out non-canonical patterns: ", globalMotifSet.size - uniqueMotifClasses.size);
             writeln("\nCanonical patterns and their counts:");
             for pattern in uniqueMotifClasses {
                 writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
@@ -687,8 +1053,8 @@ module MotifCounting {
                 writeln("==============Enumerate called============");
             }
 
-            // forall v in 0..<n with (ref globalClasses, ref globalMotifCount) {
-            forall v in 0..<n-k+1 with (ref globalClasses, ref globalMotifCount, ref globalClassCounts) {
+            // forall v in 0..<n with (ref globalMotifSet, ref globalMotifCount) {
+            forall v in 0..<n-k+1 with (ref globalMotifSet, ref globalMotifCount, ref globalMotifMap) {
                 if logLevel == LogLevel.DEBUG {
                     writeln("Root = ", v, " (", v+1, "/", n, ")");
                 }
@@ -714,7 +1080,7 @@ module MotifCounting {
 
                 // Update global counters and merge local counts
                 globalMotifCount.add(state.localsubgraphCount);
-                globalClasses += state.localmotifClasses;
+                globalMotifSet += state.localmotifClasses;
 
                 // Merge local counts into global counts
                 syncVar.writeEF(true);  // acquire lock
@@ -723,10 +1089,10 @@ module MotifCounting {
                 for pattern in state.localClassCounts.keys() {
                     writeln("  Merging pattern: ", pattern, " count: ", state.localClassCounts[pattern]);
 
-                    if !globalClassCounts.contains(pattern) {
-                        globalClassCounts[pattern] = 0;
+                    if !globalMotifMap.contains(pattern) {
+                        globalMotifMap[pattern] = 0;
                     }
-                    globalClassCounts[pattern] += state.localClassCounts[pattern];
+                    globalMotifMap[pattern] += state.localClassCounts[pattern];
                 }
                 syncVar.readFE();  // release lock
             }
@@ -734,10 +1100,10 @@ module MotifCounting {
             if logLevel == LogLevel.DEBUG {
                 writeln("Enumerate: finished enumeration");
                 writeln("Total motifs found: ", globalMotifCount.read());
-                writeln("Unique patterns found: ", globalClasses.size);
+                writeln("Unique patterns found: ", globalMotifSet.size);
                 writeln("Pattern counts:");
-                for pattern in globalClassCounts.keys() {
-                    writeln("Pattern ", pattern, ": ", globalClassCounts[pattern]);
+                for pattern in globalMotifMap.keys() {
+                    writeln("Pattern ", pattern, ": ", globalMotifMap[pattern]);
                 }
             }
         }// End of Enumerate
@@ -746,25 +1112,37 @@ module MotifCounting {
 
     writeln("**********************************************************************");
     writeln("**********************************************************************");
+    if doSampling {
+        writeln("Using Adaptive Structural Wavefront Sampling");
+        runASWS(g1.n_vertices, motifSize, nodeDegree, 
+                   nodeNeighbours, globalMotifCount, globalMotifSet);
 
-        
-    writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
-    writeln("Maximum degree: ", maxDeg);
+for elem in globalMotifSet {
+  globalMotifMap[elem] = 1;
+}
+     
 
-    Enumerate(g1.n_vertices, motifSize, maxDeg );
+    } else {
+        writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
+        writeln("Maximum degree: ", maxDeg);
+        // Complete enumeration
+        Enumerate(g1.n_vertices, motifSize, maxDeg);
+        writeln(" globalMotifSet = ", globalMotifSet);
+        writeln(" globalMotifMap = ", globalMotifMap);
 
-    writeln(" globalClasses = ", globalClasses);
-    writeln("**********************************************************************");
-    writeln("**********************************************************************");
+        }
+        writeln("**********************************************************************");
+        writeln("**********************************************************************");
 
-    var (uniqueMotifClasses, finalMotifArr, motifCounts) = verifyPatterns(globalClasses, globalClassCounts, motifSize);
+
+    var (uniqueMotifClasses, finalMotifArr, motifCounts) = verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
 
         var tempArr: [0..0] int;
         var srcPerMotif = makeDistArray(2*2, int);
         var dstPerMotif = makeDistArray(2*2, int);
 
         srcPerMotif[srcPerMotif.domain.low] = uniqueMotifClasses.size; //after verification
-        srcPerMotif[srcPerMotif.domain.low +1] = globalClasses.size;   // before verification
+        srcPerMotif[srcPerMotif.domain.low +1] = globalMotifSet.size;   // before verification
         srcPerMotif[srcPerMotif.domain.low +2] = globalMotifCount.read(); // all motifs
         srcPerMotif[srcPerMotif.domain.low +3] = motifCounts.size;     // this is naive approach to return pattern 200 has 134 instances
         
