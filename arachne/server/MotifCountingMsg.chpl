@@ -47,6 +47,8 @@ module MotifCountingMsg {
     // var semanticCheckType = msgArgs.getValueOf("SemanticCheckType");
     // var sizeLimit = msgArgs.getValueOf("SizeLimit");
     var motifSize = msgArgs.getValueOf("MotifSize"):int;
+    var doSampling = msgArgs.getValueOf("DoSampling"):int;
+
     var returnIsosAs = msgArgs.getValueOf("ReturnIsosAs");
     var algorithmType = msgArgs.getValueOf("AlgorithmType");
     var printProgressInterval = msgArgs.getValueOf("PrintProgressInterval"):int;
@@ -70,7 +72,7 @@ module MotifCountingMsg {
 
       timer.start();
       // var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
-      var isos = runMotifCounting(g,motifSize,
+      var isos = runMotifCounting(g,motifSize,doSampling,
                         printProgressInterval,algorithmType,returnIsosAs,st);
       timer.stop();
       outMsg = "Motif Counting %s took %r sec".format(algorithmType.toUpper(), timer.elapsed());

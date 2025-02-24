@@ -538,7 +538,7 @@ proc hasCompletePatternDiscovery(): bool {
 
     proc runMotifCounting(g1: SegGraph,  
               // sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
-               motifSize: int, in printProgressInterval: int,
+               motifSize: int, doSampling: int, in printProgressInterval: int,
               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
     
         var numIso: int = 0;
@@ -593,7 +593,9 @@ proc hasCompletePatternDiscovery(): bool {
         var globalMotifMap: map(uint(64), int);
         //var syncVar: sync bool;
 
-        var doSampling: bool = false;
+        var Sampling: bool = false;
+        if doSampling == 1 then Sampling = true;
+    
         var doMOtifDetail: bool = true;
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1645,7 +1647,7 @@ proc runASWS(n: int, k: int,
         writeln("Number of edges: ", g1.n_edges);
         writeln("Number of cores (max task parallelism): ", here.maxTaskPar);
 
-    if doSampling {
+    if Sampling {
         writeln("Using Adaptive Structural Wavefront Sampling");
 
 
