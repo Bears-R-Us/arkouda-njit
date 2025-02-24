@@ -184,7 +184,7 @@ module WellConnectedComponentsDistributed {
       var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
 
       return (uniqueSrc, uniqueDst, idx2v);
-    }
+    } 
 
     /* Similar to above, but we can assume src and dst already contain a subset of vertices. */
     proc getEdgeList(ref vertices, ref src, ref dst) throws {
