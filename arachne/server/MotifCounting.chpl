@@ -135,13 +135,21 @@ module MotifCounting {
             // Initialize atomic variables
             var miss: atomic real;
             this.missProbability = miss;
-            var metrics: [0..2] atomic real;
-            this.coverageMetrics = metrics;
+            
+            var coverageMetricsArr: [0..2] atomic real;
+            this.coverageMetrics = coverageMetricsArr;
+
             var roles: [0..3] atomic int;
             this.roleDistribution = roles;
             
             // Initialize pattern maps
             this.patternsByRole = [i in 0..3] new map(uint(64), atomic int);
+
+            var stability: atomic real;
+            this.stabilityScore = stability;
+
+            var convergenceMetricsArr: [0..2] atomic real;
+            this.convergenceMetrics = convergenceMetricsArr;
 
             init this;
 
@@ -149,6 +157,8 @@ module MotifCounting {
             this.missProbability.write(1.0);
             forall i in 0..2 do this.coverageMetrics[i].write(0.0);
             forall i in 0..3 do this.roleDistribution[i].write(0);
+            forall i in 0..2 do this.convergenceMetrics[i].write(0.0);
+            this.stabilityScore.write(0.0);
         }
 
 /* Role Classification and Tracking */
@@ -200,19 +210,24 @@ proc classifyVertexRoles(ref nodeDegree: [] int, ref nodeNeighbours: [] domain(i
 }
 
 /* Error Bounds Calculation */
-proc updateErrorBounds(patterns: set(uint(64))) {
+proc updateErrorBounds(patterns: set(uint(64))) throws{
     // Calculate confidence intervals for each pattern
     const z = 1.96;  // 95% confidence level
     const n = processedVertices.size;
     
     for pattern in patterns {
-        var count = if rolePatternCounts[0].contains(pattern) then
-                     (+ reduce [role in 0..2] rolePatternCounts[role][pattern].read())
-                   else 0;
+        var count = 0;
+        
+        // Sum up counts from each role where this pattern exists
+        for role in 0..2 {
+            if rolePatternCounts[role].contains(pattern) {
+                count += rolePatternCounts[role][pattern].read();
+            }
+        }
         
         // Calculate standard error
-        var p = count:real / n:real;
-        var stderr = sqrt((p * (1.0 - p)) / n);
+        var p = if n > 0 then count:real / n:real else 0.0;
+        var stderr = if n > 0 then sqrt((p * (1.0 - p)) / n) else 0.0;
         
         // Update confidence intervals
         patternConfidenceIntervals[pattern] = (
@@ -223,7 +238,7 @@ proc updateErrorBounds(patterns: set(uint(64))) {
 }
 
 /* Pattern Stability Analysis */
-proc updatePatternStability(patterns: set(uint(64))) {
+proc updatePatternStability(patterns: set(uint(64))) throws{
     // Shift history
     for i in 1..4 {
         patternHistory[i-1] = patternHistory[i];
@@ -246,7 +261,7 @@ proc updatePatternStability(patterns: set(uint(64))) {
 
 
 
-proc calculateRoleStability(): real {
+proc calculateRoleStability(): real throws{
     var stability: [0..2] real;
     
     // Calculate stability for each role
@@ -745,7 +760,7 @@ proc calculateInitialSize(n: int, k: int, hubCount: int, nodeDegree: [] int): in
 
 
     /* Computes structural fingerprints for vertices */
-proc computeFingerprints(ref state: WavefrontState, 
+   proc computeFingerprints(ref state: WavefrontState, 
                         ref nodeNeighbours: [] domain(int),
                         ref nodeDegree: [] int) {
     writeln("\n=== Computing Structural Fingerprints ===");
@@ -758,6 +773,11 @@ proc computeFingerprints(ref state: WavefrontState,
     
     const maxDeg = max reduce nodeDegree;
     
+    // First collect all fingerprints in an array for normalization
+    var allFps: [0..#wavefrontRef.size] real;
+    var fpCounter: atomic int;
+    
+    // First pass: compute raw scores
     forall v in wavefrontRef with (ref fingerprintsRef) {
         var degree = nodeDegree[v];
         var possibleEdges = degree * (degree - 1);
@@ -782,7 +802,29 @@ proc computeFingerprints(ref state: WavefrontState,
         var neighborDiversity = if neighborCount > 0 then neighborDegreeSum / neighborCount else 0.0;
         fp += neighborDiversity * 0.3;
         
+        // Store raw score
         fingerprintsRef[v] = fp;
+        
+        // Store for normalization
+        const idx = fpCounter.fetchAdd(1);
+        if idx < allFps.size {
+            allFps[idx] = fp;
+        }
+    }
+    
+    // Second pass: normalize to ensure full range usage
+    var fpCount = fpCounter.read();
+    if fpCount > 0 {
+        var minFp = min reduce allFps[0..#fpCount];
+        var maxFp = max reduce allFps[0..#fpCount];
+        var frange = maxFp - minFp;
+        
+        if frange > 0.0001 {  // Avoid division by near-zero
+            forall v in wavefrontRef with (ref fingerprintsRef) {
+                // Normalize to [0,0.99] range
+                fingerprintsRef[v] = min(0.99, ((fingerprintsRef[v] - minFp) / frange));
+            }
+        }
     }
     
     state.timer.stop();
@@ -952,7 +994,6 @@ proc expandWavefront(ref state: WavefrontState,
 
 
     /* Main ASWS sampling procedure which Processes current wavefront to find motifs */
-
 proc processWavefront(ref state: WavefrontState,
                      ref globalMotifCount: atomic int,
                      ref globalMotifSet: set(uint(64))) throws {
@@ -974,24 +1015,46 @@ proc processWavefront(ref state: WavefrontState,
         localKavoshState.visited.clear();
         localKavoshState.visited.add(v);
         
+        // Get vertex role
+        const role = state.vertexRoles[v];
+        
         // Explore motifs from this vertex
         Explore(localKavoshState, v, 1, state.ASconfig.k - 1);
         
         // Update global counts
         globalMotifCount.add(localKavoshState.localsubgraphCount);
         globalMotifSet += localKavoshState.localmotifClasses;
+        
+        // Update role-specific pattern counts
+        if role >= 0 && role <= 2 {
+            for pattern in localKavoshState.localmotifClasses {
+                if !state.rolePatternCounts[role].contains(pattern) {
+                    var newCount: atomic int;
+                    state.rolePatternCounts[role].add(pattern, newCount);
+                }
+                state.rolePatternCounts[role][pattern].add(1);
+            }
+        }
+        
         if logLevel == LogLevel.DEBUG {
             writeln("  Processed vertex ", v, ":");
             writeln("    - Found ", localKavoshState.localsubgraphCount, " motifs");
             writeln("    - New patterns: ", localKavoshState.localmotifClasses.size);
+            writeln("    - Role: ", role);
         }
     }
     
     // Mark these vertices as processed
     state.processedVertices += state.newVertices;
     
-    // Update pattern discovery metrics
+    // Update all pattern discovery metrics
     state.updatePatternDiscoveryMetrics(globalMotifSet);
+    writeln("After updatePatternDiscoveryMetrics");
+    state.updateErrorBounds(globalMotifSet);
+    writeln("After updateErrorBounds");
+
+    state.updatePatternStability(globalMotifSet);
+    writeln("After updatePatternStability");
     
     state.timer.stop();
     writeln("=== Wavefront Processing Complete ===");
@@ -1027,7 +1090,10 @@ proc runASWS(n: int, k: int,
     // Step 1: Identify hubs
     identifyHubs(state, nodeDegree);
     
-    // Step 2: Initialize wavefront
+    // Step 2: Classify vertex roles - added this here
+    state.classifyVertexRoles(nodeDegree, nodeNeighbours);
+    
+    // Step 3: Initialize wavefront
     initializeWavefront(state, nodeDegree);
     
     // Main sampling loop
