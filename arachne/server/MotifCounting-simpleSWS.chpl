@@ -34,404 +34,73 @@ module MotifCounting {
 
 
     
-    /* New ASWS-specific records and classes */
-    record ASWSConfig {
-        var n: int;              // Graph size
-        var k: int;              // Motif size
-        var initialWavefrontSize: int;
-        var hubPercentile: real;
-        var minSamplesPerStratum: int;
-        
-        proc init(n: int, k: int) {
-            this.n = n;
-            this.k = k;
-            this.initialWavefrontSize = min(100, n); // Start small
-            this.hubPercentile = 0.9;                // Top 10% as hubs
-            this.minSamplesPerStratum = 30;          // Statistical minimum
-            init this;
-        }
+/* ASWS Configuration with essential parameters only */
+record ASWSConfig {
+    var n: int;              // Graph size
+    var k: int;              // Motif size
+    var hubPercentile: real; // For hub selection
+    
+    proc init(n: int, k: int) {
+        this.n = n;
+        this.k = k;
+        this.hubPercentile = 0.9;  // Top 10% as hubs
+        init this;
     }
-
-    /* Calculate minimum required sample size based on graph properties */
-    proc calculateRequiredSampleSize(n: int, k: int, maxDeg: int): int {
-        const baseSize = max(
-            30,  // Minimum for statistical significance
-            (log2(n) * ((maxDeg: real) ** (k-1: real))): int
-
-        );
-        
-        // Adjust for graph size
-        const adjustedSize = min(
-            baseSize,
-            n / 10  // Cap at 10% of graph size
-        );
-        
-        writeln("Sample size calculation:");
-        writeln("- Base size: ", baseSize);
-        writeln("- Adjusted size: ", adjustedSize);
-        
-        return adjustedSize;
-    } 
-    /* Manages the wavefront sampling state */
-    class WavefrontState {
-        var ASconfig: ASWSConfig;
-        var wavefront: domain(int, parSafe=true);     // All selected vertices
-        var newVertices: domain(int, parSafe=true);   // Only new vertices for this iteration
-        var hubSet: domain(int, parSafe=true);
-        var processedVertices: domain(int, parSafe=true); // All processed vertices
-        var fingerprints: [0..#ASconfig.n] real;
-        var timer: stopwatch;
-
-        // Statistical tracking
-        var minRequiredSize: int;
-        var currentConfidence: real;
-        var patternDiscoveryRate: [0..10] (int, int); // Circular buffer tracking pattern discovery. (patterns, samples) at each check point
-        var rateIndex: atomic int;
-
-        // Pattern discovery completeness
-        var theoreticalTotalPatterns: int;    // Estimated total possible patterns
-        var missProbability: atomic real;      // Current probability of missing patterns
-        var coverageMetrics: [0..2] atomic real; // [structural, hub, pattern] coverage
-        
-        // Structural role tracking
-        //var roleDistribution: [0..3] atomic int;  // [hub, bridge, peripheral, other]
-        //var patternsByRole: [0..3] map(uint(64), atomic int); // Patterns found per role
-
-        // Role classification
-        var vertexRoles: [0..#ASconfig.n] int;  // 0:hub, 1:bridge, 2:peripheral
-        //var rolePatternCounts: [0..2] map(uint(64), atomic int);  // Patterns per role
-        
-        // Error bounds tracking
-        //var patternConfidenceIntervals: map(uint(64), (real, real));  // (lower, upper) bounds
-        //var significanceLevel: real;  // For statistical tests
-        
-        // Pattern stability
-        // var patternHistory: [0..4] set(uint(64));  // Last 5 pattern sets
-        // var stabilityScore: atomic real;
-        // var convergenceMetrics: [0..2] atomic real;  // [pattern, role, structural] convergence
-
-        proc init(ASconfig: ASWSConfig, ref maxDeg: int) {
-            this.ASconfig = ASconfig;
-            this.wavefront = {1..0};
-            this.newVertices = {1..0};
-            this.hubSet = {1..0};
-            this.processedVertices = {1..0};
-            var a1: [0..#ASconfig.n] real;
-            this.fingerprints = a1;
-            this.timer = new stopwatch();
-            this.minRequiredSize = calculateRequiredSampleSize(ASconfig.n, ASconfig.k, maxDeg);
-            this.currentConfidence = 0.0;
-            this.patternDiscoveryRate = [0..10]((0, 0));
-            var a2: atomic int;
-            this.rateIndex = a2;
-
-            // Calculate theoretical patterns before init this
-            const rawCount = 2**(ASconfig.k*(ASconfig.k-1));
-            var factorial_result: bigint; // This is cool I never know LOL
-            fac(factorial_result, ASconfig.k);  
-            this.theoreticalTotalPatterns = (rawCount:real / factorial_result:real):int;
-
-
-            // Initialize atomic variables
-            var miss: atomic real;
-            this.missProbability = miss;
-            
-            var coverageMetricsArr: [0..2] atomic real;
-            this.coverageMetrics = coverageMetricsArr;
-
-            // var roles: [0..3] atomic int;
-            // this.roleDistribution = roles;
-            
-            // Initialize pattern maps
-            //this.patternsByRole = [i in 0..3] new map(uint(64), atomic int);
-
-            // var stability: atomic real;
-            // this.stabilityScore = stability;
-
-            // var convergenceMetricsArr: [0..2] atomic real;
-            // this.convergenceMetrics = convergenceMetricsArr;
-
-            init this;
-
-            // Post-initialization settings
-            this.missProbability.write(1.0);
-            forall i in 0..2 do this.coverageMetrics[i].write(0.0);
-            //forall i in 0..3 do this.roleDistribution[i].write(0);
-            //forall i in 0..2 do this.convergenceMetrics[i].write(0.0);
-            //this.stabilityScore.write(0.0);
-        }
-
-/* Role Classification and Tracking */
-proc classifyVertexRoles(ref nodeDegree: [] int, ref nodeNeighbours: [] domain(int), ref maxDeg) {
-    writeln("\n=== Classifying Vertex Roles ===");
-    const avgDeg = (+ reduce nodeDegree) / nodeDegree.size;
-    
-    // Classification counters (just for reporting)
-    var hubCount = 0;
-    var bridgeCount = 0;
-    var peripheralCount = 0;
-    
-    forall v in 0..#ASconfig.n with (+ reduce hubCount, + reduce bridgeCount, + reduce peripheralCount) {
-        // Calculate clustering coefficient
-        var neighbors = nodeNeighbours[v];
-        var edgeCount = 0;
-        var possibleEdges = neighbors.size * (neighbors.size - 1);
-        
-        if possibleEdges > 0 {
-            for u in neighbors {
-                for w in neighbors {
-                    if u != w && nodeNeighbours[u].contains(w) {
-                        edgeCount += 1;
-                    }
-                }
-            }
-        }
-        
-        var clustering = if possibleEdges > 0 
-                        then edgeCount:real / possibleEdges:real 
-                        else 0.0;
-        
-        // Classify role
-        if nodeDegree[v] >= maxDeg * 0.7 {
-            vertexRoles[v] = 0;  // Hub
-            hubCount += 1;
-        } else if clustering > 0.5 && nodeDegree[v] > avgDeg {
-            vertexRoles[v] = 1;  // Bridge
-            bridgeCount += 1;
-        } else {
-            vertexRoles[v] = 2;  // Peripheral
-            peripheralCount += 1;
-        }
-    }
-    
-    writeln("Role distribution:");
-    writeln("- Hubs: ", hubCount);
-    writeln("- Bridges: ", bridgeCount);
-    writeln("- Peripheral: ", peripheralCount);
 }
-
-
-
-// /* Pattern Stability Analysis */
-// proc updatePatternStability(patterns: set(uint(64))) throws{
-//     // Shift history
-//     for i in 1..4 {
-//         patternHistory[i-1] = patternHistory[i];
-//     }
-//     patternHistory[4] = patterns;
+/* Simplified WavefrontState with only essential components */
+class WavefrontState {
+    var ASconfig: ASWSConfig;
+    var wavefront: domain(int, parSafe=true);     // Selected vertices
+    var newVertices: domain(int, parSafe=true);   // New vertices this iteration
+    var hubSet: domain(int, parSafe=true);        // Hub vertices
+    var processedVertices: domain(int, parSafe=true);
+    var fingerprints: [0..#ASconfig.n] real;
+    var timer: stopwatch;
     
-//     // Calculate stability metrics
-//     if processedVertices.size > minRequiredSize {
-//         var patternStability = calculatePatternStability();
-//         var roleStability = calculateRoleStability();
-//         var structuralStability = calculateStructuralStability();
+    // Minimal tracking
+    var totalPatterns: int;         // Estimated total patterns
+    var patternStability: real;     // Pattern stability measure
+    var lastPatternCount: int;      // For tracking pattern discovery
+    
+    proc init(ASconfig: ASWSConfig) {
+        this.ASconfig = ASconfig;
+        this.wavefront = {1..0};
+        this.newVertices = {1..0};
+        this.hubSet = {1..0};
+        this.processedVertices = {1..0};
+        var fp: [0..#ASconfig.n] real;
+        this.fingerprints = fp;
+        this.timer = new stopwatch();
         
-//         convergenceMetrics[0].write(patternStability);
-//         convergenceMetrics[1].write(roleStability);
-//         convergenceMetrics[2].write(structuralStability);
+        // Theoretical pattern count (simplified)
+        var possiblePatterns = 2**(ASconfig.k*(ASconfig.k-1));
+        var isomorphismClasses = 10;  // Reasonable estimate for small k
+        this.totalPatterns = possiblePatterns / isomorphismClasses;
         
-//         stabilityScore.write((patternStability + roleStability + structuralStability) / 3.0);
-//     }
-// }
-
-
-
-// proc calculateRoleStability(): real throws{
-//     var stability: [0..2] real;
-    
-//     // Calculate stability for each role
-//     for role in 0..2 {
-//         var patternCounts = rolePatternCounts[role];
-//         var totalPatterns = + reduce [p in patternCounts.keys()] patternCounts[p].read();
-//         if totalPatterns > 0 {
-//             stability[role] = min(1.0, totalPatterns:real / theoreticalTotalPatterns:real);
-//         }
-//     }
-    
-//     return (+ reduce stability) / 3.0;
-// }
-
-        proc calculateStructuralStability(): real {
-            // Measure how well we've covered different structural regions
-            var coverage = coverageMetrics[0].read();
-            var hubCoverage = coverageMetrics[1].read();
-            var patternCoverage = coverageMetrics[2].read();
-            
-            return (coverage + hubCoverage + patternCoverage) / 3.0;
-        }
-
-        /* Enhanced Pattern Discovery Completeness Check */
-        proc hasCompletePatternDiscovery(): bool {
-            // Check all theoretical guarantees
-            //const hasStability = stabilityScore.read() > 0.9;
-            //const hasCoverage = (+ reduce [m in convergenceMetrics] m.read()) / 3.0 > 0.95;
-            const hasCoverage = coverageMetrics[2].read() > 0.8;  // Pattern coverage
-            const lowError = missProbability.read() < 0.05;
-            
-            writeln("\n=== Pattern Discovery Completeness Check ===");
-            //writeln("- Pattern Stability: ", stabilityScore.read());
-            //writeln("- Coverage Score: ", (+ reduce [m in convergenceMetrics] m.read()) / 3.0);
-            writeln("- Pattern Coverage: ", coverageMetrics[2].read());
-            writeln("- Miss Probability: ", missProbability.read());
-            
-            // return hasStability && hasCoverage && lowError;
-            return hasCoverage && lowError;
-        }
-
-        // Calculate theoretical upper bound on possible patterns
-        proc calculateTheoreticalPatterns(k: int, ref maxDeg: int): int {
-            const rawCount = 2**(k*(k-1));
-            var factorial_result: bigint;
-            fac(factorial_result, k);
-            return (rawCount:real / factorial_result.toReal():real):int;
-        }
-
-        /* Track pattern discovery progress */
-        proc updatePatternStats(numPatterns: int) {
-            const idx = rateIndex.fetchAdd(1) % 11;  // Circular buffer
-            patternDiscoveryRate[idx] = (numPatterns, wavefront.size);
-            
-            // Calculate discovery rate
-            if idx > 0 {
-                const prevPatterns = patternDiscoveryRate[(idx-1) % 11][0];
-                const newPatterns = numPatterns - prevPatterns;
-                
-                if newPatterns > 0 {
-                    writeln("Pattern discovery update:");
-                    writeln("- New patterns found: ", newPatterns);
-                    writeln("- Current sample size: ", wavefront.size);
-                    writeln("- Discovery rate: ", (newPatterns:real / wavefront.size:real));
-                }
-            }
-        }
-
-        /* Check if sampling is adequate */
-        proc isSamplingAdequate(): bool {
-            // Basic size check
-            if wavefront.size < minRequiredSize {
-                return false;
-            }
-            
-            // Check pattern discovery rate
-            const idx = rateIndex.read() % 11;
-            if idx > 2 {  // Need at least 3 points to check rate
-                const rate1 = patternDiscoveryRate[(idx-1) % 11][0] - patternDiscoveryRate[(idx-2) % 11][0];
-                const rate2 = patternDiscoveryRate[idx][0] - patternDiscoveryRate[(idx-1) % 11][0];
-                
-                // If discovery rate drops significantly, might be adequate
-                if rate2 < rate1 / 2 {
-                    return true;
-                }
-            }
-            
-            return false;
-        }
-
-        /* Calculate current confidence level */
-        proc updateConfidence() {
-            const coverage = wavefront.size:real / ASconfig.n:real;
-            //const patternStability = calculatePatternStability();
-            
-            // Combine coverage and stability for confidence
-            // currentConfidence = min(
-            //     coverage * patternStability,
-            //     0.95  // Cap at 95%
-            // );
-            currentConfidence = min(coverage ,0.95);  // Cap at 95%
-            
-            
-            writeln("Confidence update:");
-            writeln("- Coverage: ", coverage);
-            //writeln("- Pattern stability: ", patternStability);
-            writeln("- Current confidence: ", currentConfidence);
-        }
-
-        /* Helper to calculate pattern stability */
-        proc calculatePatternStability(): real {
-            var stability = 0.0;
-            const latest = patternHistory[4];
-            
-            // Compare with previous pattern sets
-            for i in 0..3 {
-                if patternHistory[i].size > 0 {
-                    var intersection = latest & patternHistory[i];
-                    var p_union = latest | patternHistory[i];
-                    stability += intersection.size:real / p_union.size:real;
-                }
-            }
-            
-            return stability / 4.0;
-        }
-        // Update pattern discovery metrics
-        proc updatePatternDiscoveryMetrics(newPatterns: set(uint(64))) {
-            // Update miss probability based on Theorem 1
-            const coverage = (newPatterns.size:real / theoreticalTotalPatterns:real);
-            const newMissProb = (1.0 - coverage) * 
-                            exp(-processedVertices.size:real / (ASconfig.k * wavefront.size));
-            missProbability.write(newMissProb);
-
-            // Update structural coverage
-            updateStructuralCoverage(newPatterns.size);
-
-            if logLevel == LogLevel.DEBUG {
-                writeln("\n=== Pattern Discovery Metrics Update ===");
-                writeln("- Coverage: ", coverage);
-                writeln("- Miss Probability: ", newMissProb);
-                writeln("- Processed Vertices: ", processedVertices.size);
-                writeln("=====================================\n");
-            }
-        }
-
-        // Calculate structural coverage based on vertex roles
-        proc updateStructuralCoverage(numPatterns: int) {
-            // Structural coverage (based on processed vertices)
-            const structuralCoverage = min(1.0, 
-                processedVertices.size:real / ASconfig.n:real);
-            
-            // Hub coverage (based on hub participation)
-            const hubCoverage = if hubSet.size > 0 
-                then min(1.0, (processedVertices.size:real / hubSet.size:real))
-                else 0.0;
-            
-            // Pattern coverage (based on found vs theoretical patterns)
-            const patternCoverage = min(1.0, 
-                numPatterns:real / theoreticalTotalPatterns:real);
-            
-            coverageMetrics[0].write(structuralCoverage);
-            coverageMetrics[1].write(hubCoverage);
-            coverageMetrics[2].write(patternCoverage);
-        }
-
-        // Check if we have sufficient pattern discovery guarantees
-        proc hasPatternDiscoveryGuarantees(epsilon: real = 0.05): bool {
-            // Three conditions must be met:
-            // 1. Low probability of missing patterns
-            // 2. Good overall coverage
-            // 3. Sufficient hub representation
-            
-            const missProb = missProbability.read();
-            const avgCoverage = (+ reduce [m in coverageMetrics] m.read()) / 3.0;
-            //const hubCoverage = coverageMetrics[1].read();
-            
-            // return missProb <= epsilon && 
-            //     avgCoverage >= 0.95 && 
-            //     hubCoverage >= 0.9;
-            return missProb <= epsilon && avgCoverage >= 0.7;
-        }
-
-        // Print detailed coverage statistics
-        proc printCoverageStats() {
-            writeln("\n=== Pattern Discovery Completeness Stats ===");
-            writeln("Theoretical total patterns: ", theoreticalTotalPatterns);
-            writeln("Current miss probability: ", missProbability.read());
-            writeln("Coverage metrics:");
-            writeln("  - Structural coverage: ", coverageMetrics[0].read());
-            writeln("  - Hub coverage: ", coverageMetrics[1].read());
-            writeln("  - Pattern coverage: ", coverageMetrics[2].read());
-            writeln("========================================\n");
-        }
+        this.patternStability = 0.0;
+        this.lastPatternCount = 0;
+        init this;
     }
-
+    
+    /* Check if sampling is adequate (simplified) */
+    proc isSamplingAdequate(numPatterns: int): bool {
+        // Pattern discovery rate has slowed significantly
+        if lastPatternCount > 0 && numPatterns > 0 {
+            var newPatterns = numPatterns - lastPatternCount;
+            var discoveryRate = newPatterns:real / wavefront.size:real;
+            
+            // If few new patterns relative to wavefront size
+            if discoveryRate < 0.01 {
+                patternStability = 1.0;
+                return true;
+            }
+        }
+        
+        // Update for next check
+        lastPatternCount = numPatterns;
+        return false;
+    }
+}
 
 
     class KavoshState {
@@ -594,53 +263,85 @@ proc classifyVertexRoles(ref nodeDegree: [] int, ref nodeNeighbours: [] domain(i
 
 
 
-   /* Identifies hub vertices based on degree */
-proc identifyHubs(ref state: WavefrontState, ref nodeDegree: [] int) {
-    if logLevel == LogLevel.DEBUG {
-        writeln("\n=== Starting Hub Identification ===");
-        writeln("- Graph size: ", state.ASconfig.n);
-        writeln("- Hub percentile: ", state.ASconfig.hubPercentile);
-    }    
+ /* Streamlined hub identification */
+proc identifyHubs(ref state: WavefrontState, nodeDegree: [] int) {
     state.timer.start();
     
-    // Create a copy for sorting
+    // Get degree threshold for hubs
     var sortedDegrees = nodeDegree;
     sort(sortedDegrees, new ReverseComparator());
-    
-    // Calculate hub threshold
     var hubIndex = (state.ASconfig.n * (1.0 - state.ASconfig.hubPercentile)): int;
     var hubThreshold = sortedDegrees[hubIndex];
     
-    
-    // Identify hubs
-    var hubCount = 0;
-    ref hubSetRef = state.hubSet;  // Get reference before forall
-    
-    forall v in 0..#state.ASconfig.n with (ref hubSetRef, + reduce hubCount) {
+    // Identify hubs in parallel
+    forall v in 0..#state.ASconfig.n with (ref state) {
         if nodeDegree[v] >= hubThreshold {
-            hubSetRef.add(v);
-            hubCount += 1;
+            state.hubSet.add(v);
         }
     }
-
-    state.timer.stop();
     
-    writeln("=== Hub Identification Complete ===");
-    writeln("- Degree distribution:");
-    writeln("  * Max degree: ", sortedDegrees[0]);
-    writeln("  * Median degree: ", sortedDegrees[sortedDegrees.size/2]);
-    writeln("  * Min degree: ", sortedDegrees[sortedDegrees.size-1]);
+    state.timer.stop();
+    writeln("=== Hub Identification ===");
+    writeln("- Identified ", state.hubSet.size, " hubs");
     writeln("- Hub threshold: ", hubThreshold);
-    writeln("- Identified ", hubCount, " hubs");
-    writeln("- hubSet.size: ", state.hubSet.size);
-    writeln("- Time taken: ", state.timer.elapsed(), " seconds");
-    writeln();
+    writeln("- Time: ", state.timer.elapsed(), " seconds");
 }
 
+/* Optimized wavefront initialization */
+proc initializeWavefront(ref state: WavefrontState, nodeDegree: [] int) {
+    state.timer.clear();
+    state.timer.start();
+    
+    // Calculate initial size (simplified)
+    var initialSize = max(state.hubSet.size * 2, 100);
+    initialSize = min(initialSize, state.ASconfig.n / 5);
+    
+    // First add all hubs
+    state.wavefront = state.hubSet;
+    state.newVertices = state.hubSet;
+    
+    // Add more vertices if needed
+    if state.wavefront.size < initialSize {
+        var rng = new randomStream(real);
+        var degreeThreshold = (max reduce nodeDegree) / 2;
+        
+        forall v in 0..#state.ASconfig.n with (ref state, ref rng) {
+            if !state.hubSet.contains(v) && state.wavefront.size < initialSize {
+                // Prefer higher degree vertices
+                var selectProb = if nodeDegree[v] > degreeThreshold then 0.7 else 0.3;
+                if rng.next() < selectProb {
+                    state.wavefront.add(v);
+                    state.newVertices.add(v);
+                }
+            }
+        }
+    }
+    
+    state.timer.stop();
+    writeln("=== Wavefront Initialized ===");
+    writeln("- Size: ", state.wavefront.size);
+    writeln("- Time: ", state.timer.elapsed(), " seconds");
+}
+/* Simplified fingerprint computation */
+proc computeFingerprints(ref state: WavefrontState, 
+                        ref nodeNeighbours: [] domain(int),
+                        ref nodeDegree: [] int) {
+    const maxDeg = max reduce nodeDegree;
+    
+    // Process all vertices in parallel
+    forall v in state.wavefront with (ref state) {
+        // Simple fingerprint: normalized degree + local connectivity
+        var fp = (nodeDegree[v]:real / maxDeg:real);
+        state.fingerprints[v] = fp;
+    }
+}
+
+
+
 /* Calculates optimal initial sample size based on graph properties */
-proc calculateInitialSize(n: int, k: int, hubCount: int, ref nodeDegree: [] int, ref maxDeg): int {
+proc calculateInitialSize(n: int, k: int, hubCount: int, nodeDegree: [] int): int {
     // Get degree statistics
-    //const maxDeg = max reduce nodeDegree;
+    const maxDeg = max reduce nodeDegree;
     const avgDeg = (+ reduce nodeDegree) / n;
     
     // Base size considering graph properties
@@ -662,179 +363,47 @@ proc calculateInitialSize(n: int, k: int, hubCount: int, ref nodeDegree: [] int,
     return min(initialSize, n / 5);  // Cap at 20% of graph size
 }
 
-    /* Initializes the wavefront with strategic vertices */
-    proc initializeWavefront(ref state: WavefrontState, ref nodeDegree: [] int, ref maxDeg) {
-        if logLevel == LogLevel.DEBUG {
-            writeln("\n=== Initializing Wavefront ===");
-        }
-        // Calculate dynamic initial size
-        const initialSize = calculateInitialSize(
-            state.ASconfig.n, 
-            state.ASconfig.k,
-            state.hubSet.size,
-            nodeDegree,
-            maxDeg
-        );
-        
-        writeln("- Calculated initial size: ", initialSize);
-        writeln("- Based on:");
-        writeln("  * Graph size: ", state.ASconfig.n);
-        writeln("  * Motif size: ", state.ASconfig.k);
-        writeln("  * Hub count: ", state.hubSet.size);
-        writeln("  * Max degree: ", max reduce nodeDegree);
-        writeln("  * Avg degree: ", (+ reduce nodeDegree) / state.ASconfig.n);
-        
-        state.timer.clear();
-        state.timer.start();
-        
-        // First, add all hubs
-        state.wavefront = state.hubSet;
-        state.newVertices = state.hubSet; // Initially, all hubs are new
-        const hubCount = state.hubSet.size;
-        writeln("- Added ", hubCount, " hubs to wavefront");
-        
-        if state.wavefront.size < initialSize {
-            const remainingNeeded = initialSize - state.wavefront.size;
-            writeln("- Selecting ", remainingNeeded, " additional vertices");
-            
-            // Create degree ranges for diverse selection
-            //var maxDeg = max reduce nodeDegree;
-            var degreeBins: [0..4] domain(int, parSafe=true);
-            
-            // Categorize non-hub vertices by degree
-            forall v in 0..#state.ASconfig.n with (ref degreeBins) {
-                if !state.hubSet.contains(v) {
-                    var bin = (nodeDegree[v] * 5 / maxDeg): int;
-                    bin = min(4, bin);
-                    degreeBins[bin].add(v);
-                }
-            }
-            
-            // Select from each bin
-            var rng = new randomStream(real);
-            const perBin = (remainingNeeded / 5): int;
-            
-            for bin in 0..4 {
-                var selected = 0;
-                for v in degreeBins[bin] {
-                    if selected >= perBin then break;
-                    if rng.next() < 0.5 {
-                        state.wavefront.add(v);
-                        state.newVertices.add(v);
-                        selected += 1;
-                    }
-                }
-            }
-        }
-        
-        state.timer.stop();
-        writeln("=== Initial Wavefront Statistics ===");
-        writeln("- Target size: ", initialSize);
-        writeln("- Actual size: ", state.wavefront.size);
-        writeln("- New vertices: ", state.newVertices.size);
-        writeln("- Time taken: ", state.timer.elapsed(), " seconds");
-        writeln();
-    }
 
-
-    /* Computes structural fingerprints for vertices */
-   proc computeFingerprints(ref state: WavefrontState, 
-                        ref nodeNeighbours: [] domain(int),
-                        ref nodeDegree: [] int,
-                        ref maxDeg) {
-    writeln("\n=== Computing Structural Fingerprints ===");
+/* Process wavefront vertices */
+proc processWavefront(ref state: WavefrontState,
+                     ref globalMotifCount: atomic int,
+                     ref globalMotifSet: set(uint(64))) throws {
     
     state.timer.clear();
     state.timer.start();
     
-    ref fingerprintsRef = state.fingerprints;
-    ref wavefrontRef = state.wavefront;
-    
-    //const maxDeg = max reduce nodeDegree;
-    
-    // Collect raw fingerprints
-    var rawFingerprints: [0..#wavefrontRef.size] real;
-    var vertexIndices: [0..#wavefrontRef.size] int;
-    var count = 0;
-    
-    // First pass: Compute raw fingerprints with multiple features
-    for v in wavefrontRef {
-        if v >= state.fingerprints.size {
-            writeln("Skip out-of-bounds vertices");
-            continue;
-        }
-        if count >= rawFingerprints.size then break;
+    // Process new vertices only
+    forall v in state.newVertices with (ref globalMotifSet, ref globalMotifCount) {
+        var localState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
         
-        // FEATURE 1: Degree-based (0-0.33 range)
-        var normDegree = nodeDegree[v]:real / maxDeg:real * 0.33;
+        // Initialize root vertex
+        localState.setSubgraph(0, 0, 1);
+        localState.setSubgraph(0, 1, v);
+        localState.visited.clear();
+        localState.visited.add(v);
         
-        // FEATURE 2: Clustering-based (0-0.33 range)
-        var neighbors = nodeNeighbours[v];
-        var clustering = 0.0;
-        var possibleEdges = neighbors.size * (neighbors.size - 1);
-        if possibleEdges > 0 {
-            var edgeCount = 0;
-            for u in neighbors {
-                for w in neighbors {
-                    if u != w && nodeNeighbours[u].contains(w) {
-                        edgeCount += 1;
-                    }
-                }
-            }
-            clustering = edgeCount:real / possibleEdges:real * 0.33;
-        }
+        // Find motifs from this vertex
+        Explore(localState, v, 1, state.ASconfig.k - 1);
         
-        // FEATURE 3: Role-based (0-0.33 range)
-        var roleValue = state.vertexRoles[v]:real / 2.0 * 0.33;
-        
-        // Combine features with slight randomness to spread values
-        var fp = normDegree + clustering + roleValue;
-        
-        // Add small random jitter (0-0.01) to prevent clustering
-        var rng = new randomStream(real);
-        fp += rng.next() * 0.01;
-        
-        // Store for normalization
-        rawFingerprints[count] = fp;
-        vertexIndices[count] = v;
-        count += 1;
+        // Update global counts
+        globalMotifCount.add(localState.localsubgraphCount);
+        globalMotifSet += localState.localmotifClasses;
     }
     
-    // Test the distribution of fingerprints
-    var rangeCounts: [0..9] int;
-    for i in 0..#count {
-        var v = vertexIndices[i];
-        var fp = rawFingerprints[i];
-        
-        // Ensure fp is between 0 and 0.99
-        fp = min(0.99, max(0.0, fp));
-        fingerprintsRef[v] = fp;
-        
-        // Count distribution
-        var fpRange = (fp * 10): int;
-        fpRange = min(9, max(0, fpRange));
-        rangeCounts[fpRange] += 1;
-    }
-    
-    // Report distribution
-    writeln("Fingerprint distribution:");
-    for i in 0..9 {
-        writeln("  Range ", i, ": ", rangeCounts[i], " vertices");
-    }
+    // Mark vertices as processed
+    state.processedVertices += state.newVertices;
     
     state.timer.stop();
-    writeln("=== Fingerprint Computation Complete ===");
-    writeln("- Processed ", wavefrontRef.size, " vertices");
-    writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+    writeln("=== Processing Complete ===");
+    writeln("- Found ", globalMotifCount.read(), " total motifs");
+    writeln("- Discovered ", globalMotifSet.size, " unique patterns");
+    writeln("- Time: ", state.timer.elapsed(), " seconds");
 }
 
-/* Expands the wavefront based on structural diversity */
+/* Optimized wavefront expansion */
 proc expandWavefront(ref state: WavefrontState,
                     ref nodeNeighbours: [] domain(int),
                     ref nodeDegree: [] int) {
-    const currentSize = state.wavefront.size;
-    writeln("\n=== Expanding Wavefront ===");
-    writeln("- Current wavefront size: ", currentSize);
     
     state.timer.clear();
     state.timer.start();
@@ -842,253 +411,98 @@ proc expandWavefront(ref state: WavefrontState,
     // Clear previous new vertices
     state.newVertices.clear();
     
-    // Calculate adaptive expansion size
-    const remainingVertices = state.ASconfig.n - currentSize;
-    const expansionSize = max(
-        min(
-            (currentSize * 0.2): int,    // 20% growth
-            remainingVertices / 4         // Don't exceed 25% of remaining vertices
-        ),
-        min(
-            50,                          // Minimum meaningful expansion
-            remainingVertices            // Don't exceed available vertices
-        )
-    );
+    // Calculate expansion size
+    var expansionSize = max(50, (state.wavefront.size / 5): int);
+    expansionSize = min(expansionSize, state.ASconfig.n - state.wavefront.size);
     
-    writeln("- Target expansion size: ", expansionSize);
+    // Collect candidates (neighbors of hub vertices first)
+    var candidates: domain(int, parSafe=true);
     
-    // Collect candidates
-    var hubNeighbors: domain(int, parSafe=true);
-    var otherCandidates: domain(int, parSafe=true);
-    
-    // Collect neighbors more strategically
-    forall hub in state.hubSet with (ref hubNeighbors) {
+    // First gather hub neighbors for priority consideration
+    forall hub in state.hubSet with (ref candidates) {
         for neighbor in nodeNeighbours[hub] {
             if !state.wavefront.contains(neighbor) && 
                !state.processedVertices.contains(neighbor) {
-                hubNeighbors.add(neighbor);
+                candidates.add(neighbor);
             }
         }
     }
     
-    forall v in state.wavefront with (ref otherCandidates) {
-        for neighbor in nodeNeighbours[v] {
-            if !state.wavefront.contains(neighbor) && 
-               !state.processedVertices.contains(neighbor) &&
-               !hubNeighbors.contains(neighbor) {
-                otherCandidates.add(neighbor);
-            }
-        }
-    }
-    
-    // Enhanced vertex selection
-    proc selectDiverse(candidates: domain(int, parSafe=true), count: int, ref maxDeg:int) {
-        if candidates.size == 0 {
-            writeln("  No candidates available for selection");
-            return;
-        }        
-        
-        // Track selections by role
-        var roleSelections: [0..2] int;
-        var targetPerRole = count / 3 + 1;  // Roughly equal distribution
-        
-        // Score candidates
-        var candidateScores: [0..#candidates.size] (int, real, int); // (role, score, vertex)
-        var idx = 0;
-        
-        for v in candidates {
-            var fp = state.fingerprints[v];
-            var role = state.vertexRoles[v];
-            var score = 0.0;
-            
-            // Base score from fingerprint
-            score += fp * 0.4;
-            
-            // Structural diversity score
-            score += (nodeDegree[v]:real / (max reduce nodeDegree):real) * 0.3;
-            
-            // Distance from existing samples
-            var minDistance = max(real);
-            for u in state.processedVertices {
-                var fpDist = abs(fp - state.fingerprints[u]);
-                minDistance = min(minDistance, fpDist);
-            }
-            score += minDistance * 0.3;
-            
-            candidateScores[idx] = (role, score, v);
-            idx += 1;
-        }
-        
-        // Sort by score
-        sort(candidateScores, comparator=new ReverseComparator());
-        
-        // First pass: select by role to ensure coverage
-        var selectedCount = 0;
-        for (role, score, v) in candidateScores {
-            if selectedCount >= count then break;
-            
-            if roleSelections[role] < targetPerRole {
-                state.wavefront.add(v);
-                state.newVertices.add(v);
-                roleSelections[role] += 1;
-                selectedCount += 1;
-            }
-        }
-        
-        // Second pass: fill remaining slots
-        if selectedCount < count {
-            for (role, score, v) in candidateScores {
-                if selectedCount >= count then break;
-                if !state.wavefront.contains(v) {
-                    state.wavefront.add(v);
-                    state.newVertices.add(v);
-                    selectedCount += 1;
+    // If still need more, add others
+    if candidates.size < expansionSize {
+        forall v in state.wavefront with (ref candidates) {
+            for neighbor in nodeNeighbours[v] {
+                if !state.wavefront.contains(neighbor) && 
+                   !state.processedVertices.contains(neighbor) {
+                    candidates.add(neighbor);
                 }
             }
         }
-        
-        writeln("  Selected ", selectedCount, " diverse vertices");
-        writeln("  Role coverage:");
-        for i in 0..2 {
-            writeln("    Role ", i, ": ", roleSelections[i], " vertices");
-        }
     }
     
-    // Balanced selection from different sources
-    var hubNeighborTarget = (expansionSize * 0.4): int;
-    var diverseTarget = (expansionSize * 0.4): int;
-    var randomTarget = expansionSize - hubNeighborTarget - diverseTarget;
+    // Select from candidates, prioritizing by degree
+    var rng = new randomStream(real);
+    var selected = 0;
     
-    selectDiverse(hubNeighbors, hubNeighborTarget, maxDeg);
-    selectDiverse(otherCandidates, diverseTarget, maxDeg);
+    // Sort by degree (simple approach)
+    var candidateArray: [0..#candidates.size] (int, int);  // (vertex, degree)
+    var idx = 0;
+    for v in candidates {
+        candidateArray[idx] = (v, nodeDegree[v]);
+        idx += 1;
+    }
+    sort(candidateArray, comparator=new ReverseComparator());
     
-    // Random selection with minimal constraints
-    if randomTarget > 0 {
-        var rng = new randomStream(real);
-        var remainingCandidates = otherCandidates - state.newVertices;
-        var selectedRandom = 0;
-        
-        for v in remainingCandidates {
-            if selectedRandom >= randomTarget then break;
-            if rng.next() < 0.3 { // Increased selection probability
-                state.wavefront.add(v);
-                state.newVertices.add(v);
-                selectedRandom += 1;
-            }
-        }
-        writeln("  Added ", selectedRandom, " random vertices");
+    // Take top vertices
+    for i in 0..min(expansionSize, candidateArray.size)-1 {
+        var v = candidateArray[i][0];
+        state.wavefront.add(v);
+        state.newVertices.add(v);
     }
     
     state.timer.stop();
-    writeln("=== Wavefront Expansion Complete ===");
-    writeln("- Previous size: ", currentSize);
-    writeln("- New wavefront size: ", state.wavefront.size);
-    writeln("- Newly added vertices: ", state.newVertices.size);
-    writeln("- Time taken: ", state.timer.elapsed(), " seconds");
-    writeln();
+    writeln("=== Wavefront Expanded ===");
+    writeln("- Added ", state.newVertices.size, " new vertices");
+    writeln("- New size: ", state.wavefront.size);
+    writeln("- Time: ", state.timer.elapsed(), " seconds");
 }
 
-
-
-    /* Main ASWS sampling procedure which Processes current wavefront to find motifs */
-proc processWavefront(ref state: WavefrontState,
-                     ref globalMotifCount: atomic int,
-                     ref globalMotifSet: set(uint(64)),
-                     ref maxDeg: int) throws {
-    
-    writeln("\n=== Processing New Vertices ===");
-    writeln("- Total vertices in wavefront: ", state.wavefront.size);
-    writeln("- Processing new vertices: ", state.newVertices.size);
-    
-    state.timer.clear();
-    state.timer.start();
-    
-    // Only process new vertices
-    forall v in state.newVertices with (ref globalMotifSet, ref globalMotifCount) {
-        var localKavoshState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
-        
-        // Initialize for this vertex
-        localKavoshState.setSubgraph(0, 0, 1);
-        localKavoshState.setSubgraph(0, 1, v);
-        localKavoshState.visited.clear();
-        localKavoshState.visited.add(v);
-        
-        // Explore motifs from this vertex
-        Explore(localKavoshState, v, 1, state.ASconfig.k - 1);
-        
-        // Update global counts - no role tracking
-        globalMotifCount.add(localKavoshState.localsubgraphCount);
-        globalMotifSet += localKavoshState.localmotifClasses;
-        
-        if logLevel == LogLevel.DEBUG {
-            writeln("  Processed vertex ", v, ":");
-            writeln("    - Found ", localKavoshState.localsubgraphCount, " motifs");
-            writeln("    - New patterns: ", localKavoshState.localmotifClasses.size);
-        }
-    }
-    
-    // Mark these vertices as processed
-    state.processedVertices += state.newVertices;
-    
-    // Update pattern discovery metrics
-    state.updatePatternDiscoveryMetrics(globalMotifSet);
-    //state.updatePatternStability(globalMotifSet);
-    
-    state.timer.stop();
-    writeln("=== Wavefront Processing Complete ===");
-    writeln("- Total motifs found: ", globalMotifCount.read());
-    writeln("- Unique patterns: ", globalMotifSet.size);
-    writeln("- Processed Vertices: ", state.processedVertices.size);
-    writeln("- Time taken: ", state.timer.elapsed(), " seconds");
-    
-    writeln();
-}
-
-/* Main ASWS sampling procedure */
+/* Main sampling procedure */
 proc runASWS(n: int, k: int,
              ref nodeDegree: [] int,
-             ref maxDeg: int,
              ref nodeNeighbours: [] domain(int),
              ref globalMotifCount: atomic int,
              ref globalMotifSet: set(uint(64))) throws {
     
     writeln("\n========== Starting ASWS Sampling ==========");
     
-    // Initialize configuration
+    // Initialize
     var ASconfig = new ASWSConfig(n, k);
-    //var maxDeg = max reduce nodeDegree;
-    var state = new WavefrontState(ASconfig, maxDeg);
+    var state = new WavefrontState(ASconfig);
     var totalTimer: stopwatch;
     totalTimer.start();
     
     // Step 1: Identify hubs
     identifyHubs(state, nodeDegree);
     
-    // Step 2: Classify vertex roles - added this here
-    state.classifyVertexRoles(nodeDegree, nodeNeighbours, maxDeg);
-    
-    // Step 3: Initialize wavefront
-    initializeWavefront(state, nodeDegree, maxDeg);
+    // Step 2: Initialize wavefront
+    initializeWavefront(state, nodeDegree);
     
     // Main sampling loop
     var iteration = 0;
-    const maxIterations = 5;  // For prototype, we can adjust this
+    const maxIterations = 5;
     
-    while (!state.isSamplingAdequate() && iteration < maxIterations && !state.hasPatternDiscoveryGuarantees()) {
+    while (iteration < maxIterations && !state.isSamplingAdequate(globalMotifSet.size)) {
         writeln("\nIteration ", iteration + 1, " of ", maxIterations);
         
-        // Update fingerprints
-        computeFingerprints(state, nodeNeighbours, nodeDegree, maxDeg);
+        // Simple fingerprint update
+        computeFingerprints(state, nodeNeighbours, nodeDegree);
         
-        // Process current wavefront
-        processWavefront(state, globalMotifCount, globalMotifSet, maxDeg);
+        // Process wavefront
+        processWavefront(state, globalMotifCount, globalMotifSet);
         
         // Expand wavefront
         expandWavefront(state, nodeNeighbours, nodeDegree);
-
-        // Update statistics
-        state.updatePatternStats(globalMotifSet.size);
-        state.updateConfidence();
         
         iteration += 1;
     }
@@ -1096,19 +510,14 @@ proc runASWS(n: int, k: int,
     totalTimer.stop();
     
     writeln("\n========== ASWS Sampling Complete ==========");
-    writeln("Final Statistics:");
-    writeln("- Total vertices sampled: ", state.wavefront.size);
-    writeln("- Total motifs found: ", globalMotifCount.read());
-    writeln("- Unique patterns discovered: ", globalMotifSet.size);
-    writeln("- Pattern discovery guarantees met: ", state.hasPatternDiscoveryGuarantees());
+    writeln("Final Results:");
+    writeln("- Iterations: ", iteration);
+    writeln("- Vertices sampled: ", state.wavefront.size);
+    writeln("- Unique patterns: ", globalMotifSet.size);
+    writeln("- Total motifs: ", globalMotifCount.read());
     writeln("- Total time: ", totalTimer.elapsed(), " seconds");
-    
-    // Final pattern discovery stats
-    state.printCoverageStats();
-    
     writeln("============================================\n");
 }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Gathers unique valid neighbors for the current level.
@@ -1485,16 +894,16 @@ proc runASWS(n: int, k: int,
             var motifCount = 0;
             
             writeln("\n=== Starting Pattern Verification ===");
-            // writeln(globalMotifSet.size, " patterns found before verification: ");
-            // writeln("Total patterns found before verification: ", globalMotifSet);
-            // writeln("globalCounts: ", globalCounts);
-            // writeln("globalCounts.size: ", globalCounts.size);
+            writeln(globalMotifSet.size, " patterns found before verification: ");
+            writeln("Total patterns found before verification: ", globalMotifSet);
+            writeln("globalCounts: ", globalCounts);
+            writeln("globalCounts.size: ", globalCounts.size);
 
-            // writeln("Pattern counts before verification:");
-            // for pattern in globalCounts.keys() {
-            //     writeln("Pattern ", pattern, ": ", globalCounts[pattern], " occurrences");
-            // }
-            // writeln("=====================================\n");
+            writeln("Pattern counts before verification:");
+            for pattern in globalCounts.keys() {
+                writeln("Pattern ", pattern, ": ", globalCounts[pattern], " occurrences");
+            }
+            writeln("=====================================\n");
             
             var motifArr: [0..#(globalMotifSet.size * motifSize * motifSize)] int;
             
@@ -1569,9 +978,9 @@ proc runASWS(n: int, k: int,
             writeln("Found unique canonical patterns: ", uniqueMotifClasses.size);
             writeln("Filtered out non-canonical patterns: ", globalMotifSet.size - uniqueMotifClasses.size);
             writeln("\nCanonical patterns and their counts:");
-            // for pattern in uniqueMotifClasses {
-            //     writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
-            // }
+            for pattern in uniqueMotifClasses {
+                writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
+            }
             writeln("===========================\n");
             
             var idx = 0;
@@ -1691,7 +1100,7 @@ proc runASWS(n: int, k: int,
         writeln("Using Adaptive Structural Wavefront Sampling");
 
 
-        runASWS(g1.n_vertices, motifSize, nodeDegree, maxDeg,
+        runASWS(g1.n_vertices, motifSize, nodeDegree, 
                    nodeNeighbours, globalMotifCount, globalMotifSet);
 
 
