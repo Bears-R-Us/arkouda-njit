@@ -308,12 +308,13 @@ record coreMetrics {
     // Basic core metrics 
     var coreNumber: int;
     var coreDensity: real;
-    var coreSize: int;
+    // var coreSize: int;
     
     var maxCoreSize: int;                // Size of maximum k-core
 
     // Core-Periphery Structure
     var corePeripheryScore: real;
+    var coreEmbeddedness: real;         // Measure of core integration
     var coreStrength: real;         // Measure of core dominance
     var peripherySize: int;         // Size of periphery
     
@@ -325,7 +326,7 @@ record coreMetrics {
     // Hierarchical Structure
     var coreHierarchyDepth: int;          // Number of non-empty shells
     var coreDegreeCorrelation: real;      // Correlation between core numbers and degrees
-    var hierarchyBalance: real;           // Balance of shell sizes
+    var varianceHierarchyBalance: real;           // Balance of shell sizes
     
     // Core Stability
     var coreStability: real;              // Resistance to vertex removal
@@ -333,9 +334,13 @@ record coreMetrics {
     var coreOverlap: [0..10] real;        // Overlap between consecutive cores
     
     // Core Quality
-    var coreCohesion: real;               // Internal connectivity of core
+    var coreCohesion: real;               // Internal connectivity of core based on mincut
     var coreSeparation: real;             // Separation from periphery
-    var coreCompactness: real;            // Density relative to size
+    var coreCompactness: real;            // BARTOSZ definition ??????????????? - Internal core edges in relation to diameter - "core's span"
+    var coreConnectivityShare: real;      // Core size with regards to the cluster size
+    var coreInteriorRatio: real;          // Correlation between internal connectivity and boundary edges
+    var coreExpansion: real;              // Core expansion into the periphery (edge connectivity between core and periphery)
+    var coreAvgEccentricity: real;        // Average eccentricity of the core   
 }
 
 
@@ -345,6 +350,7 @@ record pathMetrics {
     var cohesionScore: real;             // measure of cluster cohesion
     var pathDistribution: [0..#10] int;  // distribution of path lengths
 }
+
 
 /* Diameter-based metrics */
 record eccentricityMetrics {
@@ -413,13 +419,13 @@ record densityMetrics {
     
     // Clustering metrics
     var triangleCount: int;               // Number of triangles in cluster
-    var ClusteringCoeff: real;      // Ratio of triangles to connected triples
+    var ClusteringCoeff: real;            // Ratio of triangles to connected triples
     var avgLocalClusteringCoeff: real;    // Average of local clustering coefficients
     
     var triangleDensity: real;           // triangles/possible triangles
     var participationRate: real;         // % of vertices in triangles
     var maxLocalTriangles: int;          // max triangles for any vertex
-    var avgTrianglesPerVertex: real;     // average triangles per vertex
+    var avgTrianglesPerVertex: real;     // average triangles per vertex - we changed it
 
     var edgeDensityDistribution: real = 0.0;  // Not implemented
     var localDensityVariance: real = 0.0;     // Not implemented
@@ -466,6 +472,7 @@ record triangleCentralityMetrics {
     var triangleCentralities = new list(real);  // List to store centrality values
     var totalTriangles: int;                    // Total number of triangles in the cluster
 }
+
 
 
 /* Main analysis function for cluster metrics */
@@ -824,7 +831,7 @@ proc calculateTriangleMetrics(ref cluster: set(int), ref metrics: densityMetrics
                                     else 0.0;
    updatedMetrics.participationRate = participatingVertices.read():real / cluster.size:real;
    updatedMetrics.maxLocalTriangles = maxTriangles.read();
-   updatedMetrics.avgTrianglesPerVertex = finalTriangles:real / cluster.size:real;
+   updatedMetrics.avgTrianglesPerVertex = (3 * finalTriangles):real / cluster.size:real;
 
    // Convert triangle counts to real array for distribution stats
    var triangleDistArray: [clusterDomain] real;
@@ -842,7 +849,7 @@ proc calculateTriangleMetrics(ref cluster: set(int), ref metrics: densityMetrics
        writeln("Participating vertices: ", participatingVertices.read());
        writeln("Maximum triangles per vertex: ", maxTriangles.read());
        writeln("Average local CC: ", updatedMetrics.avgLocalClusteringCoeff);
-       writeln("CC: ", updatedMetrics.ClusteringCoeff);
+       writeln("Clustering Coefficient: ", updatedMetrics.ClusteringCoeff);
        writeln("Triangle density: ", updatedMetrics.triangleDensity);
        writeln("Participation rate: ", updatedMetrics.participationRate);
        writeln("\nTriangle Distribution Statistics:");
@@ -883,6 +890,7 @@ proc calculatePathMetrics(ref cluster: set(int), globalTransitivity: real, local
     return metrics;
 }
 /* Calculate eccentricity-based metrics */
+// Please note this is computationally expensive
 proc calculateEccentricityMetrics(ref cluster: set(int), diameter: int) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("\n==== Starting Eccentricity Analysis ====");
@@ -928,7 +936,7 @@ proc calculateEccentricityMetrics(ref cluster: set(int), diameter: int) throws {
         metrics.centerVertices.pushBack(v);
     for v in peripheralSet do
         metrics.peripheralVertices.pushBack(v);
-    
+        
     // Calculate average eccentricity
     metrics.avgEccentricity = (+ reduce [v in cluster] eccentricities[v].read()):real / cluster.size:real;
 
@@ -1052,23 +1060,23 @@ proc calculateDiameter(ref cluster: set(int)) throws {
     var metrics = new diameterMetrics();
     
     // For very small clusters, use exact calculation
-    if cluster.size <= 1000 {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Using exact calculation for small cluster");
-        }
-        metrics.exactDiameter = true;
-        var maxDist = 0;
+    // if cluster.size <= 1000 {
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Using exact calculation for small cluster");
+    //     }
+    //     metrics.exactDiameter = true;
+    //     var maxDist = 0;
         
-        forall v in cluster with (max reduce maxDist, ref cluster) {
-            var (dist, _) = enhancedBFS(v, cluster);
-            maxDist = max(maxDist, dist);
-        }
+    //     forall v in cluster with (max reduce maxDist, ref cluster) {
+    //         var (dist, _) = enhancedBFS(v, cluster);
+    //         maxDist = max(maxDist, dist);
+    //     }
         
-        metrics.lowerBound = maxDist;
-        metrics.upperBound = maxDist;
-        metrics.estimatedDiameter = maxDist:int;
-        return metrics;
-    }
+    //     metrics.lowerBound = maxDist;
+    //     metrics.upperBound = maxDist;
+    //     metrics.estimatedDiameter = maxDist:int;
+    //     return metrics;
+    // }
 
     if logLevel == LogLevel.DEBUG {
         writeln("Using approximate calculation for large cluster");
@@ -1183,17 +1191,17 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
     var analysisCluster = cluster;
     
     // Handle sampling for large clusters
-    if cluster.size > 10000 {
-        const sampleSize = if cluster.size <= 50000 then (cluster.size * 0.2): int
-                     else if cluster.size <= 100000 then (cluster.size * 0.1): int
-                     else (cluster.size * 0.05): int;
+    // if cluster.size > 10000 {
+    //     const sampleSize = if cluster.size <= 50000 then (cluster.size * 0.2): int
+    //                  else if cluster.size <= 100000 then (cluster.size * 0.1): int
+    //                  else (cluster.size * 0.05): int;
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("Cluster size > 10000, using sampling");
-            writeln("Calculated sample size: ", sampleSize);
-        }
-        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
-    }
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Cluster size > 10000, using sampling");
+    //         writeln("Calculated sample size: ", sampleSize);
+    //     }
+    //     analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
+    // }
 
     var metrics = new transitivityMetrics();
     
@@ -1255,11 +1263,11 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
     var triangles = totalTriangles.read();
     
     // Scale metrics if sampling was used
-    if cluster.size > 10000 {
-        var scaleFactor = cluster.size:real / analysisCluster.size:real;
-        metrics.wedgeCount = (metrics.wedgeCount:real * scaleFactor):int;
-        triangles = (triangles:real * scaleFactor):int;
-    }
+    // if cluster.size > 10000 {
+    //     var scaleFactor = cluster.size:real / analysisCluster.size:real;
+    //     metrics.wedgeCount = (metrics.wedgeCount:real * scaleFactor):int;
+    //     triangles = (triangles:real * scaleFactor):int;
+    // }
 
     // Calculate final ratios with checks for division by zero
     if metrics.wedgeCount > 0 {
@@ -1489,8 +1497,10 @@ proc calculateAdvancedConnectivity(ref cluster: set(int)) throws {
     metrics = calculateAssortativity(cluster, basicStats, metrics);
     
     // For very large clusters, use sampling for expensive computations
-    var sampleSet = if cluster.size > 10000 then hybridSampleClusterVertices(cluster, SAMPLE_SIZE)
-                                              else cluster;
+    // var sampleSet = if cluster.size > 10000 then hybridSampleClusterVertices(cluster, SAMPLE_SIZE)
+    //                                           else cluster;
+
+    var sampleSet = cluster;
     
     // Calculate diameter and betweenness (placeholder - need to implement)
     if logLevel == LogLevel.DEBUG {
@@ -1551,13 +1561,13 @@ proc hybridSampleClusterVertices(ref cluster: set(int), sampleSize: int) throws 
         writeln("Target sample size: ", sampleSize);
     }
 
-    // Return full cluster if it's small enough
-    if cluster.size <= 10000 {
-        if logLevel == LogLevel.DEBUG {
-            writeln("Cluster size <= 10000, using full cluster");
-        }
-        return cluster;
-    }
+    // // Return full cluster if it's small enough
+    // if cluster.size <= 10000 {
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Cluster size <= 10000, using full cluster");
+    //     }
+    //     return cluster;
+    // }
 
     var sampledVertices: set(int);
     var availableNodes: set(int) = cluster;  // Track available nodes
@@ -1917,7 +1927,9 @@ proc calculateCoreNumbers(in cluster: set(int)) throws {
         writeln("\n==== Starting Core Number Calculation ====");
         writeln("Cluster size: ", cluster.size);
     }
+    // var timer:stopwatch;
 
+    // timer.start();
     var metrics: coreMetrics;
 
     // Handle empty or singleton clusters
@@ -1927,7 +1939,7 @@ proc calculateCoreNumbers(in cluster: set(int)) throws {
         }
         metrics.coreNumber = 0;
         metrics.coreDensity = 0.0;
-        metrics.coreSize = cluster.size;
+        metrics.maxCoreSize = cluster.size;
         return metrics;
     }
 
@@ -1993,7 +2005,7 @@ proc calculateCoreNumbers(in cluster: set(int)) throws {
     // Calculate final metrics
     metrics.coreNumber = max reduce [v in clusterDomain] vertexShells[v].read();
     var maxCoreVertices = shellMembers[metrics.coreNumber];
-    metrics.coreSize = maxCoreVertices.size;
+    // metrics.coreSize = maxCoreVertices.size; 
     metrics.maxCoreSize = maxCoreVertices.size;
 
     // Calculate core density in parallel
@@ -2011,11 +2023,13 @@ proc calculateCoreNumbers(in cluster: set(int)) throws {
     if logLevel == LogLevel.DEBUG {
         writeln("\nFinal Results:");
         writeln("  Core Number: ", metrics.coreNumber);
-        writeln("  Core Size: ", metrics.coreSize);
+        // writeln("  Core Size: ", metrics.coreSize);
+        writeln("  Core Size: ", metrics.maxCoreSize);
         writeln("  Core Density: ", metrics.coreDensity);
         writeln("==== Core Number Calculation Complete ====\n");
     }
 
+    // writeln("Time for calculateCoreNumbers: ", timer.elapsed());
     return metrics;
 }
 
@@ -2038,17 +2052,17 @@ proc calculateAdvancedCore(ref cluster: set(int)) throws {
 
     // Handle sampling for large clusters
     var analysisCluster = cluster;
-    if cluster.size > 100000 {
-        const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int     
-                     else if cluster.size <= 1000000 then (cluster.size * 0.05): int   
-                     else (cluster.size * 0.01): int;                                  
+    // if cluster.size > 100000 {
+    //     const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int     
+    //                  else if cluster.size <= 1000000 then (cluster.size * 0.05): int   
+    //                  else (cluster.size * 0.01): int;                                  
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("Large cluster detected, using sampling");
-            writeln("Sample size: ", sampleSize);
-        }
-        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
-    }
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Large cluster detected, using sampling");
+    //         writeln("Sample size: ", sampleSize);
+    //     }
+    //     analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
+    // }
     
     // Get basic core decomposition first
     metrics = calculateCoreNumbers(analysisCluster);
@@ -2107,18 +2121,20 @@ proc calculateAdvancedCore(ref cluster: set(int)) throws {
         writeln("\nAdvanced Core Analysis Results:");
         writeln("Basic Metrics:");
         writeln("  Core Number: ", metrics.coreNumber);
-        writeln("  Core Size: ", metrics.coreSize);
+        // writeln("  Core Size: ", metrics.coreSize);
+        writeln("  Max Core Size: ", metrics.maxCoreSize);
         writeln("  Core Density: ", metrics.coreDensity);
         
         writeln("\nCore-Periphery Metrics:");
         writeln("  Core-Periphery Score: ", metrics.corePeripheryScore);
+        writeln("  Core Embeddedness: ", metrics.coreEmbeddedness);
         writeln("  Core Strength: ", metrics.coreStrength);
         writeln("  Periphery Size: ", metrics.peripherySize);
         
         writeln("\nHierarchical Metrics:");
         writeln("  Core Hierarchy Depth: ", metrics.coreHierarchyDepth);
         writeln("  Core-Degree Correlation: ", metrics.coreDegreeCorrelation);
-        writeln("  Hierarchy Balance: ", metrics.hierarchyBalance);
+        writeln("  Hierarchy Balance: ", metrics.varianceHierarchyBalance);
         
         writeln("\nStability Metrics:");
         writeln("  Core Stability: ", metrics.coreStability);
@@ -2129,6 +2145,10 @@ proc calculateAdvancedCore(ref cluster: set(int)) throws {
         writeln("  Core Cohesion: ", metrics.coreCohesion);
         writeln("  Core Separation: ", metrics.coreSeparation);
         writeln("  Core Compactness: ", metrics.coreCompactness);
+        writeln("  Core Connectivity Share : ", metrics.coreConnectivityShare);
+        writeln("  Core Interior Ratio: ", metrics.coreInteriorRatio);
+        writeln("  Core Expansion: ", metrics.coreExpansion);
+        writeln("  Core Eccentricity: ", metrics.coreAvgEccentricity);
         
         writeln("\nShell Metrics:");
         writeln("  Number of Shells: ", metrics.coreNumber + 1);
@@ -2300,12 +2320,12 @@ proc calculateCorePeripheryMetrics(ref metrics: coreMetrics,
     }
 
     var analysisCluster = cluster;
-    if cluster.size > 100000 {
-        const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int     
-                     else if cluster.size <= 1000000 then (cluster.size * 0.05): int   
-                     else (cluster.size * 0.01): int;                                  
-        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
-    }
+    // if cluster.size > 100000 {
+    //     const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int     
+    //                  else if cluster.size <= 1000000 then (cluster.size * 0.05): int   
+    //                  else (cluster.size * 0.01): int;                                  
+    //     analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
+    // }
 
     var updatedMetrics = metrics;
     var maxShell = metrics.coreNumber;
@@ -2344,10 +2364,14 @@ proc calculateCorePeripheryMetrics(ref metrics: coreMetrics,
     var finalExternalEdges = externalEdges.read() / 2;
     var finalCrossEdges = crossEdges.read();
     
+    // updatedMetrics.corePeripheryScore = if (finalInternalEdges + finalExternalEdges) > 0 then
+                                 
     // Calculate metrics
-    updatedMetrics.coreStrength = if (finalInternalEdges + finalCrossEdges) > 0 then
+    updatedMetrics.coreEmbeddedness = if (finalInternalEdges + finalCrossEdges) > 0 then
                                  finalInternalEdges:real / (finalInternalEdges + finalCrossEdges):real
                                  else 0.0;
+    
+    updatedMetrics.coreStrength = coreVertices.size:int - maxShell:int + 1;
     
     updatedMetrics.peripherySize = analysisCluster.size - coreVertices.size;
 
@@ -2356,6 +2380,7 @@ proc calculateCorePeripheryMetrics(ref metrics: coreMetrics,
         writeln("  Internal Edges: ", finalInternalEdges);
         writeln("  External Edges: ", finalExternalEdges);
         writeln("  Cross Edges: ", finalCrossEdges);
+        writeln("  Core Embeddedness: ", updatedMetrics.coreEmbeddedness);
         writeln("  Core Strength: ", updatedMetrics.coreStrength);
         writeln("  Periphery Size: ", updatedMetrics.peripherySize);
         writeln("==== Core-Periphery Analysis Complete ====\n");
@@ -2379,17 +2404,17 @@ proc calculateShellMetrics(ref metrics: coreMetrics,
     
     // Handle sampling for large clusters
     var analysisCluster = cluster;
-    if cluster.size > 100000 {
-        const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
-                     else if cluster.size <= 1000000 then (cluster.size * 0.05): int
-                     else (cluster.size * 0.01): int;
+    // if cluster.size > 100000 {
+    //     const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
+    //                  else if cluster.size <= 1000000 then (cluster.size * 0.05): int
+    //                  else (cluster.size * 0.01): int;
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("Large cluster detected, using sampling");
-            writeln("Sample size: ", sampleSize);
-        }
-        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
-    }
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Large cluster detected, using sampling");
+    //         writeln("Sample size: ", sampleSize);
+    //     }
+    //     analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
+    // }
 
     // Arrays for parallel computation - now starting from 1
     var shellDensities: [1..metrics.coreNumber+1] atomic real;
@@ -2516,12 +2541,12 @@ proc calculateHierarchicalMetrics(ref metrics: coreMetrics,
     }
 
     // Calculate normalized hierarchy balance
-    updatedMetrics.hierarchyBalance = 1.0 - sqrt(sizeVariance.read()) / cluster.size;
+    updatedMetrics.varianceHierarchyBalance = 1.0 - sqrt(sizeVariance.read()) / cluster.size;
 
     if logLevel == LogLevel.DEBUG {
         writeln("Expected shell size: ", expectedShellSize);
         writeln("Size variance: ", sizeVariance.read());
-        writeln("Hierarchy balance: ", updatedMetrics.hierarchyBalance);
+        writeln("Hierarchy balance: ", updatedMetrics.varianceHierarchyBalance);
     }
 
     // Calculate core-degree correlation
@@ -2565,7 +2590,7 @@ proc calculateHierarchicalMetrics(ref metrics: coreMetrics,
     if logLevel == LogLevel.DEBUG {
         writeln("\nHierarchical Analysis Results:");
         writeln("Core Hierarchy Depth: ", updatedMetrics.coreHierarchyDepth);
-        writeln("Hierarchy Balance: ", updatedMetrics.hierarchyBalance);
+        writeln("Variance Based Hierarchy Balance: ", updatedMetrics.varianceHierarchyBalance);
         writeln("Core-Degree Correlation: ", updatedMetrics.coreDegreeCorrelation);
         writeln("==== Hierarchical Metrics Calculation Complete ====\n");
     }
@@ -2590,17 +2615,17 @@ proc calculateQualityMetrics(metrics: coreMetrics,
 
     // Handle sampling for large clusters
     var analysisCluster = cluster;
-    if cluster.size > 100000 {
-        const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
-                     else if cluster.size <= 1000000 then (cluster.size * 0.05): int
-                     else (cluster.size * 0.01): int;
+    // if cluster.size > 100000 {
+    //     const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
+    //                  else if cluster.size <= 1000000 then (cluster.size * 0.05): int
+    //                  else (cluster.size * 0.01): int;
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("Large cluster detected, using sampling");
-            writeln("Sample size: ", sampleSize);
-        }
-        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
-    }
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Large cluster detected, using sampling");
+    //         writeln("Sample size: ", sampleSize);
+    //     }
+    //     analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
+    // }
 
     // Atomic counters for parallel computation
     var internalEdges: atomic int;
@@ -2638,23 +2663,69 @@ proc calculateQualityMetrics(metrics: coreMetrics,
     var finalExternalEdges = externalEdges.read();
     var totalEdges = finalInternalEdges + finalExternalEdges;
 
+
     // Calculate core cohesion (internal density)
-    var maxPossibleInternalEdges = (coreVertices.size * (coreVertices.size - 1)) / 2;
-    updatedMetrics.coreCohesion = if maxPossibleInternalEdges > 0 then
-                                 finalInternalEdges:real / maxPossibleInternalEdges:real
-                                 else 0.0;
+    var coreCohesion: int = 0;
+
+    // forall u in coreVertices {
+    //     writeln(neighborsSetGraphG1[u] & coreVertices);
+    // }
+
+    forall u in coreVertices with (+ reduce coreCohesion){
+        var neighbors = neighborsSetGraphG1[u] & coreVertices;
+        if neighbors.size <= 1 then continue;
+        var vertexCut: int;
+        var verticesToCut = neighbors;
+        verticesToCut.add(u);
+        var (src, dst, mapper) = getEdgeList(verticesToCut);
+
+        var n = mapper.size;
+        var m = src.size;
+        var partitionArr: [{0..<n}] int;
+        vertexCut = c_computeMinCut(partitionArr, src, dst, n, m);
+        coreCohesion += vertexCut;
+    } 
+    // To normalize the result we divide by the number of internal edges
+    updatedMetrics.coreCohesion = if finalInternalEdges > 0 then
+                            coreCohesion:real / finalInternalEdges:real
+                            else 0.0;
+
 
     // Calculate core separation
-    updatedMetrics.coreSeparation = if totalEdges > 0 then
+    var externalVertices = cluster - coreVertices;
+    var basicCoreStats = calculateBasicStats(coreVertices);
+    var basicExternalStats = calculateBasicStats(externalVertices);
+    updatedMetrics.coreSeparation = if externalVertices.size > 0 then
+                                basicCoreStats.avg_degree:real - basicExternalStats.avg_degree:real
+                                else 0.0;
+
+
+    // Calculate core compactness
+    var coreDiameter = calculateDiameter(coreVertices);
+    updatedMetrics.coreCompactness = if coreDiameter.estimatedDiameter > 0.0 then
+                                    finalInternalEdges:real / coreDiameter.estimatedDiameter:real
+                                    else 0.0;
+
+    // Calculate core connectivity share
+    updatedMetrics.coreConnectivityShare = if totalEdges > 0 then
                                    finalInternalEdges:real / totalEdges:real
                                    else 0.0;
 
-    // Calculate core compactness
+    // Calculate core interior ratio
     var boundarySize = boundaryVertices.read();
     var interiorSize = coreVertices.size - boundarySize;
-    updatedMetrics.coreCompactness = if coreVertices.size > 0 then
+    updatedMetrics.coreInteriorRatio = if coreVertices.size > 0 then
                                     interiorSize:real / coreVertices.size:real
                                     else 0.0;
+
+    // Calculate core expansion
+    updatedMetrics.coreExpansion = if coreVertices.size > 0 then
+                                boundarySize:real / coreVertices.size:real
+                                else 0.0;
+
+    // Calculate average core eccentricity
+    var coreEccentricityMetrics = calculateEccentricityMetrics(coreVertices, coreDiameter.estimatedDiameter);
+    updatedMetrics.coreAvgEccentricity = coreEccentricityMetrics.avgEccentricity;
 
     if logLevel == LogLevel.DEBUG {
         writeln("\nQuality Metrics Results:");
@@ -2664,6 +2735,10 @@ proc calculateQualityMetrics(metrics: coreMetrics,
         writeln("Core Cohesion: ", updatedMetrics.coreCohesion);
         writeln("Core Separation: ", updatedMetrics.coreSeparation);
         writeln("Core Compactness: ", updatedMetrics.coreCompactness);
+        writeln("Core Connectivity Share : ", updatedMetrics.coreConnectivityShare);
+        writeln("Core Interior Ratio: ", updatedMetrics.coreInteriorRatio);
+        writeln("Core Expansion: ", updatedMetrics.coreExpansion);
+        writeln("Core Eccentricity: ", updatedMetrics.coreAvgEccentricity);
         writeln("==== Quality Metrics Calculation Complete ====\n");
     }
 
@@ -2686,17 +2761,17 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
 
     // Handle sampling for large clusters
     var analysisCluster = cluster;
-    if cluster.size > 100000 {
-        const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
-                     else if cluster.size <= 1000000 then (cluster.size * 0.05): int
-                     else (cluster.size * 0.01): int;
+    // if cluster.size > 100000 {
+    //     const sampleSize = if cluster.size <= 500000 then (cluster.size * 0.1): int
+    //                  else if cluster.size <= 1000000 then (cluster.size * 0.05): int
+    //                  else (cluster.size * 0.01): int;
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("Large cluster detected, using sampling");
-            writeln("Sample size: ", sampleSize);
-        }
-        analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
-    }
+    //     if logLevel == LogLevel.DEBUG {
+    //         writeln("Large cluster detected, using sampling");
+    //         writeln("Sample size: ", sampleSize);
+    //     }
+    //     analysisCluster = hybridSampleClusterVertices(cluster, sampleSize);
+    // }
 
     // Calculate core stability through random vertex removal
     var stabilityScores: [1..trials] atomic real;
@@ -2708,12 +2783,13 @@ proc calculateStabilityMetrics(metrics: coreMetrics,
         writeln("Removal size per trial: ", removalSize);
     }
 
+
     // Run stability trials in parallel
     forall t in 1..trials with (ref analysisCluster) {// To Oliver: I don't know why I didn't bring back FORALL. check it
     //for t in 1..trials {
         var trialCluster: set(int) = analysisCluster;
-        var removedVertices = hybridSampleClusterVertices(analysisCluster, removalSize);
-        trialCluster -= removedVertices;
+        // var removedVertices = hybridSampleClusterVertices(analysisCluster, removalSize);
+        // trialCluster -= removedVertices;
         
         var trialMetrics = calculateCoreNumbers(trialCluster);
         stabilityScores[t].write(trialMetrics.coreNumber:real / maxShell:real);
@@ -2909,7 +2985,6 @@ proc calculateViecutMincut(ref cluster: set(int), in metrics: connectivityMetric
         updatedMetrics.ViecutOutPartitionSize = 0;
         return updatedMetrics;
     }
-
 
     var n = mapper.size;
     var m = src.size;
@@ -3112,25 +3187,31 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clust
     writeln("\n----- Core Decomposition Metrics -----");
     writeln("Basic Core Structure:");
     writeln("  Core Number: ", metrics.core.coreNumber);
-    writeln("  Core Size: ", metrics.core.coreSize);
+    // writeln("  Core Size: ", metrics.core.coreSize);
     writeln("  Core Density: ", metrics.core.coreDensity);
     writeln("  Maximum Core Size: ", metrics.core.maxCoreSize);
 
     writeln("\nCore-Periphery Structure:");
     writeln("  Core-Periphery Score: ", metrics.core.corePeripheryScore);
+    writeln("  Core Embeddedness: ", metrics.core.coreEmbeddedness);
     writeln("  Core Strength: ", metrics.core.coreStrength);
     writeln("  Periphery Size: ", metrics.core.peripherySize);
 
     writeln("\nHierarchical Structure:");
     writeln("  Core Hierarchy Depth: ", metrics.core.coreHierarchyDepth);
     writeln("  Core-Degree Correlation: ", metrics.core.coreDegreeCorrelation);
-    writeln("  Hierarchy Balance: ", metrics.core.hierarchyBalance);
+    writeln("  Hierarchy Balance: ", metrics.core.varianceHierarchyBalance);
 
     writeln("\nCore Quality Metrics:");
     writeln("  Core Cohesion: ", metrics.core.coreCohesion);
     writeln("  Core Separation: ", metrics.core.coreSeparation);
     writeln("  Core Compactness: ", metrics.core.coreCompactness);
+    writeln("  Core Connectivity Share : ", metrics.core.coreConnectivityShare);
+    writeln("  Core Interior Ratio: ", metrics.core.coreInteriorRatio);
+    writeln("  Core Expansion: ", metrics.core.coreExpansion);
+    writeln("  Core Eccentricity: ", metrics.core.coreAvgEccentricity);
 
+    // To Mohammad: Is there any reason for taking at most the first 11 shells?
     writeln("\nCore Stability Metrics:");
     writeln("  Core Stability: ", metrics.core.coreStability);
     writeln("  Core Persistence:");
@@ -3161,14 +3242,14 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clust
     // Add summary statistics
     writeln("\nCore Structure Summary:");
     writeln("  Average Shell Density: ", 
-            (+ reduce metrics.core.shellDensities[0..#min(metrics.core.coreNumber + 1, 11)]) / 
-            (metrics.core.coreNumber + 1));
+            (+ reduce (metrics.core.shellDensities[0..#min(metrics.core.coreNumber + 1, 11)] * metrics.core.shellDecomposition[0..#min(metrics.core.coreNumber + 1, 11)])) / 
+            (+ reduce metrics.core.shellDecomposition[0..#min(metrics.core.coreNumber + 1, 11)])); // I can also use clusterSize but the problem occurs when we have more than 11 shells
     writeln("  Average Core Persistence: ", 
-            (+ reduce metrics.core.corePersistence[0..#min(metrics.core.coreNumber + 1, 11)]) / 
-            (metrics.core.coreNumber + 1));
+            (+ reduce (metrics.core.corePersistence[0..#min(metrics.core.coreNumber + 1, 11)] * metrics.core.shellDecomposition[0..#min(metrics.core.coreNumber + 1, 11)])) / 
+            (+ reduce metrics.core.shellDecomposition[0..#min(metrics.core.coreNumber + 1, 11)])); 
     writeln("  Average Shell Connectivity: ", 
-            (+ reduce metrics.core.shellConnectivity[0..#min(metrics.core.coreNumber, 11)]) / 
-            metrics.core.coreNumber);
+            (+ reduce (metrics.core.shellConnectivity[0..#min(metrics.core.coreNumber + 1, 11)] * metrics.core.shellDecomposition[0..#min(metrics.core.coreNumber + 1, 11)])) / 
+            (+ reduce metrics.core.shellDecomposition[0..#min(metrics.core.coreNumber + 1, 11)]));
 
     writeln("\n===========================================");
 /*
@@ -3207,8 +3288,8 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clust
             // Core Metrics
             "core_number,core_size,core_density,max_core_size,core_periphery_score,core_strength," +
             "periphery_size,core_hierarchy_depth,core_degree_correlation,hierarchy_balance," +
-            "core_cohesion,core_separation,core_compactness,core_stability,avg_core_persistence," +
-            "avg_shell_density,avg_shell_connectivity");
+            "core_cohesion,core_separation,core_compactness,core_connectivity_share,core_interior_ratio," +
+            "average_core_eccentricity,core_stability,avg_core_persistence,avg_shell_density,avg_shell_connectivity");
     }
 
     // Calculate averages for array metrics
@@ -3318,8 +3399,7 @@ record MetricsConfig {
         this.computeBasicConnectivity = true;
         this.computeDensity = true;
         return;
-    }
-    
+      }
     /* Create preset configurations */
     proc getCoreMetrics() {
         // var configs = new MetricsConfig();
