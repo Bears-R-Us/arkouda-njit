@@ -213,6 +213,9 @@ proc classifyVertexRoles(ref nodeDegree: [] int, ref nodeNeighbours: [] domain(i
 proc updateErrorBounds(patterns: set(uint(64))) throws{
     // Calculate confidence intervals for each pattern
     const z = 1.96;  // 95% confidence level
+    //90% confidence level: z = 1.645
+// 95% confidence level: z = 1.96
+// 99% confidence level: z = 2.576
     const n = processedVertices.size;
     
     for pattern in patterns {
