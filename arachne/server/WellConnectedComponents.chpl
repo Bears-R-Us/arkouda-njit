@@ -282,62 +282,165 @@ module WellConnectedComponents {
       }
       return reducedPartition;
     }
+    
+    /* Returns first node found with lowest possible degree < threshold, or -1 if no such node exists */
+    proc findMinDegreeNode(ref members: set(int), threshold: int) throws {
+        //writeln("Finding min degree node with threshold: ", threshold);
+        
+        // If threshold is 1, we can return immediately since no node can have degree < 1
+        if threshold <= 1 {
+          //writeln("  Threshold <= 1, no need to check for lower degrees");
+          return -1;
+        }
+        
+        // Start from degree 1 and work up to threshold-1
+        // Note: We don't need to check for degree 0 as those would be singleton nodes
+        for degree in 1..<threshold {
+          //writeln("  Checking for nodes with degree: ", degree);
+            // Return the first node we find with this degree
+          for v in members {
+            var nodeDegree = calculateClusterDegree(members, v);
+              if nodeDegree == degree {
+                //writeln("  Found node ", v, " with degree ", degree);
+                return v;
+              }
+          }
+        }
+        //writeln("  No nodes found with degree < ", threshold);
+        return -1;  // No node found with degree < threshold
+    }
 
-    /* Recursive method that processes a given set of vertices (partition), denotes if it is 
-       well-connected or not, and if not calls itself on the new generated partitions. */
-    proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
-      var (src, dst, mapper) = getEdgeList(vertices);
+ /* Try to determine if cluster is not well-connected by removing low degree nodes */
+    proc quickMinCutCheck(ref vertices: set(int)) throws {
+        writeln("Starting quick mincut check");
+        var currentVertices = vertices;
+        var removedNodes = new set(int);  // Track removed nodes
+        
+        while currentVertices.size > 0 {
+            var criterionValue = criterionFunction(currentVertices.size, connectednessCriterionMultValue):int;
+            // var minDegreeThreshold = criterionValue + 1;
+            var minDegreeThreshold = criterionValue;
+            writeln("Current cluster size: ", currentVertices.size, ", criterion value: ", criterionValue);
+            
+            var nodeToRemove = findMinDegreeNode(currentVertices, minDegreeThreshold);
+            if nodeToRemove == -1 {
+                writeln("No more low degree nodes found - need proper mincut check");
+                vertices = currentVertices;  // Update original vertices to current state
+                return (false, removedNodes);
+            }
+            
+            // Remove the node and track it
+            currentVertices.remove(nodeToRemove);
+            removedNodes.add(nodeToRemove);
+            writeln("Removed node ", nodeToRemove, ", remaining vertices: ", currentVertices.size);
+            
+            // If we've removed enough nodes that criterionValue can't be met
+            if currentVertices.size <= criterionValue {
+                writeln("Criterion value can't be met after removals");
+                vertices = currentVertices;  // Update original vertices to current state
+                return (true, removedNodes);
+            }
+        }
+        vertices = currentVertices;  // Update original vertices to current state
+        return (true, removedNodes);
+    }    
 
-      // If the generated edge list is empty, then return.
-      if src.size < 1 then return;
+/* 
+   Recursive method that processes a given set of vertices (partition), determines if it is 
+   well-connected, and if not splits it using Viecut instead of Leiden.
+*/
+proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
+    writeln("-+-+-+-+-Cluster ", id, " starting check");
+    
+    // First try quick mincut check
+    var (quickResult, removedNodes) = quickMinCutCheck(vertices);
+    if quickResult {
+        writeln("Quick mincut determined cluster ", id, " is not well-connected");
+        writeln("Removed nodes: ", removedNodes);
+        writeln("Remaining vertices: ", vertices.size);
+        
+        // If we don't have enough vertices remaining, return
+        if vertices.size <= postFilterMinSize {
+            writeln("Remaining vertices too small (", vertices.size, " <= ", postFilterMinSize, "), skipping");
+            return;
+        }
+    }
+    
+    // Either quick check didn't determine result, or we have enough vertices to continue
+    var (src, dst, mapper) = getEdgeList(vertices);
 
-      var n = mapper.size;
-      var m = src.size;
+    // If the generated edge list is empty, then return
+    if src.size < 1 {
+        writeln("Empty edge list for cluster ", id, ", returning");
+        return;
+    }
 
-      var partitionArr: [{0..<n}] int;
-      var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+    var n = mapper.size;
+    var m = src.size;
+    
+    writeln("src: ", src);
+    writeln("dst: ", dst);
+    writeln("m: ", m);
+    writeln("n: ", n);
 
-      var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-      if cut > criterionValue { // Cluster is well-connected.
+    // Run Viecut to both check well-connectedness and get the partition if needed
+    var partitionArr: [{0..<n}] int;
+    var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+    var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
+
+    writeln("cut: ", cut);
+    writeln("criterionValue: ", criterionValue);
+
+    if cut > criterionValue { // Cluster is well-connected
+        writeln("Cluster ", id, " IS well-connected!");
         var currentId = globalId.fetchAdd(1);
         if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
         else if outputType == "during" then writeClustersToFile(vertices, currentId);
         for v in vertices {
-          finalVertices.pushBack(v);
-          finalClusters.pushBack(currentId);
+            finalVertices.pushBack(v);
+            finalClusters.pushBack(currentId);
         }
         if logLevel == LogLevel.DEBUG {
-          var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
-                    + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
-          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+            var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
+                       + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
+            wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         return;
-      }
-      else { // Cluster is not well-connected.
-        var cluster1, cluster2 = new set(int);
-        
-        // Separate vertices into two partitions.
-        for (v,p) in zip(partitionArr.domain, partitionArr) {
-          if p == 1 then cluster1.add(mapper[v]);
-          else cluster2.add(mapper[v]);
-        }
-        
-        // Make sure the partitions meet the minimum size denoted by postFilterMinSize.
-        if cluster1.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var inPartition = removeDegreeOne(cluster1);
-          var inPartition = cluster1;
-          wccRecursiveChecker(inPartition, id, depth+1);
-        }
-        if cluster2.size > postFilterMinSize {
-          //@Min requests to remove this line
-          //var outPartition = removeDegreeOne(cluster2);
-          var outPartition = cluster2;
-          wccRecursiveChecker(outPartition, id, depth+1);
-        }
-      }
-      return;
     }
+
+    // If we're here, cluster is not well-connected (either from quick check or min-cut)
+    writeln("-+-+-+-+-Cluster ", id, " is NOT well-connected");
+    
+    // Use the partition from Viecut to split the cluster into two partitions
+    var cluster1 = new set(int);
+    var cluster2 = new set(int);
+        
+    // Separate vertices into two partitions using the min-cut result
+    for (v,p) in zip(partitionArr.domain, partitionArr) {
+        if p == 1 then cluster1.add(mapper[v]);
+        else cluster2.add(mapper[v]);
+    }
+    
+    writeln("Min-cut partition sizes - cluster1: ", cluster1.size, ", cluster2: ", cluster2.size);
+        
+    // Make sure the partitions meet the minimum size
+    if cluster1.size > postFilterMinSize {
+        writeln("Recursing on cluster1 from cluster ", id);
+        wccRecursiveChecker(cluster1, id, depth+1);
+    } else {
+        writeln("cluster1 too small (", cluster1.size, " <= ", postFilterMinSize, "), skipping");
+    }
+    
+    if cluster2.size > postFilterMinSize {
+        writeln("Recursing on cluster2 from cluster ", id);
+        wccRecursiveChecker(cluster2, id, depth+1);
+    } else {
+        writeln("cluster2 too small (", cluster2.size, " <= ", postFilterMinSize, "), skipping");
+    }
+    
+    writeln("Finished processing cluster ", id);
+    return;
+}
 
     /* Main executing function for well-connected components. */
     proc wcc(g1: SegGraph): int throws {
