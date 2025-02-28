@@ -37,6 +37,7 @@ module ClusterModifierTwo {
   // C header and object files.
   require "Clustering_Algorithms/bin/run_leiden.o",
           "Clustering_Algorithms/src/run_leiden.h",
+        //"-L/home/md724/arkouda-njit/arachne/server/Clustering_Algorithms/external/install/lib64",
           "-ligraph",
           "-llibleidenalg";
 
