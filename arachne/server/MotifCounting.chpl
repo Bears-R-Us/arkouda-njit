@@ -355,7 +355,7 @@ totalCount.write(0);
                 }
             }
 
-            writeln("    Generated pattern: ", pattern);
+            //writeln("    Generated pattern: ", pattern);
             return pattern;
         }
 
@@ -778,9 +778,10 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         // Create arrays for batch processing
         var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
         var batchedResults: [0..#(numMotifs * k)] int;
-        
-        writeln("Created arrays for root ", v, ": matrices size=", batchedMatrices.size, 
+        if logLevel == LogLevel.DEBUG {
+            writeln("Created arrays for root ", v, ": matrices size=", batchedMatrices.size, 
                ", results size=", batchedResults.size);
+        }
         
         // Fill matrices for all motifs
         for i in 0..<numMotifs {
@@ -810,16 +811,16 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             }
         }
         
-        writeln("Filled all matrices for root ", v, ", calling Nauty with batch size ", numMotifs);
+        //writeln("Filled all matrices for root ", v, ", calling Nauty with batch size ", numMotifs);
         
         // Process all motifs at once with Nauty
         var status = c_nautyClassify(batchedMatrices, k, batchedResults, 1, 0, numMotifs);
         
-        writeln("Nauty returned with status ", status, " for root ", v);
+        //writeln("Nauty returned with status ", status, " for root ", v);
         
         // Process results for each motif
         for i in 0..<numMotifs {
-            writeln("  Processing result ", i, " of ", numMotifs, " for root ", v);
+            //writeln("  Processing result ", i, " of ", numMotifs, " for root ", v);
             
             // Extract results for this motif
             var nautyResults: [0..<k] int;
@@ -827,7 +828,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
                 nautyResults[j] = batchedResults[i * k + j];
             }
             
-            writeln("  Nauty results for motif ", i, ": ", nautyResults);
+            //writeln("  Nauty results for motif ", i, ": ", nautyResults);
             
             // Get the vertices for this motif
             var baseIdx = i * k;
@@ -846,7 +847,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             try {
                 var pattern = generatePatternDirect(vertices, nautyResults, k);
                 localPatterns.add(pattern);
-                writeln("  Added pattern ", pattern, " for motif ", i, " of root ", v);
+                //writeln("  Added pattern ", pattern, " for motif ", i, " of root ", v);
             } catch e {
                 writeln("ERROR in generatePatternDirect for motif ", i, ": ", e.message());
             }
@@ -855,9 +856,11 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         // Update global results
         totalCount.add(numMotifs);
         globalMotifSet += localPatterns;
-        
-        writeln("Completed processing for root ", v, ": found ", numMotifs, 
+
+        if logLevel == LogLevel.DEBUG {
+            writeln("Completed processing for root ", v, ": found ", numMotifs, 
                " motifs, ", localPatterns.size, " unique patterns");
+        }
     }
     
     // Set the final results
