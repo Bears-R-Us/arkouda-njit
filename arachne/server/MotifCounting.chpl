@@ -189,7 +189,9 @@ module MotifCounting {
         var globalMotifMap: map(uint(64), int);
         //var syncVar: sync bool;
     
-    
+    var nautyCache: map(uint(64), [0..<k] int, parSafe=true);
+
+
     var globalMotifSet: set(uint(64), parSafe=true);
     var totalCount: atomic int;
 totalCount.write(0);
@@ -731,7 +733,17 @@ if remainedToVisit == 0 {
             return pattern;
         }
 
-
+proc matrixToBinary(matrix: [] int, k: int): uint(64) {
+    var binary: uint(64) = 0;
+    for i in 0..<k {
+        for j in 0..<k {
+            if matrix[i * k + j] == 1 {
+                binary |= 1:uint(64) << (i * k + j);
+            }
+        }
+    }
+    return binary;
+}
         ///////////////////////////////Main Code/////////////////////////////////////////////////
 
 
