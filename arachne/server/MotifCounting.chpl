@@ -189,7 +189,7 @@ module MotifCounting {
         var globalMotifMap: map(uint(64), int);
         //var syncVar: sync bool;
     
-    var nautyCache: map(uint(64), [0..<k] int, parSafe=true);
+    //var nautyCache: map(uint(64), [0..<k] int, parSafe=true);
 
 
     var globalMotifSet: set(uint(64), parSafe=true);
@@ -733,6 +733,7 @@ if remainedToVisit == 0 {
             return pattern;
         }
 
+// Function to convert adjacency matrix to binary representation
 proc matrixToBinary(matrix: [] int, k: int): uint(64) {
     var binary: uint(64) = 0;
     for i in 0..<k {
@@ -744,6 +745,7 @@ proc matrixToBinary(matrix: [] int, k: int): uint(64) {
     }
     return binary;
 }
+
         ///////////////////////////////Main Code/////////////////////////////////////////////////
 
 
@@ -759,8 +761,6 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         state.visited.clear();
         state.visited.add(v);
         
-        //writeln("Starting exploration for root vertex ", v);
-        
         // Find all motifs for this root
         Explore(state, v, 1, state.k - 1);
         
@@ -768,13 +768,9 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         const numMotifs = state.localsubgraphCount;
         const totalVertices = state.motifVertices.size;
         
-        //writeln("Completed exploration for root ", v, " - found ", numMotifs, 
-        //        " motifs with ", totalVertices, " total vertices");
-        
         // Skip if no motifs found
         if numMotifs == 0 || totalVertices == 0 {
-            //writeln("No motifs found for root ", v, ", skipping Nauty processing");
-            continue;  // Skip to next root vertex
+            continue;
         }
         
         // Verify we have the expected number of vertices
@@ -787,33 +783,23 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         // Now classify all motifs found from this root
         var localPatterns: set(uint(64), parSafe=false);
         
+        // Get the motif vertices as an array
+        var motifVerticesArray = state.motifVertices.toArray();
+        
         // Create arrays for batch processing
         var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
         var batchedResults: [0..#(numMotifs * k)] int;
-        if logLevel == LogLevel.DEBUG {
-            writeln("Created arrays for root ", v, ": matrices size=", batchedMatrices.size, 
-               ", results size=", batchedResults.size);
-        }
         
         // Fill matrices for all motifs
         for i in 0..<numMotifs {
-            //writeln("  Processing motif ", i, " of ", numMotifs, " for root ", v);
-            
-            // Get vertices for this motif
             var baseIdx = i * k;
-            
-            // Debug the vertices for this motif
-            // writeln("  Vertices for motif ", i, ":");
-            // for j in 0..<k {
-            //     writeln("    Vertex[", j, "] = ", state.motifVertices[baseIdx + j]);
-            // }
             
             // Create adjacency matrix
             for row in 0..<k {
                 for col in 0..<k {
                     if row != col {  // Skip self-loops
-                        var u = state.motifVertices[baseIdx + row];
-                        var w = state.motifVertices[baseIdx + col];
+                        var u = motifVerticesArray[baseIdx + row];
+                        var w = motifVerticesArray[baseIdx + col];
                         var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
                         if eid != -1 {
                             batchedMatrices[i * (k * k) + row * k + col] = 1;
@@ -823,16 +809,17 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             }
         }
         
-        //writeln("Filled all matrices for root ", v, ", calling Nauty with batch size ", numMotifs);
-        
-        // Process all motifs at once with Nauty
+        // Process with Nauty
         var status = c_nautyClassify(batchedMatrices, k, batchedResults, 1, 0, numMotifs);
-        
-        //writeln("Nauty returned with status ", status, " for root ", v);
         
         // Process results for each motif
         for i in 0..<numMotifs {
-            //writeln("  Processing result ", i, " of ", numMotifs, " for root ", v);
+            // Get vertices for this motif
+            var baseIdx = i * k;
+            var vertices: [1..k] int;
+            for j in 0..<k {
+                vertices[j+1] = motifVerticesArray[baseIdx + j];
+            }
             
             // Extract results for this motif
             var nautyResults: [0..<k] int;
@@ -840,39 +827,14 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
                 nautyResults[j] = batchedResults[i * k + j];
             }
             
-            //writeln("  Nauty results for motif ", i, ": ", nautyResults);
-            
-            // Get the vertices for this motif
-            var baseIdx = i * k;
-            var vertices: [1..k] int;
-            for j in 0..<k {
-                // +1 offset for 1-based vertices array
-                vertices[j+1] = state.motifVertices[baseIdx + j];
-            }
-            
-            // writeln("  Vertices for pattern generation:");
-            // for j in 1..k {
-            //     writeln("    vertices[", j, "] = ", vertices[j]);
-            // }
-            
             // Generate pattern
-            try {
-                var pattern = generatePatternDirect(vertices, nautyResults, k);
-                localPatterns.add(pattern);
-                //writeln("  Added pattern ", pattern, " for motif ", i, " of root ", v);
-            } catch e {
-                writeln("ERROR in generatePatternDirect for motif ", i, ": ", e.message());
-            }
+            var pattern = generatePatternDirect(vertices, nautyResults, k);
+            localPatterns.add(pattern);
         }
         
         // Update global results
         totalCount.add(numMotifs);
         globalMotifSet += localPatterns;
-
-        if logLevel == LogLevel.DEBUG {
-            writeln("Completed processing for root ", v, ": found ", numMotifs, 
-               " motifs, ", localPatterns.size, " unique patterns");
-        }
     }
     
     // Set the final results
@@ -882,7 +844,6 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
     writeln("Total motifs found: ", globalMotifCount.read());
     writeln("Unique patterns found: ", globalMotifSet.size);
 }
-
 
     var timer:stopwatch;
 
