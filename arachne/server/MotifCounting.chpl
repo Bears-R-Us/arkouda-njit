@@ -793,6 +793,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         // Fill matrices for all motifs
         for i in 0..<numMotifs {
             var baseIdx = i * k;
+            var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
             
             // Create adjacency matrix
             for row in 0..<k {
@@ -803,10 +804,16 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
                         var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
                         if eid != -1 {
                             batchedMatrices[i * (k * k) + row * k + col] = 1;
+                            
+                            // Update binary representation - set bit at position (row * k + col)
+                            matrixBinary |= 1:uint(64) << (row * k + col);
                         }
                     }
                 }
             }
+            
+            // Print the binary representation for this matrix
+            //writeln("Matrix ", i, " binary: ", matrixBinary);
         }
         
         // Process with Nauty
@@ -844,6 +851,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
     writeln("Total motifs found: ", globalMotifCount.read());
     writeln("Unique patterns found: ", globalMotifSet.size);
 }
+
 
     var timer:stopwatch;
 
