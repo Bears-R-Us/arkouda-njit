@@ -75,7 +75,8 @@ module WellConnectedComponents {
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
                inputcluster_filePath: string, outputPath: string, outputType: string,
                connectednessCriterion: string, connectednessCriterionMultValue: real, 
-               preFilterMinSize: int, postFilterMinSize: int): int throws {
+               preFilterMinSize: int, postFilterMinSize: int, 
+               degreeOneIntercept: bool): int throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
@@ -315,6 +316,22 @@ module WellConnectedComponents {
       return reducedPartition;
     }
 
+    /* Given src and dst arrays it returns the first vertex with degree one or 
+       -1 of not found. */
+    proc checkForDegreeOne(ref src, ref dst) {
+      var degreeOneVertex = -1;
+      if src.size == 1 then degreeOneVertex = src[0];
+      else {
+        for i in 1..<src.size { 
+          if src[i] != src[i-1] {
+            degreeOneVertex = src[i];
+            break;
+          }
+        }
+      }
+      return degreeOneVertex;
+    }
+
     /* Recursive method that processes a given set of vertices (partition), denotes if it is 
        well-connected or not, and if not calls itself on the new generated partitions. */
     proc wccRecursiveChecker(ref vertices, ref src, ref dst, ref mapper, id: int, depth: int) throws {
@@ -325,7 +342,19 @@ module WellConnectedComponents {
       var m = src.size;
 
       var partitionArr: [{0..<n}] int;
-      var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+      var cut:int;
+      var degreeOneVertex = checkForDegreeOne(src, dst);
+
+      // Intercept the cut and set as 1 if there is a vertex with degree one.
+      if degreeOneIntercept {
+        if degreeOneVertex != -1 {
+          cut = 1;
+          for i in partitionArr.domain {
+            if i == degreeOneVertex then partitionArr[i] = 1;
+            else partitionArr[i] = 0;
+          }
+        } else cut = c_computeMinCut(partitionArr, src, dst, n, m);
+      } else cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
       var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
       if cut > criterionValue { // Cluster is well-connected.

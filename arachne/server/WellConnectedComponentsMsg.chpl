@@ -36,6 +36,7 @@ module WellConnectedComponentsMsg {
 		var connectednessCriterionMultValue = msgArgs.getValueOf("ConnectednessCriterionMultValue"):real;
 		var preFilterMinSize = msgArgs.getValueOf("PreFilterMinSize"):int;
 		var postFilterMinSize = msgArgs.getValueOf("PostFilterMinSize"):int;
+		var degreeOneIntercept = msgArgs.getValueOf("DegreeOneIntercept"):bool;
 
 		
 		// Pull out our graph from the symbol table.
@@ -56,7 +57,7 @@ module WellConnectedComponentsMsg {
 				use WellConnectedComponents;
 				numClusters = runWCC(g, st, filePath, outputPath, outputType, 
 														 connectednessCriterion, connectednessCriterionMultValue, 
-														 preFilterMinSize, postFilterMinSize);
+														 preFilterMinSize, postFilterMinSize, degreeOneIntercept);
 			} else {
 				use WellConnectedComponentsDistributed;
 				numClusters = runWCCDistributed(g, st, filePath, outputPath, outputType, 

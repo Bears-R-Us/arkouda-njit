@@ -624,7 +624,8 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
                               connectedness_criterion: Literal["log10", "log2",
                                                                "sqrt", "mult"] = "log10",
                               connectedness_criterion_mult_value: float = None,
-                              pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
+                              pre_filter_min_size: int = 10, post_filter_min_size: int = 10,
+                              degree_one_intercept = True) -> int:
     """
     Executes parallel well-connected components on a given graph and its clustering. Each induced
     cluster subgraph is checked for multiple connected components. If it is composed of more
@@ -731,7 +732,8 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
-             "PostFilterMinSize": post_filter_min_size}
+             "PostFilterMinSize": post_filter_min_size,
+             "DegreeOneIntercept": str(degree_one_intercept).lower()}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 
