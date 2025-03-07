@@ -316,17 +316,17 @@ module WellConnectedComponents {
       return reducedPartition;
     }
 
-    /* Given src and dst arrays it returns the first vertex with degree one or 
-       -1 of not found. */
-    proc checkForDegreeOne(ref src, ref dst) {
+    /* Given src array it returns the first vertex with degree one or -1 if 
+       not found. */
+    proc checkForDegreeOne(ref src) {
       var degreeOneVertex = -1;
-      if src.size == 1 then degreeOneVertex = src[0];
-      else {
-        for i in 1..<src.size { 
-          if src[i] != src[i-1] {
-            degreeOneVertex = src[i];
-            break;
-          }
+      var high = src[src.size-1];
+      var degrees: [{0..high}] int;
+      for u in src do degrees[u] += 1;
+      for (u,c) in zip(degrees.domain, degrees) {
+        if c == 1 {
+          degreeOneVertex = u;
+          break;
         }
       }
       return degreeOneVertex;
@@ -343,7 +343,7 @@ module WellConnectedComponents {
 
       var partitionArr: [{0..<n}] int;
       var cut:int;
-      var degreeOneVertex = checkForDegreeOne(src, dst);
+      var degreeOneVertex = checkForDegreeOne(src);
 
       // Intercept the cut and set as 1 if there is a vertex with degree one.
       if degreeOneIntercept {
