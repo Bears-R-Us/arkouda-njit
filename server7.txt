@@ -1,0 +1,370 @@
+
+
+******************************************************************************************
+******************************************************************************************
+*                                                                                        *
+*                          server listening on tcp://n0096:5555                          *
+*                          arkouda server version = v2024.06.21                          *
+*                             built with chapel version2.1.0                             *
+*                              memory limit = 486548394393                               *
+*                                bytes of memory used = 0                                *
+*                                                                                        *
+******************************************************************************************
+******************************************************************************************
+
+
+2025-03-10:17:20:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2025-03-10:17:20:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> connect 
+2025-03-10:17:20:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"connected to arkouda server tcp://*:5555", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< connect took 0.0010979175567626953 sec
+2025-03-10:17:20:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after connect command is 0% pct of max memory 486548394393
+2025-03-10:17:20:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [], size = 0}
+2025-03-10:17:20:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> getconfig []
+2025-03-10:17:20:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"{\"arkoudaVersion\":\"v2024.06.21\", \"chplVersion\":\"2.1.0\", \"ZMQVersion\":\"4.3.5\", \"HDF5Version\":\"1.12.2\", \"serverHostname\":\"n0096\", \"ServerPort\":5555, \"numLocales\":1, \"numPUs\":128, \"maxTaskPar\":1, \"physicalMemory\":540609327104, \"distributionType\":\"domain(1,int(64),one)\", \"LocaleConfigs\":[{\"id\":0, \"name\":\"n0096\", \"numPUs\":128, \"maxTaskPar\":1, \"physicalMemory\":540609327104}], \"authenticate\":false, \"logLevel\":\"INFO\", \"logChannel\":\"CONSOLE\", \"regexMaxCaptures\":20, \"byteorder\":\"little\", \"autoShutdown\":false, \"serverInfoNoSplash\":false,\"ARROW_VERSION\":\"19.0.1\"}", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< getconfig took 0.00016689300537109375 sec
+2025-03-10:17:20:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after getconfig command is 0% pct of max memory 486548394393
+2025-03-10:17:20:28 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = Path, val = /mmfs1/home/md724/arkouda-njit/arachne/data/wcc/test_network_simple_1.tsv, objType = VALUE, dtype = str), (key = Directed, val = False, objType = VALUE, dtype = bool), (key = CommentHeader, val = #, objType = VALUE, dtype = str)], size = 3}
+2025-03-10:17:20:28 [ServerDaemon] run Line 601 INFO [Chapel] >>> readTSVFile ["{\"key\": \"Path\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/mmfs1/home/md724/arkouda-njit/arachne/data/wcc/test_network_simple_1.tsv\"}", "{\"key\": \"Directed\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"CommentHeader\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"#\"}"]
+$$$$$ we get here 1
+$$$$$ we get here 2
+2025-03-10:17:20:28 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 184 memory limit = 486548394393 projected pct memory used of 0%
+2025-03-10:17:20:28 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_1 int64 23 1 [23] 8+ created id_fxB8KV3_2 int64 23 1 [23] 8+ nil", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:28 [ServerDaemon] run Line 722 INFO [Chapel] <<< readTSVFile took 0.0029110908508300781 sec
+2025-03-10:17:20:28 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after readTSVFile command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = dtype, val = int64, objType = VALUE, dtype = str), (key = shape, val = 1, objType = VALUE, dtype = int64), (key = seg_string, val = False, objType = VALUE, dtype = bool)], size = 3}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_4 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.0002880096435546875 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_fxB8KV3_1", "id_fxB8KV3_2"], objType = LIST, dtype = str)], size = 4}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_1\\\", \\\"id_fxB8KV3_2\\\"]\"}"]
+2025-03-10:17:20:29 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 368 memory limit = 486548394393 projected pct memory used of 0%
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_5 int64 46 1 [46] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.00037693977355957031 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_fxB8KV3_2", "id_fxB8KV3_1"], objType = LIST, dtype = str)], size = 4}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_2\\\", \\\"id_fxB8KV3_1\\\"]\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_6 int64 46 1 [46] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.00029706954956054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = dtype, val = float64, objType = VALUE, dtype = str), (key = shape, val = 1, objType = VALUE, dtype = int64), (key = seg_string, val = False, objType = VALUE, dtype = bool)], size = 3}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"float64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_7 float64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00023388862609863281 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = nstr, val = 2, objType = VALUE, dtype = int64), (key = keynames, val = ["id_fxB8KV3_5", "id_fxB8KV3_6"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray", "pdarray"], objType = LIST, dtype = str)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_5\\\", \\\"id_fxB8KV3_6\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\", \\\"pdarray\\\"]\"}"]
+2025-03-10:17:20:29 [ServerConfig] overMemLimit Line 378 INFO [Chapel] memory high watermark = 1049864 memory limit = 486548394393 projected pct memory used of 0%
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_9 int64 46 1 [46] 8+created id_fxB8KV3_10 int64 44 1 [44] 8+created id_fxB8KV3_11 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.0018091201782226562 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_fxB8KV3_5, objType = PDARRAY, dtype = int64), (key = idx, val = id_fxB8KV3_11, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_5\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_11\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_12 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00024890899658203125 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_fxB8KV3_6, objType = PDARRAY, dtype = int64), (key = idx, val = id_fxB8KV3_11, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_6\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_11\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_13 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00022411346435546875 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = op, val = ==, objType = VALUE, dtype = str), (key = a, val = id_fxB8KV3_12, objType = PDARRAY, dtype = int64), (key = b, val = id_fxB8KV3_13, objType = PDARRAY, dtype = int64)], size = 3}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> binopvv1D ["{\"key\": \"op\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"==\"}", "{\"key\": \"a\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_12\"}", "{\"key\": \"b\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_13\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_14 bool 44 1 [44] 1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< binopvv1D took 0.00027394294738769531 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after binopvv1D command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_14, objType = VALUE, dtype = str), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = targetDtype, val = int64, objType = VALUE, dtype = str), (key = opt, val = strict, objType = VALUE, dtype = str)], size = 4}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> cast1D ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_14\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"targetDtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"opt\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"strict\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_15 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< cast1D took 0.00027298927307128906 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after cast1D command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keynames, val = ["id_fxB8KV3_15"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_15\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_17 int64 44 1 [44] 8+created id_fxB8KV3_18 int64 1 1 [1] 8+created id_fxB8KV3_19 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.00035500526428222656 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_fxB8KV3_14, objType = PDARRAY, dtype = bool), (key = idx, val = id_fxB8KV3_19, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"bool\", \"val\": \"id_fxB8KV3_14\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_19\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_20 bool 1 1 [1] 1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00023198127746582031 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_15, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_15\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_15", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018787384033203125 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segments, val = id_fxB8KV3_18, objType = PDARRAY, dtype = int64), (key = size, val = 44, objType = VALUE, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> sizeReduction ["{\"key\": \"segments\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_18\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_21 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< sizeReduction took 0.00021290779113769531 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after sizeReduction command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_17, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_17\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_17", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018095970153808594 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_18, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_18\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_18", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017809867858886719 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_19, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_19\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_19", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_20, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_20\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_20", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017905235290527344 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_21, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_21\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_21", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017905235290527344 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keynames, val = ["id_fxB8KV3_12"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_12\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_23 int64 44 1 [44] 8+created id_fxB8KV3_24 int64 20 1 [20] 8+created id_fxB8KV3_25 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.00034999847412109375 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_fxB8KV3_12, objType = PDARRAY, dtype = int64), (key = idx, val = id_fxB8KV3_25, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_12\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_25\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_26 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.0002269744873046875 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = False, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keynames, val = ["id_fxB8KV3_13"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_13\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_28 int64 44 1 [44] 8+created id_fxB8KV3_29 int64 20 1 [20] 8+created id_fxB8KV3_30 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.00079393386840820312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_fxB8KV3_13, objType = PDARRAY, dtype = int64), (key = idx, val = id_fxB8KV3_30, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_13\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_30\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_31 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00022292137145996094 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = start, val = 0, objType = VALUE, dtype = int64), (key = stop, val = 20, objType = VALUE, dtype = int64), (key = stride, val = 1, objType = VALUE, dtype = int64), (key = dtype, val = int64, objType = VALUE, dtype = str)], size = 4}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> arange ["{\"key\": \"start\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"0\"}", "{\"key\": \"stop\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}", "{\"key\": \"stride\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_32 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< arange took 0.00027704238891601562 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after arange command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = permName, val = id_fxB8KV3_23, objType = VALUE, dtype = str), (key = segName, val = id_fxB8KV3_24, objType = VALUE, dtype = str), (key = valName, val = id_fxB8KV3_32, objType = VALUE, dtype = str), (key = permute, val = True, objType = VALUE, dtype = bool), (key = size, val = 44, objType = VALUE, dtype = int64)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> broadcast ["{\"key\": \"permName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_23\"}", "{\"key\": \"segName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_24\"}", "{\"key\": \"valName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_32\"}", "{\"key\": \"permute\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_33 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< broadcast took 0.000308990478515625 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after broadcast command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = permName, val = id_fxB8KV3_28, objType = VALUE, dtype = str), (key = segName, val = id_fxB8KV3_29, objType = VALUE, dtype = str), (key = valName, val = id_fxB8KV3_32, objType = VALUE, dtype = str), (key = permute, val = True, objType = VALUE, dtype = bool), (key = size, val = 44, objType = VALUE, dtype = int64)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> broadcast ["{\"key\": \"permName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_28\"}", "{\"key\": \"segName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_29\"}", "{\"key\": \"valName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_32\"}", "{\"key\": \"permute\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_34 int64 44 1 [44] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< broadcast took 0.00028204917907714844 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after broadcast command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = returnGroupStr, val = True, objType = VALUE, dtype = bool), (key = assumeSortedStr, val = True, objType = VALUE, dtype = bool), (key = nstr, val = 1, objType = VALUE, dtype = int64), (key = keynames, val = ["id_fxB8KV3_33"], objType = LIST, dtype = str), (key = keytypes, val = ["pdarray"], objType = LIST, dtype = str)], size = 5}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> unique ["{\"key\": \"returnGroupStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"assumeSortedStr\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"True\"}", "{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"keynames\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_33\\\"]\"}", "{\"key\": \"keytypes\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"pdarray\\\"]\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_36 int64 44 1 [44] 8+created id_fxB8KV3_37 int64 20 1 [20] 8+created id_fxB8KV3_38 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< unique took 0.00034999847412109375 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after unique command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = array, val = id_fxB8KV3_33, objType = PDARRAY, dtype = int64), (key = idx, val = id_fxB8KV3_38, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> [pdarray] ["{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_33\"}", "{\"key\": \"idx\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_38\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_39 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< [pdarray] took 0.00022387504577636719 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after [pdarray] command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = segments, val = id_fxB8KV3_37, objType = PDARRAY, dtype = int64), (key = size, val = 44, objType = VALUE, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> sizeReduction ["{\"key\": \"segments\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_37\"}", "{\"key\": \"size\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"44\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_40 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< sizeReduction took 0.00021505355834960938 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after sizeReduction command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = func, val = cumsum, objType = VALUE, dtype = str), (key = array, val = id_fxB8KV3_40, objType = PDARRAY, dtype = int64)], size = 2}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> efunc1D ["{\"key\": \"func\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"cumsum\"}", "{\"key\": \"array\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_40\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_41 int64 20 1 [20] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< efunc1D took 0.00023412704467773438 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after efunc1D command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = dtype, val = int64, objType = VALUE, dtype = str), (key = shape, val = 1, objType = VALUE, dtype = int64), (key = seg_string, val = False, objType = VALUE, dtype = bool)], size = 3}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> array1D ["{\"key\": \"dtype\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"int64\"}", "{\"key\": \"shape\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"seg_string\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_42 int64 1 1 [1] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< array1D took 0.00023198127746582031 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after array1D command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = nstr, val = 2, objType = VALUE, dtype = int64), (key = objType, val = pdarray, objType = VALUE, dtype = str), (key = mode, val = append, objType = VALUE, dtype = str), (key = names, val = ["id_fxB8KV3_42", "id_fxB8KV3_41"], objType = LIST, dtype = str)], size = 4}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> concatenate ["{\"key\": \"nstr\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"2\"}", "{\"key\": \"objType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"pdarray\"}", "{\"key\": \"mode\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"append\"}", "{\"key\": \"names\", \"objType\": \"LIST\", \"dtype\": \"str\", \"val\": \"[\\\"id_fxB8KV3_42\\\", \\\"id_fxB8KV3_41\\\"]\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"created id_fxB8KV3_43 int64 21 1 [21] 8", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< concatenate took 0.00029397010803222656 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after concatenate command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_41, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_41\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_41", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = SRC_SDI, val = id_fxB8KV3_33, objType = PDARRAY, dtype = int64), (key = DST_SDI, val = id_fxB8KV3_34, objType = PDARRAY, dtype = int64), (key = SEGMENTS_SDI, val = id_fxB8KV3_43, objType = PDARRAY, dtype = int64), (key = EDGE_WEIGHT_SDI, val = id_fxB8KV3_7, objType = PDARRAY, dtype = float64), (key = VERTEX_MAP_SDI, val = id_fxB8KV3_26, objType = PDARRAY, dtype = int64), (key = Directed, val = False, objType = VALUE, dtype = bool), (key = Weighted, val = False, objType = VALUE, dtype = bool), (key = NumVertices, val = 20, objType = VALUE, dtype = int64), (key = NumEdges, val = 22, objType = VALUE, dtype = int64)], size = 9}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> insertComponents ["{\"key\": \"SRC_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_33\"}", "{\"key\": \"DST_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_34\"}", "{\"key\": \"SEGMENTS_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_43\"}", "{\"key\": \"EDGE_WEIGHT_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"float64\", \"val\": \"id_fxB8KV3_7\"}", "{\"key\": \"VERTEX_MAP_SDI\", \"objType\": \"PDARRAY\", \"dtype\": \"int64\", \"val\": \"id_fxB8KV3_26\"}", "{\"key\": \"Directed\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"Weighted\", \"objType\": \"VALUE\", \"dtype\": \"bool\", \"val\": \"False\"}", "{\"key\": \"NumVertices\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"20\"}", "{\"key\": \"NumEdges\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"22\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"id_fxB8KV3_44", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< insertComponents took 0.00042605400085449219 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after insertComponents command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_6, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_6\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_6", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018095970153808594 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_5, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_5\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_5", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018000602722167969 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_9, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_9\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_9", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_10, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_10\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_10", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_11, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_11\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_11", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017690658569335938 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_14, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_14\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_14", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017905235290527344 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_12, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_12\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_12", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018095970153808594 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_23, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_23\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_23", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_24, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_24\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_24", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_25, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_25\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_25", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_13, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_13\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_13", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017690658569335938 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_31, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_31\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_31", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_28, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_28\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_28", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018405914306640625 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_29, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_29\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_29", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017404556274414062 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_30, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_30\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_30", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_32, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_32\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_32", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_39, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_39\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_39", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017809867858886719 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_36, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_36\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_36", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018310546875 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_37, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_37\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_37", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017285346984863281 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_38, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_38\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_38", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_40, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_40\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_40", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018000602722167969 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_42, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_42\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_42", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_33, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_33\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_33", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018095970153808594 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_34, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_34\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_34", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_43, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_43\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_43", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_7, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_7\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_7", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018095970153808594 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_26, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_26\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_26", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017595291137695312 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_1, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_1\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_1", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00018191337585449219 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_2, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_2\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_2", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017499923706054688 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = name, val = id_fxB8KV3_4, objType = VALUE, dtype = str)], size = 1}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> delete ["{\"key\": \"name\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_4\"}"]
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"deleted id_fxB8KV3_4", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< delete took 0.00017404556274414062 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after delete command is 0% pct of max memory 486548394393
+2025-03-10:17:20:29 [ServerDaemon] run Line 586 INFO [Chapel] MessageArgs: {param_list = [(key = GraphName, val = id_fxB8KV3_44, objType = VALUE, dtype = str), (key = FilePath, val = /mmfs1/home/md724/arkouda-njit/arachne/data/wcc/test_clustering_simple_1.tsv, objType = VALUE, dtype = str), (key = OutputPath, val = /mmfs1/home/md724/arkouda-njit/arachne/output/log10_test_network_wcc_output_post.tsv, objType = VALUE, dtype = str), (key = OutputType, val = post, objType = VALUE, dtype = str), (key = ConnectednessCriterion, val = log10, objType = VALUE, dtype = str), (key = ConnectednessCriterionMultValue, val = 0.0, objType = VALUE, dtype = float64), (key = PreFilterMinSize, val = 1, objType = VALUE, dtype = int64), (key = PostFilterMinSize, val = 1, objType = VALUE, dtype = int64)], size = 8}
+2025-03-10:17:20:29 [ServerDaemon] run Line 601 INFO [Chapel] >>> wellConnectedComponents ["{\"key\": \"GraphName\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"id_fxB8KV3_44\"}", "{\"key\": \"FilePath\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/mmfs1/home/md724/arkouda-njit/arachne/data/wcc/test_clustering_simple_1.tsv\"}", "{\"key\": \"OutputPath\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"/mmfs1/home/md724/arkouda-njit/arachne/output/log10_test_network_wcc_output_post.tsv\"}", "{\"key\": \"OutputType\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"post\"}", "{\"key\": \"ConnectednessCriterion\", \"objType\": \"VALUE\", \"dtype\": \"str\", \"val\": \"log10\"}", "{\"key\": \"ConnectednessCriterionMultValue\", \"objType\": \"VALUE\", \"dtype\": \"float64\", \"val\": \"0.0\"}", "{\"key\": \"PreFilterMinSize\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}", "{\"key\": \"PostFilterMinSize\", \"objType\": \"VALUE\", \"dtype\": \"int64\", \"val\": \"1\"}"]
+2025-03-10:17:20:29 [WellConnectedComponentsMsg] wellConnectedComponentsMsg Line 46 INFO [Chapel] Generating neighbors set.
+2025-03-10:17:20:29 [WellConnectedComponents] wcc Line 521 INFO [Chapel] Graph loaded with 20 vertices and 22 edges.
+2025-03-10:17:20:29 [WellConnectedComponents] readClustersFile Line 126 INFO [Chapel] Number of clusters originally found in file: 2
+2025-03-10:17:20:29 [WellConnectedComponents] wcc Line 524 INFO [Chapel] Reading clusters file finished.
+2025-03-10:17:20:29 [WellConnectedComponents] wcc Line 578 INFO [Chapel] Splitting up clusters yielded 3 new clusters.
+-+-+-+-+-Cluster 1 starting check
+Starting quick mincut check
+Cluster 1 IS well-connected!
+-+-+-+-+-Cluster 0 starting check
+Starting quick mincut check
+-+-+-+-+-Cluster 2 starting check
+Starting quick mincut check
+Cluster 2 IS well-connected!
+2025-03-10:17:20:29 [WellConnectedComponents] wcc Line 592 INFO [Chapel] WCC found 2 clusters to be well-connected.
+2025-03-10:17:20:29 [WellConnectedComponentsMsg] wellConnectedComponentsMsg Line 57 INFO [Chapel] Well connected components took 0.003956 sec
+2025-03-10:17:20:29 [ServerDaemon] sendRepMsg Line 309 INFO [Chapel] repMsg: {"msg":"2", "msgType":"NORMAL", "msgFormat":"STRING", "user":"md724"}
+2025-03-10:17:20:29 [ServerDaemon] run Line 722 INFO [Chapel] <<< wellConnectedComponents took 0.0043799877166748047 sec
+2025-03-10:17:20:29 [ServerDaemon] run Line 729 INFO [Chapel] bytes of memory 0 used after wellConnectedComponents command is 0% pct of max memory 486548394393
