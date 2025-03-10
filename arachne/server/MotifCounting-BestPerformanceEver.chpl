@@ -53,7 +53,7 @@ module MotifCounting {
         //var localClassCounts: map(uint(64), int, parSafe=false);
     
     // A list to store vertex sets for each motif found
-    var motifVertices: list([1..k] int);
+    var motifVertices: list(int, parSafe=true);
 
         // Helper functions to convert 2D indexing to 1D
         inline proc getSubgraphIndex(level: int, pos: int): int {
@@ -102,7 +102,7 @@ module MotifCounting {
             this.childSet = 0;
             this.indexMap = 0;
             this.localsubgraphCount = 0;
-        this.motifVertices = new list([1..k] int);
+        this.motifVertices = new list(int, parSafe=true);
 
             // Initialize the new map
             //this.localClassCounts = new map(uint(64), int, parSafe=false);
@@ -126,7 +126,9 @@ module MotifCounting {
         subgraphSize: int(64), 
         results: [] int(64),
         performCheck: int(64),
-        verbose: int(64)
+        verbose: int(64),
+        batchSize: int(64)
+
     ) : int(64);
   
 
@@ -187,12 +189,15 @@ module MotifCounting {
         var globalMotifMap: map(uint(64), int);
         //var syncVar: sync bool;
     
-    
+    //var nautyCache: map(uint(64), [0..<k] int, parSafe=true);
+
+
     var globalMotifSet: set(uint(64), parSafe=true);
     var totalCount: atomic int;
 totalCount.write(0);
 
-// var motifVerticesList: list([1..k] int, parSafe=true);
+// global set to track seen matrix binary representations
+    var seenMatrices: set(uint(64), parSafe=true);
 
         var Sampling: bool = false;
         if doSampling == 1 then Sampling = true;
@@ -301,21 +306,51 @@ totalCount.write(0);
         }// End of prepareNaugtyArguments
 
 
-        proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, k: int): uint(64) throws {
+       proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, k: int): uint(64) throws {
             var pattern: uint(64) = 0;
             var pos = 0;
-
+            if logLevel == LogLevel.DEBUG {
+                writeln("  In generatePatternDirect:");
+                writeln("    chosenVerts domain: ", chosenVerts.domain);
+                writeln("    nautyLabels domain: ", nautyLabels.domain);
+            }            
             // Generate pattern directly from vertex pairs
             for i in 0..#k {
                 for j in 0..#k {
                     if i != j {
+                        // Add boundary checking
+                        if nautyLabels[i] < 0 || nautyLabels[i] >= k {
+                            writeln("    ERROR: Invalid nauty label at i=", i, ": ", nautyLabels[i]);
+                            continue;
+                        }
+                        if nautyLabels[j] < 0 || nautyLabels[j] >= k {
+                            writeln("    ERROR: Invalid nauty label at j=", j, ": ", nautyLabels[j]);
+                            continue;
+                        }
+                        
+                        // Verify indices are within bounds for chosenVerts
+                        var idx1 = nautyLabels[i] + 1;
+                        var idx2 = nautyLabels[j] + 1;
+                        
+                        if idx1 < chosenVerts.domain.low || idx1 > chosenVerts.domain.high {
+                            writeln("    ERROR: Index ", idx1, " out of bounds for chosenVerts (", chosenVerts.domain, ")");
+                            continue;
+                        }
+                        if idx2 < chosenVerts.domain.low || idx2 > chosenVerts.domain.high {
+                            writeln("    ERROR: Index ", idx2, " out of bounds for chosenVerts (", chosenVerts.domain, ")");
+                            continue;
+                        }
+                        
                         // Get vertices based on nauty labels
-                        var u = chosenVerts[nautyLabels[i] + 1];
-                        var w = chosenVerts[nautyLabels[j] + 1];
+                        var u = chosenVerts[idx1];
+                        var w = chosenVerts[idx2];
+                        
+                        //writeln("    Checking edge between vertices ", u, " and ", w);
                         
                         // Check for edge and set bit
                         var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
                         if eid != -1 {
+                            //writeln("    Edge found, setting bit at position ", pos);
                             pattern |= 1:uint(64) << pos;
                         }
                     }
@@ -323,11 +358,9 @@ totalCount.write(0);
                 }
             }
 
-            if logLevel == LogLevel.DEBUG {
-                writeln("Generated pattern= ", pattern, " Nauty labels: ", nautyLabels, " Original chosenVerts: ", nodeMapGraphG1[chosenVerts]);
-            }
+            //writeln("    Generated pattern: ", pattern);
             return pattern;
-        }// End of generatePatternDirect
+        }
 
         // Explores subgraphs containing the root vertex,
         // expanding level by level until remainedToVisit = 0 (Base case - which means we have chosen k vertices).
@@ -359,12 +392,15 @@ if remainedToVisit == 0 {
         const vertCount = state.getSubgraph(level, 0);
         for pos in 1..vertCount {
             chosenVerts[idx] = state.getSubgraph(level, pos);
+                // Add to the list in the state
+
+            state.motifVertices.pushBack(chosenVerts[idx]);
+
             idx += 1;
+
         }
     }
-    
-    // Add to the list in the state
-    state.motifVertices.pushBack(chosenVerts);
+    state.localsubgraphCount += 1;
     
     return;
 }
@@ -698,16 +734,15 @@ if remainedToVisit == 0 {
             return pattern;
         }
 
-
-        ///////////////////////////////Main Code/////////////////////////////////////////////////
+       ///////////////////////////////Main Code/////////////////////////////////////////////////
 
 
         // Enumerate: Iterates over all vertices as potential roots
         // and calls Explore to find all subgraphs of size k containing that root.
-        proc Enumerate(n: int, k: int, maxDeg: int) throws {
+proc Enumerate(n: int, k: int, maxDeg: int) throws {
 
     
-    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount) {
+    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
         var state = new KavoshState(n, k, maxDeg);
         
         // Initialize root vertex in subgraph
@@ -719,56 +754,145 @@ if remainedToVisit == 0 {
         // Find all motifs for this root
         Explore(state, v, 1, state.k - 1);
         
+        // Calculate how many complete motifs we found
+        const numMotifs = state.localsubgraphCount;
+        const totalVertices = state.motifVertices.size;
+        
+        // Skip if no motifs found
+        if numMotifs == 0 || totalVertices == 0 {
+            continue;
+        }
+        
+        // Verify we have the expected number of vertices
+        if totalVertices != numMotifs * k {
+            writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
+                    " but got ", totalVertices, ". Skipping this root.");
+            continue;
+        }
+        
         // Now classify all motifs found from this root
         var localPatterns: set(uint(64), parSafe=false);
         
-        // Process each motif
-        for chosenVerts in state.motifVertices {
-            // Create adjacency matrix
-            var adjMatrix: [0..#(k * k)] int = 0;
+        // Get the motif vertices as an array
+        var motifVerticesArray = state.motifVertices.toArray();
+        
+        // Create arrays for batch processing
+        var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
+        var batchedResults: [0..#(numMotifs * k)] int;
+        
+        // Track which matrices need to be processed
+        var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
+        var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
+        
+        // Fill matrices and check for duplicates
+        for i in 0..<numMotifs {
+            var baseIdx = i * k;
+            var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
             
-            // Fill adjacency matrix
-            for i in 0..#k {
-                for j in 0..#k {
-                    if i != j {  // Skip self-loops
-                        var u = chosenVerts[i+1];
-                        var w = chosenVerts[j+1];
+            // Create adjacency matrix
+            for row in 0..<k {
+                for col in 0..<k {
+                    if row != col {  // Skip self-loops
+                        var u = motifVerticesArray[baseIdx + row];
+                        var w = motifVerticesArray[baseIdx + col];
                         var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
                         if eid != -1 {
-                            adjMatrix[i * k + j] = 1;
+                            batchedMatrices[i * (k * k) + row * k + col] = 1;
+                            
+                            // Update binary representation - set bit at position (row * k + col)
+                            matrixBinary |= 1:uint(64) << (row * k + col);
                         }
                     }
                 }
             }
             
-            // Classify with Nauty
-            var results: [0..<k] int;
-            var status = c_nautyClassify(adjMatrix, k, results, 1, 0);
-            
-            if status == 0 {
-                var pattern = generatePatternDirect(chosenVerts, results, k);
-                localPatterns.add(pattern);
+            // Check if we've seen this matrix before
+            if seenMatrices.contains(matrixBinary) {
+                // We've seen this pattern before, skip Nauty processing
+                seenIndices.add(i);
+            } else {
+                // New pattern, add to seen matrices and process
+                seenMatrices.add(matrixBinary);
+                matricesToProcess.pushBack((i, matrixBinary));
             }
         }
         
-        // Update global results
-        totalCount.add(state.motifVertices.size);
-        globalMotifSet += localPatterns;
-        
-        if logLevel == LogLevel.DEBUG {
-            writeln("Root ", v, ": found ", state.motifVertices.size, 
-                   " motifs, ", localPatterns.size, " unique patterns");
+        // Process only unseen matrices with Nauty
+        if matricesToProcess.size > 0 {
+            // Create smaller batch arrays for just the unseen matrices
+            var uniqueCount = matricesToProcess.size;
+            var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
+            var uniqueResults: [0..#(uniqueCount * k)] int;
+            
+            // Fill unique matrices array
+            for i in 0..<uniqueCount {
+                var (origIdx, _) = matricesToProcess[i];
+                var origOffset = origIdx * (k * k);
+                var newOffset = i * (k * k);
+                
+                // Copy matrix from original batch to unique batch
+                for j in 0..<(k * k) {
+                    uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
+                }
+            }
+            
+            // Process only unique matrices with Nauty
+            var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
+            
+            // Copy results back to original results array
+            for i in 0..<uniqueCount {
+                var (origIdx, _) = matricesToProcess[i];
+                var origOffset = origIdx * k;
+                var newOffset = i * k;
+                
+                // Copy results
+                for j in 0..<k {
+                    batchedResults[origOffset + j] = uniqueResults[newOffset + j];
+                }
+            }
         }
+        
+        // Process results for each motif
+        for i in 0..<numMotifs {
+            // Skip processing motifs that were seen before
+            if seenIndices.contains(i) {
+                // We still need to count these motifs
+                totalCount.add(1);
+                continue;
+            }
+            
+            // Get vertices for this motif
+            var baseIdx = i * k;
+            var vertices: [1..k] int;
+            for j in 0..<k {
+                vertices[j+1] = motifVerticesArray[baseIdx + j];
+            }
+            
+            // Extract results for this motif
+            var nautyResults: [0..<k] int;
+            for j in 0..<k {
+                nautyResults[j] = batchedResults[i * k + j];
+            }
+            
+            // Generate pattern
+            var pattern = generatePatternDirect(vertices, nautyResults, k);
+            localPatterns.add(pattern);
+            
+            // Count this motif
+            totalCount.add(1);
+        }
+        
+        // Add local patterns to global set
+        globalMotifSet += localPatterns;
     }
     
     // Set the final results
     globalMotifCount.write(totalCount.read());
     
-    if logLevel == LogLevel.DEBUG {
-        writeln("Enumerate: finished enumeration");
-        writeln("Total motifs found: ", globalMotifCount.read());
-        writeln("Unique patterns found: ", globalMotifSet.size);
-    }
+    writeln("Enumerate: finished enumeration");
+    writeln("Total motifs found: ", globalMotifCount.read());
+    writeln("Unique patterns found: ", globalMotifSet.size);
+    writeln("Unique matrices seen (pre-Nauty): ", seenMatrices.size);
 }
     var timer:stopwatch;
 
@@ -795,16 +919,20 @@ for elem in globalMotifSet {
   globalMotifMap[elem] = 1;
 }
 
-    var (uniqueMotifClasses, finalMotifArr, motifCounts) = verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
+    //var (uniqueMotifClasses, finalMotifArr, motifCounts) = verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
+            var uniqueMotifClasses: set(uint(64));
+            var uniqueMotifCounts: map(uint(64), int);
+            var motifCount = 0;
 
         var tempArr: [0..0] int;
+        var finalMotifArr:[0..0] int;
         var srcPerMotif = makeDistArray(2*2, int);
         var dstPerMotif = makeDistArray(2*2, int);
 
         srcPerMotif[srcPerMotif.domain.low] = uniqueMotifClasses.size; //after verification
         srcPerMotif[srcPerMotif.domain.low +1] = globalMotifSet.size;   // before verification
         srcPerMotif[srcPerMotif.domain.low +2] = globalMotifCount.read(); // all motifs
-        srcPerMotif[srcPerMotif.domain.low +3] = motifCounts.size;     // this is naive approach to return pattern 200 has 134 instances
+        srcPerMotif[srcPerMotif.domain.low +3] = uniqueMotifCounts.size;     // this is naive approach to return pattern 200 has 134 instances
         
         return (srcPerMotif, finalMotifArr, tempArr, tempArr);
     }// End of runMotifCounting
