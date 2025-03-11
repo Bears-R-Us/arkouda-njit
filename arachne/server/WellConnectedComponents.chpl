@@ -621,14 +621,16 @@ proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       forall key in newClusters.keysToArray() with (ref newClusters) {
-        ref clusterToAdd = newClusters[key];
-        if logLevel == LogLevel.DEBUG {
-          var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
-                    + newClusterIdToOriginalClusterId[key]:string + ".";
-          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        }
-        writeln("cluster is:", clusterToAdd);
-        wccRecursiveChecker(clusterToAdd, key, 0);
+        //if key == 79853 {
+            ref clusterToAdd = newClusters[key];
+            if logLevel == LogLevel.DEBUG {
+              var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
+                        + newClusterIdToOriginalClusterId[key]:string + ".";
+              wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+            }
+            writeln("cluster is:", clusterToAdd);
+            wccRecursiveChecker(clusterToAdd, key, 0);
+          //}
       }
       if outputType == "post" then writeClustersToFile();
       
