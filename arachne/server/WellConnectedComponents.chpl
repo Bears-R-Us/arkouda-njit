@@ -64,6 +64,65 @@ module WellConnectedComponents {
   proc sqrtCriterion(n:int,  m:real) { return floor(sqrt(n:real)/5); }
   proc multCriterion(n:int,  m:real) { return floor(m*n:real); }
 
+  /* Record to store the result of finding well-connected clusters */
+  record ClusterResult {
+    var vertices: list(int, parSafe=true);
+    var clusterIds: list(int, parSafe=true);
+    
+    proc init() {
+      this.vertices = new list(int, parSafe=true);
+      this.clusterIds = new list(int, parSafe=true);
+    }
+    
+    /* Add a cluster to the result */
+    proc addCluster(ref clusterVertices: set(int), clusterId: int) {
+      for v in clusterVertices {
+        this.vertices.pushBack(v);
+        this.clusterIds.pushBack(clusterId);
+      }
+    }
+    
+    /* Merge another result into this one */
+    proc merge(const ref other: ClusterResult) {
+      for (v, c) in zip(other.vertices, other.clusterIds) {
+        this.vertices.pushBack(v);
+        this.clusterIds.pushBack(c);
+      }
+    }
+    
+    /* Number of clusters in the result */
+    proc numClusters(): int {
+      var uniqueIds = new set(int);
+      for id in this.clusterIds do uniqueIds.add(id);
+      return uniqueIds.size;
+    }
+    
+    /* Reassign cluster IDs to be sequential starting from 0 */
+    proc reassignIds(): (list(int, parSafe=true), list(int, parSafe=true)) throws{
+      var oldToNew = new map(int, int);
+      var uniqueIds: list(int) = new list(int);
+      
+      // Collect unique cluster IDs
+      for id in this.clusterIds {
+        if !oldToNew.contains(id) {
+          oldToNew[id] = uniqueIds.size;
+          uniqueIds.pushBack(id);
+        }
+      }
+      
+      // Create new lists with reassigned IDs
+      var newVertices = new list(int, parSafe=true);
+      var newClusterIds = new list(int, parSafe=true);
+      
+      for (v, c) in zip(this.vertices, this.clusterIds) {
+        newVertices.pushBack(v);
+        newClusterIds.pushBack(oldToNew[c]);
+      }
+      
+      return (newVertices, newClusterIds);
+    }
+  }
+
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
                inputcluster_filePath: string, outputPath: string, outputType: string,
                connectednessCriterion: string, connectednessCriterionMultValue: real, 
@@ -76,8 +135,6 @@ module WellConnectedComponents {
     
     var finalVertices = new list(int, parSafe=true);
     var finalClusters = new list(int, parSafe=true);
-    var globalId:atomic int = 0;
-
     
     var newClusterIdToOriginalClusterId = new map(int, int);
     var criterionFunction = if connectednessCriterion == "log10" then log10Criterion
@@ -103,7 +160,7 @@ module WellConnectedComponents {
           const (found, idx) = binarySearch(nodeMapGraphG1, originalNode);
 
           if found {
-            var mappedNode = idx;// Map from original node ID to Arachne index
+            var mappedNode = idx;
             if clusters.contains(clusterID) {
               clusters[clusterID].add(mappedNode);
             } else {
@@ -144,7 +201,7 @@ module WellConnectedComponents {
         const ref neighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
         for v in neighbors {
           if v2idx.contains(v) {
-            srcList.pushBack(v2idx[u]); // Arachne index → 0-based local index
+            srcList.pushBack(v2idx[u]);
             dstList.pushBack(v2idx[v]);
           }
         }
@@ -155,14 +212,11 @@ module WellConnectedComponents {
       var dst = dstList.toArray();
 
       // Sort the redges and remove any multiples if they exist.
-      // TODO: Do we actually need to sort and remove multiple edges? If the input graph is simple, 
-      //       wouldn't any induced subgraphs also be simple?
       var (sortedSrc, sortedDst) = sortEdgeList(src, dst);
       var (uniqueSrc, uniqueDst) = removeMultipleEdges(sortedSrc, sortedDst);
 
       return (uniqueSrc, uniqueDst, idx2v);
     }
-
 
     /* Define a custom tuple comparator. */
     record TupleComparator {
@@ -222,540 +276,299 @@ module WellConnectedComponents {
       return setIntersectionSize(neighbors,members);
     }
 
-    /* Writes a cluster out to a file DURING its well-connectedness check. Contains verbose output
-      for debugging purposes. */
-    proc writeClustersToFile(ref members:set(int), id:int, currentId:int, d:int, c:int) throws {
-      var filename = outputPath + "_" + newClusterIdToOriginalClusterId[id]:string + "_" + id:string 
-                   + currentId:string + "_" + members.size:string + "_" + d:string + "_" + c:string 
-                   + ".tsv";
-      var file = open(filename, ioMode.cw);
-      var fileWriter = file.writer(locking=false);
-      var mappedArr = nodeMapGraphG1[members.toArray()];
-
-      fileWriter.writeln("# Original Cluster ID:             " + newClusterIdToOriginalClusterId[id]:string);
-      fileWriter.writeln("# Connected Components Cluster ID: " + id:string);
-      fileWriter.writeln("# Final Cluster ID:                " + currentId:string);
-      fileWriter.writeln("# Cluster Depth:                   " + d:string);
-      fileWriter.writeln("# Number of Members:               " + members.size:string);
-      fileWriter.writeln("# Minimum Cut:                     " + c:string);
-      fileWriter.writeln("# Members:                         ");
-      for m in mappedArr do fileWriter.writeln(m:string);
-      
-      try fileWriter.close();
-      try file.close();
-    }
-
     /* Writes all clusters out to a file AFTER they are deemed well-connected. */
-    proc writeClustersToFile() throws {
+    proc writeClustersToFile(ref vertices: list(int), ref clusterIds: list(int)) throws {
       var filename = outputPath;
       var outfile = open(filename, ioMode.cw);
       var writer = outfile.writer(locking=false);
 
-
-  // Group vertices by cluster ID
-  var clusterMap = new map(int, set(int));
-  for (v, c) in zip(finalVertices, finalClusters) {
-    if clusterMap.contains(c) {
-      clusterMap[c].add(v);
-    } else {
-      var s = new set(int);
-      s.add(v);
-      clusterMap[c] = s;
-    }
-  }
-writeln("Performing final connected components check on ", clusterMap.size, " clusters before writing.");
-  
-  // Check each cluster for connectedness
-  var nonCCClusters = 0;
-  for c in clusterMap.keys() {
-    ref vertices = clusterMap[c];
-    var (src, dst, mapper) = getEdgeList(vertices);
-    
-    if src.size > 0 {
-      var components = connectedComponents(src, dst, mapper.size);
-      
-      // Check if there are multiple components
-      var hasMultipleComponents = false;
-      for comp in components do if comp != 0 { hasMultipleComponents = true; break; }
-      
-      if hasMultipleComponents {
-        writeln("WARNING: Cluster ", c, " (size ", vertices.size, ") is NOT CONNECTED at final output stage!");
-        nonCCClusters += 1;
-      }
-    }
-  }
-  
-  if nonCCClusters > 0 {
-    writeln("FINAL WARNING: Found ", nonCCClusters, " non-connected clusters out of ", clusterMap.size, " total clusters!");
-  } else {
-    writeln("All clusters are connected. Output complete.");
-  }
-
-
-
-
-      for (v,c) in zip(finalVertices, finalClusters) do writer.writeln(nodeMapGraphG1[v], " ", c);
+      for (v,c) in zip(vertices, clusterIds) do writer.writeln(nodeMapGraphG1[v], " ", c);
 
       writer.close();
       outfile.close();
     }
 
-    /* Writes a cluster out to a file DURING its well-connectedness check. */
-    proc writeClustersToFile(ref vertices: set(int), cluster:int) throws {
-      var filename = outputPath;
-      var outfile = open(filename, ioMode.a);
-      var writer = outfile.writer(locking=true);
-
-      for v in vertices do writer.writeln(nodeMapGraphG1[v], " ", cluster);
-
-      writer.close();
-      outfile.close();
-    }
-
-    /* Given a specific partition, removes vertices with degree one, and returns a new set. */
-    proc removeDegreeOne(ref partition:set(int)): set(int) throws{
-      if partition.size <= 1 {
-        var zeroset = new set(int);
-        return zeroset;
-      }
-      var reducedPartition = partition;
-      for v in partition {
-        var memberDegree = calculateClusterDegree(partition, v);
-        if memberDegree < 2 then reducedPartition.remove(v);
-      }
-      return reducedPartition;
-    }
-    
     /* Returns first node found with lowest possible degree < threshold, or -1 if no such node exists */
     proc findMinDegreeNode(ref members: set(int), threshold: int) throws {
-        // Only look for degree 1 nodes regardless of threshold
+      // If threshold is 1, we can return immediately since no node can have degree < 1
+      if threshold <= 1 {
+        return -1;
+      }
+      
+      // Start from degree 1 and work up to threshold-1
+      for degree in 1..<threshold {
+        // Return the first node we find with this degree
         for v in members {
-            var nodeDegree = calculateClusterDegree(members, v);
-            if nodeDegree == 1 {
-                return v;
-            }
+          var nodeDegree = calculateClusterDegree(members, v);
+          if nodeDegree == degree {
+            return v;
+          }
         }
-        return -1;  // No node found with degree 1
+      }
+      return -1;  // No node found with degree < threshold
     }
 
- /* Try to determine if cluster is not well-connected by removing low degree nodes */
+    /* Try to determine if cluster is not well-connected by removing low degree nodes */
     proc quickMinCutCheck(ref vertices: set(int)) throws {
-        writeln("Starting quick mincut check");
-        var currentVertices = vertices;
-        var removedNodes = new set(int);  // Track removed nodes
+      writeln("Starting quick mincut check");
+      var currentVertices = vertices;
+      var removedNodes = new set(int);  // Track removed nodes
+      
+      while currentVertices.size > 0 {
+        var criterionValue = criterionFunction(currentVertices.size, connectednessCriterionMultValue):int;
+        var minDegreeThreshold = criterionValue + 1;
+        writeln("Current cluster size: ", currentVertices.size, ", criterion value: ", criterionValue);
         
-        while currentVertices.size > 0 {
-            var criterionValue = criterionFunction(currentVertices.size, connectednessCriterionMultValue):int;
-            // var minDegreeThreshold = criterionValue + 1;
-            var minDegreeThreshold = criterionValue;
-            // writeln("Current cluster size: ", currentVertices.size, ", criterion value: ", criterionValue);
-            
-            var nodeToRemove = findMinDegreeNode(currentVertices, minDegreeThreshold);
-            if nodeToRemove == -1 {
-                // writeln("No more low degree nodes found - need proper mincut check");
-                vertices = currentVertices;  // Update original vertices to current state
-                return (false, removedNodes);
-            }
-            
-            // Remove the node and track it
-            currentVertices.remove(nodeToRemove);
-            removedNodes.add(nodeToRemove);
-            // writeln("Removed node ", nodeToRemove, ", remaining vertices: ", currentVertices.size);
-            
-            // If we've removed enough nodes that criterionValue can't be met
-            if currentVertices.size <= criterionValue {
-                // writeln("Criterion value can't be met after removals");
-                vertices = currentVertices;  // Update original vertices to current state
-                return (true, removedNodes);
-            }
+        var nodeToRemove = findMinDegreeNode(currentVertices, minDegreeThreshold);
+        if nodeToRemove == -1 {
+          writeln("No more low degree nodes found - need proper mincut check");
+          vertices = currentVertices;  // Update original vertices to current state
+          return (false, removedNodes);
         }
-        vertices = currentVertices;  // Update original vertices to current state
-        return (true, removedNodes);
-    }    
-
-      // Create a thread-local collector class for each thread to store its results
-      record ThreadLocalCollector {
-        var vertices: list(int);
-        var clusters: list(int);
         
-        proc init() {
-          this.vertices = new list(int);
-          this.clusters = new list(int);
+        // Remove the node and track it
+        currentVertices.remove(nodeToRemove);
+        removedNodes.add(nodeToRemove);
+        writeln("Removed node ", nodeToRemove, ", remaining vertices: ", currentVertices.size);
+        
+        // If we've removed enough nodes that criterionValue can't be met
+        if currentVertices.size <= criterionValue {
+          writeln("Criterion value can't be met after removals");
+          vertices = currentVertices;  // Update original vertices to current state
+          return (true, removedNodes);
         }
       }
-
-/* 
-  Modified version of wccRecursiveChecker that uses thread-local collections
-  instead of global finalVertices and finalClusters
-*/
-proc wccRecursiveCheckerLocal(ref vertices: set(int), id: int, depth: int, ref localCollector: ThreadLocalCollector) throws {
-  writeln("-+-+-+-+-Cluster ", id, " starting check");
-  
-  // First try quick mincut check
-  var (quickResult, removedNodes) = quickMinCutCheck(vertices);
-  if quickResult {
-    writeln("Quick mincut determined cluster ", id, " is not well-connected");
-    // writeln("Removed nodes: ", removedNodes);
-    // writeln("Remaining vertices: ", vertices.size);
-    
-    // If we don't have enough vertices remaining, return
-    if vertices.size <= postFilterMinSize {
-      writeln("Remaining vertices too small (", vertices.size, " <= ", postFilterMinSize, "), skipping");
-      return;
+      vertices = currentVertices;  // Update original vertices to current state
+      return (true, removedNodes);
     }
-  }
-  
-  // Either quick check didn't determine result, or we have enough vertices to continue
-  var (src, dst, mapper) = getEdgeList(vertices);
 
-  // If the generated edge list is empty, then return
-  if src.size < 1 {
-    writeln("Empty edge list for cluster ", id, ", returning");
-    return;
-  }
-
-  var n = mapper.size;
-  var m = src.size;
-  
-  // writeln("src: ", src);
-  // writeln("dst: ", dst);
-  // writeln("m: ", m);
-  // writeln("n: ", n);
-
-  // Run Viecut to both check well-connectedness and get the partition if needed
-  var partitionArr: [{0..<n}] int;
-  var cut = c_computeMinCut(partitionArr, src, dst, n, m);
-  var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-
-  writeln("cut: ", cut);
-  writeln("criterionValue: ", criterionValue);
-
-  if cut > criterionValue { // Cluster is well-connected
-    writeln("Cluster ", id, " IS well-connected!");
-    var currentId = globalId.fetchAdd(1);
-    
-    if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
-    else if outputType == "during" then writeClustersToFile(vertices, currentId);
-    
-    // Add to thread-local collections instead of global ones
-    for v in vertices {
-      localCollector.vertices.pushBack(v);
-      localCollector.clusters.pushBack(currentId);
-    }
-    
-    if logLevel == LogLevel.DEBUG {
-      var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
-                 + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
-      wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-    }
-    return;
-  }
-
-  // If we're here, cluster is not well-connected (either from quick check or min-cut)
-  writeln("-+-+-+-+-Cluster ", id, " is NOT well-connected");
-  
-  // Use the partition from Viecut to split the cluster into two partitions
-  var cluster1 = new set(int);
-  var cluster2 = new set(int);
+    /* 
+       Recursive method that processes a given set of vertices (partition), determines if it is 
+       well-connected, and if not splits it using Viecut. Returns a ClusterResult with the
+       well-connected clusters found.
+    */
+    proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int, localClusterId: int): ClusterResult throws{
+      writeln("-+-+-+-+-Cluster ", id, " starting check with local ID ", localClusterId);
+      var result = new ClusterResult();
       
-  // Separate vertices into two partitions using the min-cut result
-  for (v,p) in zip(partitionArr.domain, partitionArr) {
-    if p == 1 then cluster1.add(mapper[v]);
-    else cluster2.add(mapper[v]);
-  }
-  
-  writeln("Min-cut partition sizes - cluster1: ", cluster1.size, ", cluster2: ", cluster2.size);
-      
-  // Process cluster1 if it meets the size threshold
-  if cluster1.size > postFilterMinSize {
-    // Check if cluster1 is connected
-    var (c1src, c1dst, c1mapper) = getEdgeList(cluster1);
-    if c1src.size > 0 {
-      var c1components = connectedComponents(c1src, c1dst, c1mapper.size);
-      
-      // Check if there are multiple components
-      var hasMultipleComponents = false;
-      for c in c1components do if c != 0 { hasMultipleComponents = true; break; }
-      
-      if hasMultipleComponents {
-        writeln("WARNING: Mincut created a disconnected cluster1! Splitting into connected components.");
-        
-        // Create a map from component ID to set of vertices
-        var componentMap = new map(int, set(int));
-        for (c,v) in zip(c1components, c1components.domain) {
-          if componentMap.contains(c) then componentMap[c].add(c1mapper[v]);
-          else {
-            var s = new set(int);
-            s.add(c1mapper[v]);
-            componentMap[c] = s;
-          }
-        }
-        
-        // Recurse on each connected component that meets the size threshold
-        for compId in componentMap.keys() {
-          if componentMap[compId].size > postFilterMinSize {
-            writeln("Recursing on connected component ", compId, " from cluster1 (size ", componentMap[compId].size, ")");
-            wccRecursiveCheckerLocal(componentMap[compId], id, depth+1, localCollector);
-          } else {
-            writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
-          }
-        }
-      } else {
-        // Cluster1 is a single connected component, recurse normally
-        writeln("Recursing on cluster1 from cluster ", id);
-        wccRecursiveCheckerLocal(cluster1, id, depth+1, localCollector);
-      }
-    } else {
-      writeln("Empty edge list for cluster1, skipping");
-    }
-  } else {
-    writeln("cluster1 too small (", cluster1.size, " <= ", postFilterMinSize, "), skipping");
-  }
-  
-  // Process cluster2 if it meets the size threshold
-  if cluster2.size > postFilterMinSize {
-    // Check if cluster2 is connected
-    var (c2src, c2dst, c2mapper) = getEdgeList(cluster2);
-    if c2src.size > 0 {
-      var c2components = connectedComponents(c2src, c2dst, c2mapper.size);
-      
-      // Check if there are multiple components
-      var hasMultipleComponents = false;
-      for c in c2components do if c != 0 { hasMultipleComponents = true; break; }
-      
-      if hasMultipleComponents {
-        writeln("WARNING: Mincut created a disconnected cluster2! Splitting into connected components.");
-        
-        // Create a map from component ID to set of vertices
-        var componentMap = new map(int, set(int));
-        for (c,v) in zip(c2components, c2components.domain) {
-          if componentMap.contains(c) then componentMap[c].add(c2mapper[v]);
-          else {
-            var s = new set(int);
-            s.add(c2mapper[v]);
-            componentMap[c] = s;
-          }
-        }
-        
-        // Recurse on each connected component that meets the size threshold
-        for compId in componentMap.keys() {
-          if componentMap[compId].size > postFilterMinSize {
-            writeln("Recursing on connected component ", compId, " from cluster2 (size ", componentMap[compId].size, ")");
-            wccRecursiveCheckerLocal(componentMap[compId], id, depth+1, localCollector);
-          } else {
-            writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
-          }
-        }
-      } else {
-        // Cluster2 is a single connected component, recurse normally
-        writeln("Recursing on cluster2 from cluster ", id);
-        wccRecursiveCheckerLocal(cluster2, id, depth+1, localCollector);
-      }
-    } else {
-      writeln("Empty edge list for cluster2, skipping");
-    }
-  } else {
-    writeln("cluster2 too small (", cluster2.size, " <= ", postFilterMinSize, "), skipping");
-  }
-  
-  writeln("Finished processing cluster ", id);
-  return;
-}
-
-
-/* 
-   Recursive method that processes a given set of vertices (partition), determines if it is 
-   well-connected, and if not splits it using Viecut instead of Leiden.
-*/
-proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
-    writeln("-+-+-+-+-Cluster ", id, " starting check");
-    
-    // First try quick mincut check
-    var (quickResult, removedNodes) = quickMinCutCheck(vertices);
-    if quickResult {
+      // First try quick mincut check
+      var (quickResult, removedNodes) = quickMinCutCheck(vertices);
+      if quickResult {
         writeln("Quick mincut determined cluster ", id, " is not well-connected");
-        // writeln("Removed nodes: ", removedNodes);
-        // writeln("Remaining vertices: ", vertices.size);
+        writeln("Removed nodes: ", removedNodes);
+        writeln("Remaining vertices: ", vertices.size);
         
-        // If we don't have enough vertices remaining, return
+        // If we don't have enough vertices remaining, return empty result
         if vertices.size <= postFilterMinSize {
-            writeln("Remaining vertices too small (", vertices.size, " <= ", postFilterMinSize, "), skipping");
-            return;
+          writeln("Remaining vertices too small (", vertices.size, " <= ", postFilterMinSize, "), skipping");
+          return result;
         }
-    }
-    
-    // Either quick check didn't determine result, or we have enough vertices to continue
-    var (src, dst, mapper) = getEdgeList(vertices);
+      }
+      
+      // Either quick check didn't determine result, or we have enough vertices to continue
+      var (src, dst, mapper) = getEdgeList(vertices);
 
-    // If the generated edge list is empty, then return
-    if src.size < 1 {
-        //writeln("Empty edge list for cluster ", id, ", returning");
-        return;
-    }
+      // If the generated edge list is empty, then return empty result
+      if src.size < 1 {
+        writeln("Empty edge list for cluster ", id, ", returning");
+        return result;
+      }
 
-    var n = mapper.size;
-    var m = src.size;
-    
-    // writeln("src: ", src);
-    // writeln("dst: ", dst);
-    // writeln("m: ", m);
-    // writeln("n: ", n);
+      var n = mapper.size;
+      var m = src.size;
+      
+      writeln("src: ", src);
+      writeln("dst: ", dst);
+      writeln("m: ", m);
+      writeln("n: ", n);
 
-    // Verify the cluster is connected (it should be, but double check)
-    var checkComponents = connectedComponents(src, dst, n);
-    var isConnected = true;
-    for c in checkComponents do if c != 0 { isConnected = false; break; }
-    
-    if !isConnected {
-        writeln("WARNING: Cluster ", id, " is NOT CONNECTED! This shouldn't happen at this stage.");
-        // Could add more diagnostics here if needed
-    }
-
-    // Run Viecut to both check well-connectedness and get the partition if needed
-    var partitionArr: [{0..<n}] int;
-    var cut = c_computeMinCut(partitionArr, src, dst, n, m);
-    var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-
-    // writeln("cut: ", cut);
-    // writeln("criterionValue: ", criterionValue);
-
-    if cut > criterionValue { // Cluster is well-connected
-        writeln("Cluster ", id, " IS well-connected!");
-        var currentId = globalId.fetchAdd(1);
-        if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
-        else if outputType == "during" then writeClustersToFile(vertices, currentId);
-        for v in vertices {
-            finalVertices.pushBack(v);
-            finalClusters.pushBack(currentId);
-        }
-        if logLevel == LogLevel.DEBUG {
-            var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
-                       + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
-            wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-        }
-        return;
-    }
-
-    // If we're here, cluster is not well-connected (either from quick check or min-cut)
-    writeln("-+-+-+-+-Cluster ", id, " is NOT well-connected");
-    
-    // Use the partition from Viecut to split the cluster into two partitions
-    var cluster1 = new set(int);
-    var cluster2 = new set(int);
+      // Verify the cluster is connected
+      var checkComponents = connectedComponents(src, dst, n);
+      var isConnected = true;
+      for c in checkComponents do if c != 0 { isConnected = false; break; }
+      
+      if !isConnected {
+        writeln("WARNING: Cluster ", id, " is NOT CONNECTED! Splitting into connected components.");
         
-    // Separate vertices into two partitions using the min-cut result
-    for (v,p) in zip(partitionArr.domain, partitionArr) {
-        if p == 1 then cluster1.add(mapper[v]);  // Local index → Arachne index
+        // Create a map from component ID to set of vertices
+        var componentMap = new map(int, set(int));
+        for (c,v) in zip(checkComponents, checkComponents.domain) {
+          if componentMap.contains(c) then componentMap[c].add(mapper[v]);
+          else {
+            var s = new set(int);
+            s.add(mapper[v]);
+            componentMap[c] = s;
+          }
+        }
+        
+        // Process each connected component separately
+        var nextLocalId = localClusterId;
+        for compId in componentMap.keys() {
+          if componentMap[compId].size > postFilterMinSize {
+            writeln("Processing connected component ", compId, " from cluster ", id);
+            var compResult = wccRecursiveChecker(componentMap[compId], id, depth, nextLocalId);
+            result.merge(compResult);
+            nextLocalId += compResult.numClusters();
+          } else {
+            writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
+          }
+        }
+        
+        return result;
+      }
+
+      // Run Viecut to both check well-connectedness and get the partition if needed
+      var partitionArr: [{0..<n}] int;
+      var cut = c_computeMinCut(partitionArr, src, dst, n, m);
+      var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
+
+      writeln("cut: ", cut);
+      writeln("criterionValue: ", criterionValue);
+
+      if cut > criterionValue { // Cluster is well-connected
+        writeln("Cluster ", id, " IS well-connected! Assigning local ID ", localClusterId);
+        
+        // Add cluster to result with the local cluster ID
+        result.addCluster(vertices, localClusterId);
+        
+        if logLevel == LogLevel.DEBUG {
+          var outMsg = "Cluster " + id:string + " with depth " + depth:string + " and cutsize " 
+                     + cut:string + " is well-connected with " + vertices.size:string + " vertices.";
+          wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+        }
+        return result;
+      }
+
+      // If we're here, cluster is not well-connected
+      writeln("-+-+-+-+-Cluster ", id, " is NOT well-connected");
+      
+      // Use the partition from Viecut to split the cluster into two partitions
+      var cluster1 = new set(int);
+      var cluster2 = new set(int);
+          
+      // Separate vertices into two partitions using the min-cut result
+      for (v,p) in zip(partitionArr.domain, partitionArr) {
+        if p == 1 then cluster1.add(mapper[v]);
         else cluster2.add(mapper[v]);
-    }
-    
-    writeln("Min-cut partition sizes - cluster1: ", cluster1.size, ", cluster2: ", cluster2.size);
-    
-    // Process cluster1 if it meets the size threshold
-    if cluster1.size > postFilterMinSize {
+      }
+      
+      writeln("Min-cut partition sizes - cluster1: ", cluster1.size, ", cluster2: ", cluster2.size);
+          
+      // Process cluster1 if it meets the size threshold
+      var nextLocalId = localClusterId;
+      
+      if cluster1.size > postFilterMinSize {
         // Check if cluster1 is connected
         var (c1src, c1dst, c1mapper) = getEdgeList(cluster1);
         if c1src.size > 0 {
-            var c1components = connectedComponents(c1src, c1dst, c1mapper.size);
+          var c1components = connectedComponents(c1src, c1dst, c1mapper.size);
+          
+          // Check if there are multiple components
+          var hasMultipleComponents = false;
+          for c in c1components do if c != 0 { hasMultipleComponents = true; break; }
+          
+          if hasMultipleComponents {
+            writeln("WARNING: Mincut created a disconnected cluster1! Splitting into connected components.");
             
-            // Check if there are multiple components
-            var hasMultipleComponents = false;
-            for c in c1components do if c != 0 { hasMultipleComponents = true; break; }
-            
-            if hasMultipleComponents {
-                writeln("WARNING: Mincut created a disconnected cluster1! Splitting into connected components.");
-                
-                // Create a map from component ID to set of vertices
-                var componentMap = new map(int, set(int));
-                for (c,v) in zip(c1components, c1components.domain) {
-                    if componentMap.contains(c) then componentMap[c].add(c1mapper[v]);   // Local index → Arachne index
-                    else {
-                        var s = new set(int);
-                        s.add(c1mapper[v]);
-                        componentMap[c] = s;
-                    }
-                }
-                
-                // Recurse on each connected component that meets the size threshold
-                for compId in componentMap.keys() {
-                    if componentMap[compId].size > postFilterMinSize {
-                        //writeln("Recursing on connected component ", compId, " from cluster1 (size ", componentMap[compId].size, ")");
-                        wccRecursiveChecker(componentMap[compId], id, depth+1);
-                    } else {
-                        //writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
-                    }
-                }
-            } else {
-                // Cluster1 is a single connected component, recurse normally
-                //writeln("Recursing on cluster1 from cluster ", id);
-                wccRecursiveChecker(cluster1, id, depth+1);
+            // Create a map from component ID to set of vertices
+            var componentMap = new map(int, set(int));
+            for (c,v) in zip(c1components, c1components.domain) {
+              if componentMap.contains(c) then componentMap[c].add(c1mapper[v]);
+              else {
+                var s = new set(int);
+                s.add(c1mapper[v]);
+                componentMap[c] = s;
+              }
             }
+            
+            // Recurse on each connected component that meets the size threshold
+            for compId in componentMap.keys() {
+              if componentMap[compId].size > postFilterMinSize {
+                writeln("Recursing on connected component ", compId, " from cluster1 (size ", componentMap[compId].size, ")");
+                var compResult = wccRecursiveChecker(componentMap[compId], id, depth+1, nextLocalId);
+                result.merge(compResult);
+                nextLocalId += compResult.numClusters();
+              } else {
+                writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
+              }
+            }
+          } else {
+            // Cluster1 is a single connected component, recurse normally
+            writeln("Recursing on cluster1 from cluster ", id);
+            var cluster1Result = wccRecursiveChecker(cluster1, id, depth+1, nextLocalId);
+            result.merge(cluster1Result);
+            nextLocalId += cluster1Result.numClusters();
+          }
         } else {
-            //writeln("Empty edge list for cluster1, skipping");
+          writeln("Empty edge list for cluster1, skipping");
         }
-    } else {
-        //writeln("cluster1 too small (", cluster1.size, " <= ", postFilterMinSize, "), skipping");
-    }
-    
-    // Process cluster2 if it meets the size threshold
-    if cluster2.size > postFilterMinSize {
+      } else {
+        writeln("cluster1 too small (", cluster1.size, " <= ", postFilterMinSize, "), skipping");
+      }
+      
+      // Process cluster2 if it meets the size threshold
+      if cluster2.size > postFilterMinSize {
         // Check if cluster2 is connected
         var (c2src, c2dst, c2mapper) = getEdgeList(cluster2);
         if c2src.size > 0 {
-            var c2components = connectedComponents(c2src, c2dst, c2mapper.size);
+          var c2components = connectedComponents(c2src, c2dst, c2mapper.size);
+          
+          // Check if there are multiple components
+          var hasMultipleComponents = false;
+          for c in c2components do if c != 0 { hasMultipleComponents = true; break; }
+          
+          if hasMultipleComponents {
+            writeln("WARNING: Mincut created a disconnected cluster2! Splitting into connected components.");
             
-            // Check if there are multiple components
-            var hasMultipleComponents = false;
-            for c in c2components do if c != 0 { hasMultipleComponents = true; break; }
-            
-            if hasMultipleComponents {
-                writeln("WARNING: Mincut created a disconnected cluster2! Splitting into connected components.");
-                
-                // Create a map from component ID to set of vertices
-                var componentMap = new map(int, set(int));
-                for (c,v) in zip(c2components, c2components.domain) {
-                    if componentMap.contains(c) then componentMap[c].add(c2mapper[v]);
-                    else {
-                        var s = new set(int);
-                        s.add(c2mapper[v]);
-                        componentMap[c] = s;
-                    }
-                }
-                
-                // Recurse on each connected component that meets the size threshold
-                for compId in componentMap.keys() {
-                    if componentMap[compId].size > postFilterMinSize {
-                        //writeln("Recursing on connected component ", compId, " from cluster2 (size ", componentMap[compId].size, ")");
-                        wccRecursiveChecker(componentMap[compId], id, depth+1);
-                    } else {
-                        //writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
-                    }
-                }
-            } else {
-                // Cluster2 is a single connected component, recurse normally
-                //writeln("Recursing on cluster2 from cluster ", id);
-                wccRecursiveChecker(cluster2, id, depth+1);
+            // Create a map from component ID to set of vertices
+            var componentMap = new map(int, set(int));
+            for (c,v) in zip(c2components, c2components.domain) {
+              if componentMap.contains(c) then componentMap[c].add(c2mapper[v]);
+              else {
+                var s = new set(int);
+                s.add(c2mapper[v]);
+                componentMap[c] = s;
+              }
             }
+            
+            // Recurse on each connected component that meets the size threshold
+            for compId in componentMap.keys() {
+              if componentMap[compId].size > postFilterMinSize {
+                writeln("Recursing on connected component ", compId, " from cluster2 (size ", componentMap[compId].size, ")");
+                var compResult = wccRecursiveChecker(componentMap[compId], id, depth+1, nextLocalId);
+                result.merge(compResult);
+                nextLocalId += compResult.numClusters();
+              } else {
+                writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
+              }
+            }
+          } else {
+            // Cluster2 is a single connected component, recurse normally
+            writeln("Recursing on cluster2 from cluster ", id);
+            var cluster2Result = wccRecursiveChecker(cluster2, id, depth+1, nextLocalId);
+            result.merge(cluster2Result);
+            nextLocalId += cluster2Result.numClusters();
+          }
         } else {
-            //writeln("Empty edge list for cluster2, skipping");
+          writeln("Empty edge list for cluster2, skipping");
         }
-    } else {
-        //writeln("cluster2 too small (", cluster2.size, " <= ", postFilterMinSize, "), skipping");
+      } else {
+        writeln("cluster2 too small (", cluster2.size, " <= ", postFilterMinSize, "), skipping");
+      }
+      
+      writeln("Finished processing cluster ", id);
+      return result;
     }
-    
-    writeln("Finished processing cluster ", id);
-    return;
-}
 
-    /* Main executing function for well-connected components with thread-local collections */
+    /* Main executing function for well-connected components. */
     proc wcc(g1: SegGraph): int throws {
       var outMsg = "Graph loaded with " + g1.n_vertices:string + " vertices and " 
-                + g1.n_edges:string + " edges.";
+                 + g1.n_edges:string + " edges.";
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
       var originalClusters = readClustersFile(inputcluster_filePath);
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),
-                    "Reading clusters file finished.");
+                     "Reading clusters file finished.");
 
       var newClusterIds: chpl__processorAtomicType(int) = 0;
       var newClusters = new map(int, set(int));
@@ -797,14 +610,14 @@ proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
       outMsg = "Splitting up clusters yielded " + newClusters.size:string + " new clusters.";
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
-
+      // Process each cluster in parallel
+      var allResults = new ClusterResult();
+      var lock: sync bool = true;
       
-      // Use a synchronized array to collect results from all threads
-      var collectorsSyncVar: sync bool = true;
-      var collectors: [0..here.maxTaskPar-1] ThreadLocalCollector;
+      // Track the starting local ID for each task
+      var clusterCount: atomic int = 0;
       
-      // Process clusters in parallel with thread-local collectors
-      forall (key, taskID) in zip(newClusters.keysToArray(), 0..) with (ref newClusters, ref collectors) {
+      forall key in newClusters.keysToArray() with (ref newClusters, ref allResults) {
         ref clusterToAdd = newClusters[key];
         if logLevel == LogLevel.DEBUG {
           var outMsg = "Processing cluster " + key:string + " which is a subcluster of " 
@@ -812,36 +625,30 @@ proc wccRecursiveChecker(ref vertices: set(int), id: int, depth: int) throws {
           wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
         }
         
-        // Get thread-local collector for this task
-        ref localCollector = collectors[taskID % collectors.size];
+        // Get a starting local ID for this task's clusters
+        var localStartId = clusterCount.fetchAdd(1000); // Allocate space for up to 1000 clusters per task
         
-        // Process the cluster with thread-local collector
-        wccRecursiveCheckerLocal(clusterToAdd, key, 0, localCollector);
-      }
-      
-      // After parallel execution, merge all thread-local results into final collections
-      var totalClusters = 0;
-      for i in 0..<collectors.size {
-        ref collector = collectors[i];
+        // Process the cluster with thread-local cluster IDs
+        var result = wccRecursiveChecker(clusterToAdd, key, 0, localStartId);
         
-        // Count how many clusters we found
-        var clusterSet = new set(int);
-        for c in collector.clusters do clusterSet.add(c);
-        totalClusters += clusterSet.size;
-        
-        // Add all vertices and clusters to the global lists
-        for (v, c) in zip(collector.vertices, collector.clusters) {
-          finalVertices.pushBack(v);
-          finalClusters.pushBack(c);
+        // If we found well-connected clusters, add them to the combined results
+        if result.vertices.size > 0 {
+          lock.readFE(); // acquire lock
+          allResults.merge(result);
+          lock.writeEF(true); // release lock
         }
       }
       
-      if outputType == "post" then writeClustersToFile();
+      // Reassign cluster IDs to be sequential starting from 0
+      var (finalVerticesList, finalClustersList) = allResults.reassignIds();
       
-      outMsg = "WCC found " + totalClusters:string + " clusters to be well-connected.";
+      // Write clusters to file if requested
+      if outputType == "post" then writeClustersToFile(finalVerticesList, finalClustersList);
+      
+      outMsg = "WCC found " + allResults.numClusters():string + " clusters to be well-connected.";
       wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
-      return totalClusters;
+      return allResults.numClusters();
     } // end of wcc
     
     var numClusters = wcc(g1);
