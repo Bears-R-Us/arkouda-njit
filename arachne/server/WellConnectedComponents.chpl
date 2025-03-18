@@ -459,104 +459,36 @@ module WellConnectedComponents {
           
       // Process cluster1 if it meets the size threshold
       var nextLocalId = localClusterId;
-      
+            
+      // Process cluster1 if it meets the size threshold
       if cluster1.size > postFilterMinSize {
-        // Check if cluster1 is connected
-        // To Oliver: We need this check for the THE TESTS ONLY, I added just because Viecut can create disconnected partitions and I was
-        // worry about missing the WARNING. but never happened. 
-        // To Oliver: We should REMOVE it before MERGE!
+        // Get edge list for recursion
         var (c1src, c1dst, c1mapper) = getEdgeList(cluster1);
         if c1src.size > 0 {
-          var c1components = connectedComponents(c1src, c1dst, c1mapper.size);
-          
-          // Check if there are multiple components
-          var hasMultipleComponents = false;
-          for c in c1components do if c != 0 { hasMultipleComponents = true; break; }
-          
-          if hasMultipleComponents {
-            writeln("----------->>>>>>WARNING: Mincut created a disconnected cluster1! Splitting into connected components.");
-            
-            // Create a map from component ID to set of vertices
-            var componentMap = new map(int, set(int));
-            for (c,v) in zip(c1components, c1components.domain) {
-              if componentMap.contains(c) then componentMap[c].add(c1mapper[v]);
-              else {
-                var s = new set(int);
-                s.add(c1mapper[v]);
-                componentMap[c] = s;
-              }
-            }
-            
-            // Recurse on each connected component that meets the size threshold
-            for compId in componentMap.keys() {
-              if componentMap[compId].size > postFilterMinSize {
-                writeln("Recursing on connected component ", compId, " from cluster1 (size ", componentMap[compId].size, ")");
-                var compResult = wccRecursiveChecker(componentMap[compId], id, depth+1, nextLocalId);
-                result.merge(compResult);
-                nextLocalId += compResult.numClusters();
-              } else {
-                //writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
-              }
-            }
-          } else {
-            // Cluster1 is a single connected component, recurse normally
-            //writeln("Recursing on cluster1 from cluster ", id);
-            var cluster1Result = wccRecursiveChecker(cluster1, id, depth+1, nextLocalId);
-            result.merge(cluster1Result);
-            nextLocalId += cluster1Result.numClusters();
-          }
+          // Remove all connected components checks
+          // Directly recurse on cluster1
+          var cluster1Result = wccRecursiveChecker(cluster1, id, depth+1, nextLocalId);
+          result.merge(cluster1Result);
+          nextLocalId += cluster1Result.numClusters();
         } else {
-          writeln("Empty edge list for cluster1, skipping");
+          //writeln("Empty edge list for cluster1, skipping");
         }
       } else {
         //writeln("cluster1 too small (", cluster1.size, " <= ", postFilterMinSize, "), skipping");
       }
-      
+
       // Process cluster2 if it meets the size threshold
       if cluster2.size > postFilterMinSize {
-        // Check if cluster2 is connected
+        // Get edge list for recursion
         var (c2src, c2dst, c2mapper) = getEdgeList(cluster2);
         if c2src.size > 0 {
-          var c2components = connectedComponents(c2src, c2dst, c2mapper.size);
-          
-          // Check if there are multiple components
-          var hasMultipleComponents = false;
-          for c in c2components do if c != 0 { hasMultipleComponents = true; break; }
-          
-          if hasMultipleComponents {
-            writeln("----------->>>>>>WARNING: Mincut created a disconnected cluster2! Splitting into connected components.");
-            
-            // Create a map from component ID to set of vertices
-            var componentMap = new map(int, set(int));
-            for (c,v) in zip(c2components, c2components.domain) {
-              if componentMap.contains(c) then componentMap[c].add(c2mapper[v]);
-              else {
-                var s = new set(int);
-                s.add(c2mapper[v]);
-                componentMap[c] = s;
-              }
-            }
-            
-            // Recurse on each connected component that meets the size threshold
-            for compId in componentMap.keys() {
-              if componentMap[compId].size > postFilterMinSize {
-                writeln("Recursing on connected component ", compId, " from cluster2 (size ", componentMap[compId].size, ")");
-                var compResult = wccRecursiveChecker(componentMap[compId], id, depth+1, nextLocalId);
-                result.merge(compResult);
-                nextLocalId += compResult.numClusters();
-              } else {
-                writeln("Connected component ", compId, " too small (", componentMap[compId].size, " <= ", postFilterMinSize, "), skipping");
-              }
-            }
-          } else {
-            // Cluster2 is a single connected component, recurse normally
-            //writeln("Recursing on cluster2 from cluster ", id);
-            var cluster2Result = wccRecursiveChecker(cluster2, id, depth+1, nextLocalId);
-            result.merge(cluster2Result);
-            nextLocalId += cluster2Result.numClusters();
-          }
+          // Remove all connected components checks
+          // Directly recurse on cluster2
+          var cluster2Result = wccRecursiveChecker(cluster2, id, depth+1, nextLocalId);
+          result.merge(cluster2Result);
+          nextLocalId += cluster2Result.numClusters();
         } else {
-          writeln("Empty edge list for cluster2, skipping");
+          //writeln("Empty edge list for cluster2, skipping");
         }
       } else {
         //writeln("cluster2 too small (", cluster2.size, " <= ", postFilterMinSize, "), skipping");
