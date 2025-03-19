@@ -149,3 +149,5 @@ GraphServerModules.cfg.*
 .arkouda
 .benchmarks
 .idea
+
+/nauty-wrapper
