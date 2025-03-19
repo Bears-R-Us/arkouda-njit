@@ -150,4 +150,4 @@ GraphServerModules.cfg.*
 .benchmarks
 .idea
 
-/nauty-wrapper
+arachne/server/nauty-wrapper/
