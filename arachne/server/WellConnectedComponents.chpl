@@ -331,40 +331,32 @@ module WellConnectedComponents {
       outfile.close();
     }
 
-    /* Returns first node found with lowest possible degree < threshold, or -1 if no such node exists */
-    proc findMinDegreeNode(ref members: set(int), threshold: int) throws {
-      // If threshold is 1, we can return immediately since no node can have degree < 1
-      if threshold <= 1 {
-        return -1;
-      }
-      
-      // Start from degree 1 and work up to threshold-1
-      for degree in 1..<threshold {
-        // Return the first node we find with this degree
-        for v in members {
-          var nodeDegree = calculateClusterDegree(members, v);
-          if nodeDegree == degree {
-            return v;
-          }
+    /* Returns first node found with degree 1, or -1 if no such node exists */
+    proc findMinDegreeNode(ref members: set(int)) throws {
+      // Only look for degree 1 nodes, regardless of threshold
+      for v in members {
+        var nodeDegree = calculateClusterDegree(members, v);
+        if nodeDegree == 1 {
+          return v;
         }
       }
-      return -1;  // No node found with degree < threshold
+      return -1;  // No node found with degree 1
     }
 
-    /* Try to determine if cluster is not well-connected by removing low degree nodes */
+    /* Try to determine if cluster is not well-connected by removing degree 1 nodes only */
     proc quickMinCutCheck(ref vertices: set(int)) throws {
-      //writeln("Starting quick mincut check");
+      writeln("Starting quick mincut check (degree 1 only)");
       var currentVertices = vertices;
       var removedNodes = new set(int);  // Track removed nodes
       
       while currentVertices.size > 0 {
         var criterionValue = criterionFunction(currentVertices.size, connectednessCriterionMultValue):int;
-        var minDegreeThreshold = criterionValue + 1;
         //writeln("Current cluster size: ", currentVertices.size, ", criterion value: ", criterionValue);
         
-        var nodeToRemove = findMinDegreeNode(currentVertices, minDegreeThreshold);
+        // Find a node with degree 1
+        var nodeToRemove = findMinDegreeNode(currentVertices);
         if nodeToRemove == -1 {
-          //writeln("No more low degree nodes found - need proper mincut check");
+          writeln("No more degree 1 nodes found - need proper mincut check");
           vertices = currentVertices;  // Update original vertices to current state
           return (false, removedNodes);
         }
@@ -372,11 +364,11 @@ module WellConnectedComponents {
         // Remove the node and track it
         currentVertices.remove(nodeToRemove);
         removedNodes.add(nodeToRemove);
-        //writeln("Removed node ", nodeToRemove, ", remaining vertices: ", currentVertices.size);
+        //writeln("Removed node ", nodeToRemove, " with degree 1, remaining vertices: ", currentVertices.size);
         
         // If we've removed enough nodes that criterionValue can't be met
         if currentVertices.size <= criterionValue {
-          //writeln("Criterion value can't be met after removals");
+          writeln("Criterion value can't be met after removals");
           vertices = currentVertices;  // Update original vertices to current state
           return (true, removedNodes);
         }
@@ -413,7 +405,7 @@ module WellConnectedComponents {
 
       // If the generated edge list is empty, then return empty result
       if src.size < 1 {
-        writeln("Empty edge list for cluster ", id, ", returning");
+        //writeln("Empty edge list for cluster ", id, ", returning");
         return result;
       }
 
