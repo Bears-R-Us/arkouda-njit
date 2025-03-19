@@ -149,3 +149,6 @@ GraphServerModules.cfg.*
 .arkouda
 .benchmarks
 .idea
+
+arachne/server/nauty-wrapper/
+arachne/server/Clustering_Algorithms/
