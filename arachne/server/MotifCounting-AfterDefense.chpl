@@ -195,11 +195,9 @@ module MotifCounting {
     var globalMotifSet: set(uint(64), parSafe=true);
     var totalCount: atomic int;
 totalCount.write(0);
+var nautyCache: map(uint(64), uint(64), parSafe=true);
 
-var c_nautyClassifyCounter: atomic int;
-c_nautyClassifyCounter.write(0);
-var  c_nautyClassifyCounterMatrices: atomic int;
- c_nautyClassifyCounterMatrices.write(0);
+
 // global set to track seen matrix binary representations
     var seenMatrices: set(uint(64), parSafe=true);
 
@@ -614,7 +612,16 @@ if remainedToVisit == 0 {
             var motifCount = 0;
             
             writeln("\n=== Starting Pattern Verification ===");
-            writeln(globalMotifSet.size, " patterns found before verification");
+            // writeln(globalMotifSet.size, " patterns found before verification: ");
+            // writeln("Total patterns found before verification: ", globalMotifSet);
+            // writeln("globalCounts: ", globalCounts);
+            // writeln("globalCounts.size: ", globalCounts.size);
+
+            // writeln("Pattern counts before verification:");
+            // for pattern in globalCounts.keys() {
+            //     writeln("Pattern ", pattern, ": ", globalCounts[pattern], " occurrences");
+            // }
+            // writeln("=====================================\n");
             
             var motifArr: [0..#(globalMotifSet.size * motifSize * motifSize)] int;
             
@@ -624,17 +631,17 @@ if remainedToVisit == 0 {
                     writeln("Ignoring broken pattern");
                     continue;
                 }
-
+    
                 // Convert pattern to adjacency matrix
                 var adjMatrix = patternToAdjMatrix(pattern, motifSize);
                 var results: [0..<motifSize] int;
                 
                 var performCheck = 1;
                 var verbose = 0;
-                if logLevel == LogLevel.DEBUG { verbose = 1; }
+                if logLevel == LogLevel.DEBUG { verbose = 1; } // Set to 1 to enable verbose logging
 
-                // Run Nauty on the adjacency matrix - just once!
-                var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose, 1);
+                // Run Nauty on the adjacency matrix
+                var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
                 
                 if status != 0 {
                     writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
@@ -650,36 +657,32 @@ if remainedToVisit == 0 {
                     }
                 }
                 
-                var canonicalPattern: uint(64);
-                var canonicalMatrix: [0..#(motifSize * motifSize)] int;
+                var matrixToAdd: [0..#(motifSize * motifSize)] int;
+                var patternToAdd: uint(64);
                 
-                if isCanonical {
-                    // If already canonical, use original pattern
-                    canonicalPattern = pattern;
-                    canonicalMatrix = adjMatrix;
-                    if logLevel == LogLevel.DEBUG {
-                        writeln("Pattern ", pattern, " is already canonical");
-                    }
+                if isCanonical { // If canonical, add original pattern and matrix
+                    patternToAdd = pattern;
+                    matrixToAdd = adjMatrix;
+                    writeln("Pattern ", pattern, " is canonical");
                 } else {
-                    // Generate canonical pattern directly from Nauty labels
-                    canonicalPattern = generateNautyPattern(adjMatrix, results, motifSize);
-                    canonicalMatrix = patternToAdjMatrix(canonicalPattern, motifSize);
-                    if logLevel == LogLevel.DEBUG {
-                        writeln("Pattern ", pattern, " mapped to canonical form ", canonicalPattern);
-                    }
+                    // Generate new pattern from Nauty's labeling
+                    var nautyPattern = generateNautyPattern(adjMatrix, results, motifSize);
+                    patternToAdd = nautyPattern;
+                    matrixToAdd = patternToAdjMatrix(nautyPattern, motifSize);
+                    writeln("Pattern ", pattern, " is not canonical, mapped to ", nautyPattern);
                 }
                 
                 // Add the pattern and update counts
-                if !uniqueMotifCounts.contains(canonicalPattern) {
-                    uniqueMotifCounts[canonicalPattern] = 0;
+                if !uniqueMotifCounts.contains(patternToAdd) {
+                    uniqueMotifCounts[patternToAdd] = 0;
                 }
-                uniqueMotifCounts[canonicalPattern] += globalCounts[pattern];
-                uniqueMotifClasses.add(canonicalPattern);
+                uniqueMotifCounts[patternToAdd] += globalCounts[pattern];
+                uniqueMotifClasses.add(patternToAdd);
                 
                 // Add matrix to motifArr
                 var startIdx = motifCount * motifSize * motifSize;
                 for i in 0..#(motifSize * motifSize) {
-                    motifArr[startIdx + i] = canonicalMatrix[i];
+                    motifArr[startIdx + i] = matrixToAdd[i];
                 }
                 motifCount += 1;
             }
@@ -691,10 +694,11 @@ if remainedToVisit == 0 {
             writeln("\n=== Verification Results ===");
             writeln("Started with total patterns: ", globalMotifSet.size);
             writeln("Found unique canonical patterns: ", uniqueMotifClasses.size);
+            writeln("Filtered out non-canonical patterns: ", globalMotifSet.size - uniqueMotifClasses.size);
             writeln("\nCanonical patterns and their counts:");
-            for pattern in uniqueMotifClasses {
-                writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
-            }
+            // for pattern in uniqueMotifClasses {
+            //     writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
+            // }
             writeln("===========================\n");
             
             var idx = 0;
@@ -710,23 +714,18 @@ if remainedToVisit == 0 {
             return (uniqueMotifClasses, finalMotifArr, finalCountArr);
         }
 
-
-        // New function to create pattern from adjMatrix and Nauty labeling
+        // New function to create pattern from adjMatrix and Nauty labeling the old one has a tiny flaw
         proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
             var pattern: uint(64) = 0;
             var pos = 0;
             
-            // Look at each possible edge position in the canonical form
             for i in 0..<motifSize {
                 for j in 0..<motifSize {
                     if i != j {  // Skip self-loops
-                        // The key insight: nautyLabels tells us where original vertices go in canonical form
-                        // If original vertices at positions nautyLabels[i] and nautyLabels[j] had an edge,
-                        // then canonical form has an edge from i to j
+                        // Find original vertices that should be at positions i and j in canonical form
                         var origI = -1;
                         var origJ = -1;
                         
-                        // Find original vertices that map to i and j in canonical form
                         for v in 0..<motifSize {
                             if nautyLabels[v] == i {
                                 origI = v;
@@ -736,9 +735,8 @@ if remainedToVisit == 0 {
                             }
                         }
                         
-                        // Check if there's an edge from origI to origJ in original matrix
+                        // Check if there was an edge between these original vertices
                         if origI >= 0 && origJ >= 0 && adjMatrix[origI * motifSize + origJ] == 1 {
-                            // Set bit for this edge in canonical pattern
                             pattern |= 1:uint(64) << pos;
                         }
                     }
@@ -748,7 +746,151 @@ if remainedToVisit == 0 {
             
             return pattern;
         }
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+proc verifyPatternsNode(nodePatterns: set(uint(64)), nodeMotifCount: int, motifSize: int) throws {
+    var uniqueMotifClasses: set(uint(64));
+    var uniqueMotifCounts: map(uint(64), int);
+    var motifCount = 0;
+    
+    writeln("\n=== Starting Node-Specific Pattern Verification ===");
+    
+    var motifArr: [0..#(nodePatterns.size * motifSize * motifSize)] int;
+    
+    // Create a simple count map (each pattern occurs at least once)
+    var nodeCounts: map(uint(64), int);
+    for pattern in nodePatterns {
+        nodeCounts[pattern] = 1;
+    }
+    
+    // Process each pattern found
+    for pattern in nodePatterns {
+        if pattern == 0 {
+            writeln("Ignoring broken pattern");
+            continue;
+        }
 
+        // Convert pattern to adjacency matrix
+        var adjMatrix = patternToAdjMatrix(pattern, motifSize);
+        var results: [0..<motifSize] int;
+        
+        var performCheck = 1;
+        var verbose = 0;
+        if logLevel == LogLevel.DEBUG { verbose = 1; }
+
+        // Run Nauty on the adjacency matrix
+        var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose, 1);
+        
+        if status != 0 {
+            writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
+            continue;
+        }
+
+        // Check if Nauty returned canonical form equal to [0,1,2]
+        var isCanonical = true;
+        for i in 0..<motifSize {
+            if results[i] != i {
+                isCanonical = false;
+                break;
+            }
+        }
+        
+        var patternToAdd: uint(64);
+        var matrixToAdd: [0..#(motifSize * motifSize)] int;
+        
+        if isCanonical {
+            // If canonical, add original pattern and matrix
+            patternToAdd = pattern;
+            matrixToAdd = adjMatrix;
+            writeln("Pattern ", pattern, " is canonical");
+        } else {
+            // Generate new pattern from Nauty's labeling
+            var nautyPattern = generateNautyPattern(adjMatrix, results, motifSize);
+            
+            // Create new adjacency matrix for this pattern
+            var newAdjMatrix = patternToAdjMatrix(nautyPattern, motifSize);
+            var newResults: [0..<motifSize] int;
+            
+            // Try again with new matrix to ensure canonical form
+            status = c_nautyClassify(newAdjMatrix, motifSize, newResults, performCheck, verbose, 1);
+            
+            if status != 0 {
+                writeln("Warning: Nauty failed with status ", status, " for derived pattern ", nautyPattern);
+                continue;
+            }
+            
+            // Check if new results are canonical
+            var newIsCanonical = true;
+            for i in 0..<motifSize {
+                if newResults[i] != i {
+                    newIsCanonical = false;
+                    break;
+                }
+            }
+            
+            if newIsCanonical {
+                patternToAdd = nautyPattern;
+                matrixToAdd = newAdjMatrix;
+                writeln("Pattern ", pattern, " mapped to canonical form ", nautyPattern);
+            } else {
+                // We need to go deeper - generate another level
+                var finalPattern = generateNautyPattern(newAdjMatrix, newResults, motifSize);
+                var finalMatrix = patternToAdjMatrix(finalPattern, motifSize);
+                
+                // Final check
+                var finalResults: [0..<motifSize] int;
+                status = c_nautyClassify(finalMatrix, motifSize, finalResults, performCheck, verbose, 1);
+                
+                // At this point, we should just accept whatever we get
+                patternToAdd = finalPattern;
+                matrixToAdd = finalMatrix;
+                
+                writeln("Pattern ", pattern, " -> ", nautyPattern, " -> ", finalPattern, 
+                        " (final canonical: ", isCanonicalLabeling(finalResults), ")");
+            }
+        }
+        
+        // Add the pattern and update counts
+        if !uniqueMotifCounts.contains(patternToAdd) {
+            uniqueMotifCounts[patternToAdd] = 0;
+        }
+        uniqueMotifCounts[patternToAdd] += nodeCounts[pattern];
+        uniqueMotifClasses.add(patternToAdd);
+        
+        // Add matrix to motifArr
+        var startIdx = motifCount * motifSize * motifSize;
+        for i in 0..#(motifSize * motifSize) {
+            motifArr[startIdx + i] = matrixToAdd[i];
+        }
+        motifCount += 1;
+    }
+
+    // Create final arrays
+    var finalMotifArr: [0..#(motifCount * motifSize * motifSize)] int;
+    var finalCountArr: [0..#motifCount] int;
+    
+    writeln("\n=== Node-Specific Verification Results ===");
+    writeln("Started with total patterns: ", nodePatterns.size);
+    writeln("Found unique canonical patterns: ", uniqueMotifClasses.size);
+    writeln("Filtered out non-canonical patterns: ", nodePatterns.size - uniqueMotifClasses.size);
+    writeln("\nCanonical patterns and their counts:");
+    for pattern in uniqueMotifClasses {
+        writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
+    }
+    writeln("===========================\n");
+    
+    var idx = 0;
+    for pattern in uniqueMotifClasses {
+        finalCountArr[idx] = uniqueMotifCounts[pattern];
+        idx += 1;
+    }
+    
+    for i in 0..#(motifCount * motifSize * motifSize) {
+        finalMotifArr[i] = motifArr[i];
+    }
+
+    return (uniqueMotifClasses, finalMotifArr, finalCountArr);
+}
 
 // Helper function to check if results are canonical [0,1,2,...]
 proc isCanonicalLabeling(results: [] int): bool {
@@ -1279,8 +1421,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             
             // Process only unique matrices with Nauty
             var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
-            c_nautyClassifyCounter.add(1);
-            c_nautyClassifyCounterMatrices.add(uniqueMatrices);
+            
             // Copy results back to original results array
             for i in 0..<uniqueCount {
                 var (origIdx, _) = matricesToProcess[i];
@@ -1335,12 +1476,10 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
     writeln("Total motifs found: ", globalMotifCount.read());
     writeln("Unique patterns found: ", globalMotifSet.size);
     writeln("Unique matrices seen (pre-Nauty): ", seenMatrices.size);
-    writeln("Total Number of calling c_nautyClassify: ", c_nautyClassifyCounter.read()); 
-    writeln("Total Number of calling c_nautyClassifyCounterMatrices: ",c_nautyClassifyCounterMatrices.read()); 
 }
     var timer:stopwatch;
 
-    var targetNode: int = -1;
+   var targetNode: int = 100;
     if targetNode >= 0 && targetNode < n {
         // Find motifs containing the specific node
         var (nodePatterns, nodeMotifCount) = findMotifsContainingNode(
@@ -1350,17 +1489,12 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         writeln("Found ", nodeMotifCount, " motifs containing node ", targetNode);
         writeln("These motifs belong to ", nodePatterns.size, " unique pattern classes");
         writeln("-----------------------------------------------------------------------");
-        
-        // Create a simple map for node pattern counts (each pattern occurs once)
-        var nodePatternCounts: map(uint(64), int);
-        for pattern in nodePatterns {
-            nodePatternCounts[pattern] = 1;
-        }
-        
-        // Use the main verification function for node patterns too
-        var (uniqueNodePatterns, nodeMotifArr, nodeMotifCounts) = 
-            verifyPatterns(nodePatterns, nodePatternCounts, motifSize);
-    }
+        // // Use the new verification function specifically for node patterns
+        var (uniqueMotifClasses, finalMotifArr, motifCounts) = 
+             verifyPatternsNode(nodePatterns, nodeMotifCount, motifSize);
+            
+
+    }  
 
     writeln("**********************************************************************");
     writeln("**********************************************************************");
@@ -1385,16 +1519,13 @@ for elem in globalMotifSet { // Could track actual counts if needed
   globalMotifMap[elem] = 1;
 }
 
-var (uniqueMotifClasses, finalMotifArr, motifCounts) = 
-    verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
-writeln("After verification: Found ", uniqueMotifClasses.size, " unique canonical patterns");
-
-                //var uniqueMotifClasses: set(uint(64));
+    //var (uniqueMotifClasses, finalMotifArr, motifCounts) = verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
+            var uniqueMotifClasses: set(uint(64));
             var uniqueMotifCounts: map(uint(64), int);
             var motifCount = 0;
 
         var tempArr: [0..0] int;
-        //var finalMotifArr:[0..0] int;
+        var finalMotifArr:[0..0] int;
         var srcPerMotif = makeDistArray(2*2, int);
         var dstPerMotif = makeDistArray(2*2, int);
 
