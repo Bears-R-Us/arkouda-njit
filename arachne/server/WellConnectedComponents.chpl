@@ -74,7 +74,7 @@ module WellConnectedComponents {
   }
 
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
-               inputcluster_filePath: string, outputPath: string, outputType: string,
+               inputcluster_filePath: string, outputPath: string,
                connectednessCriterion: string, connectednessCriterionMultValue: real, 
                preFilterMinSize: int, postFilterMinSize: int): int throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -456,8 +456,8 @@ module WellConnectedComponents {
         finalClusters[i] = tup[1];
       }
       
-      // Write clusters to file if requested
-      if outputType == "post" then writeClustersToFile(finalVertices, finalClusters);
+      // Write clusters to file
+      writeClustersToFile(finalVertices, finalClusters);
 
       // Get number of cluster found
       var (values, counts) = uniqueSort(finalClusters);

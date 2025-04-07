@@ -618,7 +618,6 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
 @typechecked
 def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,
                               output_filename: str = None,
-                              output_type: Literal["post", "during", "debug"] = "post",
                               connectedness_criterion: Literal["log10", "log2",
                                                                "sqrt", "mult"] = "log10",
                               connectedness_criterion_mult_value: float = None,
@@ -645,13 +644,7 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     output_filename : str
         If not specified, the default output filename will be extrapolated from the name of the
         file specified by `file_path`. If the name of the input file is `foo.tsv` and the 
-        `output_type` is `post` then the output filename will be `foo_wcc_output_post.tsv`.
-    output_type : str
-        If "post" then output is written at the end of WCC. If "during" then output is written as
-        soon as a cluster is considered well-connected. If "debug" then verbose output is written
-        as soon as a cluster is considered well-connected. NOTE: The "debug" mode is intended to be
-        used ONLY with small graphs and clusters. If used with large graphs and clusters, then the
-        verbose output is going to clog the whole output folder.
+        `output_type` is `post` then the output filename will be `foo_wcc_output.tsv`.
     connectedness_criterion : str
         Specifies the function criterion that should be met for a cluster to be considered
         well-connected. The default is `log10` where if the number of vertices is `n` and the
@@ -704,18 +697,11 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
 
     output_path = ""
     if default_name_used:
-        if output_type == "during":
-            output_path = output_folder_path + output_filename + "_wcc_output_during.tsv"
-        elif output_type == "post":
-            output_path = output_folder_path + output_filename + "_wcc_output_post.tsv"
-        elif output_type == "debug":
-            output_path = output_folder_path + output_filename + "_wcc_output_debug"
-        else:
-            raise ValueError(f"The output type {output_type} is not recognized.")
+        output_path = output_folder_path + output_filename + "_wcc_output.tsv"
     else:
         output_path = output_folder_path + output_filename
 
-    if os.path.exists(output_path) and output_type == "during":
+    if os.path.exists(output_path):
         raise FileExistsError(f"File {output_filename} already exists.")
 
     # Explicit value needed for Chapel FCF.
@@ -725,7 +711,6 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,
-             "OutputType": output_type,
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,

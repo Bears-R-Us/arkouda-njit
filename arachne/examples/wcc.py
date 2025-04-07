@@ -15,7 +15,6 @@ output_filename = "test_network_wcc_output_post.tsv"
 
 num_clusters = ar.well_connected_components(ar_network_graph, file_path, output_path, 
                                             output_filename=output_filename,
-                                            output_type = "post",
                                             connectedness_criterion = "log10", # "log2", "sqrt", and "mult" also options
                                             pre_filter_min_size=1, post_filter_min_size=1)
 print(f"WCC found {num_clusters} clusters to be well-connected.")
