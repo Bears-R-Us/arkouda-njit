@@ -31,7 +31,6 @@ module WellConnectedComponentsMsg {
 		var GraphEntryName = msgArgs.getValueOf("GraphName");
 		var filePath = msgArgs.getValueOf("FilePath");
 		var outputPath = msgArgs.getValueOf("OutputPath");
-		var outputType = msgArgs.getValueOf("OutputType");
 		var connectednessCriterion = msgArgs.getValueOf("ConnectednessCriterion");
 		var connectednessCriterionMultValue = msgArgs.getValueOf("ConnectednessCriterionMultValue"):real;
 		var preFilterMinSize = msgArgs.getValueOf("PreFilterMinSize"):int;
@@ -54,12 +53,12 @@ module WellConnectedComponentsMsg {
 			timer.start();
 			if ChplConfig.CHPL_COMM == "none" {
 				use WellConnectedComponents;
-				numClusters = runWCC(g, st, filePath, outputPath, outputType, 
+				numClusters = runWCC(g, st, filePath, outputPath,
 														 connectednessCriterion, connectednessCriterionMultValue, 
 														 preFilterMinSize, postFilterMinSize);
 			} else {
 				use WellConnectedComponentsDistributed;
-				numClusters = runWCCDistributed(g, st, filePath, outputPath, outputType, 
+				numClusters = runWCCDistributed(g, st, filePath, outputPath,
 											connectednessCriterion, connectednessCriterionMultValue, 
 											preFilterMinSize, postFilterMinSize);
 			}

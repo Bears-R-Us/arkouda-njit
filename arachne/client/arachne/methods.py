@@ -90,8 +90,8 @@ def read_matrix_market_file(filepath: str,
 @typechecked
 def read_tsv_file(  filepath: str,
                     directed = False,
-                    only_edges = False,
-                    comment_header = "#") -> Union[Graph,DiGraph,Tuple]:
+                    weighted = False,
+                    only_edges = False) -> Union[Graph,DiGraph,Tuple]:
     """Reads a `.tsv` file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -99,22 +99,21 @@ def read_tsv_file(  filepath: str,
     ----------
     filepath : str
         The graph whose breadth-first search layers we want.
-    directed : int
-        Starting vertex for breadth-first search.
+    directed : bool
+        Is the graph directed? 
+    weighted : false
+        Is the graph weighted?
     only_edges : bool
         If `True` will return only `src` and `dst` arrays instead of a graph.
-    comment_header : str
-        The reader will ignore any files that begin with the comment header.
 
     Returns
     -------
     Graph | DiGraph
-        The graph specified by the `.tsv` file.
+        The graph with the edge list specified by the `.tsv` file.
     """
     cmd = "readTSVFile"
     args = { "Path": filepath,
-             "Directed": directed,
-             "CommentHeader": comment_header }
+             "Weighted": str(weighted).lower() }
     rep_msg = generic_msg(cmd=cmd, args=args)
     returned_vals = (cast(str, rep_msg).split('+'))
 
@@ -125,8 +124,7 @@ def read_tsv_file(  filepath: str,
         return (src,dst)
 
     wgt = ak.array([-1])
-    weighted = False
-    if returned_vals[2].strip() != "nil":
+    if weighted:
         wgt = create_pdarray(returned_vals[2])
         weighted = True
 
@@ -620,7 +618,6 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
 @typechecked
 def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,
                               output_filename: str = None,
-                              output_type: Literal["post", "during", "debug"] = "post",
                               connectedness_criterion: Literal["log10", "log2",
                                                                "sqrt", "mult"] = "log10",
                               connectedness_criterion_mult_value: float = None,
@@ -647,13 +644,7 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     output_filename : str
         If not specified, the default output filename will be extrapolated from the name of the
         file specified by `file_path`. If the name of the input file is `foo.tsv` and the 
-        `output_type` is `post` then the output filename will be `foo_wcc_output_post.tsv`.
-    output_type : str
-        If "post" then output is written at the end of WCC. If "during" then output is written as
-        soon as a cluster is considered well-connected. If "debug" then verbose output is written
-        as soon as a cluster is considered well-connected. NOTE: The "debug" mode is intended to be
-        used ONLY with small graphs and clusters. If used with large graphs and clusters, then the
-        verbose output is going to clog the whole output folder.
+        `output_type` is `post` then the output filename will be `foo_wcc_output.tsv`.
     connectedness_criterion : str
         Specifies the function criterion that should be met for a cluster to be considered
         well-connected. The default is `log10` where if the number of vertices is `n` and the
@@ -706,18 +697,11 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
 
     output_path = ""
     if default_name_used:
-        if output_type == "during":
-            output_path = output_folder_path + output_filename + "_wcc_output_during.tsv"
-        elif output_type == "post":
-            output_path = output_folder_path + output_filename + "_wcc_output_post.tsv"
-        elif output_type == "debug":
-            output_path = output_folder_path + output_filename + "_wcc_output_debug"
-        else:
-            raise ValueError(f"The output type {output_type} is not recognized.")
+        output_path = output_folder_path + output_filename + "_wcc_output.tsv"
     else:
         output_path = output_folder_path + output_filename
 
-    if os.path.exists(output_path) and output_type == "during":
+    if os.path.exists(output_path):
         raise FileExistsError(f"File {output_filename} already exists.")
 
     # Explicit value needed for Chapel FCF.
@@ -727,7 +711,6 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,
-             "OutputType": output_type,
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
