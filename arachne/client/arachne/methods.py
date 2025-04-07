@@ -90,8 +90,8 @@ def read_matrix_market_file(filepath: str,
 @typechecked
 def read_tsv_file(  filepath: str,
                     directed = False,
-                    only_edges = False,
-                    comment_header = "#") -> Union[Graph,DiGraph,Tuple]:
+                    weighted = False,
+                    only_edges = False) -> Union[Graph,DiGraph,Tuple]:
     """Reads a `.tsv` file and returns the graph specified by the matrix indices. NOTE: the
     absolute path to the file must be given.
 
@@ -99,22 +99,21 @@ def read_tsv_file(  filepath: str,
     ----------
     filepath : str
         The graph whose breadth-first search layers we want.
-    directed : int
-        Starting vertex for breadth-first search.
+    directed : bool
+        Is the graph directed? 
+    weighted : false
+        Is the graph weighted?
     only_edges : bool
         If `True` will return only `src` and `dst` arrays instead of a graph.
-    comment_header : str
-        The reader will ignore any files that begin with the comment header.
 
     Returns
     -------
     Graph | DiGraph
-        The graph specified by the `.tsv` file.
+        The graph with the edge list specified by the `.tsv` file.
     """
     cmd = "readTSVFile"
     args = { "Path": filepath,
-             "Directed": directed,
-             "CommentHeader": comment_header }
+             "Weighted": str(weighted).lower() }
     rep_msg = generic_msg(cmd=cmd, args=args)
     returned_vals = (cast(str, rep_msg).split('+'))
 
@@ -125,8 +124,7 @@ def read_tsv_file(  filepath: str,
         return (src,dst)
 
     wgt = ak.array([-1])
-    weighted = False
-    if returned_vals[2].strip() != "nil":
+    if weighted:
         wgt = create_pdarray(returned_vals[2])
         weighted = True
 

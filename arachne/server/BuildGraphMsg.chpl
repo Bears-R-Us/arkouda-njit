@@ -15,6 +15,7 @@ module BuildGraphMsg {
     use Utils;
     use GraphArray;
     use SegmentedString;
+    use BuildGraph;
     
     // Arkouda modules.
     use MultiTypeSymbolTable;
@@ -295,95 +296,54 @@ module BuildGraphMsg {
         return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readMatrixMarketFileMsg
 
-    /**
-    * Read in a .tsv file to pdarrays to eventually build a graph.
-    *
-    * cmd: operation to perform. 
-    * msgArgs: arugments passed to backend. 
-    * SymTab: symbol table used for storage. 
-    *
-    * returns: message back to Python.
-    */
+    /* Reads in a TSV file into either regular rectangular or block-distributed arrays. */
     proc readTSVFileMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
         // Parse the message from Python to extract needed data. 
-        var pathS = msgArgs.getValueOf("Path");
-        var directedS = msgArgs.getValueOf("Directed");
-        var commentHeader = msgArgs.getValueOf("CommentHeader");
-        commentHeader = commentHeader.strip();
+        var path = msgArgs.getValueOf("Path");
+        var weighted = msgArgs.getValueOf("Weighted"):bool;
+        if ChplConfig.CHPL_COMM == "none" {
+            var (src, dst, wgt) = readTSVFileLocal(path, weighted);
 
-        // Converted parsed messages to the needed data types for Chapel operations.
-        var path:string = (pathS:string);
+            // Add the read arrays into the symbol table.
+            var src_name = st.nextName();
+            var src_entry = createSymEntry(src);
+            st.addEntry(src_name, src_entry);
 
-        var directed:bool;
-        directedS = directedS.toLower();
-        directed = (directedS:bool);
+            var dst_name = st.nextName();
+            var dst_entry = createSymEntry(dst);
+            st.addEntry(dst_name, dst_entry);
 
-        // Check to see if the file can be opened correctly. 
-        try { var f = open(path, ioMode.r); f.close(); } 
-        catch { bgmLogger.error(    getModuleName(),
-                                    getRoutineName(),
-                                    getLineNumber(), 
-                                    "Error opening file."); }
-    
-        // Start parsing through the file.
-        var f = open(path, ioMode.r);
-        var r = f.reader(locking=false);
-        var line:string;
-        var count:int = 0;
-
-        // Read the rest of the file.
-        // TODO: How can we make this optimized for disitributed graph loading?
-        var srcList = new list(int);
-        var dstList = new list(int);
-        var wgtList = new list(real);
-        while (r.readLine(line)) {
-            var temp = line.split();
-            for s in temp do s = s.strip();
-            if !temp[0].startsWith(commentHeader) {
-                if temp.size < 3 {
-                    srcList.pushBack(temp[0]:int);
-                    dstList.pushBack(temp[1]:int);
-                } else {
-                    srcList.pushBack(temp[0]:int);
-                    dstList.pushBack(temp[1]:int);
-                    wgtList.pushBack(temp[2]:real);
-                }
-                count += 1;
-            } else {
-                continue;
+            var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
+            if weighted {
+                var wgt_name = st.nextName();
+                var wgt_entry = createSymEntry(wgt);
+                st.addEntry(wgt_name, wgt_entry);
+                repMsg += "+ created " + st.attrib(wgt_name);
             }
+            
+            return new MsgTuple(repMsg, MsgType.NORMAL);
+        } else {
+            var (src, dst, wgt) = readTSVFileDistributed(path, weighted);
+
+            // Add the read arrays into the symbol table.
+            var src_name = st.nextName();
+            var src_entry = createSymEntry(src);
+            st.addEntry(src_name, src_entry);
+
+            var dst_name = st.nextName();
+            var dst_entry = createSymEntry(dst);
+            st.addEntry(dst_name, dst_entry);
+
+            var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
+            if weighted {
+                var wgt_name = st.nextName();
+                var wgt_entry = createSymEntry(wgt);
+                st.addEntry(wgt_name, wgt_entry);
+                repMsg += "+ created " + st.attrib(wgt_name);
+            }
+            
+            return new MsgTuple(repMsg, MsgType.NORMAL);
         }
-        var weighted:bool = if wgtList.size > 0 then true else false;
-
-        var src = makeDistArray(count, int);
-        var dst = makeDistArray(count, int);
-        var wgt = makeDistArray(count, real);
-
-        writeln("$$$$$ we get here 1");
-        src = srcList;
-        dst = dstList;
-        if weighted then wgt = wgtList;
-        writeln("$$$$$ we get here 2");
-        
-        // Add the read arrays into the symbol table.
-        var src_name = st.nextName();
-        var src_entry = createSymEntry(src);
-        st.addEntry(src_name, src_entry);
-
-        var dst_name = st.nextName();
-        var dst_entry = createSymEntry(dst);
-        st.addEntry(dst_name, dst_entry);
-
-        var wgt_name = st.nextName();
-        var wgt_entry = createSymEntry(wgt);
-        st.addEntry(wgt_name, wgt_entry);
-
-        // Write the reply message back to Python. 
-        var repMsg = "created " + st.attrib(src_name) + "+ created " + st.attrib(dst_name);
-        if weighted then repMsg += "+ created " + st.attrib(wgt_name);
-        else repMsg += "+ nil";
-        
-        return new MsgTuple(repMsg, MsgType.NORMAL);
     } // end of readTSVFileMsg
 
     proc assignQuadrant(iiBit:bool, jjBit:bool, bit:int):(int,int) {
