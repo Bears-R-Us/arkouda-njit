@@ -1,31 +1,15 @@
-Canonical patterns and their counts:
-  Pattern 4416: 1 occurrences
-  Pattern 16704: 1 occurrences
-  Pattern 28928: 1 occurrences
-  Pattern 20992: 1 occurrences
-  Pattern 29440: 1 occurrences
-  Pattern 8512: 1 occurrences
-  Pattern 12544: 1 occurrences
-  Pattern 12560: 1 occurrences
-  Pattern 12816: 1 occurrences
-  Pattern 28672: 1 occurrences
-  Pattern 21248: 1 occurrences
-  Pattern 14336: 1 occurrences
-===========================
 
-**********************************************************************
-**********************************************************************
-Graph loaded:
-Number of nodes: 688
-Number of edges: 1079
-Number of cores (max task parallelism): 1
-Starting motif counting with k=4 on a graph of 688 vertices.
-Maximum degree: 71
-Enumerate: finished enumeration
-Total motifs found: 183174
-Unique patterns found: 34
-Unique matrices seen (pre-Nauty): 159
- globalMotifSet = {13056, 26880, 16704, 28928, 12560, 14352, 21248, 14336, 28944, 29456, 
- 8512, 12544, 29200, 29506, 29568, 28672, 12608, 4416, 21264, 29248, 14912, 30720, 
- 12816, 26944, 24848, 25104, 12672, 20992, 29504, 29440, 13072, 25408, 4368, 30784}
- globalMotifCount = 183174
+
+******************************************************************************************
+******************************************************************************************
+*                                                                                        *
+*                          server listening on tcp://n0098:5555                          *
+*                          arkouda server version = v2024.06.21                          *
+*                             built with chapel version2.1.0                             *
+*                              memory limit = 486548390707                               *
+*                                bytes of memory used = 0                                *
+*                                                                                        *
+******************************************************************************************
+******************************************************************************************
+
+

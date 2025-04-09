@@ -106,33 +106,6 @@ module MotifCounting {
         }
     }// End of KavoshState
 
-// A new record to represent a motif
-record Motif {
-    var vertices: list(int);
-    
-    proc init() {
-        this.vertices = new list(int);
-    }
-    
-    // Add a vertex to the motif
-    proc addVertex(v: int) {
-        this.vertices.pushBack(v);
-    }
-    
-    // Get number of vertices
-    proc size(): int {
-        return this.vertices.size;
-    }
-    
-    // Convert to array for easier processing
-    proc toArray(): [] int {
-        var result: [0..<this.vertices.size] int;
-        for i in 0..<this.vertices.size {
-            result[i] = this.vertices[i];
-        }
-        return result;
-    }
-}
 
     // C header and object files.
     require "nauty-wrapper/bin/nautyClassify.o",
@@ -233,429 +206,121 @@ var cacheHits: atomic int;  // Track number of matrices skipped due to caching
         if doSampling == 1 then Sampling = true;
     
         var doMOtifDetail: bool = true;
-////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Return-based Explore function
-proc Explore_Return(ref state: KavoshState, root: int, level: int, remainedToVisit: int): list(Motif)  throws{
-    var motifs = new list(Motif);
+
+
+/////////////////////////////Test AREA Start
+/*
+ * Generates all combinations of a given size from a set of elements
+ * with Chapel-compatible array types.
+ */
+proc generateCombinations(neighbors: [] int, selSize: int) {
+    const n = neighbors.size;
     
-    if logLevel == LogLevel.DEBUG {
-        writeln("===== Explore_Return called =====");
-        writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
-        writeln("Visited Vertices: ", state.visited);
-        writeln("Current partial subgraph level by level:");
-        for l in 0..<level {
-            write("Level ", l, " (count=", state.getSubgraph(l, 0), "): ");
-            for x in 1..state.getSubgraph(l, 0) {
-                write(state.getSubgraph(l, x), " ");
+    // Handle invalid input
+    if selSize > n || selSize <= 0 {
+        writeln("Warning: Invalid selection size ", selSize, " for array of size ", n);
+        var emptyResult: [0..#0, 0..#0] int;
+        return emptyResult;
+    }
+    
+    // Calculate the number of combinations to preallocate array
+    proc binomialCoeff(n: int, k: int): int {
+        var res = 1;
+        for i in 0..<k {
+            res = (res * (n - i)) / (i + 1);
+        }
+        return res;
+    }
+    
+    const numCombinations = binomialCoeff(n, selSize);
+    var result: [0..#numCombinations, 0..#selSize] int;
+    var combinationIndex = 0;
+    
+    // Initialize indices array for tracking our position
+    var indices: [0..#selSize] int;
+    for i in 0..#selSize {
+        indices[i] = i;
+    }
+    
+    // Generate each combination
+    var done = false;
+    while !done {
+        // Copy current combination to result
+        for i in 0..#selSize {
+            result[combinationIndex, i] = neighbors[indices[i]];
+        }
+        combinationIndex += 1;
+        
+        // Generate next indices
+        var i = selSize - 1;
+        
+        // Find rightmost index that can be incremented
+        while i >= 0 && indices[i] == i + n - selSize {
+            i -= 1;
+        }
+        
+        // If no index can be incremented, we're done
+        if i < 0 {
+            done = true;
+        } else {
+            // Increment this index and adjust all to the right
+            indices[i] += 1;
+            for j in i+1..#(selSize-i-1) {
+                indices[i+j] = indices[i] + j;
+            }
+        }
+    }
+    
+    return result;
+}
+
+/*
+ * Helper function for binomial coefficient calculation
+ */
+proc binomialCoeff(n: int, k: int): int {
+    if k > n || k < 0 then return 0;
+    if k == 0 || k == n then return 1;
+    
+    var result = 1;
+    for i in 0..<k {
+        result = (result * (n - i)) / (i + 1);
+    }
+    return result;
+}
+
+
+/*
+ * Test function to verify the functionality
+ */
+proc testCombinationGenerator() {
+    writeln("Testing combination generator...");
+    
+    // Test with a small set
+    var neighbors = [10, 20, 30, 40, 50];
+    writeln("\nTesting with neighbors: ", neighbors);
+    
+    // Test generating combinations of a single size
+    for selSize in 1..neighbors.size {
+        var combinations = generateCombinations(neighbors, selSize);
+        writeln("Combinations of size ", selSize, " (", combinations.domain.dim(0).size, " total):");
+        for i in 0..min(9, combinations.domain.dim(0).size-1) {  // Print at most 10
+            write("  ");
+            for j in 0..#selSize {
+                write(combinations[i, j], " ");
             }
             writeln();
         }
-        writeln("==========================");
+        if combinations.domain.dim(0).size > 10 then 
+            writeln("  ... (", combinations.domain.dim(0).size-10, " more)");
     }
-
-    // Base case: all k vertices chosen, now we have found a motif
-    if remainedToVisit == 0 {
-        // Create a new motif record
-        var motif = new Motif();
-        
-        // Gather vertices level by level
-        for level in 0..<state.k {
-            const vertCount = state.getSubgraph(level, 0);
-            for pos in 1..vertCount {
-                motif.addVertex(state.getSubgraph(level, pos));
-            }
-        }
-        
-        // Verify the motif has exactly k vertices
-        if motif.size() != state.k {
-            writeln("WARNING: Motif has ", motif.size(), " vertices, expected ", state.k);
-        }
-        
-        // Add to our list of motifs
-        motifs.pushBack(motif);
-        
-        // Still update the counter for compatibility
-        state.localsubgraphCount += 1;
-        
-        return motifs;
-    }
-
-    // Get children for this level
-    initChildSet(state, root, level);
-    const childCount = state.getChildSet(level, 0);
-
-    // Try all possible selection sizes at this level, from 1 to remainedToVisit
-    for selSize in 1..remainedToVisit {
-        if childCount < selSize {
-            // Not enough children to form this selection
-            if logLevel == LogLevel.DEBUG {
-                writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
-            }
-            // Unmark visited children before returning
-            for i in 1..childCount {
-                state.visited.remove(state.getChildSet(level, i));
-            }
-            return motifs;
-        }
-
-        // Initial selection: pick the first selSize children
-        state.setSubgraph(level, 0, selSize);
-        for i in 1..selSize {
-            state.setSubgraph(level, i, state.getChildSet(level, i));
-            state.setIndexMap(level, i, i);
-        }
-
-        if logLevel == LogLevel.DEBUG {
-            writeln("Exploring with initial selection of size ", selSize, " at level ", level);
-            write("Selected vertices: ");
-            for i in 1..selSize {
-                write(state.getSubgraph(level, i), " ");
-            }
-            writeln("we will Recurse with chosen selection");
-            writeln();
-        }
-
-        // Recurse with chosen selection - collect returned motifs
-        var newMotifs = Explore_Return(state, root, level+1, remainedToVisit - selSize);
-        for motif in newMotifs {
-            motifs.pushBack(motif);
-        }
-
-        // Generate other combinations using revolve-door algorithm - collect returned motifs
-        var genMotifs = ForwardGenerator_Return(childCount, selSize, root, level, remainedToVisit, selSize, state);
-        for motif in genMotifs {
-            motifs.pushBack(motif);
-        }
-    }
-
-    // Cleanup: Unmark visited children before going up
-    for i in 1..childCount {
-        state.visited.remove(state.getChildSet(level, i));
-    }
-    state.setSubgraph(level, 0, 0);
     
-    return motifs;
+    writeln("\nTesting complete.");
 }
 
-// Return-based ForwardGenerator
-proc ForwardGenerator_Return(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
-                           ref state: KavoshState): list(Motif) throws{
-    var motifs = new list(Motif);
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("ForwardGenerator_Return called with n=", n, " k=", k, " level=", level, 
-                " remainedToVisit=", remainedToVisit, " m=", m);
-    }
-
-    if k > 0 && k < n {
-        // Recurse with ForwardGenerator and collect motifs
-        var genMotifs = ForwardGenerator_Return(n-1, k, root, level, remainedToVisit, m, state);
-        for motif in genMotifs {
-            motifs.pushBack(motif);
-        }
-
-        // Call swapping with appropriate indices and collect motifs
-        var swapMotifs: list(Motif);
-        if k == 1 {
-            if logLevel == LogLevel.DEBUG {
-                writeln("ForwardGenerator_Return: k=1 case, calling swapping_Return(n, n-1) => swapping_Return(", 
-                        n, ", ", n-1, ")");
-            }
-            swapMotifs = swapping_Return(n, n-1, root, level, remainedToVisit, m, state);
-        } else {
-            if logLevel == LogLevel.DEBUG {
-                writeln("ForwardGenerator_Return: k>1 case, calling swapping_Return(n, k-1) => swapping_Return(", 
-                        n, ", ", k-1, ")");
-            }
-            swapMotifs = swapping_Return(n, k-1, root, level, remainedToVisit, m, state);
-        }
-        for motif in swapMotifs {
-            motifs.pushBack(motif);
-        }
-
-        // Recurse with reverseGenerator and collect motifs
-        var negMotifs = reverseGenerator_Return(n-1, k-1, root, level, remainedToVisit, m, state);
-        for motif in negMotifs {
-            motifs.pushBack(motif);
-        }
-    }
-    
-    return motifs;
-}
-
-// Return-based reverseGenerator
-proc reverseGenerator_Return(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
-                           ref state: KavoshState): list(Motif) throws{
-    var motifs = new list(Motif);
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("reverseGenerator_Return called with n=", n, " k=", k, " level=", level, 
-                " remainedToVisit=", remainedToVisit, " m=", m);
-    }
-
-    if k > 0 && k < n {
-        // Recurse with ForwardGenerator and collect motifs
-        var genMotifs = ForwardGenerator_Return(n-1, k-1, root, level, remainedToVisit, m, state);
-        for motif in genMotifs {
-            motifs.pushBack(motif);
-        }
-
-        // Call swapping with appropriate indices and collect motifs
-        var swapMotifs: list(Motif);
-        if k == 1 {
-            if logLevel == LogLevel.DEBUG {
-                writeln("reverseGenerator_Return: k=1 case, calling swapping_Return(n-1, n) => swapping_Return(", 
-                        n-1, ", ", n, ")");
-            }
-            swapMotifs = swapping_Return(n-1, n, root, level, remainedToVisit, m, state);
-        } else {
-            if logLevel == LogLevel.DEBUG {
-                writeln("reverseGenerator_Return: k>1 case, calling swapping_Return(k-1, n) => swapping_Return(", 
-                        k-1, ", ", n, ")");
-            }
-            swapMotifs = swapping_Return(k-1, n, root, level, remainedToVisit, m, state);
-        }
-        for motif in swapMotifs {
-            motifs.pushBack(motif);
-        }
-
-        // Recurse with reverseGenerator and collect motifs
-        var negMotifs = reverseGenerator_Return(n-1, k, root, level, remainedToVisit, m, state);
-        for motif in negMotifs {
-            motifs.pushBack(motif);
-        }
-    }
-    
-    return motifs;
-}
-
-// Return-based swapping
-proc swapping_Return(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, 
-                    ref state: KavoshState): list(Motif) throws{
-    if logLevel == LogLevel.DEBUG {
-        writeln("swapping_Return called: swapping indices ", i, " and ", j, " at level ", level);
-        writeln("Before swapping: indexMap[level,i] = ", state.getIndexMap(level, i), 
-                " indexMap[level,j] = ", state.getIndexMap(level, j));
-    }
-
-    state.setIndexMap(level, i, state.getIndexMap(level, j));
-    state.setSubgraph(level, state.getIndexMap(level, i), state.getChildSet(level, i));
-
-    if logLevel == LogLevel.DEBUG {
-        writeln("After swapping: subgraph[level,indexMap[level,i]] = childSet[level,i] = ", 
-                state.getChildSet(level, i));
-        writeln("Now calling Explore_Return after swapping");
-    }
-
-    // Call Explore_Return and return the motifs it finds
-    return Explore_Return(state, root, level+1, remainedToVisit - m);
-}
-// Modified Enumerate function to use the return-based approach
-proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
-    var batchMatrixCounter: atomic int;  // Track matrices in batches
-    var batchCallCounter: atomic int;    // Track batch calls to Nauty
-    var localCacheHits: atomic int;      // Track local cache hits
-    var totalProcessed: atomic int;      // Track total motifs processed
-
-    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices,
-                                ref batchMatrixCounter, ref batchCallCounter, 
-                                ref localCacheHits, ref totalProcessed) {
-        var state = new KavoshState(n, k, maxDeg);
-        
-        // Initialize root vertex in subgraph
-        state.setSubgraph(0, 0, 1);
-        state.setSubgraph(0, 1, v);
-        state.visited.clear();
-        state.visited.add(v);
-        
-        // Find all motifs for this root using return-based Explore
-        var returnedMotifs = Explore_Return(state, v, 1, state.k - 1);
-        
-        // Calculate how many complete motifs we found
-        const numMotifs = returnedMotifs.size;
-        
-        // Skip if no motifs found
-        if numMotifs == 0 {
-            continue;
-        }
-        
-        // Now classify all motifs found from this root
-        var localPatterns: set(uint(64), parSafe=false);
-        
-        // Create flat array of vertices from the returned motifs
-        var allVertices: [0..<(numMotifs * k)] int;
-        var idx = 0;
-        for motif in returnedMotifs {
-            for i in 0..<motif.size() {
-                allVertices[idx] = motif.vertices[i];
-                idx += 1;
-            }
-        }
-
-        // Verify we have the expected number of vertices
-        if idx != numMotifs * k {
-            writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-                    " but got ", idx, " for root ", v);
-        }
-
-        // Create arrays for batch processing
-        var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
-        var batchedResults: [0..#(numMotifs * k)] int;
-        
-        // Track which matrices need to be processed
-        var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
-        var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
-        
-        totalProcessed.add(numMotifs);  // Track total motifs processed
-        
-        // Fill matrices and check for duplicates
-        for i in 0..<numMotifs {
-            var baseIdx = i * k;
-            var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
-            
-            // Create adjacency matrix
-            for row in 0..<k {
-                for col in 0..<k {
-                    if row != col {  // Skip self-loops
-                        var u = allVertices[baseIdx + row];
-                        var w = allVertices[baseIdx + col];
-                        var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                        if eid != -1 {
-                            batchedMatrices[i * (k * k) + row * k + col] = 1;
-                            
-                            // Update binary representation - set bit at position (row * k + col)
-                            matrixBinary |= 1:uint(64) << (row * k + col);
-                        }
-                    }
-                }
-            }
-            
-            // Check if we've seen this matrix before
-            if seenMatrices.contains(matrixBinary) {
-                // We've seen this pattern before, skip Nauty processing
-                seenIndices.add(i);
-                localCacheHits.add(1);  // Increment cache hit counter
-                if logLevel == LogLevel.DEBUG {
-                    writeln("  Matrix binary ", matrixBinary, " already seen - skipping Nauty");
-                }
-            } else {
-                // New pattern, add to seen matrices and process
-                seenMatrices.add(matrixBinary);
-                matricesToProcess.pushBack((i, matrixBinary));
-                if logLevel == LogLevel.DEBUG {
-                    writeln("  New matrix binary ", matrixBinary, " - will be processed");
-                }
-            }
-        }
-        
-        // Process only unseen matrices with Nauty - this part remains largely unchanged
-        if matricesToProcess.size > 0 {
-            // Create smaller batch arrays for just the unseen matrices
-            var uniqueCount = matricesToProcess.size;
-            var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
-            var uniqueResults: [0..#(uniqueCount * k)] int;
-            
-            // Track batch statistics
-            batchMatrixCounter.add(uniqueCount);
-            batchCallCounter.add(1);
-            
-            if logLevel == LogLevel.DEBUG {
-                writeln("Processing batch of ", uniqueCount, " matrices for root ", v);
-            }
-            
-            // Fill unique matrices array
-            for i in 0..<uniqueCount {
-                var (origIdx, _) = matricesToProcess[i];
-                var origOffset = origIdx * (k * k);
-                var newOffset = i * (k * k);
-                
-                // Copy matrix from original batch to unique batch
-                for j in 0..<(k * k) {
-                    uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
-                }
-            }
-            
-            // Process only unique matrices with Nauty
-            var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
-            
-            // Copy results back to original results array
-            for i in 0..<uniqueCount {
-                var (origIdx, _) = matricesToProcess[i];
-                var origOffset = origIdx * k;
-                var newOffset = i * k;
-                
-                // Copy results
-                for j in 0..<k {
-                    batchedResults[origOffset + j] = uniqueResults[newOffset + j];
-                }
-            }
-        }
-        
-        // Process results for each motif
-        for i in 0..<numMotifs {
-            // Count all motifs regardless of whether they're seen before
-            totalCount.add(1);
-            
-            // Skip processing motifs that were seen before
-            if seenIndices.contains(i) {
-                continue;
-            }
-            
-            // Get vertices for this motif
-            var baseIdx = i * k;
-            var vertices: [1..k] int;
-            for j in 0..<k {
-                vertices[j+1] = allVertices[baseIdx + j];
-            }
-            
-            // Extract results for this motif
-            var nautyResults: [0..<k] int;
-            for j in 0..<k {
-                nautyResults[j] = batchedResults[i * k + j];
-            }
-            
-            // Generate pattern
-            var pattern = generatePatternDirect(vertices, nautyResults, k);
-            localPatterns.add(pattern);
-        }
-        
-        // Add local patterns to global set
-        globalMotifSet += localPatterns;
-        
-        if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
-            writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
-                   localPatterns.size, " unique patterns");
-        }
-    }
-    
-    // Set the final results - this part remains unchanged
-    globalMotifCount.write(totalCount.read());
-    
-    // Print batch statistics - this part remains unchanged
-    writeln("\nEnumerate Execution Statistics:");
-    writeln("  Total motifs found: ", totalProcessed.read());
-    writeln("  Total unique patterns found: ", globalMotifSet.size);
-    writeln("  Total unique matrices seen: ", seenMatrices.size);
-    writeln("\nNauty Processing Statistics:");
-    writeln("  Total matrices processed in batches: ", batchMatrixCounter.read());
-    writeln("  Total batch calls to Nauty: ", batchCallCounter.read());
-    writeln("  Average matrices per batch: ", 
-           if batchCallCounter.read() > 0 then batchMatrixCounter.read() / batchCallCounter.read():real else 0);
-    writeln("  Local cache hits: ", localCacheHits.read());
-    writeln("  Cache efficiency: ", 
-           if (localCacheHits.read() + batchMatrixCounter.read()) > 0 then
-               (localCacheHits.read() * 100.0) / (localCacheHits.read() + batchMatrixCounter.read()):real
-           else 0, "%");
-    writeln("  Nauty call reduction: ", 
-           if totalProcessed.read() > 0 then
-               (1.0 - (batchCallCounter.read():real / totalProcessed.read())) * 100.0
-           else 0, "%");
-    
-    writeln("\nEnumerate: finished enumeration");
-    writeln("Total motifs found: ", globalMotifCount.read());
-    writeln("Unique patterns found: ", globalMotifSet.size);
-    writeln("Unique matrices seen (pre-Nauty): ", seenMatrices.size);
-}
+// Uncomment to run the test
+testCombinationGenerator();
+//halt();
+/////////////////////////////Test AREA End
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -848,11 +513,11 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
                         chosenVerts[idx] = state.getSubgraph(level, pos);
                             // Add to the list in the state
 
-                        // if chosenVerts[idx] == 608 && root == 258{
-                        //     writeln("FOUND VERTEX 608 about to be added in Explore base case!");
-                        //     writeln("Root: ", root, ", level: ", level, ", pos: ", pos);
-                        //     writeln("Current localsubgraphCount: ", state.localsubgraphCount);
-                        // }
+                        if chosenVerts[idx] == 608 && root == 258{
+                            writeln("FOUND VERTEX 608 about to be added in Explore base case!");
+                            writeln("Root: ", root, ", level: ", level, ", pos: ", pos);
+                            writeln("Current localsubgraphCount: ", state.localsubgraphCount);
+                        }
                         state.motifVertices.pushBack(chosenVerts[idx]);
 
                         idx += 1;
@@ -863,6 +528,98 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
                 
                 return;
             }
+
+// // Base case: all k vertices chosen, now we have found a motif
+// if remainedToVisit == 0 {
+//     // Get the current size of the motifVertices list before adding any vertices
+//     var initialSize = state.motifVertices.size;
+    
+//     // Extract the chosen vertices
+//     var chosenVerts: [1..state.k] int;
+//     var idx = 1;
+//     var totalVerticesForThisMotif = 0;
+    
+//     // Gather vertices level by level
+//     for level in 0..<state.k {
+//         const vertCount = state.getSubgraph(level, 0);
+//         totalVerticesForThisMotif += vertCount;
+        
+//         for pos in 1..vertCount {
+//             if idx > state.k {
+//                 writeln("ERROR: Too many vertices being collected for motif! Root=", root, 
+//                        ", level=", level, ", pos=", pos, ", idx=", idx);
+//                 // Don't add this vertex to avoid out-of-bounds access
+//                 continue;
+//             }
+            
+//             chosenVerts[idx] = state.getSubgraph(level, pos);
+            
+//             // Check for vertex 608 specifically
+//             if chosenVerts[idx] == 608 && root == 258 {
+//                 writeln("FOUND VERTEX 608 about to be added in Explore base case!");
+//                 writeln("Root: ", root, ", level: ", level, ", pos: ", pos);
+//                 writeln("Current localsubgraphCount: ", state.localsubgraphCount);
+//                 writeln("Current vertices in this motif: ", idx-1);
+//             }
+            
+//             // Add vertex to the list with verification
+//             state.motifVertices.pushBack(chosenVerts[idx]);
+            
+//             idx += 1;
+//         }
+//     }
+    
+//     // Increment counter for total motifs found
+//     state.localsubgraphCount += 1;
+    
+//     // Calculate size after adding vertices
+//     var finalSize = state.motifVertices.size;
+//     var verticesAdded = finalSize - initialSize;
+    
+//     // Verify we added exactly k vertices
+//     if verticesAdded != state.k {
+//         writeln("ANOMALY DETECTED: Motif #", state.localsubgraphCount - 1, 
+//                 " with root ", root, " has ", verticesAdded, 
+//                 " vertices, expected ", state.k);
+        
+//         // Print motif structure by level
+//         writeln("Motif structure by level:");
+//         for level in 0..<state.k {
+//             write("Level ", level, " (", state.getSubgraph(level, 0), " vertices): ");
+//             for pos in 1..state.getSubgraph(level, 0) {
+//                 write(state.getSubgraph(level, pos), " ");
+//             }
+//             writeln();
+//         }
+        
+//         // Check total vertices by level vs. what we expected
+//         writeln("Total vertices by level count: ", totalVerticesForThisMotif, 
+//                ", Final index: ", idx-1, ", k: ", state.k);
+//     }
+    
+//     // Verify total state is consistent
+//     if state.motifVertices.size != state.localsubgraphCount * state.k {
+//         writeln("GLOBAL ANOMALY: Total vertices (", state.motifVertices.size, 
+//                ") != Motifs (", state.localsubgraphCount, ") * k (", state.k, 
+//                ") = ", state.localsubgraphCount * state.k);
+        
+//         // Check if this happened right after adding the latest motif
+//         if state.motifVertices.size == state.localsubgraphCount * state.k + 1 {
+//             writeln("Exactly ONE extra vertex detected after processing motif #", 
+//                    state.localsubgraphCount - 1);
+            
+//             // Print the last vertex added
+//             if state.motifVertices.size > 0 {
+//                 // Note: Safely access the last element
+//                 var lastIdx = state.motifVertices.size - 1;
+//                 var lastElem = state.motifVertices[lastIdx];
+//                 writeln("Last vertex added: ", lastElem);
+//             }
+//         }
+//     }
+    
+//     return;
+// }
 
 
 
@@ -1434,7 +1191,7 @@ proc processMotifs(ref state: KavoshState, ref globalSet: set(uint(64), parSafe=
     if state.localsubgraphCount == 0 then return;
     ///////////////////////////////////////////////////////
 var motifVertexCounts: [0..<numMotifs] int;
-var problematicMotifs: domain(int, parSafe=true);
+var problematicMotifs: domain(int);
 
 // Count vertices for each motif
 var currentMotif = 0;
@@ -1479,8 +1236,7 @@ while i < state.motifVertices.size {
         // Print the extra vertices
         writeln("Extra vertices:");
         while i < state.motifVertices.size {
-            // writeln("  Extra vertex at position ", i, ": ", state.motifVertices[i]);
-            writeln("  Extra vertex at position ");
+            writeln("  Extra vertex at position ", i, ": ", state.motifVertices[i]);
             i += 1;
         }
         break;
@@ -1511,15 +1267,15 @@ for m in problematicMotifs {
             startIdx += motifVertexCounts[i];
         }
         
-        // // Print the vertices for this motif
-        // write("Vertices: ");
-        // for j in 0..<motifVertexCounts[motifIdx] {
-        //     if startIdx + j < state.motifVertices.size {
-        //         write(state.motifVertices[startIdx + j], " ");
-        //     } else {
-        //         write("OUT_OF_BOUNDS ");
-        //     }
-        // }
+        // Print the vertices for this motif
+        write("Vertices: ");
+        for j in 0..<motifVertexCounts[motifIdx] {
+            if startIdx + j < state.motifVertices.size {
+                write(state.motifVertices[startIdx + j], " ");
+            } else {
+                write("OUT_OF_BOUNDS ");
+            }
+        }
         writeln();
     }
 } else if totalVertices != numMotifs * expectedMotifSize {
@@ -1716,10 +1472,9 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
     var localCacheHits: atomic int;      // Track local cache hits
     var totalProcessed: atomic int;      // Track total motifs processed
 
-    // forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices,
-    //                             ref batchMatrixCounter, ref batchCallCounter, 
-    //                             ref localCacheHits, ref totalProcessed) {
-    for v in  0..<n-k+1{
+    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices,
+                                ref batchMatrixCounter, ref batchCallCounter, 
+                                ref localCacheHits, ref totalProcessed) {
         var state = new KavoshState(n, k, maxDeg);
         
         // Initialize root vertex in subgraph
@@ -1949,10 +1704,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
         writeln("Maximum degree: ", maxDeg);
         // Complete enumeration
-        //Enumerate(g1.n_vertices, motifSize, maxDeg);
-Enumerate_Return(g1.n_vertices, motifSize, maxDeg);
-
-
+        Enumerate(g1.n_vertices, motifSize, maxDeg);
         //writeln(" globalMotifSet = ", globalMotifSet);
         writeln(" globalMotifCount = ", globalMotifCount.read());
 
