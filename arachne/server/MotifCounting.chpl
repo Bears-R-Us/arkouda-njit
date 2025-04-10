@@ -216,6 +216,22 @@ record Motif {
     //var nautyCache: map(uint(64), [0..<k] int, parSafe=true);
 
 
+// Define a record for comparing tuples by the second element (degree)
+record DegreeComparator {
+  proc compare(a: (int, int), b: (int, int)): int {
+    // Sort in descending order of degree (second element)
+    return b(1) - a(1);
+  }
+}
+
+// Create an array of (node, degree) pairs
+var nodeDegPairs: [0..<n] (int, int);
+forall v in 0..<n {
+    nodeDegPairs[v] = (v, nodeDegree[v]);
+}
+// Sort in descending order of degree
+sort(nodeDegPairs, comparator=new DegreeComparator());
+
     var globalMotifSet: set(uint(64), parSafe=true);
     var totalCount: atomic int;
 totalCount.write(0);
@@ -492,11 +508,11 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
             }
         }
 
-        // Verify we have the expected number of vertices
-        if idx != numMotifs * k {
-            writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-                    " but got ", idx, " for root ", v);
-        }
+        // // Verify we have the expected number of vertices
+        // if idx != numMotifs * k {
+        //     writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
+        //             " but got ", idx, " for root ", v);
+        // }
 
         // Create arrays for batch processing
         var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
@@ -622,10 +638,10 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
         // Add local patterns to global set
         globalMotifSet += localPatterns;
         
-        if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
-            writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
-                   localPatterns.size, " unique patterns");
-        }
+        // if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
+        //     writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
+        //            localPatterns.size, " unique patterns");
+        // }
     }
     
     // Set the final results - this part remains unchanged
@@ -1711,15 +1727,19 @@ for m in problematicMotifs {
         // Enumerate: Iterates over all vertices as potential roots
         // and calls Explore to find all subgraphs of size k containing that root.
 proc Enumerate(n: int, k: int, maxDeg: int) throws {
-    var batchMatrixCounter: atomic int;  // Track matrices in batches
-    var batchCallCounter: atomic int;    // Track batch calls to Nauty
-    var localCacheHits: atomic int;      // Track local cache hits
-    var totalProcessed: atomic int;      // Track total motifs processed
+    // var batchMatrixCounter: atomic int;  // Track matrices in batches
+    // var batchCallCounter: atomic int;    // Track batch calls to Nauty
+    // var localCacheHits: atomic int;      // Track local cache hits
+    // var totalProcessed: atomic int;      // Track total motifs processed
 
     // forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices,
     //                             ref batchMatrixCounter, ref batchCallCounter, 
     //                             ref localCacheHits, ref totalProcessed) {
-    for v in  0..<n-k+1{
+
+
+    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
+
+    // for v in  0..<n-k+1{
         var state = new KavoshState(n, k, maxDeg);
         
         // Initialize root vertex in subgraph
@@ -1742,12 +1762,12 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             continue;
         }
         
-        // Verify we have the expected number of vertices
-        if totalVertices != numMotifs * k {
-            writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-                    " but got ", totalVertices, ". Skipping this root: ", v);
-            //continue;
-        }
+        // // Verify we have the expected number of vertices
+        // if totalVertices != numMotifs * k {
+        //     writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
+        //             " but got ", totalVertices, ". Skipping this root: ", v);
+        //     //continue;
+        // }
         
         // Now classify all motifs found from this root
         var localPatterns: set(uint(64), parSafe=false);
@@ -1763,7 +1783,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
         var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
         
-        totalProcessed.add(numMotifs);  // Track total motifs processed
+        //totalProcessed.add(numMotifs);  // Track total motifs processed
         
         // Fill matrices and check for duplicates
         for i in 0..<numMotifs {
@@ -1791,7 +1811,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             if seenMatrices.contains(matrixBinary) {
                 // We've seen this pattern before, skip Nauty processing
                 seenIndices.add(i);
-                localCacheHits.add(1);  // Increment cache hit counter
+                //localCacheHits.add(1);  // Increment cache hit counter
                 if logLevel == LogLevel.DEBUG {
                     writeln("  Matrix binary ", matrixBinary, " already seen - skipping Nauty");
                 }
@@ -1813,8 +1833,8 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             var uniqueResults: [0..#(uniqueCount * k)] int;
             
             // Track batch statistics
-            batchMatrixCounter.add(uniqueCount);
-            batchCallCounter.add(1);
+            //batchMatrixCounter.add(uniqueCount);
+            //batchCallCounter.add(1);
             
             if logLevel == LogLevel.DEBUG {
                 writeln("Processing batch of ", uniqueCount, " matrices for root ", v);
@@ -1890,23 +1910,23 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
     
     // Print batch statistics
     writeln("\nEnumerate Execution Statistics:");
-    writeln("  Total motifs found: ", totalProcessed.read());
+    //writeln("  Total motifs found: ", totalProcessed.read());
     writeln("  Total unique patterns found: ", globalMotifSet.size);
     writeln("  Total unique matrices seen: ", seenMatrices.size);
     writeln("\nNauty Processing Statistics:");
-    writeln("  Total matrices processed in batches: ", batchMatrixCounter.read());
-    writeln("  Total batch calls to Nauty: ", batchCallCounter.read());
-    writeln("  Average matrices per batch: ", 
-           if batchCallCounter.read() > 0 then batchMatrixCounter.read() / batchCallCounter.read():real else 0);
-    writeln("  Local cache hits: ", localCacheHits.read());
-    writeln("  Cache efficiency: ", 
-           if (localCacheHits.read() + batchMatrixCounter.read()) > 0 then
-               (localCacheHits.read() * 100.0) / (localCacheHits.read() + batchMatrixCounter.read()):real
-           else 0, "%");
-    writeln("  Nauty call reduction: ", 
-           if totalProcessed.read() > 0 then
-               (1.0 - (batchCallCounter.read():real / totalProcessed.read())) * 100.0
-           else 0, "%");
+    //writeln("  Total matrices processed in batches: ", batchMatrixCounter.read());
+    // writeln("  Total batch calls to Nauty: ", batchCallCounter.read());
+    // writeln("  Average matrices per batch: ", 
+    //        if batchCallCounter.read() > 0 then batchMatrixCounter.read() / batchCallCounter.read():real else 0);
+    // writeln("  Local cache hits: ", localCacheHits.read());
+    // writeln("  Cache efficiency: ", 
+    //        if (localCacheHits.read() + batchMatrixCounter.read()) > 0 then
+    //            (localCacheHits.read() * 100.0) / (localCacheHits.read() + batchMatrixCounter.read()):real
+    //        else 0, "%");
+    // writeln("  Nauty call reduction: ", 
+    //        if totalProcessed.read() > 0 then
+    //            (1.0 - (batchCallCounter.read():real / totalProcessed.read())) * 100.0
+    //        else 0, "%");
     
     writeln("\nEnumerate: finished enumeration");
     writeln("Total motifs found: ", globalMotifCount.read());
@@ -1949,8 +1969,19 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         writeln("Starting motif counting with k=", k, " on a graph of ", n, " vertices.");
         writeln("Maximum degree: ", maxDeg);
         // Complete enumeration
-        //Enumerate(g1.n_vertices, motifSize, maxDeg);
+
+    var timer0:stopwatch;
+timer0.start();
+Enumerate(g1.n_vertices, motifSize, maxDeg);
+timer0.stop();
+writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate Time: ", timer0.elapsed());
+
+    var timer1:stopwatch;
+timer1.start();
 Enumerate_Return(g1.n_vertices, motifSize, maxDeg);
+timer1.stop();
+writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate RETURN Time: ", timer1.elapsed());
+
 
 
         //writeln(" globalMotifSet = ", globalMotifSet);
