@@ -106,33 +106,6 @@ module MotifCounting {
         }
     }// End of KavoshState
 
-// A new record to represent a motif
-record Motif {
-    var vertices: list(int);
-    
-    proc init() {
-        this.vertices = new list(int);
-    }
-    
-    // Add a vertex to the motif
-    proc addVertex(v: int) {
-        this.vertices.pushBack(v);
-    }
-    
-    // Get number of vertices
-    proc size(): int {
-        return this.vertices.size;
-    }
-    
-    // Convert to array for easier processing
-    proc toArray(): [] int {
-        var result: [0..<this.vertices.size] int;
-        for i in 0..<this.vertices.size {
-            result[i] = this.vertices[i];
-        }
-        return result;
-    }
-}
 
     // C header and object files.
     require "nauty-wrapper/bin/nautyClassify.o",
@@ -159,7 +132,7 @@ record Motif {
     proc runMotifCounting(g1: SegGraph,  
               // sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
                motifSize: int, doSampling: int, in printProgressInterval: int,
-              algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
+               algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
     
         var numIso: int = 0;
 
@@ -186,7 +159,10 @@ record Motif {
         var n = nodeMapGraphG1.size;
         var k = motifSize; // Looking for motifs of size motifSize
         var nodeDegree: [0..<n] int;
+        var node_IN_Neighbours: [0..<n] domain(int);
+        var node_OUT_Neighbours: [0..<n] domain(int);
         var nodeNeighbours: [0..<n] domain(int);
+        var newNodeNeighbours: [0..<n] domain(int);
 
         forall v in 0..<n with (ref nodeDegree) {
             var neighbours: domain(int, parSafe=true);
@@ -200,6 +176,8 @@ record Motif {
             nodeDegree[v] = neighbours.size;
             // Collect all neighbors (both in and out) 
             nodeNeighbours[v] = neighbours;
+            node_IN_Neighbours[v] = NeiIn;
+            node_OUT_Neighbours[v] = NeiOut;
         }
 
         var maxDeg = max reduce nodeDegree;
@@ -213,49 +191,137 @@ record Motif {
         var globalMotifMap: map(uint(64), int);
         //var syncVar: sync bool;
     
-    //var nautyCache: map(uint(64), [0..<k] int, parSafe=true);
+        // Define a record for comparing tuples by the second element (degree)
+        record DegreeComparator {
+        proc compare(a: (int, int), b: (int, int)): int {
+            // Sort in descending order of degree (second element)
+            return b(1) - a(1);
+        }
+        }
 
+        // Create an array of (node, degree) pairs
+        var nodeDegPairs: [0..<n] (int, int);
+        forall v in 0..<n {
+            nodeDegPairs[v] = (v, nodeDegree[v]);
+        }
+        // Sort in descending order of degree
+        sort(nodeDegPairs, comparator=new DegreeComparator());
 
-// Define a record for comparing tuples by the second element (degree)
-record DegreeComparator {
-  proc compare(a: (int, int), b: (int, int)): int {
-    // Sort in descending order of degree (second element)
-    return b(1) - a(1);
-  }
-}
-
-// Create an array of (node, degree) pairs
-var nodeDegPairs: [0..<n] (int, int);
-forall v in 0..<n {
-    nodeDegPairs[v] = (v, nodeDegree[v]);
-}
-// Sort in descending order of degree
-sort(nodeDegPairs, comparator=new DegreeComparator());
-
-    var globalMotifSet: set(uint(64), parSafe=true);
-    var totalCount: atomic int;
-totalCount.write(0);
+            var globalMotifSet: set(uint(64), parSafe=true);
+            var totalCount: atomic int;
+        totalCount.write(0);
 
 
 
 
- var nautyCallCounter: atomic int;  // Track total number of calls to c_nautyClassify
-var totalMatricesProcessed: atomic int;  // Track total number of matrices processed
-var cacheHits: atomic int;  // Track number of matrices skipped due to caching
-// global set to track seen matrix binary representations
-    var seenMatrices: set(uint(64), parSafe=true);
+        var nautyCallCounter: atomic int;  // Track total number of calls to c_nautyClassify
+        var totalMatricesProcessed: atomic int;  // Track total number of matrices processed
+        var cacheHits: atomic int;  // Track number of matrices skipped due to caching
+        // global set to track seen matrix binary representations
+        var seenMatrices: set(uint(64), parSafe=true);
 
         var Sampling: bool = false;
         if doSampling == 1 then Sampling = true;
     
         var doMOtifDetail: bool = true;
+
+        var newDstNodesG1 = dstNodesG1;
+        var newSegGraphG1 = segGraphG1;
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Return-based Explore function
-proc Explore_Return(ref state: KavoshState, root: int, level: int, remainedToVisit: int): list(Motif)  throws{
-    var motifs = new list(Motif);
+proc swapNodeWithZero(targetNode: int) {
+    writeln("Swapping node ", targetNode, " with node 0");
     
+    // 1. Swap the neighbor sets of nodes 0 and targetNode
+    var temp_in = node_IN_Neighbours[0];
+    var temp_out = node_OUT_Neighbours[0];
+    var temp_all = nodeNeighbours[0];
+    
+    node_IN_Neighbours[0] = node_IN_Neighbours[targetNode];
+    node_OUT_Neighbours[0] = node_OUT_Neighbours[targetNode];
+    nodeNeighbours[0] = nodeNeighbours[targetNode];
+    
+    node_IN_Neighbours[targetNode] = temp_in;
+    node_OUT_Neighbours[targetNode] = temp_out;
+    nodeNeighbours[targetNode] = temp_all;
+    
+    // 2. Update references to 0 and targetNode in all neighbor sets
+    forall v in 0..<nodeNeighbours.domain.size {
+        // Create new neighbor sets with updated references
+        var new_in: domain(int, parSafe=true);
+        var new_out: domain(int, parSafe=true);
+        var new_all: domain(int, parSafe=true);
+        
+        // Update incoming neighbors
+        for neighbor in node_IN_Neighbours[v] {
+            if neighbor == 0 {
+                new_in.add(targetNode);
+            } else if neighbor == targetNode {
+                new_in.add(0);
+            } else {
+                new_in.add(neighbor);
+            }
+        }
+        
+        // Update outgoing neighbors
+        for neighbor in node_OUT_Neighbours[v] {
+            if neighbor == 0 {
+                new_out.add(targetNode);
+            } else if neighbor == targetNode {
+                new_out.add(0);
+            } else {
+                new_out.add(neighbor);
+            }
+        }
+        
+        // Update all neighbors
+        new_all += new_in;
+        new_all += new_out;
+        
+        // Assign the updated sets
+        node_IN_Neighbours[v] = new_in;
+        node_OUT_Neighbours[v] = new_out;
+        nodeNeighbours[v] = new_all;
+        if logLevel == LogLevel.DEBUG {
+            writeln("Node ", v, " has In-Nei: ", node_IN_Neighbours[v], "Out-Nei: ", node_OUT_Neighbours[v] );
+        }
+    }
+    
+    // For verification
+    writeln("After swap - node 0 neighbors: ", nodeNeighbours[0]);
+    writeln("After swap - node ", targetNode, " neighbors: ", nodeNeighbours[targetNode]);
+    
+    return;
+}
+    // Run the swap 
+    //swapNodeWithZero(doSampling); 
+    
+// Modified version of initChildSet that accepts the graph arrays as parameters
+proc initChildSetSwapped(ref state: KavoshState, root: int, level: int, targetNode: int) throws {
+    // Initialize count for this level to 0
+    state.setChildSet(level, 0, 0);
+    const parentsCount = state.getSubgraph(level-1, 0);
+
+    // For each vertex chosen at the previous level, get its neighbors
+    for p in 1..parentsCount {
+        const parent = state.getSubgraph(level-1, p);
+        
+        // Get neighbors (they're already correctly swapped by swapNodeWithZero)
+        for neighbor in nodeNeighbours[parent] {
+            // Must be greater than root and not visited
+            if neighbor > root && !state.visited.contains(neighbor) {
+                // Increment count and add neighbor
+                const currentCount = state.getChildSet(level, 0) + 1;
+                state.setChildSet(level, 0, currentCount);
+                state.setChildSet(level, currentCount, neighbor);
+                state.visited.add(neighbor);
+            }
+        }
+    }
+}
+    // Similar to original Explore but using swapped-aware helper functions
+proc ExploreSwapped(ref state: KavoshState, root: int, level: int, remainedToVisit: int, targetNode:int) throws {
     if logLevel == LogLevel.DEBUG {
-        writeln("===== Explore_Return called =====");
+        writeln("===== ExploreSwapped called =====");
         writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
         writeln("Visited Vertices: ", state.visited);
         writeln("Current partial subgraph level by level:");
@@ -271,47 +337,35 @@ proc Explore_Return(ref state: KavoshState, root: int, level: int, remainedToVis
 
     // Base case: all k vertices chosen, now we have found a motif
     if remainedToVisit == 0 {
-        // Create a new motif record
-        var motif = new Motif();
+        // Base case: all k vertices chosen, we found a motif
+        var chosenVerts: [1..state.k] int;
+        var idx = 1;
         
         // Gather vertices level by level
         for level in 0..<state.k {
             const vertCount = state.getSubgraph(level, 0);
             for pos in 1..vertCount {
-                motif.addVertex(state.getSubgraph(level, pos));
+                chosenVerts[idx] = state.getSubgraph(level, pos);
+                state.motifVertices.pushBack(chosenVerts[idx]);
+                idx += 1;
             }
         }
-        
-        // Verify the motif has exactly k vertices
-        if motif.size() != state.k {
-            writeln("WARNING: Motif has ", motif.size(), " vertices, expected ", state.k);
-        }
-        
-        // Add to our list of motifs
-        motifs.pushBack(motif);
-        
-        // Still update the counter for compatibility
         state.localsubgraphCount += 1;
-        
-        return motifs;
+        return;
     }
 
-    // Get children for this level
-    initChildSet(state, root, level);
+    // Get children for this level, using swap-aware function
+    initChildSetSwapped(state, root, level, targetNode);
     const childCount = state.getChildSet(level, 0);
 
-    // Try all possible selection sizes at this level, from 1 to remainedToVisit
+    // Try all possible selection sizes at this level
     for selSize in 1..remainedToVisit {
         if childCount < selSize {
-            // Not enough children to form this selection
-            if logLevel == LogLevel.DEBUG {
-                writeln("Not enough children (", childCount, ") to select ", selSize, " vertices at level ", level);
-            }
-            // Unmark visited children before returning
+            // Not enough children, clean up and return
             for i in 1..childCount {
                 state.visited.remove(state.getChildSet(level, i));
             }
-            return motifs;
+            return;
         }
 
         // Initial selection: pick the first selSize children
@@ -321,360 +375,443 @@ proc Explore_Return(ref state: KavoshState, root: int, level: int, remainedToVis
             state.setIndexMap(level, i, i);
         }
 
-        if logLevel == LogLevel.DEBUG {
-            writeln("Exploring with initial selection of size ", selSize, " at level ", level);
-            write("Selected vertices: ");
-            for i in 1..selSize {
-                write(state.getSubgraph(level, i), " ");
-            }
-            writeln("we will Recurse with chosen selection");
-            writeln();
-        }
+        // Recurse with chosen selection
+        ExploreSwapped(state, root, level+1, remainedToVisit - selSize, targetNode);
 
-        // Recurse with chosen selection - collect returned motifs
-        var newMotifs = Explore_Return(state, root, level+1, remainedToVisit - selSize);
-        for motif in newMotifs {
-            motifs.pushBack(motif);
-        }
-
-        // Generate other combinations using revolve-door algorithm - collect returned motifs
-        var genMotifs = ForwardGenerator_Return(childCount, selSize, root, level, remainedToVisit, selSize, state);
-        for motif in genMotifs {
-            motifs.pushBack(motif);
-        }
+        // Generate other combinations using revolve-door algorithm
+        ForwardGeneratorSwapped(childCount, selSize, root, level, remainedToVisit, selSize, state, targetNode);
     }
 
-    // Cleanup: Unmark visited children before going up
+    // Cleanup: Unmark visited children
     for i in 1..childCount {
         state.visited.remove(state.getChildSet(level, i));
     }
     state.setSubgraph(level, 0, 0);
-    
-    return motifs;
 }
 
-// Return-based ForwardGenerator
-proc ForwardGenerator_Return(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
-                           ref state: KavoshState): list(Motif) throws{
-    var motifs = new list(Motif);
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("ForwardGenerator_Return called with n=", n, " k=", k, " level=", level, 
-                " remainedToVisit=", remainedToVisit, " m=", m);
-    }
-
+proc ForwardGeneratorSwapped(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
+                            ref state: KavoshState, targetNode: int) throws {
     if k > 0 && k < n {
-        // Recurse with ForwardGenerator and collect motifs
-        var genMotifs = ForwardGenerator_Return(n-1, k, root, level, remainedToVisit, m, state);
-        for motif in genMotifs {
-            motifs.pushBack(motif);
-        }
+        ForwardGeneratorSwapped(n-1, k, root, level, remainedToVisit, m, state, targetNode);
 
-        // Call swapping with appropriate indices and collect motifs
-        var swapMotifs: list(Motif);
         if k == 1 {
-            if logLevel == LogLevel.DEBUG {
-                writeln("ForwardGenerator_Return: k=1 case, calling swapping_Return(n, n-1) => swapping_Return(", 
-                        n, ", ", n-1, ")");
-            }
-            swapMotifs = swapping_Return(n, n-1, root, level, remainedToVisit, m, state);
+            swappingFunction(n, n-1, root, level, remainedToVisit, m, state, targetNode);
         } else {
-            if logLevel == LogLevel.DEBUG {
-                writeln("ForwardGenerator_Return: k>1 case, calling swapping_Return(n, k-1) => swapping_Return(", 
-                        n, ", ", k-1, ")");
-            }
-            swapMotifs = swapping_Return(n, k-1, root, level, remainedToVisit, m, state);
-        }
-        for motif in swapMotifs {
-            motifs.pushBack(motif);
+            swappingFunction(n, k-1, root, level, remainedToVisit, m, state, targetNode);
         }
 
-        // Recurse with reverseGenerator and collect motifs
-        var negMotifs = reverseGenerator_Return(n-1, k-1, root, level, remainedToVisit, m, state);
-        for motif in negMotifs {
-            motifs.pushBack(motif);
-        }
+        reverseGeneratorSwapped(n-1, k-1, root, level, remainedToVisit, m, state, targetNode);
     }
-    
-    return motifs;
 }
 
-// Return-based reverseGenerator
-proc reverseGenerator_Return(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
-                           ref state: KavoshState): list(Motif) throws{
-    var motifs = new list(Motif);
-    
-    if logLevel == LogLevel.DEBUG {
-        writeln("reverseGenerator_Return called with n=", n, " k=", k, " level=", level, 
-                " remainedToVisit=", remainedToVisit, " m=", m);
-    }
-
+proc reverseGeneratorSwapped(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
+                           ref state: KavoshState, targetNode: int) throws {
     if k > 0 && k < n {
-        // Recurse with ForwardGenerator and collect motifs
-        var genMotifs = ForwardGenerator_Return(n-1, k-1, root, level, remainedToVisit, m, state);
-        for motif in genMotifs {
-            motifs.pushBack(motif);
-        }
+        ForwardGeneratorSwapped(n-1, k-1, root, level, remainedToVisit, m, state, targetNode);
 
-        // Call swapping with appropriate indices and collect motifs
-        var swapMotifs: list(Motif);
         if k == 1 {
-            if logLevel == LogLevel.DEBUG {
-                writeln("reverseGenerator_Return: k=1 case, calling swapping_Return(n-1, n) => swapping_Return(", 
-                        n-1, ", ", n, ")");
-            }
-            swapMotifs = swapping_Return(n-1, n, root, level, remainedToVisit, m, state);
+            swappingFunction(n-1, n, root, level, remainedToVisit, m, state, targetNode);
         } else {
-            if logLevel == LogLevel.DEBUG {
-                writeln("reverseGenerator_Return: k>1 case, calling swapping_Return(k-1, n) => swapping_Return(", 
-                        k-1, ", ", n, ")");
-            }
-            swapMotifs = swapping_Return(k-1, n, root, level, remainedToVisit, m, state);
-        }
-        for motif in swapMotifs {
-            motifs.pushBack(motif);
+            swappingFunction(k-1, n, root, level, remainedToVisit, m, state, targetNode);
         }
 
-        // Recurse with reverseGenerator and collect motifs
-        var negMotifs = reverseGenerator_Return(n-1, k, root, level, remainedToVisit, m, state);
-        for motif in negMotifs {
-            motifs.pushBack(motif);
-        }
+        reverseGeneratorSwapped(n-1, k, root, level, remainedToVisit, m, state, targetNode);
     }
-    
-    return motifs;
 }
 
-// Return-based swapping
-proc swapping_Return(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, 
-                    ref state: KavoshState): list(Motif) throws{
-    if logLevel == LogLevel.DEBUG {
-        writeln("swapping_Return called: swapping indices ", i, " and ", j, " at level ", level);
-        writeln("Before swapping: indexMap[level,i] = ", state.getIndexMap(level, i), 
-                " indexMap[level,j] = ", state.getIndexMap(level, j));
-    }
-
+proc swappingFunction(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, 
+                     ref state: KavoshState, targetNode: int) throws {
     state.setIndexMap(level, i, state.getIndexMap(level, j));
     state.setSubgraph(level, state.getIndexMap(level, i), state.getChildSet(level, i));
 
-    if logLevel == LogLevel.DEBUG {
-        writeln("After swapping: subgraph[level,indexMap[level,i]] = childSet[level,i] = ", 
-                state.getChildSet(level, i));
-        writeln("Now calling Explore_Return after swapping");
+    ExploreSwapped(state, root, level+1, remainedToVisit - m, targetNode);
+}
+
+// Function to check if an edge exists between u and w in the swapped graph
+proc getEdgeIdSwapped(u: int, w: int, targetNode: int) throws{
+    // Map nodes if they're 0 or targetNode
+    var actualU = u;
+    var actualW = w;
+    
+    if u == 0 {
+        actualU = targetNode;
+    } else if u == targetNode {
+        actualU = 0;
+    }
+    
+    if w == 0 {
+        actualW = targetNode;
+    } else if w == targetNode {
+        actualW = 0;
+    }
+    
+    // Now check with the mapped nodes
+    return getEdgeId(actualU, actualW, dstNodesG1, segGraphG1);
+}
+// Modified version of prepareNaugtyArguments to handle swapped nodes
+proc prepareNaugtyArgumentsSwapped(ref state: KavoshState, targetNode: int) throws {
+    // Step 1: Build array of chosen vertices
+    var chosenVerts: [1..state.k] int;
+    var idx = 1;
+    
+    // Gather vertices level by level
+    for level in 0..<state.k {
+        const vertCount = state.getSubgraph(level, 0);
+        for pos in 1..vertCount {
+            if idx > state.k {
+                halt("Error: More vertices than expected");
+            }
+            chosenVerts[idx] = state.getSubgraph(level, pos);
+            idx += 1;
+        }
     }
 
-    // Call Explore_Return and return the motifs it finds
-    return Explore_Return(state, root, level+1, remainedToVisit - m);
-}
-// Modified Enumerate function to use the return-based approach
-proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
-    var batchMatrixCounter: atomic int;  // Track matrices in batches
-    var batchCallCounter: atomic int;    // Track batch calls to Nauty
-    var localCacheHits: atomic int;      // Track local cache hits
-    var totalProcessed: atomic int;      // Track total motifs processed
+    if idx - 1 != state.k {
+        halt("Error: Didn't find exactly k vertices");
+    }
 
-    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices,
-                                ref batchMatrixCounter, ref batchCallCounter, 
-                                ref localCacheHits, ref totalProcessed) {
-        var state = new KavoshState(n, k, maxDeg);
-        
-        // Initialize root vertex in subgraph
-        state.setSubgraph(0, 0, 1);
-        state.setSubgraph(0, 1, v);
-        state.visited.clear();
-        state.visited.add(v);
-        
-        // Find all motifs for this root using return-based Explore
-        var returnedMotifs = Explore_Return(state, v, 1, state.k - 1);
-        
-        // Calculate how many complete motifs we found
-        const numMotifs = returnedMotifs.size;
-        
-        // Skip if no motifs found
-        if numMotifs == 0 {
-            continue;
-        }
-        
-        // Now classify all motifs found from this root
-        var localPatterns: set(uint(64), parSafe=false);
-        
-        // Create flat array of vertices from the returned motifs
-        var allVertices: [0..<(numMotifs * k)] int;
-        var idx = 0;
-        for motif in returnedMotifs {
-            for i in 0..<motif.size() {
-                allVertices[idx] = motif.vertices[i];
-                idx += 1;
+    // Step 2: Create adjacency matrix
+    var adjMatrix: [0..#(state.k * state.k)] int = 0;
+
+    // Step 3: Fill adjacency matrix
+    for i in 0..#state.k {
+        for j in 0..#state.k {
+            if i != j {  // Skip self-loops
+                var u = chosenVerts[i+1];
+                var w = chosenVerts[j+1];
+                
+                // Use the swapped-aware edge check
+                var eid = getEdgeIdSwapped(u, w, targetNode);
+                if eid != -1 {
+                    adjMatrix[i * state.k + j] = 1;
+                }
             }
         }
+    }
 
-        // // Verify we have the expected number of vertices
-        // if idx != numMotifs * k {
-        //     writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-        //             " but got ", idx, " for root ", v);
-        // }
+    return (adjMatrix, chosenVerts);
+}
 
-        // Create arrays for batch processing
-        var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
-        var batchedResults: [0..#(numMotifs * k)] int;
+// Main function to run Kavosh for a specific node
+proc EnumerateForNode(originalTargetNode: int, n: int, k: int, maxDeg: int) throws {
+    writeln("===== Running Kavosh for node ", originalTargetNode, " =====");
+
+    // Create state for tracking results
+    var state = new KavoshState(n, k, maxDeg);
+
+    state.setSubgraph(0, 0, 1);
+    state.setSubgraph(0, 1, 0);
+    state.visited.clear();
+    state.visited.add(0);
+
+    if originalTargetNode == 0 {        // If target is already 0, run Kavosh normally
+        // Run Explore directly
+        Explore(state, 0, 1, state.k - 1);
+        writeln("Ran normal Explore for root 0");
+    } else { // Run with 0 as root (representing the original target node)
+        // Swap the target node with 0
+        swapNodeWithZero(originalTargetNode);
         
-        // Track which matrices need to be processed
-        var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
-        var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
-        
-        totalProcessed.add(numMotifs);  // Track total motifs processed
-        
-        // Fill matrices and check for duplicates
+        // Run Explore with swapped graph
+        ExploreSwapped(state, 0, 1, state.k - 1, originalTargetNode);
+    }
+    
+    // Process motifs exactly like in Enumerate
+    const numMotifs = state.localsubgraphCount;
+    const totalVertices = state.motifVertices.size;
+    
+    writeln("Found ", numMotifs, " motifs with a total of ", totalVertices, " vertices");
+    
+    // Skip if no motifs found
+    if numMotifs == 0 || totalVertices == 0 {
+        writeln("No motifs found. Skipping pattern processing.");
+        return;
+    }
+    
+    // Map to track canonical patterns and their counts
+    var canonicalPatternMap: map(uint(64), int);
+    
+    // Get the motif vertices as an array
+    var motifVerticesArray = state.motifVertices.toArray();
+
+    if logLevel == LogLevel.DEBUG {
+
+        writeln("Motif vertex sets:");
         for i in 0..<numMotifs {
             var baseIdx = i * k;
-            var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
-            
-            // Create adjacency matrix
-            for row in 0..<k {
-                for col in 0..<k {
-                    if row != col {  // Skip self-loops
-                        var u = allVertices[baseIdx + row];
-                        var w = allVertices[baseIdx + col];
-                        var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                        if eid != -1 {
-                            batchedMatrices[i * (k * k) + row * k + col] = 1;
-                            
-                            // Update binary representation - set bit at position (row * k + col)
-                            matrixBinary |= 1:uint(64) << (row * k + col);
-                        }
+            write("  Motif ", i, ": ");
+            for j in 0..<k {
+                write(motifVerticesArray[baseIdx + j], " ");
+            }
+            writeln();
+        }
+    }
+    // Create arrays for batch processing
+    var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
+    var batchedResults: [0..#(numMotifs * k)] int;
+    
+    // Track which matrices need to be processed
+    var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
+    var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
+    var patternToOriginalMapping: map(uint(64), list(uint(64))); // Map to track original patterns per canonical form
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("\nProcessing ", numMotifs, " motifs for pattern identification...");
+    }
+    // Fill matrices and check for duplicates
+    for i in 0..<numMotifs {
+        var baseIdx = i * k;
+        var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
+        
+        // Create adjacency matrix
+        for row in 0..<k {
+            for col in 0..<k {
+                if row != col {  // Skip self-loops
+                    var u = motifVerticesArray[baseIdx + row];
+                    var w = motifVerticesArray[baseIdx + col];
+                    
+                    // Use the appropriate edge checking function
+                    var eid;
+                    if originalTargetNode == 0 {
+                        eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                    } else {
+                        eid = getEdgeIdSwapped(u, w, originalTargetNode);
+                    }
+                    
+                    if eid != -1 {
+                        batchedMatrices[i * (k * k) + row * k + col] = 1;
+                        
+                        // Update binary representation - set bit at position (row * k + col)
+                        matrixBinary |= 1:uint(64) << (row * k + col);
                     }
                 }
             }
-            
-            // Check if we've seen this matrix before
-            if seenMatrices.contains(matrixBinary) {
-                // We've seen this pattern before, skip Nauty processing
-                seenIndices.add(i);
-                localCacheHits.add(1);  // Increment cache hit counter
-                if logLevel == LogLevel.DEBUG {
-                    writeln("  Matrix binary ", matrixBinary, " already seen - skipping Nauty");
-                }
-            } else {
-                // New pattern, add to seen matrices and process
-                seenMatrices.add(matrixBinary);
-                matricesToProcess.pushBack((i, matrixBinary));
-                if logLevel == LogLevel.DEBUG {
-                    writeln("  New matrix binary ", matrixBinary, " - will be processed");
-                }
-            }
         }
         
-        // Process only unseen matrices with Nauty - this part remains largely unchanged
-        if matricesToProcess.size > 0 {
-            // Create smaller batch arrays for just the unseen matrices
-            var uniqueCount = matricesToProcess.size;
-            var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
-            var uniqueResults: [0..#(uniqueCount * k)] int;
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Motif ", i, " matrix binary: ", matrixBinary);
+
+            // Visualize the adjacency matrix for this motif
+            writeln("  Adjacency matrix for motif ", i, ":");
+            for row in 0..<k {
+                write("    ");
+                for col in 0..<k {
+                    write(batchedMatrices[i * (k * k) + row * k + col], " ");
+                }
+                writeln();
+            }
+        }
+        // Check if we've seen this matrix before
+        if seenMatrices.contains(matrixBinary) {
+            // We've seen this pattern before, skip Nauty processing
+            seenIndices.add(i);
+            //writeln("  Matrix binary ", matrixBinary, " already seen - skipping Nauty");
+        } else {
+            // New pattern, add to seen matrices and process
+            seenMatrices.add(matrixBinary);
+            matricesToProcess.pushBack((i, matrixBinary));
+            //writeln("  New matrix binary ", matrixBinary, " - will be processed by Nauty");
+        }
+    }
+
+    //writeln("\nFound ", matricesToProcess.size, " unique matrices to process with Nauty");
+    
+    // Process only unseen matrices with Nauty
+    if matricesToProcess.size > 0 {
+        // Create smaller batch arrays for just the unseen matrices
+        var uniqueCount = matricesToProcess.size;
+        var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
+        var uniqueResults: [0..#(uniqueCount * k)] int;
+        
+        // Fill unique matrices array
+        for i in 0..<uniqueCount {
+            var (origIdx, binary) = matricesToProcess[i];
+            var origOffset = origIdx * (k * k);
+            var newOffset = i * (k * k);
             
-            // Track batch statistics
-            batchMatrixCounter.add(uniqueCount);
-            batchCallCounter.add(1);
+            // Copy matrix from original batch to unique batch
+            for j in 0..<(k * k) {
+                uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
+            }
+            
+            //writeln("  Processing matrix ", i, " (original index ", origIdx, ") with binary ", binary);
+        }
+        
+        // Process only unique matrices with Nauty
+        var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
+        if logLevel == LogLevel.DEBUG {
+            writeln("  Nauty processing complete with status: ", status);
+            writeln("uniqueResults: ", uniqueResults);
+            writeln("uniqueMatrices: ", uniqueMatrices);
+            writeln("------------------------------------------------------");
+        }
+        
+        // Copy results back to original results array
+        for i in 0..<uniqueCount {
+            var (origIdx, originalBinary) = matricesToProcess[i];
+            var origOffset = origIdx * k;
+            var newOffset = i * k;
+            
+            // Copy results
+            for j in 0..<k {
+                batchedResults[origOffset + j] = uniqueResults[newOffset + j];
+            }
+            
+            // Extract nauty results for this matrix
+            var nautyLabels: [0..<k] int;
+            for j in 0..<k {
+                nautyLabels[j] = uniqueResults[newOffset + j];
+            }
+            
+            // Get adjacency matrix for this motif
+            var adjMatrixStart = origIdx * (k * k);
+            var adjMatrix: [0..#(k*k)] int;
+            for j in 0..#(k*k) {
+                adjMatrix[j] = batchedMatrices[adjMatrixStart + j];
+            }
+            
+            // Generate canonical pattern using the consistent approach
+            var canonicalPattern = generateNautyPattern(adjMatrix, nautyLabels, k);
+            
+            // Add mapping from original binary to canonical pattern
+            if !patternToOriginalMapping.contains(canonicalPattern) {
+                patternToOriginalMapping[canonicalPattern] = new list(uint(64));
+            }
+            patternToOriginalMapping[canonicalPattern].pushBack(originalBinary);
             
             if logLevel == LogLevel.DEBUG {
-                writeln("Processing batch of ", uniqueCount, " matrices for root ", v);
-            }
-            
-            // Fill unique matrices array
-            for i in 0..<uniqueCount {
-                var (origIdx, _) = matricesToProcess[i];
-                var origOffset = origIdx * (k * k);
-                var newOffset = i * (k * k);
-                
-                // Copy matrix from original batch to unique batch
-                for j in 0..<(k * k) {
-                    uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
-                }
-            }
-            
-            // Process only unique matrices with Nauty
-            var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
-            
-            // Copy results back to original results array
-            for i in 0..<uniqueCount {
-                var (origIdx, _) = matricesToProcess[i];
-                var origOffset = origIdx * k;
-                var newOffset = i * k;
-                
-                // Copy results
+                writeln("  Matrix ", i, " (original index ", origIdx, ") with binary ", originalBinary);
+                writeln("    is mapped to canonical pattern: ", canonicalPattern);
+                write("    with nauty labels: ");
                 for j in 0..<k {
-                    batchedResults[origOffset + j] = uniqueResults[newOffset + j];
+                    write(nautyLabels[j], " ");
+                }
+                writeln();
+            }
+        }
+    }
+
+    // Count motifs for each canonical pattern
+    for i in 0..<numMotifs {
+        // Get the binary representation for this motif
+        var matrixBinary: uint(64) = 0;
+        var baseIdx = i * k;
+        for row in 0..<k {
+            for col in 0..<k {
+                if row != col && batchedMatrices[i * (k * k) + row * k + col] == 1 {
+                    matrixBinary |= 1:uint(64) << (row * k + col);
                 }
             }
         }
         
-        // Process results for each motif
-        for i in 0..<numMotifs {
-            // Count all motifs regardless of whether they're seen before
-            totalCount.add(1);
-            
-            // Skip processing motifs that were seen before
-            if seenIndices.contains(i) {
-                continue;
+        // If we've seen this exact matrix before, we need to find its canonical form
+        var canonicalPattern: uint(64);
+        if seenIndices.contains(i) {
+            // Find which canonical pattern this binary maps to
+            var found = false;
+            for canonKey in patternToOriginalMapping.keys() {
+                var originals = patternToOriginalMapping[canonKey];
+                for original in originals {
+                    if original == matrixBinary {
+                        canonicalPattern = canonKey;
+                        found = true;
+                        break;
+                    }
+                }
+                if found then break;
+            }
+        } else {
+            // Get adjacency matrix for this motif
+            var adjMatrixStart = i * (k * k);
+            var adjMatrix: [0..#(k*k)] int;
+            for j in 0..#(k*k) {
+                adjMatrix[j] = batchedMatrices[adjMatrixStart + j];
             }
             
-            // Get vertices for this motif
-            var baseIdx = i * k;
-            var vertices: [1..k] int;
+            // Extract nauty results for this matrix
+            var nautyLabels: [0..<k] int;
             for j in 0..<k {
-                vertices[j+1] = allVertices[baseIdx + j];
+                nautyLabels[j] = batchedResults[i * k + j];
             }
             
-            // Extract results for this motif
-            var nautyResults: [0..<k] int;
-            for j in 0..<k {
-                nautyResults[j] = batchedResults[i * k + j];
-            }
-            
-            // Generate pattern
-            var pattern = generatePatternDirect(vertices, nautyResults, k);
-            localPatterns.add(pattern);
+            // Generate canonical pattern using the consistent approach
+            canonicalPattern = generateNautyPattern(adjMatrix, nautyLabels, k);
         }
         
-        // Add local patterns to global set
-        globalMotifSet += localPatterns;
+        // Update counts for this canonical pattern
+        if !canonicalPatternMap.contains(canonicalPattern) {
+            canonicalPatternMap[canonicalPattern] = 0;
+        }
+        canonicalPatternMap[canonicalPattern] += 1;
         
-        // if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
-        //     writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
-        //            localPatterns.size, " unique patterns");
-        // }
+        // Also track the total count
+        totalCount.add(1);
+    }
+
+    // Add canonical patterns to the global set
+    for pattern in canonicalPatternMap.keys() {
+        globalMotifSet.add(pattern);
+        if !globalMotifMap.contains(pattern) {
+            globalMotifMap[pattern] = 0;
+        }
+        globalMotifMap[pattern] += canonicalPatternMap[pattern];
     }
     
-    // Set the final results - this part remains unchanged
+    // Print detailed pattern information
+    writeln("\nPattern summary for node ", originalTargetNode, ":");
+    writeln("  Total motifs found: ", numMotifs);
+    writeln("  Unique canonical patterns: ", canonicalPatternMap.size);
+    
+    if canonicalPatternMap.size > 0 {
+        writeln("\nPattern details:");
+        var patternList: [1..canonicalPatternMap.size] (uint(64), int);
+        var idx = 1;
+        for pattern in canonicalPatternMap.keys() {
+            patternList[idx] = (pattern, canonicalPatternMap[pattern]);
+            idx += 1;
+        }
+        
+        // Sort by frequency (highest first)
+        sort(patternList, comparator=new PatternComparator());
+        
+        for (pattern, count) in patternList {
+            writeln("  Canonical pattern ", pattern, ": ", count, " occurrences");
+            
+            // Show which original pattern(s) mapped to this canonical form
+            if patternToOriginalMapping.contains(pattern) {
+                write("    Original patterns: ");
+                var first = true;
+                for original in patternToOriginalMapping[pattern] {
+                    if !first then write(", ");
+                    write(original);
+                    first = false;
+                }
+                writeln();
+            }
+        }
+    }
+    
+    writeln("\nRunning totals:");
+    writeln("  Global unique canonical patterns: ", globalMotifSet.size);
+    writeln("  Global motif count: ", totalCount.read());
+    writeln("====================================\n");
+    
+    // Set the final global count
     globalMotifCount.write(totalCount.read());
-    
-    // Print batch statistics - this part remains unchanged
-    writeln("\nEnumerate Execution Statistics:");
-    writeln("  Total motifs found: ", totalProcessed.read());
-    writeln("  Total unique patterns found: ", globalMotifSet.size);
-    writeln("  Total unique matrices seen: ", seenMatrices.size);
-    writeln("\nNauty Processing Statistics:");
-    writeln("  Total matrices processed in batches: ", batchMatrixCounter.read());
-    writeln("  Total batch calls to Nauty: ", batchCallCounter.read());
-    writeln("  Average matrices per batch: ", 
-           if batchCallCounter.read() > 0 then batchMatrixCounter.read() / batchCallCounter.read():real else 0);
-    writeln("  Local cache hits: ", localCacheHits.read());
-    writeln("  Cache efficiency: ", 
-           if (localCacheHits.read() + batchMatrixCounter.read()) > 0 then
-               (localCacheHits.read() * 100.0) / (localCacheHits.read() + batchMatrixCounter.read()):real
-           else 0, "%");
-    writeln("  Nauty call reduction: ", 
-           if totalProcessed.read() > 0 then
-               (1.0 - (batchCallCounter.read():real / totalProcessed.read())) * 100.0
-           else 0, "%");
-    
-    writeln("\nEnumerate: finished enumeration");
-    writeln("Total motifs found: ", globalMotifCount.read());
-    writeln("Unique patterns found: ", globalMotifSet.size);
-    writeln("Unique matrices seen (pre-Nauty): ", seenMatrices.size);
 }
 
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Comparator for sorting patterns by frequency
+record PatternComparator {
+    proc compare(a: (uint(64), int), b: (uint(64), int)): int {
+        // Sort by count (descending)
+        if a(1):int != b(1):int then
+            return b(1):int - a(1):int;
+        // Break ties by pattern ID
+        return a(0):int - b(0):int;
+    }
+
+}
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
         // Gathers unique valid neighbors for the current level.
         proc initChildSet(ref state: KavoshState, root: int, level: int) throws {
@@ -775,64 +912,7 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
             return (adjMatrix, chosenVerts);
         }// End of prepareNaugtyArguments
 
-        proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, k: int): uint(64) throws {
-            var pattern: uint(64) = 0;
-            var pos = 0;
-            if logLevel == LogLevel.DEBUG {
-                writeln("  In generatePatternDirect:");
-                writeln("    chosenVerts domain: ", chosenVerts.domain);
-                writeln("    nautyLabels domain: ", nautyLabels.domain);
-            }            
-            // Generate pattern directly from vertex pairs
-            for i in 0..#k {
-                for j in 0..#k {
-                    if i != j {
-                        // Add boundary checking
-                        if nautyLabels[i] < 0 || nautyLabels[i] >= k {
-                            writeln("    ERROR: Invalid nauty label at i=", i, ": ", nautyLabels[i]);
-                            continue;
-                        }
-                        if nautyLabels[j] < 0 || nautyLabels[j] >= k {
-                            writeln("    ERROR: Invalid nauty label at j=", j, ": ", nautyLabels[j]);
-                            continue;
-                        }
-
-                        // Verify indices are within bounds for chosenVerts
-                        var idx1 = nautyLabels[i] + 1;
-                        var idx2 = nautyLabels[j] + 1;
-
-                        if idx1 < chosenVerts.domain.low || idx1 > chosenVerts.domain.high {
-                            writeln("    ERROR: Index ", idx1, " out of bounds for chosenVerts (", chosenVerts.domain, ")");
-                            continue;
-                        }
-                        if idx2 < chosenVerts.domain.low || idx2 > chosenVerts.domain.high {
-                            writeln("    ERROR: Index ", idx2, " out of bounds for chosenVerts (", chosenVerts.domain, ")");
-                            continue;
-                        }
-
-                        // Get vertices based on nauty labels
-                        var u = chosenVerts[idx1];
-                        var w = chosenVerts[idx2];
-
-                        //writeln("    Checking edge between vertices ", u, " and ", w);
-
-                        // Check for edge and set bit
-                        var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                        if eid != -1 {
-                            //writeln("    Edge found, setting bit at position ", pos);
-                            pattern |= 1:uint(64) << pos;
-                        }
-                    }
-                    pos += 1; // Increment position even when i == j to maintain ordering
-                }
-            }
-
-            //writeln("    Generated pattern: ", pattern);
-            return pattern;
-        }
-
-
-
+ 
         // Explores subgraphs containing the root vertex,
         // expanding level by level until remainedToVisit = 0 (Base case - which means we have chosen k vertices).
         proc Explore(ref state: KavoshState, root: int, level: int, remainedToVisit: int) throws {
@@ -1053,13 +1133,14 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
             var uniqueMotifCounts: map(uint(64), int);
             var motifCount = 0;
             
-                // Local counters for this verification run----------TEMP
+            // Local counters for this verification run----------TEMP
     var localMatricesProcessed = 0;
     var localCacheHits = 0;
     var localNautyCalls = 0;
 
             writeln("\n=== Starting Pattern Verification ===");
-            writeln(globalMotifSet.size, " patterns found before verification");
+            //writeln(globalMotifSet.size, " patterns found before verification");
+            //writeln(globalMotifSet, " are ");
             
             var motifArr: [0..#(globalMotifSet.size * motifSize * motifSize)] int;
             
@@ -1108,7 +1189,10 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
                 } else {
                     // Generate canonical pattern directly from Nauty labels
                     canonicalPattern = generateNautyPattern(adjMatrix, results, motifSize);
+                    writeln("canonicalPattern: ", canonicalPattern);
                     canonicalMatrix = patternToAdjMatrix(canonicalPattern, motifSize);
+                    writeln("canonicalMatrix: ", canonicalMatrix);
+
                     if logLevel == LogLevel.DEBUG {
                         writeln("Pattern ", pattern, " mapped to canonical form ", canonicalPattern);
                     }
@@ -1136,11 +1220,11 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
             writeln("\n=== Verification Results ===");
             writeln("Started with total patterns: ", globalMotifSet.size);
             writeln("Found unique canonical patterns: ", uniqueMotifClasses.size);
-            writeln("\nCanonical patterns and their counts:");
-            // for pattern in uniqueMotifClasses {
-            //     writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
+            // writeln("\nCanonical patterns and their counts:");
+            //  for pattern in uniqueMotifClasses {
+            //      writeln("  Pattern ", pattern, ": ", uniqueMotifCounts[pattern], " occurrences");
             // }
-            writeln("===========================\n");
+            // writeln("===========================\n");
             
             var idx = 0;
             for pattern in uniqueMotifClasses {
@@ -1156,590 +1240,39 @@ proc Enumerate_Return(n: int, k: int, maxDeg: int) throws {
         }
 
 
-        // New function to create pattern from adjMatrix and Nauty labeling
-        proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
-            var pattern: uint(64) = 0;
-            var pos = 0;
-            
-            // Look at each possible edge position in the canonical form
-            for i in 0..<motifSize {
-                for j in 0..<motifSize {
-                    if i != j {  // Skip self-loops
-                        // The key insight: nautyLabels tells us where original vertices go in canonical form
-                        // If original vertices at positions nautyLabels[i] and nautyLabels[j] had an edge,
-                        // then canonical form has an edge from i to j
-                        var origI = -1;
-                        var origJ = -1;
-                        
-                        // Find original vertices that map to i and j in canonical form
-                        for v in 0..<motifSize {
-                            if nautyLabels[v] == i {
-                                origI = v;
-                            }
-                            if nautyLabels[v] == j {
-                                origJ = v;
-                            }
-                        }
-                        
-                        // Check if there's an edge from origI to origJ in original matrix
-                        if origI >= 0 && origJ >= 0 && adjMatrix[origI * motifSize + origJ] == 1 {
-                            // Set bit for this edge in canonical pattern
-                            pattern |= 1:uint(64) << pos;
-                        }
-                    }
-                    pos += 1;
+proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
+    var pattern: uint(64) = 0;
+    var pos = 0;
+    
+    // Look at each possible edge position in the canonical form
+    for i in 0..<motifSize {
+        for j in 0..<motifSize {
+            if i != j {  // Skip self-loops
+                // Get the position in the input matrix based on nauty labels
+                var row = nautyLabels[i];
+                var col = nautyLabels[j];
+                
+                // Check if there's an edge in the original matrix at these positions
+                if row < motifSize && col < motifSize && adjMatrix[row * motifSize + col] == 1 {
+                    // Set bit for this edge in canonical pattern
+                    pattern |= 1:uint(64) << pos;
                 }
             }
-            
-            return pattern;
-        }
-
-
-// Helper function to check if results are canonical [0,1,2,...]
-proc isCanonicalLabeling(results: [] int): bool {
-    for i in 0..<results.size {
-        if results[i] != i {
-            return false;
+            pos += 1;
         }
     }
-    return true;
+    
+    return pattern;
 }
-/* Find all motifs containing a specific node */
-proc findMotifsContainingNode(targetNode: int, n: int, k: int, maxDeg: int,
-                            ref nodeNeighbours: [] domain(int)) throws {
-    writeln("Finding all motifs containing node ", targetNode);
-    var timer = new stopwatch();
-    timer.start();
-    
-    // Step 1: Find the k-hop neighborhood around the target node
-    var neighborhood = computeKHopNeighborhood(targetNode, k-1, nodeNeighbours);
-    timer.stop();
-    
-    writeln("Found ", neighborhood.size, " nodes within ", k-1, " hops of node ", targetNode);
-    writeln("Neighborhood calculation time: ", timer.elapsed(), " seconds");
-    
-    // Create result collections
-    var motifPatterns: set(uint(64), parSafe=true);
-    var motifCount: atomic int;
-    var seenMatrices: set(uint(64), parSafe=true);
-    
-    // Step 2: Process motifs from each neighbor as root
-    timer.clear();
-    timer.start();
-    
-    // Process nodes in parallel with a balanced distribution
-    forall root in neighborhood with (ref motifPatterns, ref motifCount, ref seenMatrices) {
-        var localState = new KavoshState(n, k, maxDeg);
-        
-        // Initialize with this root
-        localState.setSubgraph(0, 0, 1);
-        localState.setSubgraph(0, 1, root);
-        localState.visited.clear();
-        localState.visited.add(root);
-        
-        // Explore, but keep track of whether the target node is included
-        ExploreWithTarget(localState, root, 1, k-1, targetNode, neighborhood);
-        
-        // Skip if no valid motifs found
-        if localState.localsubgraphCount == 0 then continue;
-        
-        // Process motifs found with this root
-        processMotifs(localState, motifPatterns, motifCount, seenMatrices);
-    }
-    
-    timer.stop();
-    writeln("Found ", motifCount.read(), " motifs containing node ", targetNode);
-    writeln("These motifs belong to ", motifPatterns.size, " unique patterns");
-    //writeln("Pattern: ", motifPatterns);
-    writeln("Motif exploration time: ", timer.elapsed(), " seconds");
-    
-    return (motifPatterns, motifCount.read());
-}
-
-/* Compute the k-hop neighborhood of a node */
-proc computeKHopNeighborhood(startNode: int, k: int, 
-                           ref nodeNeighbours: [] domain(int)): domain(int, parSafe=true) {
-    // Initialize sets
-    var neighborhood: domain(int, parSafe=true);
-    var currentFrontier: domain(int, parSafe=true);
-    var nextFrontier: domain(int, parSafe=true);
-    
-    // Start with the target node
-    neighborhood.add(startNode);
-    currentFrontier.add(startNode);
-    
-    // Use breadth-first search for k hops
-    for hop in 1..k {
-        nextFrontier.clear();
-        
-        // For each node in current frontier
-        for node in currentFrontier {
-            // Add all unvisited neighbors (both in and out)
-            for neighbor in nodeNeighbours[node] {
-                if !neighborhood.contains(neighbor) {
-                    neighborhood.add(neighbor);
-                    nextFrontier.add(neighbor);
-                }
-            }
-        }
-        // If no new nodes added, we can stop early
-        if nextFrontier.size == 0 then break;
-        
-        // Update frontier for next hop
-        currentFrontier = nextFrontier;
-    }
-    
-    return neighborhood;
-}
-proc ForwardGeneratorWithTarget(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
-                               ref state: KavoshState, targetNode: int, neighborhood: domain(int, parSafe=true)) throws {
-    if logLevel == LogLevel.DEBUG {
-        writeln("ForwardGeneratorWithTarget called with n=", n, " k=", k, " level=", level, 
-                " remainedToVisit=", remainedToVisit, " m=", m);
-    }
-
-    if k > 0 && k < n {
-        ForwardGeneratorWithTarget(n-1, k, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-
-        if k == 1 {
-            if logLevel == LogLevel.DEBUG {
-                writeln("ForwardGeneratorWithTarget: k=1 case, calling swappingWithTarget");
-            }
-            swappingWithTarget(n, n-1, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-        } else {
-            if logLevel == LogLevel.DEBUG {
-                writeln("ForwardGeneratorWithTarget: k>1 case, calling swappingWithTarget");
-            }
-            swappingWithTarget(n, k-1, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-        }
-
-        reverseGeneratorWithTarget(n-1, k-1, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-    }
-}
-
-proc swappingWithTarget(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, 
-                        ref state: KavoshState, targetNode: int, neighborhood: domain(int, parSafe=true)) throws {
-    // Same as original swapping but calls ExploreWithTarget
-    state.setIndexMap(level, i, state.getIndexMap(level, j));
-    state.setSubgraph(level, state.getIndexMap(level, i), state.getChildSet(level, i));
-
-    ExploreWithTarget(state, root, level+1, remainedToVisit - m, targetNode, neighborhood);
-}
-
-proc reverseGeneratorWithTarget(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
-                               ref state: KavoshState, targetNode: int, neighborhood: domain(int, parSafe=true)) throws {
-    if k > 0 && k < n {
-        ForwardGeneratorWithTarget(n-1, k-1, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-
-        if k == 1 {
-            swappingWithTarget(n-1, n, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-        } else {
-            swappingWithTarget(k-1, n, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-        }
-
-        reverseGeneratorWithTarget(n-1, k, root, level, remainedToVisit, m, state, targetNode, neighborhood);
-    }
-}
-/* Modified Explore that only keeps motifs containing the target node */
-proc ExploreWithTarget(ref state: KavoshState, root: int, level: int, 
-                      remainedToVisit: int, targetNode: int,
-                      neighborhood: domain(int, parSafe=true)) throws {
-    // Base case: all k vertices chosen
-    if remainedToVisit == 0 {
-        // Check if current subgraph contains the target node
-        var containsTarget = false;
-        
-        // First check if root is the target
-        if root == targetNode {
-            containsTarget = true;
-        } else {
-            // Check all vertices in the subgraph
-            for l in 0..<state.k {
-                for p in 1..state.getSubgraph(l, 0) {
-                    if state.getSubgraph(l, p) == targetNode {
-                        containsTarget = true;
-                        break;
-                    }
-                }
-                if containsTarget then break;
-            }
-        }
-        
-        // Only process this motif if it contains the target
-        if containsTarget {
-            // Add to flat list for batch processing
-            for l in 0..<state.k {
-                for p in 1..state.getSubgraph(l, 0) {
-                    state.motifVertices.pushBack(state.getSubgraph(l, p));
-                }
-            }
-            state.localsubgraphCount += 1;
-        }
-        
-        return;
-    }
-    
-    // Only initialize children within the neighborhood for efficiency
-    initChildSetFiltered(state, root, level, neighborhood);
-    const childCount = state.getChildSet(level, 0);
-    
-    // Rest of the function similar to regular Explore
-    // Try all possible selection sizes at this level
-    for selSize in 1..remainedToVisit {
-        if childCount < selSize {
-            // Not enough children for this selection
-            for i in 1..childCount {
-                state.visited.remove(state.getChildSet(level, i));
-            }
-            return;
-        }
-        
-        // Initial selection
-        state.setSubgraph(level, 0, selSize);
-        for i in 1..selSize {
-            state.setSubgraph(level, i, state.getChildSet(level, i));
-            state.setIndexMap(level, i, i);
-        }
-        
-        // Recurse with this selection
-        ExploreWithTarget(state, root, level+1, remainedToVisit - selSize, targetNode, neighborhood);
-        
-        // Generate other combinations
-        ForwardGeneratorWithTarget(childCount, selSize, root, level, remainedToVisit, selSize, state, targetNode, neighborhood);
-    }
-    
-    // Cleanup
-    for i in 1..childCount {
-        state.visited.remove(state.getChildSet(level, i));
-    }
-    state.setSubgraph(level, 0, 0);
-}
-
-/* Filtered version of initChildSet that only considers nodes in the neighborhood */
-proc initChildSetFiltered(ref state: KavoshState, root: int, level: int, 
-                        neighborhood: domain(int, parSafe=true)) throws {
-    // Initialize count to 0
-    state.setChildSet(level, 0, 0);
-    const parentsCount = state.getSubgraph(level-1, 0);
-    
-    // For each chosen parent
-    for p in 1..parentsCount {
-        const parent = state.getSubgraph(level-1, p);
-        
-        // Check each neighbor
-        for neighbor in nodeNeighbours[parent] {
-            // Must be greater than root, not visited, and in neighborhood
-            if neighbor > root && !state.visited.contains(neighbor) && 
-               neighborhood.contains(neighbor) {
-                const currentCount = state.getChildSet(level, 0) + 1;
-                state.setChildSet(level, 0, currentCount);
-                state.setChildSet(level, currentCount, neighbor);
-                state.visited.add(neighbor);
-            }
-        }
-    }
-}
-
-/* Optimized batch processing of motifs */
-proc processMotifs(ref state: KavoshState, ref globalSet: set(uint(64), parSafe=true),
-                  ref globalCount: atomic int, ref seenMatrices: set(uint(64), parSafe=true)) throws {
-    
-        const numMotifs = state.localsubgraphCount;
-    const k = state.k;
-    // Skip if no motifs found
-    if state.localsubgraphCount == 0 then return;
-    ///////////////////////////////////////////////////////
-var motifVertexCounts: [0..<numMotifs] int;
-var problematicMotifs: domain(int, parSafe=true);
-
-// Count vertices for each motif
-var currentMotif = 0;
-var totalVertices = 0;
-var expectedMotifSize = state.k;
-var i = 0;
-
-while i < state.motifVertices.size {
-    var verticesInThisMotif = 0;
-    
-    // Try to read k vertices for this motif
-    for j in 0..<expectedMotifSize {
-        if i < state.motifVertices.size {
-            // Just count this vertex
-            verticesInThisMotif += 1;
-            i += 1;
-        } else {
-            // We ran out of vertices before completing this motif
-            writeln("Ran out of vertices at motif ", currentMotif, ", vertex ", j);
-            break;
-        }
-    }
-    
-    // Record how many vertices we found for this motif
-    motifVertexCounts[currentMotif] = verticesInThisMotif;
-    totalVertices += verticesInThisMotif;
-    
-    // Check if this motif has the wrong number of vertices
-    if verticesInThisMotif != expectedMotifSize {
-        problematicMotifs.add(currentMotif);
-        writeln("Problematic motif found! Motif #", currentMotif, 
-               " has ", verticesInThisMotif, " vertices, expected ", expectedMotifSize);
-    }
-    
-    currentMotif += 1;
-    
-    // Check if we've processed more motifs than we expected
-    if currentMotif >= numMotifs && i < state.motifVertices.size {
-        writeln("EXTRA VERTICES DETECTED after processing all ", numMotifs, " motifs!");
-        writeln("Vertices remaining: ", state.motifVertices.size - i);
-        
-        // Print the extra vertices
-        writeln("Extra vertices:");
-        while i < state.motifVertices.size {
-            // writeln("  Extra vertex at position ", i, ": ", state.motifVertices[i]);
-            writeln("  Extra vertex at position ");
-            i += 1;
-        }
-        break;
-    }
-}
-
-// Report findings
-if problematicMotifs.size > 0 {
-    writeln("Found ", problematicMotifs.size, " problematic motifs out of ", numMotifs);
-    
-    // Print the first few problematic motifs in detail
-    var count = min(5, problematicMotifs.size);
-    writeln("First ", count, " problematic motifs:");
-    
-var problematicArray: [0..#problematicMotifs.size] int;
-var idx = 0;
-for m in problematicMotifs {
-    problematicArray[idx] = m;
-    idx += 1;
-}
-    for m in 0..<count {
-        var motifIdx = problematicArray[m];
-        writeln("Motif #", motifIdx, " has ", motifVertexCounts[motifIdx], " vertices");
-        
-        // Calculate the start index of this motif in the vertex list
-        var startIdx = 0;
-        for i in 0..<motifIdx {
-            startIdx += motifVertexCounts[i];
-        }
-        
-        // // Print the vertices for this motif
-        // write("Vertices: ");
-        // for j in 0..<motifVertexCounts[motifIdx] {
-        //     if startIdx + j < state.motifVertices.size {
-        //         write(state.motifVertices[startIdx + j], " ");
-        //     } else {
-        //         write("OUT_OF_BOUNDS ");
-        //     }
-        // }
-        writeln();
-    }
-} else if totalVertices != numMotifs * expectedMotifSize {
-    writeln("UNEXPECTED TOTAL: Got ", totalVertices, " vertices, expected ", 
-           numMotifs * expectedMotifSize, ", but no individual problematic motifs found.");
-    writeln("This suggests we have the wrong count of motifs.");
-}
-    //////////////////////////////////////////////////////
-    
-
-    
-    writeln("=== Processing ", numMotifs, " motifs with k=", k, " ===");
-    
-    // Convert list to array for easier processing
-    var vertices = state.motifVertices.toArray();
-        if vertices.size != numMotifs * k {
-            writeln("Total vertices in list: ", vertices.size, " (expected: ", numMotifs * k, ")");
-            //halt("$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$");
-        }
-    
-    // Arrays for batch processing
-    var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
-    var batchedResults: [0..#(numMotifs * k)] int;
-    
-    // Track which matrices need Nauty processing
-    var matricesToProcess: list((int, uint(64)));
-    var seenIndices: domain(int, parSafe=false);
-    var localPatterns: set(uint(64), parSafe=false);
-    
-    // Fill matrices and detect duplicates
-    for i in 0..<numMotifs {
-        var baseIdx = i * k;
-        var matrixBinary: uint(64) = 0;
-        
-        // writeln("\nProcessing motif #", i, ":");
-        // writeln("Vertices: ", [j in 0..<k] vertices[baseIdx + j]);
-        
-        // Create adjacency matrix
-        // writeln("Building adjacency matrix:");
-        for row in 0..<k {
-            for col in 0..<k {
-                if row != col {
-                    var u = vertices[baseIdx + row];
-                    var w = vertices[baseIdx + col];
-                    
-                    // Use the same edge detection as in generatePatternDirect
-                    var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                    var hasEdge = (eid != -1);
-                    
-                    if hasEdge {
-                        batchedMatrices[i * (k * k) + row * k + col] = 1;
-                        matrixBinary |= 1:uint(64) << (row * k + col);
-                        //writeln("  Edge ", u, " -> ", w, ": Yes (eid=", eid, ")");
-                    } else {
-                        //writeln("  Edge ", u, " -> ", w, ": No");
-                    }
-                }
-            }
-        }
-        
-        // writeln("Matrix in row format:");
-        // for row in 0..<k {
-        //     write("  ");
-        //     for col in 0..<k {
-        //         write(batchedMatrices[i * (k * k) + row * k + col], " ");
-        //     }
-        //     writeln();
-        // }
-        
-        //writeln("Binary representation: ", matrixBinary);
-        
-        // Check if we've seen this matrix before
-        if seenMatrices.contains(matrixBinary) {
-            //writeln("  Matrix already seen - skipping Nauty classification");
-            seenIndices.add(i);
-        } else {
-            //writeln("  New matrix - will be classified by Nauty");
-            seenMatrices.add(matrixBinary);
-            matricesToProcess.pushBack((i, matrixBinary));
-        }
-    }
-    
-    writeln("\nFound ", matricesToProcess.size, " unique matrices out of ", numMotifs, " total");
-    
-    // Process only unique matrices with Nauty
-    if matricesToProcess.size > 0 {
-        var uniqueCount = matricesToProcess.size;
-        var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
-        var uniqueResults: [0..#(uniqueCount * k)] int;
-        
-        writeln("Preparing matrices for Nauty processing...");
-        
-        // Fill unique matrices array
-        for i in 0..<uniqueCount {
-            var (origIdx, binary) = matricesToProcess[i];
-            var origOffset = origIdx * (k * k);
-            var newOffset = i * (k * k);
-            
-            writeln("  Matrix #", i, " (original idx: ", origIdx, ", binary: ", binary, ")");
-            
-            for j in 0..<(k * k) {
-                uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
-            }
-            
-            writeln("  Matrix visualization:");
-            for row in 0..<k {
-                write("    ");
-                for col in 0..<k {
-                    write(uniqueMatrices[newOffset + row * k + col], " ");
-                }
-                writeln();
-            }
-        }
-        
-        // Process with Nauty
-        writeln("Calling Nauty with ", uniqueCount, " matrices...");
-        var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
-        writeln("Nauty status: ", status);
-        
-        // Copy results back
-        for i in 0..<uniqueCount {
-            var (origIdx, _) = matricesToProcess[i];
-            var origOffset = origIdx * k;
-            var newOffset = i * k;
-            
-            writeln("  Results for matrix #", i, " (original idx: ", origIdx, "):");
-            write("    Nauty labels: ");
-            for j in 0..<k {
-                batchedResults[origOffset + j] = uniqueResults[newOffset + j];
-                write(uniqueResults[newOffset + j], " ");
-            }
-            writeln();
-        }
-    }
-    
-    // Process results for each motif
-    writeln("\nGenerating patterns from Nauty results:");
-    for i in 0..<numMotifs {
-        // Count all motifs
-        globalCount.add(1);
-        
-        // Skip pattern generation for seen matrices
-        if seenIndices.contains(i) {
-            writeln("  Motif #", i, ": Skipping (duplicate matrix)");
-            continue;
-        }
-        
-        // Get vertices for this motif
-        var baseIdx = i * k;
-        var motifVertices: [1..k] int;
-        for j in 0..<k {
-            motifVertices[j+1] = vertices[baseIdx + j];
-        }
-        
-        // Extract Nauty results
-        var nautyResults: [0..<k] int;
-        for j in 0..<k {
-            nautyResults[j] = batchedResults[i * k + j];
-        }
-        
-        writeln("  Motif #", i, ":");
-        writeln("    Vertices: ", motifVertices);
-        writeln("    Nauty labels: ", nautyResults);
-        
-        // Generate pattern and add to set
-        var pattern = generatePatternDirect(motifVertices, nautyResults, k);
-        localPatterns.add(pattern);
-        
-        writeln("    Generated pattern: ", pattern);
-    }
-    
-    writeln("\nFound ", localPatterns.size, " unique patterns:");
-    writeln("Local patterns: ", localPatterns);
-    
-    // Add local patterns to global set
-    globalSet += localPatterns;
-    writeln("Updated global set to: ", globalSet);
-    writeln("=== Processing complete ===\n");
-}
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-
-
 
        ///////////////////////////////Main Code/////////////////////////////////////////////////
 
 
         // Enumerate: Iterates over all vertices as potential roots
         // and calls Explore to find all subgraphs of size k containing that root.
-proc Enumerate(n: int, k: int, maxDeg: int) throws {
-    // var batchMatrixCounter: atomic int;  // Track matrices in batches
-    // var batchCallCounter: atomic int;    // Track batch calls to Nauty
-    // var localCacheHits: atomic int;      // Track local cache hits
-    // var totalProcessed: atomic int;      // Track total motifs processed
-
-    // forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices,
-    //                             ref batchMatrixCounter, ref batchCallCounter, 
-    //                             ref localCacheHits, ref totalProcessed) {
-
-
-    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
-
-    // for v in  0..<n-k+1{
+ proc Enumerate(n: int, k: int, maxDeg: int) throws {
+    //forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
+    for v in 0..<n-k+1  {
         var state = new KavoshState(n, k, maxDeg);
         
         // Initialize root vertex in subgraph
@@ -1750,8 +1283,6 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         
         // Find all motifs for this root
         Explore(state, v, 1, state.k - 1);
-        
-            //if v == 258 then writeln("we reach to 258: ", state);
 
         // Calculate how many complete motifs we found
         const numMotifs = state.localsubgraphCount;
@@ -1761,14 +1292,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         if numMotifs == 0 || totalVertices == 0 {
             continue;
         }
-        
-        // // Verify we have the expected number of vertices
-        // if totalVertices != numMotifs * k {
-        //     writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-        //             " but got ", totalVertices, ". Skipping this root: ", v);
-        //     //continue;
-        // }
-        
+
         // Now classify all motifs found from this root
         var localPatterns: set(uint(64), parSafe=false);
         
@@ -1777,20 +1301,17 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
 
         // Create arrays for batch processing
         var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
-        var batchedResults: [0..#(numMotifs * k)] int;
         
         // Track which matrices need to be processed
         var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
         var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
-        
-        //totalProcessed.add(numMotifs);  // Track total motifs processed
         
         // Fill matrices and check for duplicates
         for i in 0..<numMotifs {
             var baseIdx = i * k;
             var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
             
-            // Create adjacency matrix
+            // Create adjacency matrix for this motif
             for row in 0..<k {
                 for col in 0..<k {
                     if row != col {  // Skip self-loops
@@ -1806,12 +1327,11 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
                     }
                 }
             }
-            
-            // Check if we've seen this matrix before
+    //writeln("matrixBinary: ", matrixBinary);
+            // Check if we've seen this matrix before (for caching purposes)
             if seenMatrices.contains(matrixBinary) {
                 // We've seen this pattern before, skip Nauty processing
                 seenIndices.add(i);
-                //localCacheHits.add(1);  // Increment cache hit counter
                 if logLevel == LogLevel.DEBUG {
                     writeln("  Matrix binary ", matrixBinary, " already seen - skipping Nauty");
                 }
@@ -1824,17 +1344,13 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
                 }
             }
         }
-        
+
         // Process only unseen matrices with Nauty
         if matricesToProcess.size > 0 {
             // Create smaller batch arrays for just the unseen matrices
             var uniqueCount = matricesToProcess.size;
             var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
             var uniqueResults: [0..#(uniqueCount * k)] int;
-            
-            // Track batch statistics
-            //batchMatrixCounter.add(uniqueCount);
-            //batchCallCounter.add(1);
             
             if logLevel == LogLevel.DEBUG {
                 writeln("Processing batch of ", uniqueCount, " matrices for root ", v);
@@ -1855,107 +1371,77 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
             // Process only unique matrices with Nauty
             var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
             
-            // Copy results back to original results array
+            // Process results directly to get canonical patterns
             for i in 0..<uniqueCount {
                 var (origIdx, _) = matricesToProcess[i];
-                var origOffset = origIdx * k;
-                var newOffset = i * k;
+                var resultOffset = i * k;
                 
-                // Copy results
+                // Extract nauty labels for this matrix
+                var nautyLabels: [0..<k] int;
                 for j in 0..<k {
-                    batchedResults[origOffset + j] = uniqueResults[newOffset + j];
+                    nautyLabels[j] = uniqueResults[resultOffset + j];
                 }
+                
+                // Get adjacency matrix for this motif
+                var adjMatrixStart = origIdx * (k * k);
+                var adjMatrix: [0..#(k*k)] int;
+                for j in 0..#(k*k) {
+                    adjMatrix[j] = batchedMatrices[adjMatrixStart + j];
+                }
+                
+                // Always generate canonical pattern using generateNautyPattern
+                var canonicalPattern = generateNautyPattern(adjMatrix, nautyLabels, k);
+                
+                if logLevel == LogLevel.DEBUG {
+                    // Check if the matrix was already in canonical form
+                    var isCanonical = true;
+                    for j in 0..<k {
+                        if nautyLabels[j] != j {
+                            isCanonical = false;
+                            break;
+                        }
+                    }
+                    
+                    if isCanonical {
+                        writeln("  Matrix already in canonical form");
+                    } else {
+                        writeln("  Canonicalized matrix");
+                    }
+                    
+                    writeln("  Generated canonical pattern: ", canonicalPattern);
+                }
+                
+                // Add canonical pattern to local patterns
+                localPatterns.add(canonicalPattern);
             }
         }
-        
-        // Process results for each motif
-        for i in 0..<numMotifs {
-            // Count all motifs regardless of whether they're seen before
-            totalCount.add(1);
-            
-            // Skip processing motifs that were seen before
-            if seenIndices.contains(i) {
-                continue;
-            }
-            
-            // Get vertices for this motif
-            var baseIdx = i * k;
-            var vertices: [1..k] int;
-            for j in 0..<k {
-                vertices[j+1] = motifVerticesArray[baseIdx + j];
-            }
-            
-            // Extract results for this motif
-            var nautyResults: [0..<k] int;
-            for j in 0..<k {
-                nautyResults[j] = batchedResults[i * k + j];
-            }
-            
-            // Generate pattern
-            var pattern = generatePatternDirect(vertices, nautyResults, k);
-            localPatterns.add(pattern);
-        }
+
+        // Count all motifs
+        totalCount.add(numMotifs);
         
         // Add local patterns to global set
         globalMotifSet += localPatterns;
         
-        // if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
-        //     writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
-        //            localPatterns.size, " unique patterns");
-        // }
+        if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
+            writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
+                    localPatterns.size, " unique patterns");
+        }
     }
     
     // Set the final results
     globalMotifCount.write(totalCount.read());
     
-    // Print batch statistics
+    // Print statistics
     writeln("\nEnumerate Execution Statistics:");
-    //writeln("  Total motifs found: ", totalProcessed.read());
+    writeln("  Total motifs found: ", totalCount.read());
     writeln("  Total unique patterns found: ", globalMotifSet.size);
     writeln("  Total unique matrices seen: ", seenMatrices.size);
-    writeln("\nNauty Processing Statistics:");
-    //writeln("  Total matrices processed in batches: ", batchMatrixCounter.read());
-    // writeln("  Total batch calls to Nauty: ", batchCallCounter.read());
-    // writeln("  Average matrices per batch: ", 
-    //        if batchCallCounter.read() > 0 then batchMatrixCounter.read() / batchCallCounter.read():real else 0);
-    // writeln("  Local cache hits: ", localCacheHits.read());
-    // writeln("  Cache efficiency: ", 
-    //        if (localCacheHits.read() + batchMatrixCounter.read()) > 0 then
-    //            (localCacheHits.read() * 100.0) / (localCacheHits.read() + batchMatrixCounter.read()):real
-    //        else 0, "%");
-    // writeln("  Nauty call reduction: ", 
-    //        if totalProcessed.read() > 0 then
-    //            (1.0 - (batchCallCounter.read():real / totalProcessed.read())) * 100.0
-    //        else 0, "%");
     
     writeln("\nEnumerate: finished enumeration");
-    writeln("Total motifs found: ", globalMotifCount.read());
-    writeln("Unique patterns found: ", globalMotifSet.size);
-    writeln("Unique matrices seen (pre-Nauty): ", seenMatrices.size);
 }
     var timer:stopwatch;
 
-    var targetNode: int = -258;
-    if targetNode >= 0 && targetNode < n {
-        // Find motifs containing the specific node
-        var (nodePatterns, nodeMotifCount) = findMotifsContainingNode(
-            targetNode, n, motifSize, maxDeg, nodeNeighbours);
-        
-        writeln("-----------------------------------------------------------------------");
-        writeln("Found ", nodeMotifCount, " motifs containing node ", targetNode);
-        writeln("These motifs belong to ", nodePatterns.size, " unique pattern classes");
-        writeln("-----------------------------------------------------------------------");
-        
-        // Create a simple map for node pattern counts (each pattern occurs once)
-        var nodePatternCounts: map(uint(64), int);
-        for pattern in nodePatterns {
-            nodePatternCounts[pattern] = 1;
-        }
-        
-        // Use the main verification function for node patterns too
-        var (uniqueNodePatterns, nodeMotifArr, nodeMotifCounts) = 
-            verifyPatterns(nodePatterns, nodePatternCounts, motifSize);
-    }
+
 
     writeln("**********************************************************************");
     writeln("**********************************************************************");
@@ -1970,25 +1456,25 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
         writeln("Maximum degree: ", maxDeg);
         // Complete enumeration
 
-    var timer0:stopwatch;
-timer0.start();
-Enumerate(g1.n_vertices, motifSize, maxDeg);
+     var timer0:stopwatch;
+// timer0.start();
+// Enumerate(g1.n_vertices, motifSize, maxDeg);
+// timer0.stop();
+// writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate Time: ", timer0.elapsed());
+//         writeln(" globalMotifSet Size = ", globalMotifSet.size);
+//         writeln(" globalMotifCount = ", globalMotifCount.read());
+
+//         writeln("**********************************************************************");
+//         writeln("**********************************************************************");
+
+timer0.restart();
+
+EnumerateForNode(doSampling, g1.n_vertices, motifSize, maxDeg);
 timer0.stop();
-writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate Time: ", timer0.elapsed());
-
-    var timer1:stopwatch;
-timer1.start();
-Enumerate_Return(g1.n_vertices, motifSize, maxDeg);
-timer1.stop();
-writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate RETURN Time: ", timer1.elapsed());
+writeln("@@@@@@@@@@@@@@@@@@@@@@@@@EnumerateForNode Time: ", timer0.elapsed());
 
 
 
-        //writeln(" globalMotifSet = ", globalMotifSet);
-        writeln(" globalMotifCount = ", globalMotifCount.read());
-
-        writeln("**********************************************************************");
-        writeln("**********************************************************************");
 
 for elem in globalMotifSet { // Could track actual counts if needed
   globalMotifMap[elem] = 1;
@@ -1996,7 +1482,7 @@ for elem in globalMotifSet { // Could track actual counts if needed
 
 var (uniqueMotifClasses, finalMotifArr, motifCounts) = 
      verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
- writeln("After verification: Found ", uniqueMotifClasses.size, " unique canonical patterns");
+ writeln("After verification: Found ", uniqueMotifClasses.size, " unique canonical patterns: ", uniqueMotifClasses);
 
             //var uniqueMotifClasses: set(uint(64));
             var uniqueMotifCounts: map(uint(64), int);
