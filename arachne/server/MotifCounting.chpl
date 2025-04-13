@@ -1271,8 +1271,7 @@ proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int
         // Enumerate: Iterates over all vertices as potential roots
         // and calls Explore to find all subgraphs of size k containing that root.
  proc Enumerate(n: int, k: int, maxDeg: int) throws {
-    //forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
-    for v in 0..<n-k+1  {
+    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
         var state = new KavoshState(n, k, maxDeg);
         
         // Initialize root vertex in subgraph
@@ -1482,7 +1481,8 @@ for elem in globalMotifSet { // Could track actual counts if needed
 
 var (uniqueMotifClasses, finalMotifArr, motifCounts) = 
      verifyPatterns(globalMotifSet, globalMotifMap, motifSize);
- writeln("After verification: Found ", uniqueMotifClasses.size, " unique canonical patterns: ", uniqueMotifClasses);
+// writeln("After verification: Found ", uniqueMotifClasses.size, " unique canonical patterns: ", uniqueMotifClasses);
+ writeln("After verification: Found ", uniqueMotifClasses.size);
 
             //var uniqueMotifClasses: set(uint(64));
             var uniqueMotifCounts: map(uint(64), int);

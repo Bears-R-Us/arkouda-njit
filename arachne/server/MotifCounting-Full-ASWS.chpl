@@ -471,9 +471,6 @@ module MotifCounting {
     var indexMap: [0..#(k * ((maxDeg*k)+2))] int;
 
     var localsubgraphCount: int;
-    var localmotifClasses: set(uint(64), parSafe=false);
-    // New: Add map to track counts for each pattern  //Added to support PIPELINE idea!
-    //var localClassCounts: map(uint(64), int, parSafe=false);
     
     // A list to store vertex sets for each motif found
     var motifVertices: list(int, parSafe=true);
@@ -993,196 +990,232 @@ module MotifCounting {
       writeln();
     }
 
-    /* Main ASWS sampling procedure which Processes current wavefront to find motifs */
-    proc processWavefront(ref state: WavefrontState,
-                          ref globalMotifCount: atomic int,
-                          ref globalMotifSet: set(uint(64)),
-                          ref seenMatrices: set(uint(64), parSafe=true)) throws {
+/* Main ASWS sampling procedure which Processes current wavefront to find motifs */
+proc processWavefront(ref state: WavefrontState,
+                      ref globalMotifCount: atomic int,
+                      ref globalMotifSet: set(uint(64)),
+                      ref seenMatrices: set(uint(64), parSafe=true)) throws {
+  
+  writeln("\n=== Processing New Vertices ===");
+  writeln("- Total vertices in wavefront: ", state.wavefront.size);
+  writeln("- Processing new vertices: ", state.newVertices.size);
+  
+  state.timer.clear();
+  state.timer.start();
+  
+  // Only process new vertices
+  forall v in state.newVertices with (ref globalMotifSet, ref globalMotifCount, ref seenMatrices) {
+    var localKavoshState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
+    
+    // Initialize for this vertex
+    localKavoshState.setSubgraph(0, 0, 1);
+    localKavoshState.setSubgraph(0, 1, v);
+    localKavoshState.visited.clear();
+    localKavoshState.visited.add(v);
+    
+    // Get vertex role
+    const role = state.vertexRoles[v];
+    
+    // Explore motifs from this vertex
+    Explore(localKavoshState, v, 1, state.ASconfig.k - 1);
+    
+    // Calculate how many complete motifs we found
+    const numMotifs = localKavoshState.localsubgraphCount;
+    const totalVertices = localKavoshState.motifVertices.size;
+    const k = state.ASconfig.k;
+    
+    // Skip if no motifs found
+    if numMotifs == 0 || totalVertices == 0 {
+      continue;
+    }
+    
+    // Verify we have the expected number of vertices
+    if totalVertices != numMotifs * k {
+      writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
+              " but got ", totalVertices, ". Skipping this vertex.");
+      continue;
+    }
+    
+    // Create arrays for batch processing
+    var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
+    var batchedResults: [0..#(numMotifs * k)] int;
+    
+    // Get the motif vertices as an array
+    var motifVerticesArray = localKavoshState.motifVertices.toArray();
+    
+    // Track which matrices need to be processed
+    var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
+    var seenIndices: domain(int, parSafe=false);   // Indices of matrices we've seen before
+    var localPatterns: set(uint(64), parSafe=false);
+    
+    // Fill matrices and check for duplicates
+    for i in 0..<numMotifs {
+      var baseIdx = i * k;
+      var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
       
-      writeln("\n=== Processing New Vertices ===");
-      writeln("- Total vertices in wavefront: ", state.wavefront.size);
-      writeln("- Processing new vertices: ", state.newVertices.size);
+      // Create adjacency matrix
+      for row in 0..<k {
+        for col in 0..<k {
+          if row != col {  // Skip self-loops
+            var u = motifVerticesArray[baseIdx + row];
+            var w = motifVerticesArray[baseIdx + col];
+            var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+            if eid != -1 {
+              batchedMatrices[i * (k * k) + row * k + col] = 1;
+              // Update binary representation - set bit at position (row * k + col)
+              matrixBinary |= 1:uint(64) << (row * k + col);
+            }
+          }
+        }
+      }
       
-      state.timer.clear();
-      state.timer.start();
+      // Check if we've seen this matrix before
+      if seenMatrices.contains(matrixBinary) {
+        // We've seen this pattern before, skip Nauty processing
+        seenIndices.add(i);
+      } else {
+        // New pattern, add to seen matrices and process
+        seenMatrices.add(matrixBinary);
+        matricesToProcess.pushBack((i, matrixBinary));
+      }
+    }
+    
+    // Process only unseen matrices with Nauty
+    if matricesToProcess.size > 0 {
+      // Create smaller batch arrays for just the unseen matrices
+      var uniqueCount = matricesToProcess.size;
+      var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
+      var uniqueResults: [0..#(uniqueCount * k)] int;
       
-      // Only process new vertices
-      forall v in state.newVertices with (ref globalMotifSet, ref globalMotifCount, ref seenMatrices) {
-        var localKavoshState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
+      // Fill unique matrices array
+      for i in 0..<uniqueCount {
+        var (origIdx, _) = matricesToProcess[i];
+        var origOffset = origIdx * (k * k);
+        var newOffset = i * (k * k);
         
-        // Initialize for this vertex
-        localKavoshState.setSubgraph(0, 0, 1);
-        localKavoshState.setSubgraph(0, 1, v);
-        localKavoshState.visited.clear();
-        localKavoshState.visited.add(v);
+        // Copy matrix from original batch to unique batch
+        for j in 0..<(k * k) {
+          uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
+        }
+      }
+      
+      // Process only unique matrices with Nauty
+      var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
+      
+      // Process results directly to get canonical patterns
+      for i in 0..<uniqueCount {
+        var (origIdx, _) = matricesToProcess[i];
+        var resultOffset = i * k;
         
-        // Get vertex role
-        const role = state.vertexRoles[v];
-        
-        // Explore motifs from this vertex
-        Explore(localKavoshState, v, 1, state.ASconfig.k - 1);
-        
-        // Calculate how many complete motifs we found
-        const numMotifs = localKavoshState.localsubgraphCount;
-        const totalVertices = localKavoshState.motifVertices.size;
-        const k = state.ASconfig.k;
-        
-        // Skip if no motifs found
-        if numMotifs == 0 || totalVertices == 0 {
-          continue;
+        // Extract nauty labels for this matrix
+        var nautyLabels: [0..<k] int;
+        for j in 0..<k {
+          nautyLabels[j] = uniqueResults[resultOffset + j];
         }
         
-        // Verify we have the expected number of vertices
-        if totalVertices != numMotifs * k {
-          writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-                  " but got ", totalVertices, ". Skipping this vertex.");
-          continue;
+        // Get adjacency matrix for this motif
+        var adjMatrixStart = origIdx * (k * k);
+        var adjMatrix: [0..#(k*k)] int;
+        for j in 0..#(k*k) {
+          adjMatrix[j] = batchedMatrices[adjMatrixStart + j];
         }
         
-        // Create arrays for batch processing
-        var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
-        var batchedResults: [0..#(numMotifs * k)] int;
+        // Generate canonical pattern using the consistent approach
+        var canonicalPattern = generateNautyPattern(adjMatrix, nautyLabels, k);
         
-        // Get the motif vertices as an array
-        var motifVerticesArray = localKavoshState.motifVertices.toArray();
+        // Add canonical pattern to local patterns
+        localPatterns.add(canonicalPattern);
         
-        // Track which matrices need to be processed
-        var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
-        var seenIndices: domain(int, parSafe=false);   // Indices of matrices we've seen before
-        var localPatterns: set(uint(64), parSafe=false);
+        // Update role-specific pattern counts
+        if role >= 0 && role <= 2 {
+          if !state.rolePatternCounts[role].contains(canonicalPattern) {
+            var newCount: atomic int;
+            state.rolePatternCounts[role].add(canonicalPattern, newCount);
+          }
+          state.rolePatternCounts[role][canonicalPattern].add(1);
+        }
+      }
+    }
+    
+    // Process results for each motif
+    for i in 0..<numMotifs {
+      // Count all motifs
+      globalMotifCount.add(1);
+      
+      // For matrices we've seen before, we need to handle role-specific counting
+      if seenIndices.contains(i) {
+        // Find the canonical pattern from binary matrix
+        var baseIdx = i * k;
+        var matrixBinary: uint(64) = 0;
         
-        // Fill matrices and check for duplicates
-        for i in 0..<numMotifs {
-          var baseIdx = i * k;
-          var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
+        // Rebuild binary matrix
+        for row in 0..<k {
+          for col in 0..<k {
+            if row != col && batchedMatrices[i * (k * k) + row * k + col] == 1 {
+              matrixBinary |= 1:uint(64) << (row * k + col);
+            }
+          }
+        }
+        
+        // Find canonical pattern by looking up previously processed matrices
+        // This is a simplified approach - in a full implementation you might 
+        // maintain a mapping from binary to canonical patterns
+        for pattern in localPatterns {
+          var patternMatrix = patternToAdjMatrix(pattern, k);
+          var patternBinary: uint(64) = 0;
           
-          // Create adjacency matrix
+          // Convert to binary
+          var pos = 0;
           for row in 0..<k {
             for col in 0..<k {
-              if row != col {  // Skip self-loops
-                var u = motifVerticesArray[baseIdx + row];
-                var w = motifVerticesArray[baseIdx + col];
-                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                if eid != -1 {
-                  batchedMatrices[i * (k * k) + row * k + col] = 1;
-                  // Update binary representation - set bit at position (row * k + col)
-                  matrixBinary |= 1:uint(64) << (row * k + col);
-                }
+              if row != col && patternMatrix[row * k + col] == 1 {
+                patternBinary |= 1:uint(64) << pos;
               }
+              pos += 1;
             }
           }
           
-          // Check if we've seen this matrix before
-          if seenMatrices.contains(matrixBinary) {
-            // We've seen this pattern before, skip Nauty processing
-            seenIndices.add(i);
-          } else {
-            // New pattern, add to seen matrices and process
-            seenMatrices.add(matrixBinary);
-            matricesToProcess.pushBack((i, matrixBinary));
+          if patternBinary == matrixBinary {
+            // Update role-specific pattern counts
+            if role >= 0 && role <= 2 {
+              if !state.rolePatternCounts[role].contains(pattern) {
+                var newCount: atomic int;
+                state.rolePatternCounts[role].add(pattern, newCount);
+              }
+              state.rolePatternCounts[role][pattern].add(1);
+            }
+            break;
           }
         }
-        
-        // Process only unseen matrices with Nauty
-        if matricesToProcess.size > 0 {
-          // Create smaller batch arrays for just the unseen matrices
-          var uniqueCount = matricesToProcess.size;
-          var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
-          var uniqueResults: [0..#(uniqueCount * k)] int;
-          
-          // Fill unique matrices array
-          for i in 0..<uniqueCount {
-            var (origIdx, _) = matricesToProcess[i];
-            var origOffset = origIdx * (k * k);
-            var newOffset = i * (k * k);
-            
-            // Copy matrix from original batch to unique batch
-            for j in 0..<(k * k) {
-              uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
-            }
-          }
-          
-          // Process only unique matrices with Nauty
-          var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
-          
-          // Copy results back to original results array
-          for i in 0..<uniqueCount {
-            var (origIdx, _) = matricesToProcess[i];
-            var origOffset = origIdx * k;
-            var newOffset = i * k;
-            
-            // Copy results
-            for j in 0..<k {
-              batchedResults[origOffset + j] = uniqueResults[newOffset + j];
-            }
-          }
-        }
-        
-        // Process results for each motif
-        for i in 0..<numMotifs {
-          // Skip processing motifs that were seen before
-          if seenIndices.contains(i) {
-            // We still need to count these motifs
-            globalMotifCount.add(1);
-            continue;
-          }
-          
-          // Get vertices for this motif
-          var baseIdx = i * k;
-          var vertices: [1..k] int;
-          for j in 0..<k {
-            vertices[j+1] = motifVerticesArray[baseIdx + j];
-          }
-          
-          // Extract results for this motif
-          var nautyResults: [0..<k] int;
-          for j in 0..<k {
-            nautyResults[j] = batchedResults[i * k + j];
-          }
-          
-          // Generate pattern
-          var pattern = generatePatternDirect(vertices, nautyResults, k);
-          localPatterns.add(pattern);
-          
-          // Count this motif
-          globalMotifCount.add(1);
-          
-          // Update role-specific pattern counts
-          if role >= 0 && role <= 2 {
-            if !state.rolePatternCounts[role].contains(pattern) {
-              var newCount: atomic int;
-              state.rolePatternCounts[role].add(pattern, newCount);
-            }
-            state.rolePatternCounts[role][pattern].add(1);
-          }
-        }
-        
-        // Add local patterns to global set
-        globalMotifSet += localPatterns;
       }
-      
-      // Mark these vertices as processed
-      state.processedVertices += state.newVertices;
-      
-      // Update all pattern discovery metrics
-      state.updatePatternDiscoveryMetrics(globalMotifSet);
-      state.updateErrorBounds(globalMotifSet);
-      state.updatePatternStability(globalMotifSet);
-      
-      state.timer.stop();
-      writeln("=== Wavefront Processing Complete ===");
-      writeln("- Total motifs found: ", globalMotifCount.read());
-      writeln("- Unique patterns: ", globalMotifSet.size);
-      writeln("- Processed Vertices: ", state.processedVertices.size);
-      writeln("- Time taken: ", state.timer.elapsed(), " seconds");
-      
-      // Print pattern discovery stats if debug or significant change
-      if logLevel == LogLevel.DEBUG || state.hasPatternDiscoveryGuarantees() {
-        state.printCoverageStats();
-      }
-      
-      writeln();
     }
+    
+    // Add local patterns to global set
+    globalMotifSet += localPatterns;
+  }
+  
+  // Mark these vertices as processed
+  state.processedVertices += state.newVertices;
+  
+  // Update all pattern discovery metrics
+  state.updatePatternDiscoveryMetrics(globalMotifSet);
+  state.updateErrorBounds(globalMotifSet);
+  state.updatePatternStability(globalMotifSet);
+  
+  state.timer.stop();
+  writeln("=== Wavefront Processing Complete ===");
+  writeln("- Total motifs found: ", globalMotifCount.read());
+  writeln("- Unique patterns: ", globalMotifSet.size);
+  writeln("- Processed Vertices: ", state.processedVertices.size);
+  writeln("- Time taken: ", state.timer.elapsed(), " seconds");
+  
+  // Print pattern discovery stats if debug or significant change
+  if logLevel == LogLevel.DEBUG || state.hasPatternDiscoveryGuarantees() {
+    state.printCoverageStats();
+  }
+  
+  writeln();
+}
 
     /* Main ASWS sampling procedure which processes current wavefront to find motifs */
     proc runASWS(n: int, k: int,
@@ -1349,56 +1382,7 @@ module MotifCounting {
       return (adjMatrix, chosenVerts);
     } // End of prepareNaugtyArguments
   
-    proc generatePatternDirect(ref chosenVerts: [] int, ref nautyLabels: [] int, k: int): uint(64) throws {
-      var pattern: uint(64) = 0;
-      var pos = 0;
-      if logLevel == LogLevel.DEBUG {
-        writeln("  In generatePatternDirect:");
-        writeln("    chosenVerts domain: ", chosenVerts.domain);
-        writeln("    nautyLabels domain: ", nautyLabels.domain);
-      }            
-      // Generate pattern directly from vertex pairs
-      for i in 0..#k {
-        for j in 0..#k {
-          if i != j {
-            // Add boundary checking
-            if nautyLabels[i] < 0 || nautyLabels[i] >= k {
-              writeln("    ERROR: Invalid nauty label at i=", i, ": ", nautyLabels[i]);
-              continue;
-            }
-            if nautyLabels[j] < 0 || nautyLabels[j] >= k {
-              writeln("    ERROR: Invalid nauty label at j=", j, ": ", nautyLabels[j]);
-              continue;
-            }
-                        
-            // Verify indices are within bounds for chosenVerts
-            var idx1 = nautyLabels[i] + 1;
-            var idx2 = nautyLabels[j] + 1;
-                        
-            if idx1 < chosenVerts.domain.low || idx1 > chosenVerts.domain.high {
-              writeln("    ERROR: Index ", idx1, " out of bounds for chosenVerts (", chosenVerts.domain, ")");
-              continue;
-            }
-            if idx2 < chosenVerts.domain.low || idx2 > chosenVerts.domain.high {
-              writeln("    ERROR: Index ", idx2, " out of bounds for chosenVerts (", chosenVerts.domain, ")");
-              continue;
-            }
-                        
-            // Get vertices based on nauty labels
-            var u = chosenVerts[idx1];
-            var w = chosenVerts[idx2];
-                        
-            // Check for edge and set bit
-            var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-            if eid != -1 {
-              pattern |= 1:uint(64) << pos;
-            }
-          }
-          pos += 1; // Increment position even when i == j to maintain ordering
-        }
-      }
-      return pattern;
-    }
+
   
     // Explores subgraphs containing the root vertex,
     // expanding level by level until remainedToVisit = 0 (Base case - which means we have chosen k vertices).
@@ -1686,32 +1670,37 @@ module MotifCounting {
     }
   
     // New function to create pattern from adjMatrix and Nauty labeling
-    proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
-      var pattern: uint(64) = 0;
-      var pos = 0;
-      
-      // Look at each possible edge in the new ordering
-      for i in 0..#motifSize {
-        for j in 0..#motifSize {
-          if i != j {
-            var src = nautyLabels[i];
-            var dst = nautyLabels[j];
-            if adjMatrix[src * motifSize + dst] == 1 {
-              pattern |= 1:uint(64) << pos;
+proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
+    var pattern: uint(64) = 0;
+    var pos = 0;
+    
+    // Look at each possible edge position in the canonical form
+    for i in 0..<motifSize {
+        for j in 0..<motifSize {
+            if i != j {  // Skip self-loops
+                // Get the position in the input matrix based on nauty labels
+                var row = nautyLabels[i];
+                var col = nautyLabels[j];
+                
+                // Check if there's an edge in the original matrix at these positions
+                if row < motifSize && col < motifSize && adjMatrix[row * motifSize + col] == 1 {
+                    // Set bit for this edge in canonical pattern
+                    pattern |= 1:uint(64) << pos;
+                }
             }
-          }
-          pos += 1;
+            pos += 1;
         }
-      }
-      return pattern;
     }
+    
+    return pattern;
+}
   
     ///////////////////////////////Main Code/////////////////////////////////////////////////
   
     // Enumerate: Iterates over all vertices as potential roots
     // and calls Explore to find all subgraphs of size k containing that root.
-    proc Enumerate(n: int, k: int, maxDeg: int) throws {
-      forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
+proc Enumerate(n: int, k: int, maxDeg: int) throws {
+    forall v in 0..<n-k+1 with (ref globalMotifSet, ref totalCount, ref seenMatrices) {
         var state = new KavoshState(n, k, maxDeg);
         
         // Initialize root vertex in subgraph
@@ -1722,32 +1711,24 @@ module MotifCounting {
         
         // Find all motifs for this root
         Explore(state, v, 1, state.k - 1);
-        
+
         // Calculate how many complete motifs we found
         const numMotifs = state.localsubgraphCount;
         const totalVertices = state.motifVertices.size;
         
         // Skip if no motifs found
         if numMotifs == 0 || totalVertices == 0 {
-          continue;
+            continue;
         }
-        
-        // Verify we have the expected number of vertices
-        if totalVertices != numMotifs * k {
-          writeln("WARNING: Unexpected number of vertices. Expected ", numMotifs * k, 
-                  " but got ", totalVertices, ". Skipping this root.");
-          continue;
-        }
-        
+
         // Now classify all motifs found from this root
         var localPatterns: set(uint(64), parSafe=false);
         
         // Get the motif vertices as an array
         var motifVerticesArray = state.motifVertices.toArray();
-        
+
         // Create arrays for batch processing
         var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
-        var batchedResults: [0..#(numMotifs * k)] int;
         
         // Track which matrices need to be processed
         var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
@@ -1755,113 +1736,137 @@ module MotifCounting {
         
         // Fill matrices and check for duplicates
         for i in 0..<numMotifs {
-          var baseIdx = i * k;
-          var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
-          
-          // Create adjacency matrix
-          for row in 0..<k {
-            for col in 0..<k {
-              if row != col {  // Skip self-loops
-                var u = motifVerticesArray[baseIdx + row];
-                var w = motifVerticesArray[baseIdx + col];
-                var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
-                if eid != -1 {
-                  batchedMatrices[i * (k * k) + row * k + col] = 1;
-                  // Update binary representation - set bit at position (row * k + col)
-                  matrixBinary |= 1:uint(64) << (row * k + col);
+            var baseIdx = i * k;
+            var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
+            
+            // Create adjacency matrix for this motif
+            for row in 0..<k {
+                for col in 0..<k {
+                    if row != col {  // Skip self-loops
+                        var u = motifVerticesArray[baseIdx + row];
+                        var w = motifVerticesArray[baseIdx + col];
+                        var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+                        if eid != -1 {
+                            batchedMatrices[i * (k * k) + row * k + col] = 1;
+                            
+                            // Update binary representation - set bit at position (row * k + col)
+                            matrixBinary |= 1:uint(64) << (row * k + col);
+                        }
+                    }
                 }
-              }
             }
-          }
-          
-          // Check if we've seen this matrix before
-          if seenMatrices.contains(matrixBinary) {
-            // We've seen this pattern before, skip Nauty processing
-            seenIndices.add(i);
-          } else {
-            // New pattern, add to seen matrices and process
-            seenMatrices.add(matrixBinary);
-            matricesToProcess.pushBack((i, matrixBinary));
-          }
+    //writeln("matrixBinary: ", matrixBinary);
+            // Check if we've seen this matrix before (for caching purposes)
+            if seenMatrices.contains(matrixBinary) {
+                // We've seen this pattern before, skip Nauty processing
+                seenIndices.add(i);
+                if logLevel == LogLevel.DEBUG {
+                    writeln("  Matrix binary ", matrixBinary, " already seen - skipping Nauty");
+                }
+            } else {
+                // New pattern, add to seen matrices and process
+                seenMatrices.add(matrixBinary);
+                matricesToProcess.pushBack((i, matrixBinary));
+                if logLevel == LogLevel.DEBUG {
+                    writeln("  New matrix binary ", matrixBinary, " - will be processed");
+                }
+            }
         }
-        
+
         // Process only unseen matrices with Nauty
         if matricesToProcess.size > 0 {
-          // Create smaller batch arrays for just the unseen matrices
-          var uniqueCount = matricesToProcess.size;
-          var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
-          var uniqueResults: [0..#(uniqueCount * k)] int;
-          
-          // Fill unique matrices array
-          for i in 0..<uniqueCount {
-            var (origIdx, _) = matricesToProcess[i];
-            var origOffset = origIdx * (k * k);
-            var newOffset = i * (k * k);
+            // Create smaller batch arrays for just the unseen matrices
+            var uniqueCount = matricesToProcess.size;
+            var uniqueMatrices: [0..#(uniqueCount * k * k)] int = 0;
+            var uniqueResults: [0..#(uniqueCount * k)] int;
             
-            // Copy matrix from original batch to unique batch
-            for j in 0..<(k * k) {
-              uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
+            if logLevel == LogLevel.DEBUG {
+                writeln("Processing batch of ", uniqueCount, " matrices for root ", v);
             }
-          }
-          
-          // Process only unique matrices with Nauty
-          var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
-          
-          // Copy results back to original results array
-          for i in 0..<uniqueCount {
-            var (origIdx, _) = matricesToProcess[i];
-            var origOffset = origIdx * k;
-            var newOffset = i * k;
             
-            // Copy results
-            for j in 0..<k {
-              batchedResults[origOffset + j] = uniqueResults[newOffset + j];
+            // Fill unique matrices array
+            for i in 0..<uniqueCount {
+                var (origIdx, _) = matricesToProcess[i];
+                var origOffset = origIdx * (k * k);
+                var newOffset = i * (k * k);
+                
+                // Copy matrix from original batch to unique batch
+                for j in 0..<(k * k) {
+                    uniqueMatrices[newOffset + j] = batchedMatrices[origOffset + j];
+                }
             }
-          }
+            
+            // Process only unique matrices with Nauty
+            var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
+            
+            // Process results directly to get canonical patterns
+            for i in 0..<uniqueCount {
+                var (origIdx, _) = matricesToProcess[i];
+                var resultOffset = i * k;
+                
+                // Extract nauty labels for this matrix
+                var nautyLabels: [0..<k] int;
+                for j in 0..<k {
+                    nautyLabels[j] = uniqueResults[resultOffset + j];
+                }
+                
+                // Get adjacency matrix for this motif
+                var adjMatrixStart = origIdx * (k * k);
+                var adjMatrix: [0..#(k*k)] int;
+                for j in 0..#(k*k) {
+                    adjMatrix[j] = batchedMatrices[adjMatrixStart + j];
+                }
+                
+                // Always generate canonical pattern using generateNautyPattern
+                var canonicalPattern = generateNautyPattern(adjMatrix, nautyLabels, k);
+                
+                if logLevel == LogLevel.DEBUG {
+                    // Check if the matrix was already in canonical form
+                    var isCanonical = true;
+                    for j in 0..<k {
+                        if nautyLabels[j] != j {
+                            isCanonical = false;
+                            break;
+                        }
+                    }
+                    
+                    if isCanonical {
+                        writeln("  Matrix already in canonical form");
+                    } else {
+                        writeln("  Canonicalized matrix");
+                    }
+                    
+                    writeln("  Generated canonical pattern: ", canonicalPattern);
+                }
+                
+                // Add canonical pattern to local patterns
+                localPatterns.add(canonicalPattern);
+            }
         }
-        
-        // Process results for each motif
-        for i in 0..<numMotifs {
-          // Skip processing motifs that were seen before
-          if seenIndices.contains(i) {
-            // We still need to count these motifs
-            totalCount.add(1);
-            continue;
-          }
-          
-          // Get vertices for this motif
-          var baseIdx = i * k;
-          var vertices: [1..k] int;
-          for j in 0..<k {
-            vertices[j+1] = motifVerticesArray[baseIdx + j];
-          }
-          
-          // Extract results for this motif
-          var nautyResults: [0..<k] int;
-          for j in 0..<k {
-            nautyResults[j] = batchedResults[i * k + j];
-          }
-          
-          // Generate pattern
-          var pattern = generatePatternDirect(vertices, nautyResults, k);
-          localPatterns.add(pattern);
-          
-          // Count this motif
-          totalCount.add(1);
-        }
+
+        // Count all motifs
+        totalCount.add(numMotifs);
         
         // Add local patterns to global set
         globalMotifSet += localPatterns;
-      }
-      
-      // Set the final results
-      globalMotifCount.write(totalCount.read());
-      
-      writeln("Enumerate: finished enumeration");
-      writeln("Total motifs found: ", globalMotifCount.read());
-      writeln("Unique patterns found: ", globalMotifSet.size);
-      writeln("Unique matrices seen (pre-Nauty): ", seenMatrices.size);
+        
+        if logLevel == LogLevel.DEBUG || (v % 1000 == 0) {
+            writeln("Root ", v, ": Found ", numMotifs, " motifs, ", 
+                    localPatterns.size, " unique patterns");
+        }
     }
+    
+    // Set the final results
+    globalMotifCount.write(totalCount.read());
+    
+    // Print statistics
+    writeln("\nEnumerate Execution Statistics:");
+    writeln("  Total motifs found: ", totalCount.read());
+    writeln("  Total unique patterns found: ", globalMotifSet.size);
+    writeln("  Total unique matrices seen: ", seenMatrices.size);
+    
+    writeln("\nEnumerate: finished enumeration");
+}
 
     var timer: stopwatch;
 
