@@ -69,99 +69,106 @@ module MotifCounting {
     return adjustedSize;
   } 
 
-  /* Manages the wavefront sampling state */
-  class WavefrontState {
-    var ASconfig: ASWSConfig;
-    var wavefront: domain(int, parSafe=true);     // All selected vertices
-    var newVertices: domain(int, parSafe=true);     // Only new vertices for this iteration
-    var hubSet: domain(int, parSafe=true);
-    var processedVertices: domain(int, parSafe=true); // All processed vertices
-    var fingerprints: [0..#ASconfig.n] real;
-    var timer: stopwatch;
+/* Manages the wavefront sampling state */
+class WavefrontState {
+  var ASconfig: ASWSConfig;
+  var wavefront: domain(int, parSafe=true);     // All selected vertices
+  var newVertices: domain(int, parSafe=true);     // Only new vertices for this iteration
+  var hubSet: domain(int, parSafe=true);
+  var processedVertices: domain(int, parSafe=true); // All processed vertices
+  var fingerprints: [0..#ASconfig.n] real;
+  var timer: stopwatch;
 
-    // Statistical tracking
-    var minRequiredSize: int;
-    var currentConfidence: real;
-    var patternDiscoveryRate: [0..10] (int, int); // Circular buffer tracking pattern discovery. (patterns, samples) at each check point
-    var rateIndex: atomic int;
+  // Statistical tracking
+  var minRequiredSize: int;
+  var currentConfidence: real;
+  var patternDiscoveryRate: [0..10] (int, int); // Circular buffer tracking pattern discovery. (patterns, samples) at each check point
+  var rateIndex: atomic int;
 
-    // Pattern discovery completeness
-    var theoreticalTotalPatterns: int;    // Estimated total possible patterns
-    var missProbability: atomic real;      // Current probability of missing patterns
-    var coverageMetrics: [0..2] atomic real; // [structural, hub, pattern] coverage
-        
-    // Structural role tracking
-    var roleDistribution: [0..3] atomic int;  // [hub, bridge, peripheral, other]
-    var patternsByRole: [0..3] map(uint(64), atomic int); // Patterns found per role
+  // Pattern discovery completeness
+  var theoreticalTotalPatterns: int;    // Estimated total possible patterns
+  var missProbability: atomic real;      // Current probability of missing patterns
+  var coverageMetrics: [0..2] atomic real; // [structural, hub, pattern] coverage
+      
+  // Structural role tracking
+  var roleDistribution: [0..3] atomic int;  // [hub, bridge, peripheral, other]
+  var patternsByRole: [0..3] map(uint(64), atomic int); // Patterns found per role
 
-    // Role classification
-    var vertexRoles: [0..#ASconfig.n] int;  // 0:hub, 1:bridge, 2:peripheral
-    var rolePatternCounts: [0..2] map(uint(64), atomic int);  // Patterns per role
-        
-    // Error bounds tracking
-    var patternConfidenceIntervals: map(uint(64), (real, real));  // (lower, upper) bounds
-    var significanceLevel: real;  // For statistical tests
-        
-    // Pattern stability
-    var patternHistory: [0..4] set(uint(64));  // Last 5 pattern sets
-    var stabilityScore: atomic real;
-    var convergenceMetrics: [0..2] atomic real;  // [pattern, role, structural] convergence
+  // Role classification
+  var vertexRoles: [0..#ASconfig.n] int;  // 0:hub, 1:bridge, 2:peripheral
+  var rolePatternCounts: [0..2] map(uint(64), atomic int);  // Patterns per role
+      
+  // Error bounds tracking
+  var patternConfidenceIntervals: map(uint(64), (real, real));  // (lower, upper) bounds
+  var significanceLevel: real;  // For statistical tests
+      
+  // Pattern stability
+  var patternHistory: [0..4] set(uint(64));  // Last 5 pattern sets
+  var stabilityScore: atomic real;
+  var convergenceMetrics: [0..2] atomic real;  // [pattern, role, structural] convergence
 
-    // Global motif counts map
-    var globalMotifCounts: map(uint(64), atomic int);
+  // Global motif counts map
+  var globalMotifCounts: map(uint(64), atomic int);
 
-    proc init(ASconfig: ASWSConfig, maxDeg: int) {
-      this.ASconfig = ASconfig;
-      this.wavefront = {1..0};
-      this.newVertices = {1..0};
-      this.hubSet = {1..0};
-      this.processedVertices = {1..0};
-      var a1: [0..#ASconfig.n] real;
-      this.fingerprints = a1;
-      this.timer = new stopwatch();
-      this.minRequiredSize = calculateRequiredSampleSize(ASconfig.n, ASconfig.k, maxDeg);
-      this.currentConfidence = 0.0;
-      this.patternDiscoveryRate = [0..10]((0, 0));
-      var a2: atomic int;
-      this.rateIndex = a2;
+  proc init(ASconfig: ASWSConfig, maxDeg: int) {
+    this.ASconfig = ASconfig;
+    this.wavefront = {1..0};
+    this.newVertices = {1..0};
+    this.hubSet = {1..0};
+    this.processedVertices = {1..0};
+    var a1: [0..#ASconfig.n] real;
+    this.fingerprints = a1;
+    this.timer = new stopwatch();
+    this.minRequiredSize = calculateRequiredSampleSize(ASconfig.n, ASconfig.k, maxDeg);
+    this.currentConfidence = 0.0;
+    this.patternDiscoveryRate = [0..10]((0, 0));
+    var a2: atomic int;
+    this.rateIndex = a2;
 
-      // Calculate theoretical patterns before init this
-      const rawCount = 2**(ASconfig.k*(ASconfig.k-1));
-      var factorial_result: bigint; // This is cool I never know LOL
-      fac(factorial_result, ASconfig.k);  
-      this.theoreticalTotalPatterns = (rawCount:real / factorial_result:real):int;
+    // Calculate theoretical patterns before init this
+    const rawCount = 2**(ASconfig.k*(ASconfig.k-1));
+    var factorial_result: bigint; 
+    fac(factorial_result, ASconfig.k);  
+    this.theoreticalTotalPatterns = (rawCount:real / factorial_result:real):int;
 
-      // Initialize atomic variables
-      var miss: atomic real;
-      this.missProbability = miss;
-            
-      var coverageMetricsArr: [0..2] atomic real;
-      this.coverageMetrics = coverageMetricsArr;
+    // Initialize atomic variables
+    var miss: atomic real;
+    this.missProbability = miss;
+          
+    var coverageMetricsArr: [0..2] atomic real;
+    this.coverageMetrics = coverageMetricsArr;
 
-      var roles: [0..3] atomic int;
-      this.roleDistribution = roles;
-            
-      // Initialize pattern maps
-      this.patternsByRole = [i in 0..3] new map(uint(64), atomic int);
-    this.globalMotifCounts = new map(uint(64), atomic int);
-
-      var stability: atomic real;
-      this.stabilityScore = stability;
-
-      var convergenceMetricsArr: [0..2] atomic real;
-      this.convergenceMetrics = convergenceMetricsArr;
-
-
+    var roles: [0..3] atomic int;
+    this.roleDistribution = roles;
+          
+    // Initialize pattern maps in declaration order
+    this.patternsByRole = [i in 0..3] new map(uint(64), atomic int);
+    this.rolePatternCounts = [i in 0..2] new map(uint(64), atomic int);
+    this.patternConfidenceIntervals = new map(uint(64), (real, real));
+    this.significanceLevel = 0.05;  // Default significance level
     
-      init this;
+    // Initialize pattern history with empty sets
+    this.patternHistory = [i in 0..4] new set(uint(64));
+    
+    var stability: atomic real;
+    this.stabilityScore = stability;
 
-      // Post-initialization settings
-      this.missProbability.write(1.0);
-      forall i in 0..2 do this.coverageMetrics[i].write(0.0);
-      forall i in 0..3 do this.roleDistribution[i].write(0);
-      forall i in 0..2 do this.convergenceMetrics[i].write(0.0);
-      this.stabilityScore.write(0.0);
-    }
+    var convergenceMetricsArr: [0..2] atomic real;
+    this.convergenceMetrics = convergenceMetricsArr;
+    
+    // Initialize global motif counts map
+    this.globalMotifCounts = new map(uint(64), atomic int);
+    
+    init this;
+
+    // Post-initialization settings
+    this.missProbability.write(1.0);
+    forall i in 0..2 do this.coverageMetrics[i].write(0.0);
+    forall i in 0..3 do this.roleDistribution[i].write(0);
+    forall i in 0..2 do this.convergenceMetrics[i].write(0.0);
+    this.stabilityScore.write(0.0);
+  }
+  
 
     /* Role Classification and Tracking */
     proc classifyVertexRoles(ref nodeDegree: [] int, ref nodeNeighbours: [] domain(int)) {
@@ -425,30 +432,30 @@ module MotifCounting {
       coverageMetrics[1].write(hubCoverage);
       coverageMetrics[2].write(patternCoverage);
     }
-
     // Check if we have sufficient pattern discovery guarantees
-    proc hasPatternDiscoveryGuarantees(ref state: WavefrontState, epsilon: real = 0.05): bool {
-      // First update the convergence metrics
-      state.updateConvergenceMetrics();
-      
-      // Three conditions must be met:
-      // 1. Low probability of missing patterns (P_miss < 0.05)
-      // 2. Good overall coverage (C(W) > 0.7)
-      // 3. Pattern discovery rate drop
-      
-      const missProb = state.missProbability.read();
-      const avgCoverage = (+ reduce [m in state.coverageMetrics] m.read()) / 3.0;
-      const patternStability = state.calculatePatternStability();
-      
-      writeln("\n=== Pattern Discovery Guarantees Check ===");
-      writeln("- Miss Probability: ", missProb, " (target < ", epsilon, ")");
-      writeln("- Average Coverage: ", avgCoverage, " (target > 0.7)");
-      writeln("- Pattern Stability: ", patternStability);
-      
-      return missProb < epsilon &&
-            avgCoverage >= 0.7 &&
-            patternStability >= 0.9;
-    }
+
+proc hasPatternDiscoveryGuarantees(epsilon: real = 0.05): bool {
+  // First update the convergence metrics
+  this.updateConvergenceMetrics();
+  
+  // Three conditions must be met:
+  // 1. Low probability of missing patterns (P_miss < 0.05)
+  // 2. Good overall coverage (C(W) > 0.7)
+  // 3. Hub coverage is satisfactory
+  
+  const missProb = this.missProbability.read();
+  const avgCoverage = (+ reduce [m in this.coverageMetrics] m.read()) / 3.0;
+  const hubCoverage = this.coverageMetrics[1].read();
+  
+  writeln("\n=== Pattern Discovery Guarantees Check ===");
+  writeln("- Miss Probability: ", missProb, " (target < ", epsilon, ")");
+  writeln("- Average Coverage: ", avgCoverage, " (target > 0.7)");
+  writeln("- Hub Coverage: ", hubCoverage, " (target >= 0.9)");
+  
+  return missProb < epsilon &&
+         avgCoverage >= 0.7 &&
+         hubCoverage >= 0.9;
+}
 
     // Print detailed coverage statistics
     proc printCoverageStats() {
@@ -465,41 +472,60 @@ module MotifCounting {
       }
       writeln("========================================\n");
     }
-    /* New method to update convergence metrics */
-    proc updateConvergenceMetrics() {
-      var alpha: [0..2] real;
-      for role in 0..2 {
-        // Calculate coverage efficiency for each stratum
-        alpha[role] = state.wavefront.size:real / state.ASconfig.n:real;
-        
-        if state.roleDistribution[role].read() > 0 {
-          alpha[role] = min(alpha[role], 
-                            (state.wavefront & state.roleVertices[role]).size:real / 
-                            state.roleDistribution[role].read():real);
+ /* Fixed updateConvergenceMetrics method using 'this' instead of 'state' */
+/* Corrected updateConvergenceMetrics method using 'this' without return value */
+proc updateConvergenceMetrics() {
+  var alpha: [0..2] real;
+  for role in 0..2 {
+    // Calculate coverage efficiency for each stratum
+    alpha[role] = this.wavefront.size:real / this.ASconfig.n:real;
+    
+    if this.roleDistribution[role].read() > 0 {
+      // Count vertices of this role in the wavefront
+      var roleInWavefront = 0;
+      for v in this.wavefront {
+        if this.vertexRoles[v] == role {
+          roleInWavefront += 1;
         }
       }
       
-      // Calculate beta_min (minimum stratum coverage efficiency)
-      var betaMin = min reduce alpha;
-      
-      // Calculate miss probability
-      var missProb = state.globalMotifCounts.size * exp(-betaMin * state.wavefront.size:real);
-      state.missProbability.write(missProb);
-      
-      // Update coverage metrics
-      var structuralCoverage = state.wavefront.size:real / state.ASconfig.n:real;
-      var hubCoverage = (state.wavefront & state.hubSet).size:real / state.hubSet.size:real;
-      var patternCoverage = state.globalMotifCounts.size:real / state.theoreticalTotalPatterns:real;
-      
-      state.coverageMetrics[0].write(structuralCoverage);
-      state.coverageMetrics[1].write(hubCoverage);
-      state.coverageMetrics[2].write(patternCoverage);
-      
-      writeln("- Beta_min: ", betaMin, " Miss Prob: ", missProb);
-      writeln("- Coverage: [Structural: ", structuralCoverage, 
-              ", Hub: ", hubCoverage, 
-              ", Pattern: ", patternCoverage, "]");
+      alpha[role] = min(alpha[role], 
+                      roleInWavefront:real / 
+                      this.roleDistribution[role].read():real);
     }
+  }
+  
+  // Calculate beta_min (minimum stratum coverage efficiency)
+  var betaMin = min reduce alpha;
+  
+  // Calculate miss probability
+  var missProb = this.globalMotifCounts.size * exp(-betaMin * this.wavefront.size:real);
+  this.missProbability.write(missProb);
+  
+  // Update coverage metrics
+  var structuralCoverage = this.wavefront.size:real / this.ASconfig.n:real;
+  
+  // Calculate hub coverage properly
+  var hubsInWavefront = 0;
+  for hub in this.hubSet {
+    if this.wavefront.contains(hub) {
+      hubsInWavefront += 1;
+    }
+  }
+  var hubCoverage = if this.hubSet.size > 0 then hubsInWavefront:real / this.hubSet.size:real else 0.0;
+  
+  // Calculate pattern coverage
+  var patternCoverage = this.globalMotifCounts.size:real / this.theoreticalTotalPatterns:real;
+  
+  this.coverageMetrics[0].write(structuralCoverage);
+  this.coverageMetrics[1].write(hubCoverage);
+  this.coverageMetrics[2].write(patternCoverage);
+  
+  writeln("- Beta_min: ", betaMin, " Miss Prob: ", missProb);
+  writeln("- Coverage: [Structural: ", structuralCoverage, 
+          ", Hub: ", hubCoverage, 
+          ", Pattern: ", patternCoverage, "]");
+}
     //}
   } // End of WavefrontState class
 
@@ -647,7 +673,6 @@ module MotifCounting {
 
     // All motif counting and classify variables
     var globalMotifCount: atomic int;
-    var globalMotifSet: set(uint(64), parSafe=true);
     // Initiate it to 0
     globalMotifCount.write(0);
     // A global map to track pattern counts across all threads
@@ -1415,7 +1440,7 @@ proc updateConvergenceMetrics(ref state: WavefrontState) {
     
     // Calculate optimal wavefront size using theorem
     var epsilon = 0.05;
-    var betaMin = state.calculateBetaMin();
+    var betaMin = calculateBetaMin(state);
     var wOpt = (sqrt(n * log(1/epsilon)) / betaMin): int;
     writeln("- Optimal wavefront size: ", wOpt);
     writeln("- Current wavefront size: ", state.wavefront.size);
@@ -1437,7 +1462,7 @@ proc updateConvergenceMetrics(ref state: WavefrontState) {
   
   // Scale frequency estimates using the theory
   writeln("\n=== Estimated Global Frequencies ===");
-  var betaMin = state.calculateBetaMin();
+  var betaMin = calculateBetaMin(state);
   var scalingFactor = (n:real / (betaMin * state.wavefront.size:real));
   
   writeln("- Scaling factor (n / (beta_min * |W|)): ", scalingFactor);
@@ -1530,7 +1555,7 @@ proc expandWavefrontTheoretical(ref state: WavefrontState,
 }
 
 /* Helper for selecting vertices from a candidate pool */
-proc selectFromCandidates(ref state: WavefrontState, candidates: domain(int), count: int) {
+proc selectFromCandidates(ref state: WavefrontState, candidates: domain(int, parSafe=true), count: int) {
   var rng = new randomStream(real);
   var selected = 0;
   
@@ -1547,7 +1572,7 @@ proc selectFromCandidates(ref state: WavefrontState, candidates: domain(int), co
 
 /* Helper for selecting diverse vertices with equal weighting */
 proc selectDiverseTheoretical(ref state: WavefrontState, 
-                             candidates: domain(int), 
+                             candidates: domain(int, parSafe=true), 
                              count: int,
                              ref nodeDegree: [] int,
                              ref nodeNeighbours: [] domain(int)) {
@@ -1629,7 +1654,7 @@ proc selectDiverseTheoretical(ref state: WavefrontState,
 }
 
 /* Helper for selecting random vertices */
-proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int) {
+proc selectRandom(ref state: WavefrontState, candidates: domain(int, parSafe=true), count: int) {
   var rng = new randomStream(real);
   var candidateArr: [0..#candidates.size] int;
   var idx = 0;
@@ -1953,7 +1978,8 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int
        1. A set of unique motif classes
        2. A flat array containing all adjacency matrices of the unique motifs
     */
-    proc verifyPatterns(globalMotifSet: set(uint(64)), 
+/* Complete fixed verifyPatterns function */
+proc verifyPatterns(globalMotifSet: set(uint(64)), 
                    globalMotifCounts: map(uint(64), atomic int),
                    motifSize: int) throws {
   var uniqueMotifClasses: set(uint(64));
@@ -1963,6 +1989,9 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int
   writeln("\n=== Starting Pattern Verification ===");
   
   var motifArr: [0..#(globalMotifSet.size * motifSize * motifSize)] int;
+  
+  // Track the canonical patterns in an array for indexed access
+  var patternArray: [0..#globalMotifSet.size] uint(64);
   
   // Process each pattern found
   var patternIdx = 0;
@@ -1978,8 +2007,9 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int
     
     var performCheck = 1;
     var verbose = 0;
-    
-    var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose);
+    var batchSize = 1; // We're processing one matrix at a time
+
+    var status = c_nautyClassify(adjMatrix, motifSize, results, performCheck, verbose, batchSize);
     
     if status != 0 {
       writeln("Warning: Nauty failed with status ", status, " for pattern ", pattern);
@@ -1990,7 +2020,17 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int
     var nautyPattern = generateNautyPattern(adjMatrix, results, motifSize);
     
     // Add the pattern if it's new
-    if !uniqueMotifClasses.contains(nautyPattern) {
+    var existingIdx = -1;
+    for idx in 0..<patternIdx {
+      if patternArray[idx] == nautyPattern {
+        existingIdx = idx;
+        break;
+      }
+    }
+    
+    if existingIdx == -1 {
+      // New canonical pattern
+      patternArray[patternIdx] = nautyPattern;
       uniqueMotifClasses.add(nautyPattern);
       
       // Add matrix to motifArr
@@ -2002,35 +2042,30 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int
       }
       
       // Store its count
-      uniqueMotifCounts[patternIdx] = globalMotifCounts[pattern].read();
+      var count = if globalMotifCounts.contains(pattern) then 
+                    globalMotifCounts[pattern].read() 
+                  else 0;
+                  
+      uniqueMotifCounts[patternIdx] = count;
       
       motifCount += 1;
       patternIdx += 1;
     } else {
-      // If we've seen this canonical form, add its count to the existing one
-      var existingIdx = 0;
-      var foundIdx = false;
-      
-      // Find the index of the existing canonical pattern
-      for (idx, p) in uniqueMotifClasses.enumerate() {
-        if p == nautyPattern {
-          existingIdx = idx;
-          foundIdx = true;
-          break;
-        }
-      }
-      
-      if foundIdx {
-        uniqueMotifCounts[existingIdx] += globalMotifCounts[pattern].read();
-      }
+      // Found existing canonical pattern - add its count to the existing one
+      var count = if globalMotifCounts.contains(pattern) then 
+                    globalMotifCounts[pattern].read() 
+                  else 0;
+                  
+      uniqueMotifCounts[existingIdx] += count;
     }
   }
   
-  // Create final arrays
+  // Create final arrays with correct sizes
   var finalMotifArr: [0..#(motifCount * motifSize * motifSize)] int;
   var finalCountArr: [0..#motifCount] int;
   
-  for i in 0..#motifCount {
+  // Copy data to final arrays with correct sizes
+  for i in 0..<motifCount {
     finalCountArr[i] = uniqueMotifCounts[i];
   }
   
@@ -2038,13 +2073,18 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int), count: int
     finalMotifArr[i] = motifArr[i];
   }
   
-  writeln("=== Verification Results ===");
+  writeln("\n=== Verification Results ===");
   writeln("Started with total patterns: ", globalMotifSet.size);
   writeln("Found unique canonical patterns: ", uniqueMotifClasses.size);
+  writeln("Filtered out non-canonical patterns: ", globalMotifSet.size - uniqueMotifClasses.size);
+  
+  writeln("\nCanonical patterns and their counts:");
+  for i in 0..<motifCount {
+    writeln("  Pattern: ", patternArray[i], " Count: ", finalCountArr[i]);
+  }
   
   return (uniqueMotifClasses, finalMotifArr, finalCountArr);
 }
-
   
     // New function to create pattern from adjMatrix and Nauty labeling
 proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int): uint(64) {
@@ -2289,7 +2329,7 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
   
   // Output scaled frequency estimates
   writeln("\n=== Estimated Global Frequencies ===");
-  var betaMin = state.calculateBetaMin();
+  var betaMin = calculateBetaMin(state);
   var scalingFactor = (g1.n_vertices:real / (betaMin * state.wavefront.size:real));
   
   writeln("- Scaling factor (n / (beta_min * |W|)): ", scalingFactor);
