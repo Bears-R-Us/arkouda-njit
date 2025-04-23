@@ -50,16 +50,14 @@ module MotifCountingDistributed {
       batchSize: int(64)
   ) : int(64);
 
-  /* KavoshState class keeps track of the state during the enumeration of subgraphs.
-     We've modified it to use 1D arrays instead of 2D for better compatibility with
-     distributed computing patterns. */
+  /* KavoshState class keeps track of the state during the enumeration of subgraphs */
   class KavoshState {
     var n: int;
     var k: int;
     var maxDeg: int;
     var visited: domain(int, parSafe=true);
 
-    // Convert 2D arrays to 1D
+    // Use 1D arrays for storage
     var subgraph: [0..#(k * (k+1))] int;  
     var childSet: [0..#(k * ((maxDeg*k)+2))] int;
     var indexMap: [0..#(k * ((maxDeg*k)+2))] int;
@@ -131,9 +129,9 @@ module MotifCountingDistributed {
 
   /* Main entry point for distributed MotifCounting motif counting */
   proc runMotifCountingDistributed(g1: SegGraph,  
-              // sizeLimit: string, in timeLimit: int, in printProgressInterval: int,
                motifSize: int, doSampling: int, in printProgressInterval: int,
                algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
+    
     
     // Extract graph components
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -167,11 +165,45 @@ module MotifCountingDistributed {
       vertexRanges[loc] = start..<end;
     }
     
-    // Create distributed data structures
-    var nodeDegreeDist: [localeDom] [0..<verticesPerLocale] int;
-    var nodeNeighborsDist: [localeDom] [0..<verticesPerLocale] domain(int, parSafe=true);
-    var nodeInNeighborsDist: [localeDom] [0..<verticesPerLocale] domain(int, parSafe=true);
-    var nodeOutNeighborsDist: [localeDom] [0..<verticesPerLocale] domain(int, parSafe=true);
+    // --- KEY DIFFERENCE: Precompute ALL node neighbors on locale 0 ---
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
+                     "Precomputing all node neighbors (optimized approach)");
+    
+    // Create global arrays for node data
+    var nodeDegree: [0..<n] int;
+    var nodeNeighbors: [0..<n] domain(int, parSafe=true);
+    var nodeInNeighbors: [0..<n] domain(int, parSafe=true);
+    var nodeOutNeighbors: [0..<n] domain(int, parSafe=true);
+    
+    // Compute all neighbors on locale 0
+    forall v in 0..<n with (ref nodeDegree, ref nodeNeighbors, 
+                         ref nodeInNeighbors, ref nodeOutNeighbors) {
+      var neighbors: domain(int, parSafe=true);
+      
+      // Get in-neighbors (reverse edges)
+      const neiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
+      for nei in neiIn {
+        nodeInNeighbors[v].add(nei);
+        neighbors.add(nei);
+      }
+      
+      // Get out-neighbors (forward edges)
+      const neiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+      for nei in neiOut {
+        nodeOutNeighbors[v].add(nei);
+        neighbors.add(nei);
+      }
+      
+      // Store all neighbors and degree
+      nodeNeighbors[v] = neighbors;
+      nodeDegree[v] = neighbors.size;
+    }
+    
+    // Compute global max degree
+    var maxDeg = max reduce nodeDegree;
+    
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(), 
+                     "Maximum degree in graph: " + maxDeg:string);
     
     // Create global motif tracking structures
     var globalMotifCountDist: [localeDom] atomic int;
@@ -179,73 +211,9 @@ module MotifCountingDistributed {
     var globalMotifMapDist: [localeDom] map(uint(64), int, parSafe=true);
     var seenMatricesDist: [localeDom] set(uint(64), parSafe=true);
     
-    if logLevel == LogLevel.DEBUG then startCommDiagnostics();
-    
-    // Precompute node neighbors and degrees on each locale
-    coforall loc in Locales do on loc {
-      const myVertices = vertexRanges[loc.id];
-      const numLocalVertices = myVertices.size;
-      
-      // Initialize local arrays with appropriate size
-      var localNodeDegree: [0..<numLocalVertices] int;
-      var localNodeNeighbors: [0..<numLocalVertices] domain(int, parSafe=true);
-      var localNodeInNeighbors: [0..<numLocalVertices] domain(int, parSafe=true);
-      var localNodeOutNeighbors: [0..<numLocalVertices] domain(int, parSafe=true);
-      
-      // Compute neighbors and degrees for each vertex in this locale's range
-      forall (v, i) in zip(myVertices, 0..<numLocalVertices) with (ref localNodeDegree, 
-                                                                 ref localNodeNeighbors,
-                                                                 ref localNodeInNeighbors,
-                                                                 ref localNodeOutNeighbors) {
-        var neighbors: domain(int, parSafe=true);
-        
-        // Get in-neighbors (reverse edges)
-        const neiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
-        for nei in neiIn {
-          localNodeInNeighbors[i].add(nei);
-          neighbors.add(nei);
-        }
-        
-        // Get out-neighbors (forward edges)
-        const neiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-        for nei in neiOut {
-          localNodeOutNeighbors[i].add(nei);
-          neighbors.add(nei);
-        }
-        
-        // Store all neighbors and degree
-        localNodeNeighbors[i] = neighbors;
-        localNodeDegree[i] = neighbors.size;
-      }
-      
-      // Store computed values in distributed arrays
-      nodeDegreeDist[loc.id] = localNodeDegree;
-      nodeNeighborsDist[loc.id] = localNodeNeighbors;
-      nodeInNeighborsDist[loc.id] = localNodeInNeighbors;
-      nodeOutNeighborsDist[loc.id] = localNodeOutNeighbors;
-    }
-    
-    if logLevel == LogLevel.DEBUG {
-      var outMsg = "Communication statistics for neighbor computation:";
-      siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
-      printCommDiagnosticsTable();
-      resetCommDiagnostics();
-    }
-    
-    // Compute global max degree
-    var maxDegDist: [localeDom] int;
-    coforall loc in Locales do on loc {
-      maxDegDist[loc.id] = max reduce nodeDegreeDist[loc.id];
-    }
-    var maxDeg = max reduce maxDegDist;
-    
-    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(), 
-                     "Maximum degree in graph: " + maxDeg:string);
-    
-    //if logLevel == LogLevel.DEBUG then startCommDiagnostics();
     startCommDiagnostics();
     
-    // Run Kavosh in parallel across locales
+    // --- Run Kavosh in parallel across locales ---
     coforall loc in Locales do on loc {
       const myVertices = vertexRanges[loc.id];
       var localCount: atomic int;
@@ -255,52 +223,6 @@ module MotifCountingDistributed {
         siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(),
                          "Locale " + loc.id:string + " processing vertices " + 
                          myVertices.low:string + " to " + (myVertices.high):string);
-      }
-      
-      // Create local references to neighbor data for this locale
-      const localNodeDegree = nodeDegreeDist[loc.id];
-      const localNodeNeighbors = nodeNeighborsDist[loc.id];
-      const localNodeInNeighbors = nodeInNeighborsDist[loc.id];
-      const localNodeOutNeighbors = nodeOutNeighborsDist[loc.id];
-      
-      /* Helper function to get the neighbors for a vertex which might be on any locale */
-      proc getNeighbors(v: int) {
-        if myVertices.contains(v) {
-          // Vertex is on this locale
-          const localIdx = v - myVertices.low;
-          return localNodeNeighbors[localIdx];
-        } else {
-          // Vertex is on another locale, need to determine which one
-          for remoteLoc in 0..<numLocales {
-            if vertexRanges[remoteLoc].contains(v) {
-              const remoteIdx = v - vertexRanges[remoteLoc].low;
-              
-              // This will trigger a remote get operation
-              return nodeNeighborsDist[remoteLoc][remoteIdx];
-            }
-          }
-          
-          // Should never happen
-          var emptyDomain: domain(int, parSafe=true);
-          return emptyDomain;
-        }
-      }
-      
-      /* Helper function to check if edge exists between two vertices */
-      proc hasEdge(u: int, w: int) {
-        if myVertices.contains(u) {
-          const localIdx = u - myVertices.low;
-          return localNodeOutNeighbors[localIdx].contains(w);
-        } else {
-          // Find which locale has this vertex
-          for remoteLoc in 0..<numLocales {
-            if vertexRanges[remoteLoc].contains(u) {
-              const remoteIdx = u - vertexRanges[remoteLoc].low;
-              return nodeOutNeighborsDist[remoteLoc][remoteIdx].contains(w);
-            }
-          }
-          return false;
-        }
       }
       
       /* Helper function to gather neighbors for a subgraph state */
@@ -313,8 +235,8 @@ module MotifCountingDistributed {
         for p in 1..parentsCount {
           const parent = state.getSubgraph(level-1, p);
           
-          // Get neighbors using the helper function
-          for neighbor in getNeighbors(parent) {
+          // Direct neighbor lookup from global arrays
+          for neighbor in nodeNeighbors[parent] {
             // Must be greater than root and not visited
             if neighbor > root && !state.visited.contains(neighbor) {
               // Increment count and add neighbor
@@ -335,7 +257,7 @@ module MotifCountingDistributed {
         
         // Gather vertices level by level
         for level in 0..<state.k {
-          const vertCount = state.getSubgraph(level, 0);  // Get count for this level
+          const vertCount = state.getSubgraph(level, 0);
           for pos in 1..vertCount {
             chosenVerts[idx] = state.getSubgraph(level, pos);
             idx += 1;
@@ -345,15 +267,15 @@ module MotifCountingDistributed {
         // Create adjacency matrix
         var adjMatrix: [0..#(state.k * state.k)] int = 0;
         
-        // Fill adjacency matrix
+        // Fill adjacency matrix - direct access to nodeOutNeighbors
         for i in 0..#state.k {
           for j in 0..#state.k {
             if i != j {  // Skip self-loops
               var u = chosenVerts[i+1];  // +1 because chosenVerts is 1-based
               var w = chosenVerts[j+1];
               
-              // Check for edge using the helper function
-              if hasEdge(u, w) {
+              // Direct neighbor check (no cross-locale lookup needed)
+              if nodeOutNeighbors[u].contains(w) {
                 adjMatrix[i * state.k + j] = 1;
               }
             }
@@ -521,8 +443,8 @@ module MotifCountingDistributed {
                 var u = motifVerticesArray[baseIdx + row];
                 var w = motifVerticesArray[baseIdx + col];
                 
-                // Check for edge
-                if hasEdge(u, w) {
+                // Direct neighbor check (no cross-locale lookup needed)
+                if nodeOutNeighbors[u].contains(w) {
                   batchedMatrices[i * (k * k) + row * k + col] = 1;
                   
                   // Update binary representation
@@ -592,12 +514,12 @@ module MotifCountingDistributed {
             }
             patternToOriginalMapping[canonicalPattern].pushBack(originalBinary);
             
-            // Add to global set and update count
+            // Add to global set
             globalMotifSetDist[loc.id].add(canonicalPattern);
             
-            // For reading values from parallel-safe maps
+            // Update count in global map - using thread-safe operations
             if globalMotifMapDist[loc.id].contains(canonicalPattern) {
-              var defaultCount: int = 0; // Provide a default/sentinel value
+              var defaultCount: int = 0; // Provide a default value
               var currentCount = globalMotifMapDist[loc.id].get(canonicalPattern, defaultCount);
               globalMotifMapDist[loc.id].addOrReplace(canonicalPattern, currentCount + 1);
             } else {
@@ -627,10 +549,10 @@ module MotifCountingDistributed {
         processMotifs(state, k);
         
         // Print progress if appropriate
-        if printProgressInterval > 0 && v % printProgressInterval == 0 {
-          siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
-                           "Processed vertex " + v:string + " on locale " + loc.id:string);
-        }
+        // if printProgressInterval > 0 && v % printProgressInterval == 0 {
+        //   siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
+        //                    "Processed vertex " + v:string + " on locale " + loc.id:string);
+        // }
       }
       
       // Update global count
@@ -687,18 +609,16 @@ module MotifCountingDistributed {
       }
     }
     
-    if logLevel == LogLevel.DEBUG {
+    //if logLevel == LogLevel.DEBUG {
       var outMsg = "Communication statistics for result merging:";
       siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
       printCommDiagnosticsTable();
       resetCommDiagnostics();
-    }
-    
-    // Write results to output file if specified
-    //if outputPath != "" {
-    var outputPath:string = "/home/md724/DistPath";
-      writeResultsToFile(outputPath, k, globalMotifSet, globalMotifMap, totalMotifCount, n, mG1);
     //}
+    
+    // Write results to output file
+    var outputPath:string = "./kavosh_results.txt";
+    writeResultsToFile(outputPath, k, globalMotifSet, globalMotifMap, totalMotifCount, n, mG1);
     
 
     
@@ -787,14 +707,14 @@ module MotifCountingDistributed {
     for pattern in patterns {
       var count = 0;
       if patternCounts.contains(pattern) {
-        count = patternCounts[pattern];
+        count = patternCounts.get(pattern, 0);
       }
       patternList[idx] = (pattern, count);
       idx += 1;
     }
     
     // Sort by frequency (highest first)
-    //sort(patternList, comparator=new PatternComparator());
+    sort(patternList, comparator=new PatternComparator());
     
     // Write each pattern
     var patternId = 1;
