@@ -172,50 +172,56 @@ class WavefrontState {
 
     /* Role Classification and Tracking */
     proc classifyVertexRoles(ref nodeDegree: [] int, ref nodeNeighbours: [] domain(int)) {
-      writeln("\n=== Classifying Vertex Roles ===");
-      const maxDeg = max reduce nodeDegree;
-      const avgDeg = (+ reduce nodeDegree) / nodeDegree.size;
+    writeln("\n=== Classifying Vertex Roles ===");
+    const maxDeg = max reduce nodeDegree;
+    const avgDeg = (+ reduce nodeDegree) / nodeDegree.size;
+
+    // First, reset role distribution counts
+    for i in 0..3 do this.roleDistribution[i].write(0);
     
-      forall v in 0..#ASconfig.n {
+    // Get reference to member variables before the forall loop
+    ref roleDistRef = this.roleDistribution;
+    ref vertexRolesRef = this.vertexRoles;
+    const n = this.ASconfig.n;
+    
+    forall v in 0..#n with (ref roleDistRef) {
         // Calculate clustering coefficient
         var neighbors = nodeNeighbours[v];
         var edgeCount = 0;
         var possibleEdges = neighbors.size * (neighbors.size - 1);
         
         if possibleEdges > 0 {
-          for u in neighbors {
+        for u in neighbors {
             for w in neighbors {
-              if u != w && nodeNeighbours[u].contains(w) {
+            if u != w && nodeNeighbours[u].contains(w) {
                 edgeCount += 1;
-              }
             }
-          }
+            }
+        }
         }
         
         var clustering = if possibleEdges > 0 
-                         then edgeCount:real / possibleEdges:real 
-                         else 0.0;
+                        then edgeCount:real / possibleEdges:real 
+                        else 0.0;
         
         // Classify role
         if nodeDegree[v] >= maxDeg * 0.7 {
-          vertexRoles[v] = 0;  // Hub
+        vertexRolesRef[v] = 0;  // Hub
+        roleDistRef[0].add(1);
         } else if clustering > 0.5 && nodeDegree[v] > avgDeg {
-          vertexRoles[v] = 1;  // Bridge
+        vertexRolesRef[v] = 1;  // Bridge
+        roleDistRef[1].add(1);
         } else {
-          vertexRoles[v] = 2;  // Peripheral
+        vertexRolesRef[v] = 2;  // Peripheral
+        roleDistRef[2].add(1);
         }
-      }
-    
-      // Print role distribution
-      var roleCounts: [0..2] atomic int;
-      forall v in 0..#ASconfig.n with (ref roleCounts) {
-        roleCounts[vertexRoles[v]].add(1);
-      }
-    
-      writeln("Role distribution:");
-      writeln("- Hubs: ", roleCounts[0].read());
-      writeln("- Bridges: ", roleCounts[1].read());
-      writeln("- Peripheral: ", roleCounts[2].read());
+    }
+
+    // Print role distribution
+    writeln("Role distribution:");
+    writeln("- Hubs: ", this.roleDistribution[0].read());
+    writeln("- Bridges: ", this.roleDistribution[1].read());
+    writeln("- Peripheral: ", this.roleDistribution[2].read());
     }
 
     /* Error Bounds Calculation */
@@ -472,15 +478,13 @@ proc hasPatternDiscoveryGuarantees(epsilon: real = 0.05): bool {
       }
       writeln("========================================\n");
     }
- /* Fixed updateConvergenceMetrics method using 'this' instead of 'state' */
-/* Corrected updateConvergenceMetrics method using 'this' without return value */
+ /* Complete updateConvergenceMetrics method for WavefrontState class */
 proc updateConvergenceMetrics() {
   var alpha: [0..2] real;
   for role in 0..2 {
-    // Calculate coverage efficiency for each stratum
-    alpha[role] = this.wavefront.size:real / this.ASconfig.n:real;
+    var roleCount = this.roleDistribution[role].read();
     
-    if this.roleDistribution[role].read() > 0 {
+    if roleCount > 0 {
       // Count vertices of this role in the wavefront
       var roleInWavefront = 0;
       for v in this.wavefront {
@@ -489,17 +493,18 @@ proc updateConvergenceMetrics() {
         }
       }
       
-      alpha[role] = min(alpha[role], 
-                      roleInWavefront:real / 
-                      this.roleDistribution[role].read():real);
+      // Calculate alpha_s = |W ∩ S_s| / |S_s|
+      alpha[role] = roleInWavefront:real / roleCount:real;
+    } else {
+      alpha[role] = 1.0; // If no vertices of this role, set alpha to 1.0
     }
   }
   
   // Calculate beta_min (minimum stratum coverage efficiency)
   var betaMin = min reduce alpha;
   
-  // Calculate miss probability
-  var missProb = this.globalMotifCounts.size * exp(-betaMin * this.wavefront.size:real);
+  // Calculate miss probability using the theoretical formula
+  var missProb = this.theoreticalTotalPatterns * exp(-betaMin * this.wavefront.size:real);
   this.missProbability.write(missProb);
   
   // Update coverage metrics
@@ -655,21 +660,31 @@ proc updateConvergenceMetrics() {
     // Setup the problem
     var n = nodeMapGraphG1.size;
     var k = motifSize; // Looking for motifs of size motifSize
-    var nodeDegree: [0..<n] int;
-    var nodeNeighbours: [0..<n] domain(int);
 
-    forall v in 0..<n with (ref nodeDegree) {
-      var neighbours: domain(int, parSafe=true);
-      const NeiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
-      const NeiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
-      neighbours += NeiIn;
-      neighbours += NeiOut;
-      nodeDegree[v] = neighbours.size;
-      // Collect all neighbors (both in and out) 
-      nodeNeighbours[v] = neighbours;
-    }
 
-    var maxDeg = max reduce nodeDegree;
+        var nodeDegree: [0..<n] int;
+        var node_IN_Neighbours: [0..<n] domain(int);
+        var node_OUT_Neighbours: [0..<n] domain(int);
+        var nodeNeighbours: [0..<n] domain(int);
+        var newNodeNeighbours: [0..<n] domain(int);
+
+        forall v in 0..<n with (ref nodeDegree) {
+            var neighbours: domain(int, parSafe=true);
+
+            const NeiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
+            const NeiOut = dstNodesG1[segGraphG1[v]..<segGraphG1[v+1]];
+
+            neighbours += NeiIn;
+            neighbours += NeiOut;
+
+            nodeDegree[v] = neighbours.size;
+            // Collect all neighbors (both in and out) 
+            nodeNeighbours[v] = neighbours;
+            node_IN_Neighbours[v] = NeiIn;
+            node_OUT_Neighbours[v] = NeiOut;
+        }
+
+        var maxDeg = max reduce nodeDegree;
 
     // All motif counting and classify variables
     var globalMotifCount: atomic int;
@@ -1066,11 +1081,10 @@ proc updateConvergenceMetrics() {
     }
 
 /* Main ASWS sampling procedure which Processes current wavefront to find motifs */
-/* Complete fixed implementation of processWavefront */
-proc processWavefront(ref state: WavefrontState,
-                      ref globalMotifCount: atomic int,
-                      ref globalMotifSet: set(uint(64), parSafe=true),
-                      ref seenMatrices: set(uint(64), parSafe=true)) throws {
+proc processWavefrontWithSwapping(ref state: WavefrontState,
+                                 ref globalMotifCount: atomic int,
+                                 ref globalMotifSet: set(uint(64), parSafe=true),
+                                 ref seenMatrices: set(uint(64), parSafe=true)) throws {
   
   writeln("\n=== Processing New Vertices ===");
   writeln("- Total vertices in wavefront: ", state.wavefront.size);
@@ -1081,24 +1095,116 @@ proc processWavefront(ref state: WavefrontState,
   
   // Only process new vertices
   forall v in state.newVertices with (ref globalMotifSet, ref globalMotifCount, ref seenMatrices) {
-    var localKavoshState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
+    // Create thread-local copies of the neighbor data structures that will be modified
+    var local_node_IN_Neighbours: [0..<state.ASconfig.n] domain(int);
+    var local_node_OUT_Neighbours: [0..<state.ASconfig.n] domain(int);
+    var local_nodeNeighbours: [0..<state.ASconfig.n] domain(int);
     
-    // Initialize for this vertex
-    localKavoshState.setSubgraph(0, 0, 1);
-    localKavoshState.setSubgraph(0, 1, v);
-    localKavoshState.visited.clear();
-    localKavoshState.visited.add(v);
+    // Flag array to track which nodes have modified neighbor lists
+    var isModified: [0..<state.ASconfig.n] bool = false;
+    
+    // Initialize with empty domains
+    for i in 0..<state.ASconfig.n {
+      local_node_IN_Neighbours[i] = {1..0}; // Empty domain
+      local_node_OUT_Neighbours[i] = {1..0}; // Empty domain
+      local_nodeNeighbours[i] = {1..0}; // Empty domain
+    }
+    
+    // Only swap node if targetNode is not 0
+    if v != 0 {
+      // Copy the neighbor sets for nodes 0 and v
+      local_node_IN_Neighbours[0] = node_IN_Neighbours[v];
+      local_node_OUT_Neighbours[0] = node_OUT_Neighbours[v];
+      local_nodeNeighbours[0] = nodeNeighbours[v];
+      
+      local_node_IN_Neighbours[v] = node_IN_Neighbours[0];
+      local_node_OUT_Neighbours[v] = node_OUT_Neighbours[0];
+      local_nodeNeighbours[v] = nodeNeighbours[0];
+      
+      // Mark these nodes as modified
+      isModified[0] = true;
+      isModified[v] = true;
+      
+      // For all other nodes, we need to update references to 0 and v
+      for u in 0..<state.ASconfig.n {
+        if u == 0 || u == v {
+          continue; // Already handled above
+        }
+        
+        // Check if this node has 0 or v as a neighbor
+        var hasReferencesToSwappedNodes = false;
+        for neighbor in nodeNeighbours[u] {
+          if neighbor == 0 || neighbor == v {
+            hasReferencesToSwappedNodes = true;
+            break;
+          }
+        }
+        
+        // Only modify nodes that reference 0 or v
+        if hasReferencesToSwappedNodes {
+          var new_in: domain(int, parSafe=true);
+          var new_out: domain(int, parSafe=true);
+          var new_all: domain(int, parSafe=true);
+          
+          // Update incoming neighbors
+          for neighbor in node_IN_Neighbours[u] {
+            if neighbor == 0 {
+              new_in.add(v);
+            } else if neighbor == v {
+              new_in.add(0);
+            } else {
+              new_in.add(neighbor);
+            }
+          }
+          
+          // Update outgoing neighbors
+          for neighbor in node_OUT_Neighbours[u] {
+            if neighbor == 0 {
+              new_out.add(v);
+            } else if neighbor == v {
+              new_out.add(0);
+            } else {
+              new_out.add(neighbor);
+            }
+          }
+          
+          // Update all neighbors
+          new_all += new_in;
+          new_all += new_out;
+          
+          // Store in local copies
+          local_node_IN_Neighbours[u] = new_in;
+          local_node_OUT_Neighbours[u] = new_out;
+          local_nodeNeighbours[u] = new_all;
+          
+          // Mark as modified
+          isModified[u] = true;
+        }
+      }
+    }
     
     // Get vertex role
     const role = state.vertexRoles[v];
     
-    // Explore motifs from this vertex
-    Explore(localKavoshState, v, 1, state.ASconfig.k - 1);
+    // Create state for tracking results
+    var localKavoshState = new KavoshState(state.ASconfig.n, state.ASconfig.k, max reduce nodeDegree);
+    
+    // Initialize with root 0 (which represents our target node after swapping)
+    localKavoshState.setSubgraph(0, 0, 1);
+    localKavoshState.setSubgraph(0, 1, 0);
+    localKavoshState.visited.clear();
+    localKavoshState.visited.add(0);
+    
+    // Run the local Explore function with the thread-local neighbor data
+    localExplore(localKavoshState, 0, 1, state.ASconfig.k - 1, isModified, 
+                local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
     
     // Calculate how many complete motifs we found
     const numMotifs = localKavoshState.localsubgraphCount;
     const totalVertices = localKavoshState.motifVertices.size;
     const k = state.ASconfig.k;
+    
+    //writeln("For root: ", v, " We Found ", numMotifs);
     
     // Skip if no motifs found
     if numMotifs == 0 || totalVertices == 0 {
@@ -1112,6 +1218,9 @@ proc processWavefront(ref state: WavefrontState,
       continue;
     }
     
+    // Process the motifs found using the same approach as in EnumerateForMultipleNodes
+    // ... (Rest of the processing logic from EnumerateForMultipleNodes)
+    
     // Create arrays for batch processing
     var batchedMatrices: [0..#(numMotifs * k * k)] int = 0;
     var batchedResults: [0..#(numMotifs * k)] int;
@@ -1121,23 +1230,29 @@ proc processWavefront(ref state: WavefrontState,
     
     // Track which matrices need to be processed
     var matricesToProcess: list((int, uint(64)));  // (index, binary) pairs for new matrices
-    var seenIndices: domain(int, parSafe=false);   // Indices of matrices we've seen before
+    var seenIndices: domain(int, parSafe=false);  // Indices of matrices we've seen before
     var localPatterns: set(uint(64), parSafe=false);
+    
+    // Thread-local set of seen matrices for cache optimization
+    var localSeenMatrices: set(uint(64), parSafe=false);
     
     // Fill matrices and check for duplicates
     for i in 0..<numMotifs {
       var baseIdx = i * k;
       var matrixBinary: uint(64) = 0;  // Binary representation for this matrix
       
-      // Create adjacency matrix
+      // Create adjacency matrix for this motif
       for row in 0..<k {
         for col in 0..<k {
           if row != col {  // Skip self-loops
             var u = motifVerticesArray[baseIdx + row];
             var w = motifVerticesArray[baseIdx + col];
-            var eid = getEdgeId(u, w, dstNodesG1, segGraphG1);
+            
+            // Use thread-local edge checking
+            var eid = localGetEdgeId(u, w, isModified, local_node_OUT_Neighbours);
             if eid != -1 {
               batchedMatrices[i * (k * k) + row * k + col] = 1;
+              
               // Update binary representation - set bit at position (row * k + col)
               matrixBinary |= 1:uint(64) << (row * k + col);
             }
@@ -1146,17 +1261,18 @@ proc processWavefront(ref state: WavefrontState,
       }
       
       // Check if we've seen this matrix before
-      if seenMatrices.contains(matrixBinary) {
+      if localSeenMatrices.contains(matrixBinary) || seenMatrices.contains(matrixBinary) {
         // We've seen this pattern before, skip Nauty processing
         seenIndices.add(i);
       } else {
         // New pattern, add to seen matrices and process
+        localSeenMatrices.add(matrixBinary);
         seenMatrices.add(matrixBinary);
         matricesToProcess.pushBack((i, matrixBinary));
       }
     }
     
-    // Process only unseen matrices with Nauty
+    // Process only unseen matrices with Nauty (similar to EnumerateForMultipleNodes)
     if matricesToProcess.size > 0 {
       // Create smaller batch arrays for just the unseen matrices
       var uniqueCount = matricesToProcess.size;
@@ -1165,7 +1281,7 @@ proc processWavefront(ref state: WavefrontState,
       
       // Fill unique matrices array
       for i in 0..<uniqueCount {
-        var (origIdx, _) = matricesToProcess[i];
+        var (origIdx, binary) = matricesToProcess[i];
         var origOffset = origIdx * (k * k);
         var newOffset = i * (k * k);
         
@@ -1176,14 +1292,15 @@ proc processWavefront(ref state: WavefrontState,
       }
       
       // Process only unique matrices with Nauty
-      var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, uniqueCount);
+      var batchSize = uniqueCount;
+      var status = c_nautyClassify(uniqueMatrices, k, uniqueResults, 1, 0, batchSize);
       
-      // Process results directly to get canonical patterns
+      // Process results to get canonical patterns
       for i in 0..<uniqueCount {
-        var (origIdx, _) = matricesToProcess[i];
+        var (origIdx, originalBinary) = matricesToProcess[i];
         var resultOffset = i * k;
         
-        // Extract nauty labels for this matrix
+        // Extract nauty results for this matrix
         var nautyLabels: [0..<k] int;
         for j in 0..<k {
           nautyLabels[j] = uniqueResults[resultOffset + j];
@@ -1196,7 +1313,7 @@ proc processWavefront(ref state: WavefrontState,
           adjMatrix[j] = batchedMatrices[adjMatrixStart + j];
         }
         
-        // Generate canonical pattern using the consistent approach
+        // Generate canonical pattern
         var canonicalPattern = generateNautyPattern(adjMatrix, nautyLabels, k);
         
         // Add canonical pattern to local patterns
@@ -1211,8 +1328,7 @@ proc processWavefront(ref state: WavefrontState,
           state.rolePatternCounts[role][canonicalPattern].add(1);
         }
         
-        // Update GLOBAL pattern counts - THIS IS THE CRITICAL FIX
-        // Use atomic operations since we're in a forall loop
+        // Crucial fix: Update GLOBAL pattern counts
         if !state.globalMotifCounts.contains(canonicalPattern) {
           var newCount: atomic int;
           state.globalMotifCounts.add(canonicalPattern, newCount);
@@ -1221,12 +1337,12 @@ proc processWavefront(ref state: WavefrontState,
       }
     }
     
-    // Process results for each motif - track all frequencies
+    // Process results for each motif to count frequencies correctly
     for i in 0..<numMotifs {
       // Count all motifs
       globalMotifCount.add(1);
       
-      // For matrices we've seen before, we need to handle frequency counting
+      // For matrices we've seen before, we need to find which canonical pattern they map to
       if seenIndices.contains(i) {
         var baseIdx = i * k;
         var matrixBinary: uint(64) = 0;
@@ -1240,12 +1356,12 @@ proc processWavefront(ref state: WavefrontState,
           }
         }
         
-        // Find the corresponding canonical pattern
-        for pattern in localPatterns {
+        // Find the matching pattern in seenMatrices
+        for pattern in globalMotifSet {
           var patternMatrix = patternToAdjMatrix(pattern, k);
           var patternBinary: uint(64) = 0;
           
-          // Convert pattern to binary for comparison
+          // Convert to binary for comparison
           var pos = 0;
           for row in 0..<k {
             for col in 0..<k {
@@ -1256,7 +1372,6 @@ proc processWavefront(ref state: WavefrontState,
             }
           }
           
-          // If this is the right pattern, update all the counters
           if patternBinary == matrixBinary {
             // Update role-specific pattern counts
             if role >= 0 && role <= 2 {
@@ -1267,7 +1382,7 @@ proc processWavefront(ref state: WavefrontState,
               state.rolePatternCounts[role][pattern].add(1);
             }
             
-            // Update GLOBAL pattern counts - THIS IS THE CRITICAL FIX
+            // Update GLOBAL pattern counts
             if !state.globalMotifCounts.contains(pattern) {
               var newCount: atomic int;
               state.globalMotifCounts.add(pattern, newCount);
@@ -1287,15 +1402,11 @@ proc processWavefront(ref state: WavefrontState,
   // Mark these vertices as processed
   state.processedVertices += state.newVertices;
   
-  // Update pattern discovery metrics
+  // Update all pattern discovery metrics
   state.updatePatternDiscoveryMetrics(globalMotifSet);
   
-  // NEW: Update convergence metrics including beta_min and P_miss
-  updateConvergenceMetrics(state);
-  
-  // Update error bounds and pattern stability
-  state.updateErrorBounds(globalMotifSet);
-  state.updatePatternStability(globalMotifSet);
+  // Update convergence metrics
+  state.updateConvergenceMetrics();
   
   state.timer.stop();
   writeln("=== Wavefront Processing Complete ===");
@@ -1310,162 +1421,127 @@ proc processWavefront(ref state: WavefrontState,
   }
   
   writeln("- Time taken: ", state.timer.elapsed(), " seconds");
-  
-  // Calculate and display beta_min and miss probability
-  var betaMin = calculateBetaMin(state);
-  var missProb = globalMotifSet.size * exp(-betaMin * state.wavefront.size:real);
-  
-  writeln("- Beta_min: ", betaMin);
-  writeln("- Miss probability: ", missProb);
-  
-  // Print pattern discovery stats for important cases
-  if logLevel == LogLevel.DEBUG || state.hasPatternDiscoveryGuarantees() {
-    state.printCoverageStats();
-  }
-  
-  writeln();
 }
 
-/* Helper function to calculate beta_min */
+/* Function to calculate beta_min from state */
 proc calculateBetaMin(ref state: WavefrontState): real {
   var alpha: [0..2] real;
   
-  // Calculate stratum coverage efficiencies
+  // Calculate stratum coverage efficiencies for each role
   for role in 0..2 {
-    var roleVertices = 0;
-    var roleInWavefront = 0;
+    var roleCount = state.roleDistribution[role].read();
     
-    // Count vertices of this role in the graph and in the wavefront
-    for v in 0..#state.ASconfig.n {
-      if state.vertexRoles[v] == role {
-        roleVertices += 1;
-        if state.wavefront.contains(v) {
+    if roleCount > 0 {
+      // Count vertices of this role in the wavefront
+      var roleInWavefront = 0;
+      for v in state.wavefront {
+        if state.vertexRoles[v] == role {
           roleInWavefront += 1;
         }
       }
+      
+      // Calculate alpha_s = |W ∩ S_s| / |S_s|
+      alpha[role] = roleInWavefront:real / roleCount:real;
+    } else {
+      alpha[role] = 1.0; // If no vertices of this role, set alpha to 1.0
     }
-    
-    // Calculate alpha_s = |W ∩ S_s| / |S_s|
-    alpha[role] = if roleVertices > 0 then roleInWavefront:real / roleVertices:real else 0.0;
   }
+  
+  // Debug information - commented out to reduce verbosity
+  writeln("Role coverage efficiencies:");
+  writeln("- Hub alpha: ", alpha[0]);
+  writeln("- Bridge alpha: ", alpha[1]);
+  writeln("- Peripheral alpha: ", alpha[2]);
   
   // beta_min = min_s alpha_s
   return min reduce alpha;
 }
 
-/* Function to update convergence metrics */
-proc updateConvergenceMetrics(ref state: WavefrontState) {
-  // Calculate beta_min
-  var betaMin = calculateBetaMin(state);
-  
-  // Calculate miss probability using the theorem
-  var missProb = state.globalMotifCounts.size * exp(-betaMin * state.wavefront.size:real);
-  state.missProbability.write(missProb);
-  
-  // Update coverage metrics
-  var structuralCoverage = state.wavefront.size:real / state.ASconfig.n:real;
-  
-  // Calculate hub coverage
-  var hubsInWavefront = 0;
-  for hub in state.hubSet {
-    if state.wavefront.contains(hub) {
-      hubsInWavefront += 1;
-    }
-  }
-  var hubCoverage = if state.hubSet.size > 0 then hubsInWavefront:real / state.hubSet.size:real else 0.0;
-  
-  // Calculate pattern coverage
-  var patternCoverage = state.globalMotifCounts.size:real / state.theoreticalTotalPatterns:real;
-  
-  // Store coverage metrics
-  state.coverageMetrics[0].write(structuralCoverage);
-  state.coverageMetrics[1].write(hubCoverage);
-  state.coverageMetrics[2].write(patternCoverage);
-  
-  writeln("\n=== Convergence Metrics Update ===");
-  writeln("- Beta_min: ", betaMin);
-  writeln("- Miss probability: ", missProb);
-  writeln("- Structural coverage: ", structuralCoverage);
-  writeln("- Hub coverage: ", hubCoverage);
-  writeln("- Pattern coverage: ", patternCoverage);
-  writeln("- Overall coverage C(W): ", (structuralCoverage + hubCoverage + patternCoverage) / 3.0);
-}
+
+
 
     /* Main ASWS sampling procedure which processes current wavefront to find motifs */
-    proc runASWS(n: int, k: int,
-             ref nodeDegree: [] int,
-             ref nodeNeighbours: [] domain(int),
-             ref globalMotifCount: atomic int,
-             ref globalMotifSet: set(uint(64)),
-             ref seenMatrices: set(uint(64), parSafe=true)) throws {
+    proc runASWSWithSwapping(n: int, k: int,
+                        ref nodeDegree: [] int,
+                        ref nodeNeighbours: [] domain(int),
+                        ref globalMotifCount: atomic int,
+                        ref globalMotifSet: set(uint(64)),
+                        ref seenMatrices: set(uint(64), parSafe=true)) throws {
   
-  writeln("\n========== Starting ASWS Sampling ==========");
+  writeln("\n========== Starting ASWS Sampling with Node Swapping ==========");
   
-  // Initialize configuration
+  // Existing initialization code...
   var ASconfig = new ASWSConfig(n, k);
   var maxDeg = max reduce nodeDegree;
   var state = new WavefrontState(ASconfig, maxDeg);
   var totalTimer: stopwatch;
   totalTimer.start();
   
-  // Step 1: Identify hubs
+  // Steps 1-3: Identify hubs, classify roles, initialize wavefront
   identifyHubs(state, nodeDegree);
-  
-  // Step 2: Classify vertex roles
   state.classifyVertexRoles(nodeDegree, nodeNeighbours);
-  
-  // Step 3: Initialize wavefront with hubs only
   initializeWavefrontWithHubsOnly(state, nodeDegree);
   
-  // Main sampling loop - no artificial iteration limit
-  var iteration = 0;
+  // Calculate initial convergence metrics
+  //state.updateConvergenceMetrics();
   
-  while (!state.hasPatternDiscoveryGuarantees()) {
+  // Main sampling loop
+  var iteration = 0;
+  var meetsGuarantees: bool;// = state.hasPatternDiscoveryGuarantees();
+  
+  while (!meetsGuarantees && iteration < 20) {
     writeln("\nIteration ", iteration + 1);
     
     // Update fingerprints
     computeFingerprints(state, nodeNeighbours, nodeDegree);
     
-    // Process current wavefront
-    processWavefront(state, globalMotifCount, globalMotifSet, seenMatrices);
+    // Use the NEW processing function that employs node swapping
+    processWavefrontWithSwapping(state, globalMotifCount, globalMotifSet, seenMatrices);
     
-    // Expand wavefront using theoretical mixture
+    // Expand wavefront
     expandWavefrontTheoretical(state, nodeNeighbours, nodeDegree);
     
-    // Update statistics
+    // Update statistics and check convergence
     state.updatePatternStats(globalMotifSet.size);
     state.updateConvergenceMetrics();
     
-    iteration += 1;
-    
-    // Calculate optimal wavefront size using theorem
+    // Calculate optimal wavefront size
     var epsilon = 0.05;
-    var betaMin = calculateBetaMin(state);
-    var wOpt = (sqrt(n * log(1/epsilon)) / betaMin): int;
+    var wOpt = calculateOptimalWavefrontSize(state, epsilon);
     writeln("- Optimal wavefront size: ", wOpt);
     writeln("- Current wavefront size: ", state.wavefront.size);
     
-    // Emergency stop condition if we've sampled too many vertices
-    if state.wavefront.size > n * 0.5 || iteration > 20 {
-      writeln("WARNING: Stopping due to large sample size or too many iterations");
+    // Check if we meet the guarantees now
+    meetsGuarantees = state.hasPatternDiscoveryGuarantees();
+    
+    // Safety stop
+    if state.wavefront.size > n * 0.5 {
+      writeln("WARNING: Stopping due to large sample size (>50% of graph)");
       break;
     }
+    
+    iteration += 1;
   }
   
   totalTimer.stop();
   
+  // Final reporting with new scaling formula
   writeln("\n========== ASWS Sampling Complete ==========");
   writeln("Final Statistics:");
   writeln("- Total vertices sampled: ", state.wavefront.size);
   writeln("- Total motifs found: ", globalMotifCount.read());
   writeln("- Unique patterns discovered: ", globalMotifSet.size);
   
-  // Scale frequency estimates using the theory
-  writeln("\n=== Estimated Global Frequencies ===");
-  var betaMin = calculateBetaMin(state);
-  var scalingFactor = (n:real / (betaMin * state.wavefront.size:real));
+  // Final convergence metrics update
+  state.updateConvergenceMetrics();
   
-  writeln("- Scaling factor (n / (beta_min * |W|)): ", scalingFactor);
+  // Scale frequency estimates using the MODIFIED SCALING FORMULA
+  writeln("\n=== Estimated Global Frequencies ===");
+  
+  // NEW SCALING: Simply scale by proportion of vertices
+  var scalingFactor = (n:real / state.wavefront.size:real);
+  
+  writeln("- Scaling factor (n / |W|): ", scalingFactor);
   writeln("Pattern\tSample Freq\tEstimated Total Freq");
   
   var totalEstimated = 0.0;
@@ -1477,15 +1553,37 @@ proc updateConvergenceMetrics(ref state: WavefrontState) {
   }
   
   writeln("- Total estimated motifs: ", totalEstimated:int);
-  writeln("- Pattern discovery guarantees met: ", state.hasPatternDiscoveryGuarantees());
+  writeln("- Pattern discovery guarantees met: ", meetsGuarantees);
   writeln("- Total time: ", totalTimer.elapsed(), " seconds");
   
   // Final pattern discovery stats
   state.printCoverageStats();
   
   writeln("============================================\n");
+  
+  return (state, globalMotifSet, globalMotifCount);
 }
 
+/* New calculateOptimalWavefrontSize function */
+proc calculateOptimalWavefrontSize(ref state: WavefrontState, epsilon: real = 0.05): int {
+  var betaMin = calculateBetaMin(state);
+  
+  // Protect against division by zero or very small beta_min
+  if betaMin < 0.000001 {
+    betaMin = 0.000001;
+  }
+  
+  // Use safe calculation to prevent integer overflow
+  var logTerm = log(1.0/epsilon);
+  var nTerm = sqrt(state.ASconfig.n:real);
+  var wOpt = (nTerm * sqrt(logTerm) / betaMin): int;
+  writeln("wOpt: ", wOpt, " state.minRequiredSize: ", state.minRequiredSize, " state.ASconfig.n", state.ASconfig.n);
+  // Ensure the result is reasonable
+  wOpt = max(wOpt, state.minRequiredSize);
+  wOpt = min(wOpt, state.ASconfig.n);
+  
+  return wOpt;
+}
 /* 5. Initialize wavefront with hubs only */
 proc initializeWavefrontWithHubsOnly(ref state: WavefrontState, nodeDegree: [] int) {
   writeln("\n=== Initializing Wavefront with Hubs Only ===");
@@ -1684,6 +1782,221 @@ proc selectRandom(ref state: WavefrontState, candidates: domain(int, parSafe=tru
   writeln("  Selected ", selected, " random vertices");
 }
 
+// Helper function to access the correct neighbor set (local or global)
+proc getNodeNeighbours(nodeIdx: int, ref isModified: [] bool, ref local_nodeNeighbours: [] domain(int)) {
+    if isModified[nodeIdx] {
+        return local_nodeNeighbours[nodeIdx];
+    } else {
+        return nodeNeighbours[nodeIdx];
+    }
+}
+
+proc getNodeInNeighbours(nodeIdx: int, ref isModified: [] bool, ref local_node_IN_Neighbours: [] domain(int)) {
+    if isModified[nodeIdx] {
+        return local_node_IN_Neighbours[nodeIdx];
+    } else {
+        return node_IN_Neighbours[nodeIdx];
+    }
+}
+
+proc getNodeOutNeighbours(nodeIdx: int, ref isModified: [] bool, ref local_node_OUT_Neighbours: [] domain(int)) {
+    if isModified[nodeIdx] {
+        return local_node_OUT_Neighbours[nodeIdx];
+    } else {
+        return node_OUT_Neighbours[nodeIdx];
+    }
+}
+
+// Modified version of initChildSet that uses the local neighbor access functions
+proc localInitChildSet(ref state: KavoshState, root: int, level: int, 
+                      ref isModified: [] bool, 
+                      ref local_nodeNeighbours: [] domain(int)) throws {
+    // Initialize count for this level to 0
+    state.setChildSet(level, 0, 0);
+    const parentsCount = state.getSubgraph(level-1, 0);
+    
+    // For each vertex chosen at the previous level, get its neighbors
+    for p in 1..parentsCount {
+        const parent = state.getSubgraph(level-1, p);
+        
+        for neighbor in getNodeNeighbours(parent, isModified, local_nodeNeighbours) {
+            // Must be greater than root and not visited
+            if neighbor > root && !state.visited.contains(neighbor) {
+                // Increment count and add neighbor
+                const currentCount = state.getChildSet(level, 0) + 1;
+                state.setChildSet(level, 0, currentCount);
+                state.setChildSet(level, currentCount, neighbor);
+                state.visited.add(neighbor);
+            }
+        }
+    }
+    
+    if logLevel == LogLevel.DEBUG {
+        writeln("localInitChildSet: Found ", state.getChildSet(level, 0), " valid children at level ", level);
+        write("Children: ");
+        for i in 1..state.getChildSet(level, 0) {
+            write(state.getChildSet(level, i), " ");
+        }
+        writeln();
+    }
+}
+
+// Helper function to check edge existence using the thread-local neighbor info
+proc localGetEdgeId(u: int, w: int, 
+                   ref isModified: [] bool, 
+                   ref local_node_OUT_Neighbours: [] domain(int)) throws {
+    // Check if there's an edge from u to w
+    var uNeighbors = getNodeOutNeighbours(u, isModified, local_node_OUT_Neighbours);
+    
+    for neighbor in uNeighbors {
+        if neighbor == w {
+            // Edge exists, return positive value
+            return 1;  
+        }
+    }
+    
+    return -1;  // No edge found
+}
+
+// Modified version of Explore that uses the local neighbor access
+proc localExplore(ref state: KavoshState, root: int, level: int, remainedToVisit: int,
+                 ref isModified: [] bool,
+                 ref local_nodeNeighbours: [] domain(int),
+                 ref local_node_IN_Neighbours: [] domain(int),
+                 ref local_node_OUT_Neighbours: [] domain(int)) throws {
+    if logLevel == LogLevel.DEBUG {
+        writeln("===== localExplore called =====");
+        writeln("Current root: ", root, " level: ", level, " remainedToVisit: ", remainedToVisit);
+        writeln("Visited Vertices: ", state.visited);
+        writeln("Current partial subgraph level by level:");
+        for l in 0..<level {
+            write("Level ", l, " (count=", state.getSubgraph(l, 0), "): ");
+            for x in 1..state.getSubgraph(l, 0) {
+                write(state.getSubgraph(l, x), " ");
+            }
+            writeln();
+        }
+        writeln("==========================");
+    }
+    
+    // Base case: all k vertices chosen, now we have found a motif
+    if remainedToVisit == 0 {
+        // Extract the chosen vertices
+        var chosenVerts: [1..state.k] int;
+        var idx = 1;
+        
+        // Gather vertices level by level
+        for level in 0..<state.k {
+            const vertCount = state.getSubgraph(level, 0);
+            for pos in 1..vertCount {
+                chosenVerts[idx] = state.getSubgraph(level, pos);
+                state.motifVertices.pushBack(chosenVerts[idx]);
+                idx += 1;
+            }
+        }
+        state.localsubgraphCount += 1;
+        
+        return;
+    }
+    
+    // Get children for this level using the thread-local neighbor access
+    localInitChildSet(state, root, level, isModified, local_nodeNeighbours);
+    const childCount = state.getChildSet(level, 0);
+    
+    // Try all possible selection sizes at this level
+    for selSize in 1..remainedToVisit {
+        if childCount < selSize {
+            // Not enough children, clean up and return
+            for i in 1..childCount {
+                state.visited.remove(state.getChildSet(level, i));
+            }
+            return;
+        }
+        
+        // Initial selection: pick the first selSize children
+        state.setSubgraph(level, 0, selSize);
+        for i in 1..selSize {
+            state.setSubgraph(level, i, state.getChildSet(level, i));
+            state.setIndexMap(level, i, i);
+        }
+        
+        // Recurse with chosen selection
+        localExplore(state, root, level+1, remainedToVisit - selSize, isModified, 
+                    local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        
+        // Generate other combinations using revolve-door algorithm
+        localForwardGenerator(childCount, selSize, root, level, remainedToVisit, selSize, state, 
+                             isModified, local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+    }
+    
+    // Cleanup: Unmark visited children
+    for i in 1..childCount {
+        state.visited.remove(state.getChildSet(level, i));
+    }
+    state.setSubgraph(level, 0, 0);
+}
+
+// Modified swapping function for the thread-local processing
+proc localSwapping(i: int, j: int, root: int, level: int, remainedToVisit: int, m: int, 
+                  ref state: KavoshState,
+                  ref isModified: [] bool,
+                  ref local_nodeNeighbours: [] domain(int),
+                  ref local_node_IN_Neighbours: [] domain(int),
+                  ref local_node_OUT_Neighbours: [] domain(int)) throws {
+    state.setIndexMap(level, i, state.getIndexMap(level, j));
+    state.setSubgraph(level, state.getIndexMap(level, i), state.getChildSet(level, i));
+    
+    localExplore(state, root, level+1, remainedToVisit - m, isModified, 
+                local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+}
+
+// Modified ForwardGenerator for thread-local processing
+proc localForwardGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
+                          ref state: KavoshState,
+                          ref isModified: [] bool,
+                          ref local_nodeNeighbours: [] domain(int),
+                          ref local_node_IN_Neighbours: [] domain(int),
+                          ref local_node_OUT_Neighbours: [] domain(int)) throws {
+    if k > 0 && k < n {
+        localForwardGenerator(n-1, k, root, level, remainedToVisit, m, state, isModified, 
+                             local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        
+        if k == 1 {
+            localSwapping(n, n-1, root, level, remainedToVisit, m, state, isModified, 
+                         local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        } else {
+            localSwapping(n, k-1, root, level, remainedToVisit, m, state, isModified, 
+                         local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        }
+        
+        localReverseGenerator(n-1, k-1, root, level, remainedToVisit, m, state, isModified, 
+                             local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+    }
+}
+
+// Modified ReverseGenerator for thread-local processing
+proc localReverseGenerator(n: int, k: int, root: int, level: int, remainedToVisit: int, m: int, 
+                          ref state: KavoshState,
+                          ref isModified: [] bool,
+                          ref local_nodeNeighbours: [] domain(int),
+                          ref local_node_IN_Neighbours: [] domain(int),
+                          ref local_node_OUT_Neighbours: [] domain(int)) throws {
+    if k > 0 && k < n {
+        localForwardGenerator(n-1, k-1, root, level, remainedToVisit, m, state, isModified, 
+                             local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        
+        if k == 1 {
+            localSwapping(n-1, n, root, level, remainedToVisit, m, state, isModified, 
+                         local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        } else {
+            localSwapping(k-1, n, root, level, remainedToVisit, m, state, isModified, 
+                         local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+        }
+        
+        localReverseGenerator(n-1, k, root, level, remainedToVisit, m, state, isModified, 
+                             local_nodeNeighbours, local_node_IN_Neighbours, local_node_OUT_Neighbours);
+    }
+}
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
     //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -2298,14 +2611,14 @@ proc Enumerate(n: int, k: int, maxDeg: int) throws {
     writeln("Maximum degree: ", maxDeg);
 
   // Execute the chosen algorithm
-  if doSampling == 1 {
+  //if doSampling == 1 {
     writeln("Using Adaptive Structural Wavefront Sampling");
-    runASWS(g1.n_vertices, motifSize, nodeDegree, 
+    runASWSWithSwapping(g1.n_vertices, motifSize, nodeDegree, 
             nodeNeighbours, globalMotifCount, globalMotifSet, seenMatrices);
-  } else {
+  //} else {
     // Complete enumeration
-    Enumerate(g1.n_vertices, motifSize, maxDeg);
-  }
+    //Enumerate(g1.n_vertices, motifSize, maxDeg);
+  //}
  writeln(" globalMotifSet = ", globalMotifSet);
   writeln(" globalMotifCount = ", globalMotifCount.read());
   

@@ -3,7 +3,8 @@ module MotifCountingMsg {
   use Reflection;
   use Map;
   use Time;
-  
+  import ChplConfig;
+
   // Arachne modules.
   use GraphArray;
   // use SubgraphIsomorphism; 
@@ -19,6 +20,7 @@ module MotifCountingMsg {
   use Logging;
   use Message;
   
+
   // Server message logger. 
   private config const logLevel = ServerConfig.logLevel;
   private config const logChannel = ServerConfig.logChannel;
@@ -64,56 +66,77 @@ module MotifCountingMsg {
     // Execute Motif Counting subgraph.
     var timer:stopwatch;
     if g.isDirected() {
-      if algorithmType != "ps" && algorithmType != "si" {
-        var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
-        siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
-        return new MsgTuple(errorMsg, MsgType.ERROR);
-      }
+      // if algorithmType != "ps" && algorithmType != "si" {
+      //   var errorMsg = notImplementedError(pn, "unknown VF2 algorithm type");
+      //   siLogger_motif.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+      //   return new MsgTuple(errorMsg, MsgType.ERROR);
+      // }
 
+      // timer.start();
+      // // var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
+      // var isos = runMotifCounting(g,motifSize,doSampling,
+      //                   printProgressInterval,algorithmType,returnIsosAs,st);
+      // timer.stop();
       timer.start();
-      // var isos = runMotifCounting(g,h,semanticCheckType,sizeLimit,timeLimit,
-      var isos = runMotifCounting(g,motifSize,doSampling,
-                        printProgressInterval,algorithmType,returnIsosAs,st);
+      
+      // Select appropriate implementation based on environment
+      if ChplConfig.CHPL_COMM == "none" {
+        // Use non-distributed version for single locale
+        use MotifCounting;
+        var isos = runMotifCounting(g,motifSize,doSampling,
+                         printProgressInterval,algorithmType,returnIsosAs,st);
+      } else {
+        // Use distributed version for multi-locale
+        use MotifCountingDistributed;
+        var isos = runMotifCountingDistributed(g,motifSize,doSampling,
+                         printProgressInterval,algorithmType,returnIsosAs,st);
+      }
+      
       timer.stop();
+
       outMsg = "Motif Counting %s took %r sec".format(algorithmType.toUpper(), timer.elapsed());
+var isos_0: [0..<1] int;
+var isos_1: [0..<1] int;
+var isos_2: [0..<1] int;
+var isos_3: [0..<1] int;
 
       if returnIsosAs == "vertices" {
         var isosAsVerticesName = st.nextName();
-        var isosAsVerticesEntry = createSymEntry(isos[0]);
+        var isosAsVerticesEntry = createSymEntry(isos_0);
         st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
         
         var isosAsVerticesMapperName = st.nextName();
-        var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
+        var isosAsVerticesMapperEntry = createSymEntry(isos_1);
         st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
         
         repMsg = "created " + st.attrib(isosAsVerticesName)
                + "+ created " + st.attrib(isosAsVerticesMapperName);
       } else if returnIsosAs == "edges" {
         var isosAsEdgesSrcName = st.nextName();
-        var isosAsEdgesSrcEntry = createSymEntry(isos[0]);
+        var isosAsEdgesSrcEntry = createSymEntry(isos_0);
         st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
 
         var isosAsEdgesDstName = st.nextName();
-        var isosAsEdgesDstEntry = createSymEntry(isos[1]);
+        var isosAsEdgesDstEntry = createSymEntry(isos_1);
         st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
         
         repMsg = "created " + st.attrib(isosAsEdgesSrcName) 
                + "+ created " + st.attrib(isosAsEdgesDstName);
       } else if returnIsosAs == "complete" {
         var isosAsVerticesName = st.nextName();
-        var isosAsVerticesEntry = createSymEntry(isos[0]);
+        var isosAsVerticesEntry = createSymEntry(isos_0);
         st.addEntry(isosAsVerticesName, isosAsVerticesEntry);
         
         var isosAsVerticesMapperName = st.nextName();
-        var isosAsVerticesMapperEntry = createSymEntry(isos[1]);
+        var isosAsVerticesMapperEntry = createSymEntry(isos_1);
         st.addEntry(isosAsVerticesMapperName, isosAsVerticesMapperEntry);
         
         var isosAsEdgesSrcName = st.nextName();
-        var isosAsEdgesSrcEntry = createSymEntry(isos[2]);
+        var isosAsEdgesSrcEntry = createSymEntry(isos_2);
         st.addEntry(isosAsEdgesSrcName, isosAsEdgesSrcEntry);
 
         var isosAsEdgesDstName = st.nextName();
-        var isosAsEdgesDstEntry = createSymEntry(isos[3]);
+        var isosAsEdgesDstEntry = createSymEntry(isos_3);
         st.addEntry(isosAsEdgesDstName, isosAsEdgesDstEntry);
         
         repMsg = "created " + st.attrib(isosAsVerticesName)

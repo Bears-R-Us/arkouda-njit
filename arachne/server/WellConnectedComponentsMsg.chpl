@@ -3,10 +3,10 @@ module WellConnectedComponentsMsg {
   use Reflection;
   use Map;
   use Time;
+	import ChplConfig;
   
   // Arachne modules.
   use GraphArray;
-  use WellConnectedComponents; 
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -31,7 +31,6 @@ module WellConnectedComponentsMsg {
 		var GraphEntryName = msgArgs.getValueOf("GraphName");
 		var filePath = msgArgs.getValueOf("FilePath");
 		var outputPath = msgArgs.getValueOf("OutputPath");
-		var outputType = msgArgs.getValueOf("OutputType");
 		var connectednessCriterion = msgArgs.getValueOf("ConnectednessCriterion");
 		var connectednessCriterionMultValue = msgArgs.getValueOf("ConnectednessCriterionMultValue"):real;
 		var preFilterMinSize = msgArgs.getValueOf("PreFilterMinSize"):int;
@@ -44,14 +43,25 @@ module WellConnectedComponentsMsg {
 
 		// Generate neighbors as sets for graph.
 		wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
+		
+		// TODO: This has to be written in a distributed manner! 
 		g.generateNeighborsAsSet(st);
 		
 		var timer:stopwatch;
 		if !g.isDirected() {
+			var numClusters:int;
 			timer.start();
-			var numClusters = runWCC(g, st, filePath, outputPath, outputType, 
-													     connectednessCriterion, connectednessCriterionMultValue, 
-													     preFilterMinSize, postFilterMinSize);
+			if ChplConfig.CHPL_COMM == "none" {
+				use WellConnectedComponents;
+				numClusters = runWCC(g, st, filePath, outputPath,
+														 connectednessCriterion, connectednessCriterionMultValue, 
+														 preFilterMinSize, postFilterMinSize);
+			} else {
+				use WellConnectedComponentsDistributed;
+				numClusters = runWCCDistributed(g, st, filePath, outputPath,
+											connectednessCriterion, connectednessCriterionMultValue, 
+											preFilterMinSize, postFilterMinSize);
+			}
 			timer.stop();
 			outMsg = "Well connected components took " + timer.elapsed():string + " sec";
 			wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
@@ -66,4 +76,4 @@ module WellConnectedComponentsMsg {
 
   use CommandMap;
   registerFunction("wellConnectedComponents", wellConnectedComponentsMsg, getModuleName());
-} // end of module
+} // end of WellConnectedComponentsMsg module

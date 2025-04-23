@@ -75,7 +75,7 @@ class DiGraph(ar.Graph):
                        input_src:pdarray,
                        input_dst:pdarray,
                        input_weight:Union[None,pdarray] = None,
-                       no_self_loops:bool = False,
+                       no_self_loops:bool = True,
                        generate_reversed_arrays:bool = False) -> None:
         """
         Populates the graph with edges and vertices from the given input Arkouda arrays. Lets
@@ -90,11 +90,10 @@ class DiGraph(ar.Graph):
         input_wgt : pdarray
             Edge weights. 
         no_self_loops : bool
-            Ignore self-loops during graph building.
+            Ignore self-loops during graph building. To allow self-loops, set to `False`.
         generate_reversed_arrays : bool
             Some algorithms such as k-truss and connected components are optimized for the reversed
-            DI data structure that requires a modified view of the edge list. NOTE: Set to on by 
-            default, must be manually turned off.
+            DI data structure that requires a modified view of the edge list.
 
         Returns
         -------

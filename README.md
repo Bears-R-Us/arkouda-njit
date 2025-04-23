@@ -38,10 +38,10 @@ We recommend following the installation instructions provided by the Arkouda dev
         git fetch --tags origin
         git checkout tags/v2024.06.21 --force
         ```
-4. Install Arkouda dependencies with `Anaconda`. An environment containing all dependencies can be installed from `arkouda-env.yml` or `arkouda-env-dev.yml` within your Arkouda home directory.
+4. Install Arkouda dependencies with `Anaconda`. An environment containing all dependencies can be installed from `arkouda-env.yml` within your Arkouda home directory.
     * This can be done by executing the following command within your Arkouda directory:
         ```bash
-        conda env create -f arkouda-env-dev.yml
+        conda env create -f arkouda-env.yml
         ```
 5. [Configure your Arkouda dependencies](https://github.com/Bears-R-Us/arkouda/blob/master/pydoc/setup/BUILD.md#dependency-configuration). This involves creating (or modifying) the `Makefile.paths` within your Arkouda home directory.
 6. Install [constrained-clustering](https://github.com/MinhyukPark/constrained-clustering) and compile the C++ object files required by Arachne by following the commands below. Constrained-clustering requires a C++ compiler that supports `c++-20`, such as `clang++11`, and `cmake`. These and other prerequisites should be covered by the prerequisites in items 1-5 above.
