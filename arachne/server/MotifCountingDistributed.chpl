@@ -164,7 +164,14 @@ module MotifCountingDistributed {
       var end = min((loc + 1) * verticesPerLocale, n);
       vertexRanges[loc] = start..<end;
     }
-    
+    // Log the distribution of vertices
+    for loc in 0..<numLocales {
+      siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
+                      "Locale " + loc:string + " received vertices " + 
+                      vertexRanges[loc].low:string + " to " + vertexRanges[loc].high:string + 
+                      " (total: " + vertexRanges[loc].size:string + ")");
+    }
+
     // --- KEY DIFFERENCE: Precompute ALL node neighbors on locale 0 ---
     siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
                      "Precomputing all node neighbors (optimized approach)");
@@ -610,7 +617,8 @@ module MotifCountingDistributed {
     }
     
     //if logLevel == LogLevel.DEBUG {
-      var outMsg = "Communication statistics for result merging:";
+      // var outMsg = "Communication statistics for result merging:";
+      outMsg = "Communication statistics for result merging:";
       siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
       printCommDiagnosticsTable();
       resetCommDiagnostics();
@@ -714,7 +722,7 @@ module MotifCountingDistributed {
     }
     
     // Sort by frequency (highest first)
-    sort(patternList, comparator=new PatternComparator());
+    //sort(patternList, comparator=new PatternComparator());
     
     // Write each pattern
     var patternId = 1;
@@ -725,17 +733,17 @@ module MotifCountingDistributed {
       writer.write(pattern:string);
       
       // Also write as adjacency matrix for readability
-      var adjMatrix = patternToAdjMatrix(pattern, k);
-      writer.write(" [");
-      for i in 0..<k {
-        writer.write("[");
-        for j in 0..<k-1 {
-          writer.write(adjMatrix[i*k + j], ", ");
-        }
-        writer.write(adjMatrix[i*k + k-1], "]");
-        if i < k-1 then writer.write(", ");
-      }
-      writer.writeln("]");
+      // var adjMatrix = patternToAdjMatrix(pattern, k);
+      // writer.write(" [");
+      // for i in 0..<k {
+      //   writer.write("[");
+      //   for j in 0..<k-1 {
+      //     writer.write(adjMatrix[i*k + j], ", ");
+      //   }
+      //   writer.write(adjMatrix[i*k + k-1], "]");
+      //   if i < k-1 then writer.write(", ");
+      // }
+      // writer.writeln("]");
       
       patternId += 1;
     }
