@@ -132,7 +132,8 @@ module MotifCountingDistributed {
                motifSize: int, doSampling: int, in printProgressInterval: int,
                algType: string, returnIsosAs:string, st: borrowed SymTab) throws {
     
-    
+    var startTime:stopwatch;
+    startTime.start();
     // Extract graph components
     const ref srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     const ref dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
@@ -164,6 +165,7 @@ module MotifCountingDistributed {
       var end = min((loc + 1) * verticesPerLocale, n);
       vertexRanges[loc] = start..<end;
     }
+    
     // Log the distribution of vertices
     for loc in 0..<numLocales {
       siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
@@ -172,25 +174,22 @@ module MotifCountingDistributed {
                       " (total: " + vertexRanges[loc].size:string + ")");
     }
 
-    // --- KEY DIFFERENCE: Precompute ALL node neighbors on locale 0 ---
+    // --- Precompute ALL node neighbors on locale 0 ---
     siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
                      "Precomputing all node neighbors (optimized approach)");
     
     // Create global arrays for node data
     var nodeDegree: [0..<n] int;
     var nodeNeighbors: [0..<n] domain(int, parSafe=true);
-    var nodeInNeighbors: [0..<n] domain(int, parSafe=true);
     var nodeOutNeighbors: [0..<n] domain(int, parSafe=true);
     
     // Compute all neighbors on locale 0
-    forall v in 0..<n with (ref nodeDegree, ref nodeNeighbors, 
-                         ref nodeInNeighbors, ref nodeOutNeighbors) {
+    forall v in 0..<n with (ref nodeDegree, ref nodeNeighbors, ref nodeOutNeighbors) {
       var neighbors: domain(int, parSafe=true);
       
       // Get in-neighbors (reverse edges)
       const neiIn = dstRG1[segRG1[v]..<segRG1[v+1]];
       for nei in neiIn {
-        nodeInNeighbors[v].add(nei);
         neighbors.add(nei);
       }
       
@@ -212,12 +211,82 @@ module MotifCountingDistributed {
     siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(), 
                      "Maximum degree in graph: " + maxDeg:string);
     
+    // --- Efficient data transfer to all locales ---
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
+                     "Distributing neighbor data to all locales");
+
+    // Create distributed data structures for each locale
+    var nodeNeighborsDist: [localeDom] [0..<n] domain(int, parSafe=true);
+    var nodeOutNeighborsDist: [localeDom] [0..<n] domain(int, parSafe=true);
+    var nodeDegreeDist: [localeDom] [0..<n] int;
+
+    // Start tracking communication
+    startCommDiagnostics();
+
+    // Copy data to each locale using efficient aggregation
+    coforall loc in Locales do on loc {
+      const blockSize = 1000;  // Process data in blocks for efficiency
+      
+      // Initialize arrays for this locale
+      var localNodeNeighbors: [0..<n] domain(int, parSafe=true);
+      var localNodeOutNeighbors: [0..<n] domain(int, parSafe=true);
+      var localNodeDegree: [0..<n] int;
+      
+      // Copy data from locale 0 using aggregators
+      for blockStart in 0..n by blockSize {
+        const blockEnd = min(blockStart + blockSize, n);
+        
+        // Copy degree values (simple integers)
+        if loc.id != 0 {  // Skip locale 0 which already has the data
+          forall v in blockStart..<blockEnd with (var agg = new SrcAggregator(int)) {
+            agg.copy(localNodeDegree[v], nodeDegree[v]);
+          }
+        }
+        
+        // Note: Domains need special handling as they can't be directly copied with aggregators
+        // We'll recreate them by copying the elements
+        forall v in blockStart..<blockEnd {
+          if loc.id == 0 {
+            // Locale 0 already has the data, just copy references
+            localNodeNeighbors[v] = nodeNeighbors[v];
+            localNodeOutNeighbors[v] = nodeOutNeighbors[v];
+          } else {
+            // Other locales need to rebuild the domains
+            // Get the neighbors from locale 0
+            const neighbors = nodeNeighbors[v];
+            const outNeighbors = nodeOutNeighbors[v];
+            
+            // Add each neighbor to the local domain
+            for nei in neighbors {
+              localNodeNeighbors[v].add(nei);
+            }
+            
+            for nei in outNeighbors {
+              localNodeOutNeighbors[v].add(nei);
+            }
+          }
+        }
+      }
+      
+      // Store in distributed arrays
+      nodeNeighborsDist[loc.id] = localNodeNeighbors;
+      nodeOutNeighborsDist[loc.id] = localNodeOutNeighbors;
+      nodeDegreeDist[loc.id] = localNodeDegree;
+    }
+
+    // Print communication diagnostics for data copying
+    outMsg = "Communication statistics for copying neighbor data:";
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+    printCommDiagnosticsTable();
+    resetCommDiagnostics();
+
     // Create global motif tracking structures
     var globalMotifCountDist: [localeDom] atomic int;
     var globalMotifSetDist: [localeDom] set(uint(64), parSafe=true);
     var globalMotifMapDist: [localeDom] map(uint(64), int, parSafe=true);
     var seenMatricesDist: [localeDom] set(uint(64), parSafe=true);
-    
+
+    // Start diagnosing the computation phase
     startCommDiagnostics();
     
     // --- Run Kavosh in parallel across locales ---
@@ -225,6 +294,11 @@ module MotifCountingDistributed {
       const myVertices = vertexRanges[loc.id];
       var localCount: atomic int;
       localCount.write(0);
+      
+      // Get local references to neighbor data for this locale
+      const ref localNodeNeighbors = nodeNeighborsDist[loc.id];
+      const ref localNodeOutNeighbors = nodeOutNeighborsDist[loc.id];
+      const ref localNodeDegree = nodeDegreeDist[loc.id];
       
       if logLevel == LogLevel.DEBUG {
         siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(),
@@ -242,8 +316,8 @@ module MotifCountingDistributed {
         for p in 1..parentsCount {
           const parent = state.getSubgraph(level-1, p);
           
-          // Direct neighbor lookup from global arrays
-          for neighbor in nodeNeighbors[parent] {
+          // Direct neighbor lookup from local arrays
+          for neighbor in localNodeNeighbors[parent] {
             // Must be greater than root and not visited
             if neighbor > root && !state.visited.contains(neighbor) {
               // Increment count and add neighbor
@@ -282,7 +356,7 @@ module MotifCountingDistributed {
               var w = chosenVerts[j+1];
               
               // Direct neighbor check (no cross-locale lookup needed)
-              if nodeOutNeighbors[u].contains(w) {
+              if localNodeOutNeighbors[u].contains(w) {
                 adjMatrix[i * state.k + j] = 1;
               }
             }
@@ -451,7 +525,7 @@ module MotifCountingDistributed {
                 var w = motifVerticesArray[baseIdx + col];
                 
                 // Direct neighbor check (no cross-locale lookup needed)
-                if nodeOutNeighbors[u].contains(w) {
+                if localNodeOutNeighbors[u].contains(w) {
                   batchedMatrices[i * (k * k) + row * k + col] = 1;
                   
                   // Update binary representation
@@ -570,78 +644,110 @@ module MotifCountingDistributed {
                        " motifs with " + globalMotifSetDist[loc.id].size:string + " unique patterns");
     }
     
-    if logLevel == LogLevel.DEBUG {
-      var outMsg = "Communication statistics for motif enumeration:";
-      siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
-      printCommDiagnosticsTable();
-      resetCommDiagnostics();
+    // Print communication diagnostics for computation phase
+    outMsg = "Communication statistics for motif enumeration:";
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+    printCommDiagnosticsTable();
+    resetCommDiagnostics();
+    
+    // Start tracking communication for results collection
+    startCommDiagnostics();
+    
+    // --- Efficiently merge results using WCC-style patterns ---
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
+                     "Gathering and merging results from all locales");
+
+    // First collect total motif counts and pattern counts
+    var totalMotifCount: atomic int;
+    var patternCounts: [localeDom] int;
+
+    // Get counts from each locale
+    coforall loc in Locales do on loc {
+      // Add to total motif count
+      totalMotifCount.add(globalMotifCountDist[loc.id].read());
+      // Record number of unique patterns
+      patternCounts[loc.id] = globalMotifSetDist[loc.id].size;
     }
-    
-    if logLevel == LogLevel.DEBUG then startCommDiagnostics();
-    
-    // Merge results from all locales to locale 0
+
+    // Calculate offsets for pattern merging
+    var patternOffsets: [0..numLocales] int;
+    patternOffsets[0] = 0;
+    for i in 1..numLocales {
+      patternOffsets[i] = patternOffsets[i-1] + patternCounts[i-1];
+    }
+
+    // Allocate arrays on locale 0 for pattern data
+    var totalPatterns = + reduce patternCounts;
+    var globalPatterns: [0..<totalPatterns] (uint(64), int);
+
+    // Merge pattern data from all locales using explicit ranges and aggregators
+    coforall loc in Locales do on loc {
+      // Create arrays of patterns and counts
+      var localPatterns = globalMotifSetDist[loc.id].toArray();
+      var localCounts: [localPatterns.domain] int;
+      
+      // Get counts for each pattern
+      for i in localPatterns.domain {
+        var pattern = localPatterns[i];
+        var defaultCount: int = 0;
+        localCounts[i] = globalMotifMapDist[loc.id].get(pattern, defaultCount);
+      }
+      
+      // Define source and destination ranges
+      var fromRange = 0..<localPatterns.size;
+      var toRange = patternOffsets[loc.id]..<patternOffsets[loc.id] + localPatterns.size;
+      
+      // Transfer to locale 0 with aggregation
+      on Locales[0] {
+        for (i, j) in zip(fromRange, toRange) {
+          globalPatterns[j] = (localPatterns[i], localCounts[i]);
+        }
+      }
+    }
+
+    // Process final results on locale 0
     var globalMotifSet: set(uint(64));
     var globalMotifMap: map(uint(64), int);
-    var totalMotifCount: int = 0;
     
-    for loc in 0..<numLocales {
-      // Add to total motif count
-      totalMotifCount += globalMotifCountDist[loc].read();
-      
-      // Merge sets and maps
-      on Locales[loc] {
-        var localPatterns = globalMotifSetDist[loc].toArray();
+    on Locales[0] {
+      // First, add all patterns to the set and initialize counts
+      for (pattern, count) in globalPatterns {
+        globalMotifSet.add(pattern);
         
-        // Transfer patterns to locale 0
-        on Locales[0] {
-          for pattern in localPatterns {
-            globalMotifSet.add(pattern);
-          }
-        }
-        
-        // Transfer counts to locale 0
-        for pattern in globalMotifMapDist[loc].keys() {
-          var defaultCount: int = 0;
-          var count = globalMotifMapDist[loc].get(pattern, defaultCount);
-          
-          on Locales[0] {
-            if !globalMotifMap.contains(pattern) {
-              globalMotifMap.add(pattern, count);
-            } else {
-              var currentTotal = globalMotifMap.get(pattern, 0);
-              globalMotifMap.addOrReplace(pattern, currentTotal + count);
-            }
-          }
+        if !globalMotifMap.contains(pattern) {
+          globalMotifMap.add(pattern, count);
+        } else {
+          // Add to existing count
+          var currentCount = globalMotifMap.get(pattern, 0);
+          globalMotifMap.addOrReplace(pattern, currentCount + count);
         }
       }
     }
     
-    //if logLevel == LogLevel.DEBUG {
-      // var outMsg = "Communication statistics for result merging:";
-      outMsg = "Communication statistics for result merging:";
-      siLogger_motif.debug(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
-      printCommDiagnosticsTable();
-      resetCommDiagnostics();
-    //}
+    // Print communication diagnostics for result merging
+    outMsg = "Communication statistics for merging results:";
+    siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+    printCommDiagnosticsTable();
+    resetCommDiagnostics();
     
     // Write results to output file
     var outputPath:string = "./kavosh_results.txt";
-    writeResultsToFile(outputPath, k, globalMotifSet, globalMotifMap, totalMotifCount, n, mG1);
+    writeResultsToFile(outputPath, k, globalMotifSet, globalMotifMap, totalMotifCount.read(), n, mG1);
     
-
+    startTime.stop();
     
     // Print final statistics
     siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
-                     "Kavosh completed in " );
+                     "Kavosh completed in " + startTime.elapsed():string + " seconds");
     siLogger_motif.info(getModuleName(), getRoutineName(), getLineNumber(),
-                     "Found " + totalMotifCount:string + " motifs with " + 
+                     "Found " + totalMotifCount.read():string + " motifs with " + 
                      globalMotifSet.size:string + " unique patterns");
                      
     // Create arrays for return values
     var patternCount = makeDistArray(2*2, int);
     patternCount[patternCount.domain.low] = globalMotifSet.size;       // Number of unique patterns after verification
     patternCount[patternCount.domain.low+1] = globalMotifSet.size;     // Before verification (same for now)
-    patternCount[patternCount.domain.low+2] = totalMotifCount;         // Total motif count
+    patternCount[patternCount.domain.low+2] = totalMotifCount.read();  // Total motif count
     patternCount[patternCount.domain.low+3] = globalMotifMap.size;     // Number of unique patterns with counts
     
     // Prepare motif patterns array
@@ -661,7 +767,7 @@ module MotifCountingDistributed {
       
       // Store count if available
       if globalMotifMap.contains(pattern) {
-        motifCounts[patternIdx] = globalMotifMap[pattern];
+        motifCounts[patternIdx] = globalMotifMap.get(pattern, 0);
       }
       
       patternIdx += 1;
@@ -705,6 +811,16 @@ module MotifCountingDistributed {
     writer.writeln("# Motif Size (k): " + k:string);
     writer.writeln("# Total Motifs Found: " + totalCount:string);
     writer.writeln("# Unique Patterns: " + patterns.size:string);
+    
+    // Write vertex distribution across locales
+    writer.writeln("# Vertex distribution across locales:");
+    for loc in 0..<numLocales {
+      var start = min(loc * ((n + numLocales - 1) / numLocales), n);
+      var end = min((loc + 1) * ((n + numLocales - 1) / numLocales), n);
+      writer.writeln("# Locale " + loc:string + ": " + (end-start):string + 
+                     " vertices (" + start:string + " to " + (end-1):string + ")");
+    }
+    
     writer.writeln("# ");
     writer.writeln("# Format: PatternID Count CanonicalForm");
     writer.writeln();
@@ -733,17 +849,17 @@ module MotifCountingDistributed {
       writer.write(pattern:string);
       
       // Also write as adjacency matrix for readability
-      // var adjMatrix = patternToAdjMatrix(pattern, k);
-      // writer.write(" [");
-      // for i in 0..<k {
-      //   writer.write("[");
-      //   for j in 0..<k-1 {
-      //     writer.write(adjMatrix[i*k + j], ", ");
-      //   }
-      //   writer.write(adjMatrix[i*k + k-1], "]");
-      //   if i < k-1 then writer.write(", ");
-      // }
-      // writer.writeln("]");
+      var adjMatrix = patternToAdjMatrix(pattern, k);
+      writer.write(" [");
+      for i in 0..<k {
+        writer.write("[");
+        for j in 0..<k-1 {
+          writer.write(adjMatrix[i*k + j], ", ");
+        }
+        writer.write(adjMatrix[i*k + k-1], "]");
+        if i < k-1 then writer.write(", ");
+      }
+      writer.writeln("]");
       
       patternId += 1;
     }
