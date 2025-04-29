@@ -56,6 +56,10 @@ We recommend following the installation instructions provided by the Arkouda dev
     gcc -c -fPIC -I../external_libs/constrained-clustering/external_libs/VieCut/lib/ -I../external_libs/constrained-clustering/external_libs/VieCut/extlib/tlx/ computeMinCut.cpp -o computeMinCut.o
     cd ../../../
     ```
+7. Install `igraph` and `libleidenalg` by running the following.
+    ```bash
+    source igraph_and_leiden_setup.sh
+    ```
 
 ## Building Arachne
 Building Arachne is performed through executing the `module_configuration.py` file. The complete path to the location of `arkouda` must be specified through `ak_loc` and the complete path to the location of `arachne` should be specified through `pkg_path`.
