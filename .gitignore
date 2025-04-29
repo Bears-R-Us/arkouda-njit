@@ -1,6 +1,10 @@
 # External libs.
 arachne/server/external_libs/*
+arachne/server/external_libs/install/*
 !arachne/server/external_libs/README.md
+!arachne/server/external_libs/install/
+!arachne/server/external_libs/igraph/
+!arachne/server/external_libs/libleidenalg/
 
 # Outputs.
 arachne/output/*
