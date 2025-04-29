@@ -76,7 +76,7 @@ module WellConnectedComponentsDistributed {
   proc multCriterion(n:int,  m:real) { return floor(m*n:real); }
 
   proc runWCCDistributed(g1: SegGraph, st: borrowed SymTab, 
-                         inputcluster_filePath: string, outputPath: string, outputType: string,
+                         inputcluster_filePath: string, outputPath: string,
                          connectednessCriterion: string, connectednessCriterionMultValue: real, 
                          preFilterMinSize: int, postFilterMinSize: int): int throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
@@ -269,29 +269,6 @@ module WellConnectedComponentsDistributed {
       return setIntersectionSize(neighbors,members);
     }
 
-    /* Writes a cluster out to a file DURING its well-connectedness check. Contains verbose output
-      for debugging purposes. */
-    proc writeClustersToFile(ref members:set(int), id:int, currentId:int, d:int, c:int) throws {
-      var filename = outputPath + "_" + newClusterIdToOriginalClusterId[id]:string + "_" + id:string 
-                   + currentId:string + "_" + members.size:string + "_" + d:string + "_" + c:string 
-                   + ".tsv";
-      var file = open(filename, ioMode.cw);
-      var fileWriter = file.writer(locking=false);
-      var mappedArr = nodeMapGraphG1[members.toArray()];
-
-      fileWriter.writeln("# Original Cluster ID:             " + newClusterIdToOriginalClusterId[id]:string);
-      fileWriter.writeln("# Connected Components Cluster ID: " + id:string);
-      fileWriter.writeln("# Final Cluster ID:                " + currentId:string);
-      fileWriter.writeln("# Cluster Depth:                   " + d:string);
-      fileWriter.writeln("# Number of Members:               " + members.size:string);
-      fileWriter.writeln("# Minimum Cut:                     " + c:string);
-      fileWriter.writeln("# Members:                         ");
-      for m in mappedArr do fileWriter.writeln(m:string);
-      
-      try fileWriter.close();
-      try file.close();
-    }
-
     /* Writes all clusters out to a file AFTER they are deemed well-connected. */
     proc writeClustersToFile() throws {
       var filename = outputPath;
@@ -299,18 +276,6 @@ module WellConnectedComponentsDistributed {
       var writer = outfile.writer(locking=false);
 
       for (v,c) in zip(finalVertices, finalClusters) do writer.writeln(nodeMapGraphG1[v], " ", c);
-
-      writer.close();
-      outfile.close();
-    }
-
-    /* Writes a cluster out to a file DURING its well-connectedness check. */
-    proc writeClustersToFile(ref vertices: set(int), cluster:int) throws {
-      var filename = outputPath;
-      var outfile = open(filename, ioMode.a);
-      var writer = outfile.writer(locking=true);
-
-      for v in vertices do writer.writeln(nodeMapGraphG1[v], " ", cluster);
 
       writer.close();
       outfile.close();
@@ -348,8 +313,6 @@ module WellConnectedComponentsDistributed {
         var nextId = globalIdDistributed[localeId][0].fetchAdd(1);
         var tempId = nextId:string + localeId:string;
         var currentId = tempId:int;
-        if outputType == "debug" then writeClustersToFile(vertices, id, currentId, depth, cut);
-        else if outputType == "during" then writeClustersToFile(vertices, currentId);
         for v in vertices {
           finalVerticesDistributed[localeId][0].pushBack(v);
           finalClustersDistributed[localeId][0].pushBack(currentId);
@@ -580,8 +543,7 @@ module WellConnectedComponentsDistributed {
         resetCommDiagnostics();
       }
 
-      
-      if outputType == "post" then writeClustersToFile();
+      writeClustersToFile();
       if logLevel == LogLevel.DEBUG {
         var outMsg = "Communication statistics for writing out file with post.";
         wccLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);

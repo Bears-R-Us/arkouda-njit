@@ -318,7 +318,7 @@ def watts_strogatz_graph(n: int, k: int, p: float,
     ------
     ValueError
     """
-    if k >= n:
+    if k > n:
         raise ValueError("k > n, choose smaller k or larger n")
 
     # Create nodes.

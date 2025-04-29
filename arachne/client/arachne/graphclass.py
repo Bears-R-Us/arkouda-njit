@@ -12,7 +12,7 @@ class Graph:
     """Base class for undirected graphs in Arachne. This is the double index graph data structure 
     based graph representation. The graph data resides on the arkouda server.
 
-    Graphs hold undirected edges. Multiple edges are not allowed. Self loops are allowed. Nodes 
+    Graphs hold undirected edges. Multiple edges are not allowed. Self loops are not allowed. Nodes 
     currently are only allowed to be integers. No attributes are allowed on nodes or vertices. 
     For this functionality please refer to `PropGraph`.
 

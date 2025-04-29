@@ -151,11 +151,6 @@ class PropGraphTest(ArkoudaTest):
         graph,_ = self.build_prop_graph_and_networkx(no_categorical=True)
         column_types_edges = {str(type(graph.edge_attributes[col])) for col in graph.edge_attributes.columns}
         column_types_nodes = {str(type(graph.node_attributes[col])) for col in graph.node_attributes.columns}
-
-        print("\n\n\n\n\n\n\n\n\n\n")
-        print(column_types_edges)
-        print(column_types_nodes)
-        print("\n\n\n\n\n\n\n\n\n\n")
         
         self.assertEqual(len(column_types_edges),3)
         self.assertEqual(len(column_types_nodes),3)

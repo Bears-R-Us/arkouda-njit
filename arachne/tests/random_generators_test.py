@@ -31,12 +31,11 @@ class RandomGeneratorsTest(ArkoudaTest):
         nx_edge_set = list(nx_graph.edges())
         #Check expected edge set for graph with two nodes to see if both are valid
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), self.isExpectedEdgeSet(nx_edge_set))
-
        
     def test_gnp(self):
         #ar.Graph vs networkx Graph
         n = 2   
-        ar_graph = ar.gnp(n,.5,ar.Graph)
+        ar_graph = ar.gnp_random_graph(n,.5,ar.Graph)
         nx_graph = nx.gnp_random_graph(n,.5)
 
         if ar_graph.size()  == 0:
@@ -52,7 +51,7 @@ class RandomGeneratorsTest(ArkoudaTest):
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), self.isExpectedEdgeSet(nx_edge_set))
 
         #ar.DiGraph vs networkx DiGraph
-        ar_graph = ar.gnp(n,.5,ar.DiGraph)
+        ar_graph = ar.gnp_random_graph(n,.5,ar.DiGraph)
         nx_graph = nx.gnp_random_graph(n,.5)
         nx_graph = nx.DiGraph(nx_graph)
         if ar_graph.size() == 0:
@@ -66,13 +65,12 @@ class RandomGeneratorsTest(ArkoudaTest):
         nx_edge_set = list(nx_graph.edges())
         #Check expected edge set for graph with two nodes to see if both are valid
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), self.isExpectedEdgeSet(nx_edge_set))
-
     
     def test_rmat(self):
         #ar.Graph vs expected edge set
         n = 1
         edge_factor = 1
-        ar_graph = ar.rmat(n,ar.Graph,edge_factor)
+        ar_graph = ar.rmat_graph(n,ar.Graph,edge_factor)
         
         if ar_graph.size()  == 0:
             ar_edge_set = [] 
@@ -85,7 +83,7 @@ class RandomGeneratorsTest(ArkoudaTest):
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), True)
 
         #ar.DiGraph vs expected edge set
-        ar_graph = ar.rmat(n,ar.DiGraph,edge_factor)
+        ar_graph = ar.rmat_graph(n,ar.DiGraph,edge_factor)
         if ar_graph.size() == 0:
             ar_edge_set = [] 
         else:
@@ -113,8 +111,9 @@ class RandomGeneratorsTest(ArkoudaTest):
             ar_edge_set = [(src_item, dst_item) for src_item, dst_item in zip(src, dst)]
 
         nx_edge_set = list(nx_graph.edges())
-        #Check expected edge set for graph with two nodes to see if both are valid
+        # Check expected edge set for graph with two nodes to see if both are valid
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), self.isExpectedEdgeSet(nx_edge_set))
+        
         #ar.DiGraph vs networkx DiGraph
         ar_graph = ar.watts_strogatz_graph(n,k,p,ar.DiGraph)
         nx_graph = nx.watts_strogatz_graph(n,k,p)
@@ -128,11 +127,9 @@ class RandomGeneratorsTest(ArkoudaTest):
             ar_edge_set = [(src_item, dst_item) for src_item, dst_item in zip(src, dst)]
 
         nx_edge_set = list(nx_graph.edges())
-        #Check expected edge set for graph with two nodes to see if both are valid
+        # Check expected edge set for graph with two nodes to see if both are valid
         self.assertEqual(self.isExpectedEdgeSet(ar_edge_set), self.isExpectedEdgeSet(nx_edge_set))
         
-        
-
     def isExpectedEdgeSet(self,edge_set_to_compare):
         expected_edge_sets = [
         [],  # No edges.

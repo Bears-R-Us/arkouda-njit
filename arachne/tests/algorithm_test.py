@@ -256,10 +256,10 @@ class AlgorithmTest(ArkoudaTest):
         GM = nx.algorithms.isomorphism.DiGraphMatcher(G, H)
 
         # List of dicts. For each dict, keys is original graph vertex, values are subgraph vertices.
-        subgraph_isomorphisms = list(GM.subgraph_monomorphisms_iter())
+        subgraph_isomorphisms = list(GM.subgraph_isomorphisms_iter())
 
         #### Compare Arachne subgraph isomorphism to NetworkX.
-        isos_list = isos.to_list()
+        isos_list = isos[0].to_list()
         isos_sublists = [isos_list[i:i+4] for i in range(0, len(isos_list), 4)]
 
         isos_as_dicts = []
@@ -277,7 +277,7 @@ class AlgorithmTest(ArkoudaTest):
         graph.add_edges_from(ak.array(src), ak.array(dst))
         comps = ar.connected_components(graph)
         bfs_gb = ak.GroupBy(comps)
-        keys,counts = bfs_gb.count()
+        keys,counts = bfs_gb.size()
         keys_list = keys.to_list()
         counts_list = counts.to_list()
 

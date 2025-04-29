@@ -3,6 +3,7 @@ import arkouda as ak
 from server_util.test.server_test_util import get_arkouda_numlocales, start_arkouda_server, \
     stop_arkouda_server, TestRunningMode
 import importlib
+import builtins
 
 '''
 ArkoudaTest defines the base Arkouda test logic for starting up the arkouda_server at the 
@@ -12,12 +13,10 @@ the unittest TestCase.
 Note: each Arkouda TestCase class extends ArkoudaTest and encompasses 1..n test methods, the 
 names of which match the pattern 'test*' (e.g., ArkoudaTest.test_arkouda_server).
 '''
-
-
 class ArkoudaTest(unittest.TestCase):
     verbose = True if os.getenv('ARKOUDA_VERBOSE') == 'True' else False
-    port = int(os.getenv('ARKOUDA_SERVER_PORT', 5555))
-    server = os.getenv('ARKOUDA_SERVER_HOST', 'localhost')
+    port = builtins.SERVER_PORT
+    server = builtins.SERVER_HOST
     test_running_mode = TestRunningMode(os.getenv('ARKOUDA_RUNNING_MODE', 'GLOBAL_SERVER'))
     timeout = int(os.getenv('ARKOUDA_CLIENT_TIMEOUT', 5))
 
