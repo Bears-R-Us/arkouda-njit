@@ -443,8 +443,6 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         Host graph that will be searched into. 
     subgraph : PropGraph
         Subgraph (pattern/query) that is being searched for.
-    time_limit : int
-        Enables a time limit to return whatever motifs have been found up to that minute.
     size_limit : int
         Caps the number of isomorphisms returned. If `None` then no size limit is enforced. Due to
         the highly parallel nature of subgraph isomorphism, the actual returned number of 
@@ -453,6 +451,11 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         the size limit has been reached. This is allowed to prevent the `size_limit` check from 
         cutting up isomorphisms before they are fully formed and leaving partially found
         isomorphisms in the results.
+    time_limit : int
+        Enables a time limit to return whatever motifs have been found up to that minute.
+    print_progress_interval : int
+        Maintains how often the progress should be printed server-side for how many patterns have
+        been found.
     return_isos_as : str
         If `"vertices"` then the found isomorphism are returned as vertices corresponding to the
         ordered list of subgraph vertices. If `"edges"` then the edges that make up each isomorphism
@@ -464,14 +467,8 @@ def subgraph_isomorphism(graph: PropGraph, subgraph: PropGraph,
         by `ps` is a paralell and scalable version of the original VF2 algorithm. The version `si`
         is experimental and creates original states based off existing edges only. Experiments show
         that `si` outperforms `ps` for large graphs.
-    match_type : str
-        Determines the type of matching to perform. Accepts `"iso"` for isomorphism or `"mono"` 
-        for monomorphism (default).
     reorder_type : str
         Reorders the subgraph according to "probability" or "structural".
-    print_progress_interval : int
-        Maintains how often the progress should be printed server-side for how many patterns have
-        been found.
         
 
     Returns
@@ -540,8 +537,6 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
         Host graph that will be searched into. 
     subgraph : PropGraph
         Subgraph (pattern/query) that is being searched for.
-    time_limit : int
-        Enables a time limit to return whatever motifs have been found up to that minute.
     size_limit : int
         Caps the number of isomorphisms returned. If `None` then no size limit is enforced. Due to
         the highly parallel nature of subgraph isomorphism, the actual returned number of 
@@ -550,6 +545,11 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
         the size limit has been reached. This is allowed to prevent the `size_limit` check from 
         cutting up isomorphisms before they are fully formed and leaving partially found
         isomorphisms in the results.
+    time_limit : int
+        Enables a time limit to return whatever motifs have been found up to that minute.
+    print_progress_interval : int
+        Maintains how often the progress should be printed server-side for how many patterns have
+        been found.
     return_isos_as : str
         If `"vertices"` then the found isomorphism are returned as vertices corresponding to the
         ordered list of subgraph vertices. If `"edges"` then the edges that make up each isomorphism
@@ -563,10 +563,6 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
         that `si` outperforms `ps` for large graphs.
     reorder_type : str
         Reorders the subgraph according to "probability" or "structural".
-    print_progress_interval : int
-        Maintains how often the progress should be printed server-side for how many patterns have
-        been found.
-        
 
     Returns
     -------

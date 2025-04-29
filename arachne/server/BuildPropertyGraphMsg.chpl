@@ -84,7 +84,7 @@ module BuildPropertyGraphMsg {
             ); // Block domains can be created as long as the range is consecutive.
 
         // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
-        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
+        //       the NOTE in module `GraphArray` for class `SparseArraySymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
             bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
@@ -169,7 +169,7 @@ module BuildPropertyGraphMsg {
             ); // Block domains can be created as long as the range is consecutive.
 
         // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
-        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
+        //       the NOTE in module `GraphArray` for class `SparseArraySymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
             bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
@@ -255,7 +255,7 @@ module BuildPropertyGraphMsg {
             ); // Block domains can be created as long as the range is consecutive.
 
         // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
-        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
+        //       the NOTE in module `GraphArray` for class `SparseArraySymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
             bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
@@ -341,7 +341,7 @@ module BuildPropertyGraphMsg {
             ); // Block domains can be created as long as the range is consecutive.
 
         // NOTE: Temporary restriction to utilizing sparse arrays, for further information look at
-        //       the NOTE in module `GraphArray` for class `SparseSymEntry`.
+        //       the NOTE in module `GraphArray` for class `SparseArraySymEntry`.
         if !consecutive {
             var errorMsg = notImplementedError(pn, "sparse attributes currently disallowed");
             bpgmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);

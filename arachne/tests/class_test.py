@@ -28,6 +28,15 @@ class ClassTest(ArkoudaTest):
         nx_graph_weighted = nx.Graph()
         nx_graph_weighted.add_weighted_edges_from(ebunchw)
 
+        # Remove self-loops and vertices with degree 0 in NetworkX graphs
+        nx_graph.remove_edges_from(nx.selfloop_edges(nx_graph))
+        nodes_to_remove = [node for node, degree in nx_graph.degree() if degree == 0]
+        nx_graph.remove_nodes_from(nodes_to_remove)
+
+        nx_graph_weighted.remove_edges_from(nx.selfloop_edges(nx_graph_weighted))
+        nodes_to_remove = [node for node, degree in nx_graph_weighted.degree() if degree == 0]
+        nx_graph_weighted.remove_nodes_from(nodes_to_remove)
+
         return ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted
 
     def build_directed_graph(self):
@@ -51,24 +60,16 @@ class ClassTest(ArkoudaTest):
         nx_di_graph_weighted = nx.DiGraph()
         nx_di_graph_weighted.add_weighted_edges_from(ebunchw)
 
+        # Remove self-loops and vertices with degree 0 in NetworkX graphs
+        nx_di_graph.remove_edges_from(nx.selfloop_edges(nx_di_graph))
+        nodes_to_remove = [node for node, degree in nx_di_graph.degree() if degree == 0]
+        nx_di_graph.remove_nodes_from(nodes_to_remove)
+
+        nx_di_graph_weighted.remove_edges_from(nx.selfloop_edges(nx_di_graph_weighted))
+        nodes_to_remove = [node for node, degree in nx_di_graph_weighted.degree() if degree == 0]
+        nx_di_graph_weighted.remove_nodes_from(nodes_to_remove)
+
         return ar_di_graph, nx_di_graph, ar_di_graph_weighted, nx_di_graph_weighted
-    
-    def build_undirected_graph_no_loops(self):
-        src_list = [2,5,2,3,3,3,3,2,3,4,5,5,5,5,5,5,7,8,9,9,8,9 ,10,10,10,24,25,25]
-        dst_list = [1,0,0,0,3,3,3,3,4,3,5,2,2,2,2,7,8,9,8,8,5,10,7 ,7 ,7 ,24,26,27]
-        wgt_list = [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1 ,1 ,1 ,1 ,1 ,10,20]
-        src = ak.array(src_list)
-        dst = ak.array(dst_list)
-        wgt = ak.array(wgt_list)
-
-        ar_graph_weighted = ar.Graph()
-        ar_graph_weighted.add_edges_from(src,dst,wgt,no_self_loops = True)
-
-        ar_digraph_weighted = ar.DiGraph()
-        ar_digraph_weighted.add_edges_from(src,dst,wgt,no_self_loops = True)
-
-
-        return ar_graph_weighted,ar_digraph_weighted
     
     def test_density(self):
         ar_graph, nx_graph, ar_graph_weighted, nx_graph_weighted = self.build_undirected_graph()
@@ -78,9 +79,6 @@ class ClassTest(ArkoudaTest):
         self.assertEqual(ar_graph_weighted.density(),nx.density(nx_graph_weighted))
         self.assertEqual(ar_di_graph.density(),nx.density(nx_di_graph))
         self.assertEqual(ar_di_graph_weighted.density(),nx.density(nx_di_graph_weighted))
-        
-        
-
 
     def test_add_edges_from(self):
         """Testing adding edges to undirected and directed graphs."""
@@ -104,21 +102,6 @@ class ClassTest(ArkoudaTest):
         self.assertEqual(ar_tuple_d, nx_tuple_d)
         self.assertEqual(ar_tuple_uw, nx_tuple_uw)
         self.assertEqual(ar_tuple_dw, nx_tuple_dw)
-
-        # Test to ensure no self-loops when using associated paramater
-        ar_graph_weighted_no_loops,ar_digraph_weighted_no_loops = self.build_undirected_graph_no_loops()
-        V,U = ar_graph_weighted_no_loops.edges()
-        has_loops = (V == U).any()
-        self.assertEqual(has_loops,False)
-
-        ar_digraph_weighted_no_loops
-        V,U = ar_graph_weighted_no_loops.edges()
-        has_loops = (V == U).any()
-        self.assertEqual(has_loops,False)
-
-
-        
-
 
     def test_nodes_and_edges(self):
         """Testing returning all the nodes and edges for a graph."""

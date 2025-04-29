@@ -77,7 +77,8 @@ module BuildGraphMsg {
                     then new shared SegGraph(num_vertices, num_edges, directed, weighted)
                     else getGraphSymEntry(msgArgs.getValueOf("GraphName"), st).graph;
 
-        for key in msgArgs.keys() {
+        for parameterObj in msgArgs {
+            var key = parameterObj.key;
             if key == "EDGE_WEIGHT_SDI" || key == "EDGE_WEIGHT_RDI" then continue;
             var name = msgArgs.getValueOf(key);
             if !st.contains(name) then continue;

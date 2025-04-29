@@ -188,7 +188,7 @@ module GraphArray {
     }
 
     /* Allows storage of sparse arrays in the symbol table. */
-    class SparseSymEntry : GenSymEntry {
+    class SparseArraySymEntry : GenSymEntry {
         var a;
         proc etype type do return a.eltType;
 
@@ -229,8 +229,8 @@ module GraphArray {
         return try! e : borrowed AssociativeSymEntry();
     }
 
-    proc toSparseSymEntry(e) {
-        return try! e : borrowed SparseSymEntry();
+    proc toSparseArraySymEntry(e) {
+        return try! e : borrowed SparseArraySymEntry();
     }
 
     proc toReplicatedSymEntry(e) {
@@ -272,9 +272,9 @@ module GraphArray {
     }
 
     class SparsePropertySegStringSymEntry : SegStringSymEntry(?) {
-        var indicesEntry: shared SparseSymEntry(?);
+        var indicesEntry: shared SparseArraySymEntry(?);
 
-        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseSymEntry(?), type etype) {
+        proc init(offsetsSymEntry: shared SymEntry(int), bytesSymEntry: shared SymEntry(uint(8)), indicesSymEntry: shared SparseArraySymEntry(?), type etype) {
             super.init(offsetsSymEntry, bytesSymEntry, etype);
             this.indicesEntry = indicesSymEntry;
         }

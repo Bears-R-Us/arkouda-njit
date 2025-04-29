@@ -14,4 +14,4 @@ python3 module_configuration.py --ak_loc=/complete/path/to/arkouda/ --pkg_path=/
 To see an example on how to run and use Arachne, please use `arkouda-njit/arachne/arachne_sample.ipynb`. This assumes that you have started an Arkouda server using `./arkouda_server` in the Arkouda home directory.
 
 ## Testing
-The Arachne tests are executed from the arkouda-njit/arachne directory by running the `pytest` command.
+The Arachne tests are executed from the `arkouda-njit/arachne/` directory. There **MUST** be a live Arkouda server running for the testing harness to execute. To run the testing harness, you would type the following command `pytest --server-host=hostname --server-port=port`.

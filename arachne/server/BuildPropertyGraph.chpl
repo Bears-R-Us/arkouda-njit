@@ -47,7 +47,7 @@ module BuildPropertyGraph {
     */
     proc addSparseArrayToSymbolTable(newSparseArray, st): (string,string) throws {
         var attrName = st.nextName();
-        var attrEntry = new shared SparseSymEntry(newSparseArray);
+        var attrEntry = new shared SparseArraySymEntry(newSparseArray);
         st.addEntry(attrName, attrEntry);
         var repMsg = "created " + st.attrib(attrName) + "+ ";
         return (repMsg, attrName);
@@ -194,7 +194,7 @@ module BuildPropertyGraph {
                                 // and values will actually be the same and store the indices explicilty. 
                                 var newData: [sparseDataDomain] int;
                                 forall (e,d) in zip(newData, newData.domain) do e = d;
-                                var indicesEntry = new shared SparseSymEntry(newData);
+                                var indicesEntry = new shared SparseArraySymEntry(newData);
 
                                 // Create new object that is a wrapper to the Arkouda SegStringSymEntry class.
                                 var sparsePropertySegStringSymEntry = new shared SparsePropertySegStringSymEntry(   
