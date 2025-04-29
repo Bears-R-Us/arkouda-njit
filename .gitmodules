@@ -1,0 +1,6 @@
+[submodule "arachne/server/external_libs/libleidenalg"]
+	path = arachne/server/external_libs/libleidenalg
+	url = https://github.com/vtraag/libleidenalg.git
+[submodule "arachne/server/external_libs/igraph"]
+	path = arachne/server/external_libs/igraph
+	url = https://github.com/igraph/igraph.git
