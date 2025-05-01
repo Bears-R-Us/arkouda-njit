@@ -56,7 +56,7 @@ We recommend following the installation instructions provided by the Arkouda dev
     gcc -c -fPIC -I../external_libs/constrained-clustering/external_libs/VieCut/lib/ -I../external_libs/constrained-clustering/external_libs/VieCut/extlib/tlx/ computeMinCut.cpp -o computeMinCut.o
     cd ../../../
     ```
-7. Install `igraph` and `libleidenalg` by running the following.
+7. Install `igraph` and `libleidenalg` by running the following. **Note: this setup script will have to be run to add the appropriate paths to your environment every time Arachne will be built on a new terminal window.**
     ```bash
     source igraph_and_leiden_setup.sh
     ```
