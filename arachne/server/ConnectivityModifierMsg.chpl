@@ -21,7 +21,7 @@ module ConnectivityModifierMsg {
   // Server message logger. 
   private config const logLevel = ServerConfig.logLevel;
   private config const logChannel = ServerConfig.logChannel;
-  const cm2Logger = new Logger(logLevel, logChannel);
+  const cmLogger = new Logger(logLevel, logChannel);
 
   proc ConnectivityModifierMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
 		param pn = Reflection.getRoutineName();
@@ -42,7 +42,7 @@ module ConnectivityModifierMsg {
 		var g = gEntry.graph;
 
 		// Generate neighbors as sets for graph.
-		cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
+		cmLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
 		g.generateNeighborsAsSet(st);
 		
 		var timer:stopwatch;
@@ -53,12 +53,12 @@ module ConnectivityModifierMsg {
 									preFilterMinSize, postFilterMinSize);
 			timer.stop();
 			outMsg = "Connectivity modifier took " + timer.elapsed():string + " sec";
-			cm2Logger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+			cmLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 
 			return new MsgTuple(numClusters:string, MsgType.NORMAL);
 		} else {
 			var errorMsg = notImplementedError(pn, "Connectividy Modifier for directed graphs");
-			cm2Logger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+			cmLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
 			return new MsgTuple(errorMsg, MsgType.ERROR);
 		}
   } // end of ConnectivityModifierMsg

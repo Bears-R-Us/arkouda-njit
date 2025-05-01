@@ -73,10 +73,10 @@ module WellConnectedComponents {
     }
   }
 
-  proc runWCC (g1: SegGraph, st: borrowed SymTab, 
-               inputcluster_filePath: string, outputPath: string,
-               connectednessCriterion: string, connectednessCriterionMultValue: real, 
-               preFilterMinSize: int, postFilterMinSize: int): int throws {
+  proc runWCC(g1: SegGraph, st: borrowed SymTab, 
+              inputcluster_filePath: string, outputPath: string,
+              connectednessCriterion: string, connectednessCriterionMultValue: real, 
+              preFilterMinSize: int, postFilterMinSize: int): int throws {
     var srcNodesG1 = toSymEntry(g1.getComp("SRC_SDI"), int).a;
     var dstNodesG1 = toSymEntry(g1.getComp("DST_SDI"), int).a;
     var segGraphG1 = toSymEntry(g1.getComp("SEGMENTS_SDI"), int).a;
@@ -194,7 +194,6 @@ module WellConnectedComponents {
 
       return (newSrc, newDst, idx2v);
     }
-
 
     /* Function to sort edge lists based on src and dst nodes */
     proc sortEdgeList(ref src: [] int, ref dst: [] int) {

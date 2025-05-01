@@ -711,7 +711,8 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
-             "PostFilterMinSize": post_filter_min_size}
+             "PostFilterMinSize": post_filter_min_size,
+             "AnalysisType": "wcc"}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 
@@ -821,7 +822,8 @@ def connectivity_modifier(graph: Graph, file_path: str, output_folder_path: str,
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
-             "PostFilterMinSize": post_filter_min_size}
+             "PostFilterMinSize": post_filter_min_size,
+             "AnalysisType": "cm"}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 
