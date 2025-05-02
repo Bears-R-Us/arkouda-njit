@@ -1,6 +1,6 @@
 module WellConnectednessMsg {
   // Chapel modules.
-  import ChplConfig;
+  import IO.FormattedIO;
   use Reflection;
   use Map;
   use Time;
@@ -24,7 +24,9 @@ module WellConnectednessMsg {
   private config const logChannel = ServerConfig.logChannel;
   const wcLogger = new Logger(logLevel, logChannel);
 
-  proc wellConnectednessMsg(cmd: string, msgArgs: borrowed MessageArgs, st: borrowed SymTab): MsgTuple throws {
+  proc wellConnectednessMsg(cmd: string, 
+                            msgArgs: borrowed MessageArgs, 
+                            st: borrowed SymTab): MsgTuple throws {
 		param pn = Reflection.getRoutineName();
 		var repMsg, outMsg:string;
 
@@ -52,25 +54,18 @@ module WellConnectednessMsg {
 		if !g.isDirected() {
 			var numClusters:int;
 			timer.start();
-			if ChplConfig.CHPL_COMM == "none" {
-				use WellConnectedComponents;
-				numClusters = runWCC(g, st, filePath, outputPath,
-														 connectednessCriterion, connectednessCriterionMultValue, 
-														 preFilterMinSize, postFilterMinSize);
-			} else {
-				use WellConnectedComponentsDistributed;
-				numClusters = runWCCDistributed(g, st, filePath, outputPath,
-											connectednessCriterion, connectednessCriterionMultValue, 
-											preFilterMinSize, postFilterMinSize);
-			}
+      numClusters = runWellConnectedness(g, st, filePath, outputPath,
+                                         connectednessCriterion, 
+                                         connectednessCriterionMultValue, 
+                                         preFilterMinSize, postFilterMinSize,
+                                         analysisType);
 			timer.stop();
-			outMsg = "Well connected components took " + timer.elapsed():string + " sec";
-			wccLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
+			outMsg = "%s took %r sec".format(analysisType, timer.elapsed());
+			wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 			return new MsgTuple(numClusters:string, MsgType.NORMAL);
 		} else {
 			var errorMsg = notImplementedError(pn, "well-connectedness for directed graphs");
-			wccLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
+			wcLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
 			return new MsgTuple(errorMsg, MsgType.ERROR);
 		}
   } // end of wellConnectednessMsg
