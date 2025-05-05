@@ -670,7 +670,7 @@ proc calculateDistributionStats(ref data: [?D1] real) {
         sortedData[i] = val;
         i += 1;
     }
-    
+   
     if logLevel == LogLevel.DEBUG {
         writeln("sortedData.domin: ", sortedData.domain);
         writeln("sortedData: ", sortedData);
@@ -1115,109 +1115,6 @@ proc enhancedBFS(start: int, cluster: set(int)) {
     
     return (maxDist, depth);
 }
-/* Enhanced diameter calculation using double sweep */
-// Bartosz: No longer needed
-// proc calculateDiameter(ref cluster: set(int)) throws {
-//     var timer: stopwatch;
-//     timer.start();
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("\n==== Starting Enhanced Diameter Calculation ====");
-//         writeln("Cluster size: ", cluster.size);
-//     }
-
-//     var metrics = new diameterMetrics();
-    
-//     // For very small clusters, use exact calculation
-//     // Bartosz: I changed it to 20000 for now
-//     if cluster.size <= 100000 {
-//         if logLevel == LogLevel.DEBUG {
-//             writeln("Using exact calculation for small cluster");
-//         }
-//         // metrics.exactDiameter = true;
-//         var maxDist = 0;
-        
-//         forall v in cluster with (max reduce maxDist, ref cluster) {
-//             var (dist, _) = enhancedBFS(v, cluster);
-//             maxDist = max(maxDist, dist);
-//         }
-        
-//         // metrics.lowerBound = maxDist;
-//         // metrics.upperBound = maxDist;
-//         // metrics.estimatedDiameter = maxDist:int;
-//         metrics.diameter = maxDist:int;
-
-//         writeln("Time for calculateDiameter: ", timer.elapsed());
-//         return metrics;
-//     }
-
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("Using approximate calculation for large cluster");
-//     }
-//     // For larger clusters, use double sweep with sampling
-//     metrics.exactDiameter = false;
-    
-//     // First sweep from random vertex
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("Converting cluster to array");
-//     }
-//     var clusterArray = cluster.toArray();
-    
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("Created array of size: ", clusterArray.size);
-//         writeln("Setting up random number generator");
-//     }
-    
-//     var rng = new randomStream(real);
-    
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("Selecting random start vertex");
-//     }
-    
-//     var randIdx = (rng.next() * (cluster.size-1)):int;
-    
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("Selected random index: ", randIdx);
-//     }
-
-//     var start = clusterArray[randIdx];
-    
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("Selected start vertex: ", start);
-//     }
-
-  
-//     var (firstDist, firstDepths) = enhancedBFS(start, cluster);
-    
-//     // Find farthest vertex
-//     var maxDist = 0;
-//     var farthestVertex = start;
-//     forall v in cluster with (max reduce maxDist, 
-//                             ref farthestVertex) {
-//         if firstDepths[v] > maxDist {
-//             maxDist = firstDepths[v];
-//             farthestVertex = v;
-//         }
-//     }
-    
-//     // Second sweep from farthest vertex
-//     var (secondDist, _) = enhancedBFS(farthestVertex, cluster);
-    
-//     metrics.lowerBound = secondDist;
-//     metrics.upperBound = min(2 * secondDist, cluster.size - 1);
-//     metrics.estimatedDiameter = ((metrics.lowerBound + metrics.upperBound) / 2.0):int;
-
-//     if logLevel == LogLevel.DEBUG {
-//         writeln("\nDiameter Results:");
-//         writeln("  First sweep max distance: ", firstDist);
-//         writeln("  Second sweep max distance: ", secondDist);
-//         writeln("  Lower bound: ", metrics.lowerBound);
-//         writeln("  Upper bound: ", metrics.upperBound);
-//         writeln("==== Diameter Calculation Complete ====\n");
-//     }
-    
-//     writeln("Time for calculateDiameter: ", timer.elapsed());
-//     return metrics;
-// }
 
 proc componentIter(g:SegGraph, root:int, gdiameter:int, iternum:int): int throws {
     var cur_level = 0;
@@ -1511,6 +1408,8 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
     // Atomic counters for parallel processing
     var totalWedges: atomic int;
     var totalTriangles: atomic int;
+    var localSum: atomic real;
+    var localCount: atomic int;
 
     // Create domain from cluster for parallel iteration
     var clusterArray = analysisCluster.toArray();
@@ -1537,6 +1436,7 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
         var neighbors = neighborCache[v];
         var degree = neighbors.size;
         
+        var triangleV = 0;
         // Count wedges (potential triangles)
         if degree >= 2 {
             var possibleWedges = (degree * (degree - 1)) / 2;
@@ -1553,10 +1453,17 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
                             if logLevel == LogLevel.DEBUG {
                                 //writeln("Found triangle: ", v, "-", u, "-", w);
                             }
+                            triangleV += 1;
                             totalTriangles.add(1);
                         }
                     }
                 }
+            }
+
+            // Update local transitivity for this node
+            if possibleWedges > 0 {
+                localSum.add(triangleV:real / possibleWedges:real);
+                localCount.add(1);
             }
         }
     }
@@ -1582,6 +1489,7 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
     if metrics.wedgeCount > 0 {
         // Multiply triangles by 3 because each triangle creates three wedges
         metrics.triangleToWedgeRatio = triangles:real / metrics.wedgeCount:real;
+        localTransitivity = localSum.read() / localCount.read():real;
         globalTransitivity = (3 * triangles):real / metrics.wedgeCount:real;
     } else {
         metrics.triangleToWedgeRatio = 0.0;
@@ -1590,6 +1498,10 @@ proc calculateTransitivityMetrics(ref cluster: set(int)) throws {
     }
     metrics.globalTransitivity = globalTransitivity;
     metrics.localTransitivity = localTransitivity;
+    metrics.localGlobalRatio = if globalTransitivity > 0.0 then
+                                        localTransitivity / globalTransitivity
+                                        else 0.0;
+                                                                
 
     if logLevel == LogLevel.DEBUG {
         writeln("\nFinal Results:");
@@ -1807,21 +1719,26 @@ proc calculateBasicStats(in cluster: set(int)) throws {
     }
 
 
-// Bartosz: Find other way to optimalize it. Maybe use eccentricities instead of BFS
-// Compute betweenness centrality for all nodes in the cluster using Brandes' algorithm
+// Bartosz: Find other way to optimalize it. Answer: Move this function into calculateEccentricityMetrics
+// Compute normalized betweenness centrality for all nodes in the cluster using Brandes' algorithm
 proc computeBetweennessCentrality(cluster: set(int)) {
     const clusterDom: domain(int,  parSafe=true) = cluster.toArray();
     var bc: [clusterDom] real = 0.0;
 
+    var timer: stopwatch;
+    timer.start(); 
+
     forall s in cluster with (ref bc) {
         // Run enhanced BFS to get distances
         var (maxDist, depth) = enhancedBFS(s, cluster);
+
         var sigma: [clusterDom] real = 0.0;
-        var P: [clusterDom] list(int);
-        var S = new list(int);
+        var delta: [clusterDom] real = 0.0;
+        var P: [clusterDom] list(int, parSafe=false); 
+        var seen: [clusterDom] bool = false;        
+        var S = new list(int, parSafe=false);
 
         sigma[s] = 1.0;
-
 
         // Collect vertices by level (reconstruct S and P)
         const levelDom = {0..maxDist};
@@ -1832,13 +1749,11 @@ proc computeBetweennessCentrality(cluster: set(int)) {
             }
         }
 
-        var seen: [clusterDom] bool = false; 
         // Build predecessor list and count paths
         for d in levelDom {
             if levelMap[d].size == 0 then continue;
             for v in levelMap[d] {
                 for w in neighborsSetGraphG1[v] & cluster {
-
                     if depth[w] == depth[v] + 1 {
                         sigma[w] += sigma[v];
                         P[w].pushBack(v);
@@ -1859,9 +1774,8 @@ proc computeBetweennessCentrality(cluster: set(int)) {
         S.pushBack(s);
 
         // Back-propagation phase (Brandes)
-        var delta: [clusterDom] real = 0.0;
         while !S.isEmpty() {
-            var w = S.popBack();
+            const w = S.popBack();
             for v in P[w] {
                 if sigma[w] > 0 {
                     delta[v] += (sigma[v] / sigma[w]) * (1.0 + delta[w]);
@@ -1873,9 +1787,15 @@ proc computeBetweennessCentrality(cluster: set(int)) {
         }
     }
 
+    // After all sources, normalize
+    const n = cluster.size:real;
+    const normFactor = 1.0 / ((n - 1.0) * (n - 2.0));
+
     forall v in cluster with (ref bc) {
-        bc[v] /= 2.0;
+        bc[v] *= normFactor;
     }
+
+    writeln("Compute bc took: ",  timer.elapsed());
     var sum = + reduce bc;
     var maxBC = max reduce bc;
     const avg = sum / cluster.size:real;
@@ -1883,44 +1803,6 @@ proc computeBetweennessCentrality(cluster: set(int)) {
     writeln("MaxBc: ", maxBC);
     return (bc, avg, maxBC);
 }
-
-// Bartosz: Implement findBridges
-// // Identify bridges in the subgraph induced by `cluster` using Tarjan's DFS algorithm
-// proc findBridges(cluster: set(int)) {
-//     const clusterDom: domain(int,  parSafe=true) = cluster.toArray();
-//     var disc: [clusterDom] int = -1;
-//     var low: [clusterDom] int = -1;
-//     var parent: [clusterDom] int = -1;
-//     var bridges = new list((int,int), parSafe=true);
-//     var time = 0;
-
-//     proc dfs(u: int) {
-//         disc[u] = time;
-//         low[u] = time;
-//         time += 1;
-
-//         for v in neighborsSetGraphG1[u] & cluster {
-//             if disc[v] == -1 {
-//                 parent[v] = u;
-//                 dfs(v);
-//                 low[u] = min(low[u], low[v]);
-//                 if low[v] > disc[u] {
-//                     bridges.pushBack((u, v));
-//                 }
-//             } else if v != parent[u] {
-//                 low[u] = min(low[u], disc[v]);
-//             }
-//         }
-//     }
-
-//     for u in cluster {
-//         if disc[u] == -1 {
-//             dfs(u);
-//         }
-//     }
-//     writeln("Bridges: ", bridges);
-//     return bridges;
-// }
 
 
 // Bartosz:
@@ -1952,17 +1834,12 @@ proc calculateAdvancedConnectivity(ref cluster: set(int)) throws {
     metrics.maxBetweenness = maxBC;
     // metrics - calculateAdvancedConnectivityMetrics > computeBetweennessCentrality
 
-    // === Bridge Detection (Tarjan's algorithm) ===
-    // metrics.bridges = findBridges(cluster);
-    // metrics.bridgeCount = metrics.bridges.size;
-    // metrics - calculateAdvancedConnectivityMetrics > findBridges
 
     if logLevel == LogLevel.DEBUG {
         writeln("Using sample size: ", sampleSet.size, " for betweenness and diameter calculations");
         // writeln("Advanced connectivity metrics computed: ",
         //         ", AvgBetweenness=", metrics.avgBetweenness,
         //         ", MaxBetweenness=", metrics.maxBetweenness,
-        //         ", Bridges=", metrics.bridgeCount);
     }
 
     return metrics;
@@ -2244,24 +2121,6 @@ proc selectHighDegreeVertex(ref vertices: set(int), ref neighborCache: [?d] set(
     
     for v in vertices {
         var degree = neighborCache[v].size;
-        if degree > maxDegree {
-            maxDegree = degree;
-            highDegVertex = v;
-        }
-    }
-    
-    return highDegVertex;
-}
-
-
-
-/* Helper function to select high-degree vertex */
-proc selectHighDegreeVertex(ref cluster: set(int)) {
-    var maxDegree = 0;
-    var highDegVertex = cluster.toArray()[0];
-    
-    for v in cluster {
-        var degree = (neighborsSetGraphG1[v] & cluster).size;
         if degree > maxDegree {
             maxDegree = degree;
             highDegVertex = v;
@@ -3595,6 +3454,8 @@ proc printClusterAnalysis(metrics: clusterMetricsRecord, clusterSize: int, clust
     writeln("  Wedge Count: ", metrics.transitivity.wedgeCount);
     writeln("  Triangle-to-Wedge Ratio: ", metrics.transitivity.triangleToWedgeRatio);
     writeln("  Global Transitivity: ", metrics.transitivity.globalTransitivity); //Commented because of Bartosz issue 2
+    writeln("  Local Transitivity: ", metrics.transitivity.localTransitivity); 
+    writeln("  Local Global Transitivity Ratio: ", metrics.transitivity.localGlobalRatio); 
 
     writeln("\n----- Triangle Distribution Metrics -----");
     writeln("  Triangle Density: ", metrics.triangle.triangleDensity);
