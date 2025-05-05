@@ -12,6 +12,7 @@ from arachne.propgraphclass import PropGraph
 import arkouda as ak
 from arkouda.client import generic_msg
 from arkouda.pdarrayclass import pdarray, create_pdarray
+import warnings
 
 __all__ = [ "read_matrix_market_file",
             "read_tsv_file",
@@ -699,12 +700,12 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
         output_path = output_folder_path + output_filename
 
     if os.path.exists(output_path):
-        raise FileExistsError(f"File {output_filename} already exists.")
+        warnings.warn(f"File {output_filename} already exists and will be overwritten.", UserWarning)
 
     # Explicit value needed for Chapel FCF.
     connectedness_criterion_mult_value = 0.0
 
-    cmd = "wellConnectedComponents"
+    cmd = "wellConnectedness"
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,
@@ -810,12 +811,12 @@ def connectivity_modifier(graph: Graph, file_path: str, output_folder_path: str,
         output_path = output_folder_path + output_filename
 
     if os.path.exists(output_path):
-        raise FileExistsError(f"File {output_filename} already exists.")
+        warnings.warn(f"File {output_filename} already exists and will be overwritten.", UserWarning)
 
     # Explicit value needed for Chapel FCF.
     connectedness_criterion_mult_value = 0.0
 
-    cmd = "connectivityModifier"
+    cmd = "wellConnectedness"
     args = { "GraphName":graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,

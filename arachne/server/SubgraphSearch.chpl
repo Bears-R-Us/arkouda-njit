@@ -16,7 +16,7 @@ module SubgraphSearch {
   use GraphArray;
   use Utils;
   use SubgraphSearchMsg;
-  use WellConnectedComponents;
+  use WellConnectedness;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
