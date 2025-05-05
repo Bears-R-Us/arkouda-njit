@@ -1,4 +1,6 @@
 #include <iostream>
+#include <random>
+
 #include "igraph/igraph.h"
 #include "libleidenalg/Optimiser.h"
 #include "libleidenalg/CPMVertexPartition.h"
@@ -28,7 +30,7 @@ void compute_leiden(
         VECTOR(edges)[2 * i + 1] = dst[i];
     }
 
-    igraph_create(&g, &edges, NumNodes, IGRAPH_DIRECTED);
+    igraph_create(&g, &edges, NumNodes, IGRAPH_UNDIRECTED);
     igraph_vector_int_destroy(&edges);
 
     Graph graph(&g);
@@ -59,20 +61,23 @@ void compute_leiden(
             return;
     }
 
+    int seed = std::random_device{}();
+
     Optimiser optimiser;
-    optimiser.optimise_partition(partition);
+    optimiser.set_rng_seed(seed);
+    for (int i = 0; i < 2; ++i) { // match 2 iterations
+        optimiser.optimise_partition(partition);
+    }
 
-    // numCommunities = 0;
-    // for (int64_t i = 0; i < NumNodes; i++) {
-    //     communities[i] = partition->membership(i);
-    //     if (communities[i] > numCommunities) {
-    //         numCommunities = communities[i];
-    //     }
-    // }
 
-    // numCommunities += 1;
-
-    //std::cout << "Leiden clustering complete. Found " << numCommunities << " communities." << std::endl;
+    numCommunities = 0;
+    for (int64_t i = 0; i < NumNodes; i++) {
+        communities[i] = partition->membership(i);
+        if (communities[i] > numCommunities) {
+            numCommunities = communities[i];
+        }
+    }
+    numCommunities += 1;
 
     delete partition;
     igraph_destroy(&g);

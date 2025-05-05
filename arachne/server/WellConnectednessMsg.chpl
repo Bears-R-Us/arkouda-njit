@@ -43,12 +43,6 @@ module WellConnectednessMsg {
 		// Pull out our graph from the symbol table.
 		var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
 		var g = gEntry.graph;
-
-		// Generate neighbors as sets for graph.
-		wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),"Generating neighbors set.");
-		
-		// TODO: This has to be written in a distributed manner! 
-		g.generateNeighborsAsSet(st);
 		
 		var timer:stopwatch;
 		if !g.isDirected() {
