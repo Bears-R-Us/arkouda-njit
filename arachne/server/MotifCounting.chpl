@@ -2048,15 +2048,15 @@ proc generateNautyPattern(adjMatrix: [] int, nautyLabels: [] int, motifSize: int
         // Complete enumeration
 
      var timer0:stopwatch;
-// timer0.start();
-// Enumerate(g1.n_vertices, motifSize, maxDeg);
-// timer0.stop();
-// writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate Time: ", timer0.elapsed());
-//         writeln(" globalMotifSet Size = ", globalMotifSet.size);
-//         writeln(" globalMotifCount = ", globalMotifCount.read());
+timer0.start();
+Enumerate(g1.n_vertices, motifSize, maxDeg);
+timer0.stop();
+writeln("@@@@@@@@@@@@@@@@@@@@@@@@@Enumerate Time: ", timer0.elapsed());
+        writeln(" globalMotifSet Size = ", globalMotifSet.size);
+        writeln(" globalMotifCount = ", globalMotifCount.read());
 
-//         writeln("**********************************************************************");
-//         writeln("**********************************************************************");
+        writeln("**********************************************************************");
+        writeln("**********************************************************************");
 // Function to randomly select n vertices from a graph of size graphSize
 proc selectRandomVertices(n: int, graphSize: int): [] int {
   use Random;
@@ -2091,7 +2091,7 @@ writeln(randomNodes);
 
 timer0.restart();
 
-EnumerateForMultipleNodes(randomNodes,  g1.n_vertices, motifSize, maxDeg);
+//EnumerateForMultipleNodes(randomNodes,  g1.n_vertices, motifSize, maxDeg);
 //EnumerateForMultipleNodes([1, 5, 10, 50],  g1.n_vertices, motifSize, maxDeg);
 //EnumerateForMultipleNodes([50], n, motifSize, maxDeg);
 timer0.stop();

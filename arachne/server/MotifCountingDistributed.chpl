@@ -287,7 +287,7 @@ module MotifCountingDistributed {
     var seenMatricesDist: [localeDom] set(uint(64), parSafe=true);
 
     // Start diagnosing the computation phase
-    startCommDiagnostics();
+    //startCommDiagnostics();
     
     // --- Run Kavosh in parallel across locales ---
     coforall loc in Locales do on loc {
