@@ -28,6 +28,7 @@ We recommend following the installation instructions provided by the Arkouda dev
     export CHPL_RE2=bundled
     export CHPL_LLVM=bundled
     make -j 4 # This value can be increased dependent on your device's number of processors
+    make chapel-py-venv
     ```
     * **Note:** This installs single locale (shared-memory) Chapel. For multilocale (distributed-memory) Chapel please follow the documentation guide on [Multilocale Chapel Execution](https://chapel-lang.org/docs/usingchapel/multilocale.html#multilocale-chapel-execution). Arachne has its best performance on shared-memory. However, kernels such as breadth-first search and property graph querying have multilocale-optimized versions that require multilocale Chapel to be installed.
 3. Download, **but do not build**, [Arkouda](https://github.com/Bears-R-Us/arkouda). **Use Arkouda version v2025.01.13.** A specified version can be selected for download by clicking on `Releases` in the main GitHub page for [Arkouda](https://github.com/Bears-R-Us/arkouda).
