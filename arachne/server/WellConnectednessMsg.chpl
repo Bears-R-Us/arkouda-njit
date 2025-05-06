@@ -3,7 +3,6 @@ module WellConnectednessMsg {
   import IO.FormattedIO;
   use Reflection;
   use Map;
-  use Time;
   
   // Arachne modules.
   use GraphArray;
@@ -44,18 +43,13 @@ module WellConnectednessMsg {
 		var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
 		var g = gEntry.graph;
 		
-		var timer:stopwatch;
 		if !g.isDirected() {
 			var numClusters:int;
-			timer.start();
       numClusters = runWellConnectedness(g, st, filePath, outputPath,
                                          connectednessCriterion, 
                                          connectednessCriterionMultValue, 
                                          preFilterMinSize, postFilterMinSize,
                                          analysisType);
-			timer.stop();
-			outMsg = "%s took %r sec".format(analysisType, timer.elapsed());
-			wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
 			return new MsgTuple(numClusters:string, MsgType.NORMAL);
 		} else {
 			var errorMsg = notImplementedError(pn, "well-connectedness for directed graphs");

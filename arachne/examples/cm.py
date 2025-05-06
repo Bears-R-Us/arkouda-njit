@@ -3,7 +3,7 @@ import arachne as ar
 import os
 
 # NOTE: Make sure to change the server name to whatever is applicable in your environment. If running locally, then use only ak.connect().
-ak.connect("n0085", 5555)
+ak.connect("n0084", 5555)
 
 # Create an Arachne graph from a test network file.
 ar_network_graph = ar.read_tsv_file(os.path.abspath("../data/wcc/test_network.tsv"))

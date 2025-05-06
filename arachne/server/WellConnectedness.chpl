@@ -90,6 +90,9 @@ module WellConnectedness {
     var finalClustersDistributed: [localeDom][{0..<1}] list(int, parSafe=true);
     var newClusterIdDistributed: [localeDom][{0..<1}] chpl__processorAtomicType(int);
     coforall loc in Locales do on loc { newClusterIdDistributed[loc.id][0].write(1); }
+    
+    // Turn on the clustering part of well-connectedness (CM)
+    var runClustering = if analysisType == "CM" then true else false;
 
     /* Reads in a tab-delimited file denoting vertices and the clusters they belong to. Returns a
        map with original cluster identifier to a set of vertices that make up that cluster. */
@@ -354,8 +357,8 @@ module WellConnectedness {
         return result;
       }
 
-      // If running CM, check for community structure.
-      if analysisType == "CM" {
+      // If running CM, run a clustering algorithm (Leiden) to check for community structure
+      if runClustering {
         var communities: [0..<n] int;
         var numCommunities: int(64) = 0;
         c_computeLeiden(src, dst, m, n, 1, 0.5, communities, numCommunities);
@@ -418,197 +421,20 @@ module WellConnectedness {
       return result;
     }
 
-    // /* Recursive method that processes a given set of vertices (partition), determines if it is 
-    //    well-connected, and if not splits it using Viecut. */
-    // proc wccRecursiveChecker(ref vertices, ref src, ref dst, ref mapper, 
-    //                          pId: int, depth: int): list((int,int)) throws {
-    //   var result = new list((int,int));
-    //   if src.size < 1 then return result; // Make sure no empty src arrays are passed
-
-    //   var n = mapper.size;
-    //   var m = src.size;
-
-    //   var partitionArr: [{0..<n}] int;
-    //   var cut:int;
-    //   var degreeOneVertex = checkForDegreeOne(src); // check if a vertex with degree one exists
-      
-    //   // If there is a vertex with degree one, intercept the cluster and split up into 
-    //   // partitions of size 1 and n-1.
-    //   if degreeOneVertex != -1 {
-    //     cut = 1;
-    //     for i in partitionArr.domain {
-    //       if i == degreeOneVertex then partitionArr[i] = 1;
-    //       else partitionArr[i] = 0;
-    //     }
-    //   } else cut = c_computeMinCut(partitionArr, src, dst, n, m);
-
-    //   var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-    //   if cut > criterionValue { // Cluster is well-connected
-    //     var id = newClusterId.fetchAdd(1);
-    //     for v in vertices do result.pushBack((v,id));
-        
-    //     if logLevel == LogLevel.DEBUG {
-    //       var outMsg = "Cluster " + id:string + " from parent " + pId:string + " with depth " + 
-    //                    depth:string + " and cutsize " + cut:string + " is well-connected with " + 
-    //                    vertices.size:string + " vertices";
-    //       wcLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-    //     }
-
-    //     return result;
-    //   }
-      
-    //   // Use the partition from Viecut to split the cluster into two partitions
-    //   var cluster1, cluster2 = new set(int);
-          
-    //   // Separate vertices into two partitions using the VieCut result
-    //   for (v,p) in zip(partitionArr.domain, partitionArr) {
-    //     if p == 1 then cluster1.add(mapper[v]);
-    //     else cluster2.add(mapper[v]);
-    //   }
-
-    //   // Convert src and dst to original vertex names.
-    //   for (u,v,i) in zip(src,dst,src.domain) {
-    //     src[i] = mapper[u];
-    //     dst[i] = mapper[v];
-    //   }
-            
-    //   // Process cluster1 if it meets the size threshold
-    //   if cluster1.size > postFilterMinSize {
-    //     var (c1src, c1dst, c1mapper) = getEdgeList(cluster1, src, dst);
-    //     if c1src.size > 0 {
-    //       var cluster1Result = wccRecursiveChecker(cluster1, c1src, c1dst, c1mapper, pId, depth+1);
-    //       result.pushBack(cluster1Result);
-    //     }
-    //   }
-
-    //   // Process cluster2 if it meets the size threshold
-    //   if cluster2.size > postFilterMinSize {
-    //     var (c2src, c2dst, c2mapper) = getEdgeList(cluster2, src, dst);
-    //     if c2src.size > 0 {
-    //       var cluster2Result = wccRecursiveChecker(cluster2, c2src, c2dst, c2mapper, pId, depth+1);
-    //       result.pushBack(cluster2Result);
-    //     }
-    //   }
-
-    //   return result;
-    // }
-
-    // /* Recursive method that processes a given set of vertices (partition), denotes if it is 
-    //   well-connected or not, and if not calls itself on the new generated partitions/clusters. */
-    // proc cmRecursiveChecker(ref vertices, ref src, ref dst, ref mapper,
-    //                            pId: int, depth: int): list((int,int)) throws {
-    //   var result = new list((int,int));
-    //   if src.size < 1 then return result;
-
-    //   var n = mapper.size;
-    //   var m = src.size;
-
-    //   var partitionArr: [{0..<n}] int;
-    //   var cut:int;
-    //   var degreeOneVertex = checkForDegreeOne(src); // check if a vertex with degree one exists 
-        
-    //   // If there is a vertex with degree one, intercept the cluster and split up into 
-    //   // partitions of size 1 and n-1.
-    //   if degreeOneVertex != -1 {
-    //     cut = 1;
-    //     for i in partitionArr.domain {
-    //       if i == degreeOneVertex then partitionArr[i] = 1;
-    //       else partitionArr[i] = 0;
-    //     }
-    //   } else cut = c_computeMinCut(partitionArr, src, dst, n, m);
-
-    //   var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue):int;
-    //   if cut > criterionValue { // Cluster is well-connected
-    //     var id = newClusterId.fetchAdd(1);
-    //     for v in vertices do result.pushBack((v,id));
-        
-    //     if logLevel == LogLevel.DEBUG {
-    //       var outMsg = "Cluster " + id:string + " from parent " + pId:string + " with depth " + 
-    //                    depth:string + " and cutsize " + cut:string + " is well-connected with " + 
-    //                    vertices.size:string + " vertices";
-    //       wcLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-    //     }
-
-    //     return result;
-    //   }
-
-    //   // If we're here, cluster is not well-connected
-    //   var communities: [0..<n] int;
-    //   var numCommunities: int(64) = 0;
-    //   c_computeLeiden(src, dst, m, n, 1, 0.5, communities, numCommunities);
-
-    //   // Convert communities into sets
-    //   var communityMap = new map(int, set(int));
-    //   for (vertex, community) in zip(communities.domain, communities) {
-    //     if !communityMap.contains(community) {
-    //       communityMap[community] = new set(int);
-    //     }
-    //     communityMap[community].add(mapper[vertex]);
-    //   }
-
-    //   // If Leiden finds only one community, fall back to mincut partitions
-    //   if communityMap.size <= 1 {
-    //     // Use the partition from Viecut to split the cluster into two partitions
-    //     var cluster1, cluster2 = new set(int);
-            
-    //     // Separate vertices into two partitions using the VieCut result
-    //     for (v,p) in zip(partitionArr.domain, partitionArr) {
-    //       if p == 1 then cluster1.add(mapper[v]);
-    //       else cluster2.add(mapper[v]);
-    //     }
-
-    //     // Convert src and dst to original vertex names.
-    //     for (u,v,i) in zip(src,dst,src.domain) {
-    //       src[i] = mapper[u];
-    //       dst[i] = mapper[v];
-    //     }
-              
-    //     // Process cluster1 if it meets the size threshold
-    //     if cluster1.size > postFilterMinSize {
-    //       var (c1src, c1dst, c1mapper) = getEdgeList(cluster1, src, dst);
-    //       if c1src.size > 0 {
-    //         var cluster1Result = cmRecursiveChecker(cluster1, c1src, c1dst, c1mapper, pId, depth+1);
-    //         result.pushBack(cluster1Result);
-    //       }
-    //     }
-
-    //     // Process cluster2 if it meets the size threshold
-    //     if cluster2.size > postFilterMinSize {
-    //       var (c2src, c2dst, c2mapper) = getEdgeList(cluster2, src, dst);
-    //       if c2src.size > 0 {
-    //         var cluster2Result = cmRecursiveChecker(cluster2, c2src, c2dst, c2mapper, pId, depth+1);
-    //         result.pushBack(cluster2Result);
-    //       }
-    //     }
-    //   }
-    //   else {
-    //     for community in communityMap.keys() {
-    //       ref communitySet = communityMap[community];
-    //       if communitySet.size > postFilterMinSize {
-    //         var (communitySrc, communityDst, communityMapper) = getEdgeList(communitySet,src,dst);
-    //         var communityResult = cmRecursiveChecker(communitySet,
-    //                                                  communitySrc,
-    //                                                  communityDst,
-    //                                                  communityMapper,
-    //                                                  pId,
-    //                                                  depth+1);
-    //         result.pushBack(communityResult);
-    //       }
-    //     }
-    //   }
-    //   return result;
-    // }
-
     /* Main executing function for both well-connected components and connectivity modifier. */
-    proc wellConnectednessExecutor(): int throws {
-      var outMsg = "Analyzing graph with %i vertices and %i edges with %s".format(G.n_vertices,
-                                                                                  G.n_edges,
-                                                                                  analysisType);
+    proc wellConnectednessSharedMemoryExecutor(): int throws {
+      var outMsg = "Processing graph with %i vertices and %i edges with %s".format(G.n_vertices,
+                                                                                   G.n_edges,
+                                                                                   analysisType);
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      var timer:stopwatch;
 
+      timer.start();
       var blockedClusters = readClustersFile(inputClustersFilePath);
       var originalClusters = blockedClusters[0];
-      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(), "Reading clusters finished");
+      outMsg = "Reading clusters took %r secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
 
       var newClusterIds: chpl__processorAtomicType(int) = 0;
       var newClusters = new map(int, set(int));
@@ -648,22 +474,11 @@ module WellConnectedness {
           }
         }
       }
-      outMsg = "Splitting up clusters yielded " + newClusters.size:string + " new clusters";
+      outMsg = "Splitting up clusters yielded %i new clusters".format(newClusters.size);
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-
-      // // Check all connected components and/or clusters to see if they are well-connected or not
-      // var allResults = new list((int,int), parSafe=true);
-      // forall key in newClusters.keysToArray() with (ref newClusters, ref allResults) {
-      //   ref clusterToAdd = newClusters[key];
-      //   var (src, dst, mapper) = getEdgeList(clusterToAdd);
-      //   var result = if analysisType == "WCC" then 
-      //                   wccRecursiveChecker(clusterToAdd, src, dst, mapper, 
-      //                                       newClusterIdToOriginalClusterId[key], 0)
-      //                else 
-      //                   cmRecursiveChecker(clusterToAdd, src, dst, mapper, 
-      //                                      newClusterIdToOriginalClusterId[key], 0);
-      //   allResults.pushBack(result);
-      // }
+      outMsg = "Splitting up clusters took %r secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
 
       // Check the well-connectedness of every cluster and/or connected component
       var allResults = new list((int,int), parSafe=true);
@@ -674,6 +489,9 @@ module WellConnectedness {
                                                        newClusterIdToOriginalClusterId[key], 0);
         allResults.pushBack(result);
       }
+      outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
       
       // Convert final results lists to arrays
       var finalVertices = makeDistArray(allResults.size, int);
@@ -682,22 +500,25 @@ module WellConnectedness {
         finalVertices[i] = tup[0];
         finalClusters[i] = tup[1];
       }
+      outMsg = "Converting final lists of tuples to arrays took %s secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
       
       // Write clusters to file
       writeClustersToFile(finalVertices, finalClusters);
-
-      // Get number of cluster found
-      var (values, counts) = uniqueSort(finalClusters);
-      var numClusters = values.size;
+      outMsg = "Writing clusters to file took %s secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
       
+      var numClusters = newClusterId.read();
       outMsg = "%s found %i clusters to be well-connected".format(analysisType,numClusters);
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       
       return numClusters;
-    } // end of wellConnectednessExecutor
+    } // end of wellConnectednessSharedMemoryExecutor
     
-    var numClusters = if ChplConfig.CHPL_COMM == "none" then wellConnectednessExecutor()
-                      else wellConnectednessExecutor();
+    var numClusters = if ChplConfig.CHPL_COMM == "none" then wellConnectednessSharedMemoryExecutor()
+                      else wellConnectednessSharedMemoryExecutor();
     return numClusters;
   }
 }
