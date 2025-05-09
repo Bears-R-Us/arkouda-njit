@@ -6,7 +6,7 @@ module WellConnectednessMsg {
   
   // Arachne modules.
   use GraphArray;
-  use WellConnectedness;
+  import WellConnectedness.runWellConnectedness;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -44,15 +44,14 @@ module WellConnectednessMsg {
 		var g = gEntry.graph;
 		
 		if !g.isDirected() {
-			var numClusters:int;
-      numClusters = runWellConnectedness(g, st, filePath, outputPath,
-                                         connectednessCriterion, 
-                                         connectednessCriterionMultValue, 
-                                         preFilterMinSize, postFilterMinSize,
-                                         analysisType);
+      var numClusters = runWellConnectedness(g, st, filePath, outputPath,
+                                             connectednessCriterion, 
+                                             connectednessCriterionMultValue, 
+                                             preFilterMinSize, postFilterMinSize,
+                                             analysisType);
 			return new MsgTuple(numClusters:string, MsgType.NORMAL);
 		} else {
-			var errorMsg = notImplementedError(pn, "well-connectedness for directed graphs");
+			var errorMsg = notImplementedError(pn, "%s for directed graphs".format(analysisType));
 			wcLogger.error(getModuleName(), getRoutineName(), getLineNumber(), errorMsg);
 			return new MsgTuple(errorMsg, MsgType.ERROR);
 		}
