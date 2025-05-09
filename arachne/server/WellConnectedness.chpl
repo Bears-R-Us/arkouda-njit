@@ -33,6 +33,9 @@ module WellConnectedness {
   use ArgSortMsg;
   use Unique;
 
+  // At compile-time pick distributed or shared-memory execution.
+  private param oneLocale = if ChplConfig.CHPL_COMM == "none" then true else false;
+  
   // Header and object files required for external C procedure calls
   require "viecut_helpers/computeMinCut.h",
           "viecut_helpers/computeMinCut.o",
@@ -81,15 +84,11 @@ module WellConnectedness {
                         else if connectednessCriterion == "sqrt" then sqrtCriterion
                         else if connectednessCriterion == "mult" then multCriterion
                         else log10Criterion;
-    var newClusterIdToOriginalClusterId = new map(int,int);
-    var newClusterId: atomic int = 0;
 
-    // Variables needed for distributed WCC and CM
-    var localeDom = blockDist.createDomain(0..<numLocales);
-    var finalVerticesDistributed: [localeDom][{0..<1}] list(int, parSafe=true);
-    var finalClustersDistributed: [localeDom][{0..<1}] list(int, parSafe=true);
-    var newClusterIdDistributed: [localeDom][{0..<1}] chpl__processorAtomicType(int);
-    coforall loc in Locales do on loc { newClusterIdDistributed[loc.id][0].write(1); }
+    // Distributed block domain for manually controlling replicated variables
+    var newClusterId = makeDistArray(numLocales, chpl__processorAtomicType(int));
+    forall id in newClusterId do id.write(0);
+    var clustersMap = makeDistArray(numLocales, map(int, set(int), parSafe=true));
     
     // Turn on the clustering part of well-connectedness (CM)
     var runClustering = if analysisType == "CM" then true else false;
@@ -97,8 +96,7 @@ module WellConnectedness {
     /* Reads in a tab-delimited file denoting vertices and the clusters they belong to. Returns a
        map with original cluster identifier to a set of vertices that make up that cluster. */
     proc readClustersFile(filename: string) throws {
-      var (vertices, clusters, _) = if ChplConfig.CHPL_COMM == "none" then
-                                      readTSVFileLocal(filename,false)
+      var (vertices, clusters, _) = if oneLocale then readTSVFileLocal(filename,false)
                                     else readTSVFileDistributed(filename,false);
       var civ = argsortDefault(clusters);
       var sortedClusters = clusters[civ]; // has comms in multilocale
@@ -129,7 +127,6 @@ module WellConnectedness {
       segments[0] = 0;
       segments[1..] = clusterCumulativeCounts; // has comms in multilocale
 
-      var clustersMap: [localeDom] map(int, set(int), parSafe=true);
       forall i in segments.domain {
         if i != 0 {
           var c = uniqueClusters[i-1];
@@ -139,8 +136,6 @@ module WellConnectedness {
           clustersMap[i%numLocales].add(c,s); // has comms in multilocale
         }
       }
-
-      return clustersMap;
     }
 
     /* Returns the edge list of the induced subgraph given a set of vertices. */
@@ -344,7 +339,9 @@ module WellConnectedness {
 
       var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue): int;
       if cut > criterionValue {
-        var id = newClusterId.fetchAdd(1);
+        var cid = newClusterId[here.id].fetchAdd(1);
+        var sid = "%i%i".format(here.id+1,cid);
+        var id = sid:int;
         for v in vertices do result.pushBack((v, id));
 
         if logLevel == LogLevel.DEBUG {
@@ -421,8 +418,8 @@ module WellConnectedness {
       return result;
     }
 
-    /* Main executing function for both well-connected components and connectivity modifier. */
-    proc wellConnectednessSharedMemoryExecutor(): int throws {
+    /* Shared-memory executor for well-connected components and connectivity modifier. */
+    proc wellConnectednessSharedMemoryExecutor() throws {
       var outMsg = "Processing graph with %i vertices and %i edges with %s".format(G.n_vertices,
                                                                                    G.n_edges,
                                                                                    analysisType);
@@ -430,15 +427,15 @@ module WellConnectedness {
       var timer:stopwatch;
 
       timer.start();
-      var blockedClusters = readClustersFile(inputClustersFilePath);
-      var originalClusters = blockedClusters[0];
+      readClustersFile(inputClustersFilePath);
+      var originalClusters = clustersMap[0];
       outMsg = "Reading clusters took %r secs".format(timer.elapsed());
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.restart();
 
-      var newClusterIds: chpl__processorAtomicType(int) = 0;
+      var newId = 0;
       var newClusters = new map(int, set(int));
-      
+      var newClusterIdToOriginalClusterId = new map(int,int);
       // Process original clusters and split into connected components
       for key in originalClusters.keysToArray() {
         var currCluster = originalClusters.getAndRemove(key);
@@ -459,7 +456,7 @@ module WellConnectedness {
               }
             }
             for c in tempMap.keys() {
-              var newId = newClusterIds.fetchAdd(1);
+              newId += 1;
               if tempMap[c].size > preFilterMinSize {
                 newClusters[newId] = tempMap[c];
                 newClusterIdToOriginalClusterId[newId] = key;
@@ -467,7 +464,7 @@ module WellConnectedness {
             }
           } else {
             if currCluster.size > preFilterMinSize {
-              var newId = newClusterIds.fetchAdd(1);
+              newId += 1;
               newClusters[newId] = currCluster;
               newClusterIdToOriginalClusterId[newId] = key;
             }
@@ -508,17 +505,128 @@ module WellConnectedness {
       writeClustersToFile(finalVertices, finalClusters);
       outMsg = "Writing clusters to file took %s secs".format(timer.elapsed());
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.stop();
+    } // end of wellConnectednessSharedMemoryExecutor
+
+    /* Distributed-memory executor for well-connected components and connectivity modifier. */
+    proc wellConnectednessDistributedMemoryExecutor() throws {
+      var outMsg = "Processing graph with %i vertices and %i edges with %s".format(G.n_vertices,
+                                                                                   G.n_edges,
+                                                                                   analysisType);
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      var timer:stopwatch;
+
+      timer.start();
+      readClustersFile(inputClustersFilePath);
+      outMsg = "Reading clusters took %r secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
+
+      var newClusters = makeDistArray(numLocales, map(int, set(int)));
+      var newClusterIdToOriginalClusterId = makeDistArray(numLocales, map(int,int));
+      var newClustersSize:int = 0;
+      // Process original clusters and split into connected components
+      coforall loc in Locales with (+ reduce newClustersSize) do on loc {
+        var originalClusters = clustersMap[loc.id];
+        var newClusterId = 0;
+        for key in originalClusters.keysToArray() {
+          var currCluster = originalClusters.getAndRemove(key);
+          var (src, dst, mapper) = getEdgeList(currCluster);
+          if src.size > 0 { 
+            var components = connectedComponents(src, dst, mapper.size);
+            var multipleComponents:bool = false;
+            for c in components do if c != 0 { multipleComponents = true; break; }
+            
+            if multipleComponents {
+              var tempMap = new map(int, set(int));
+              for (c,v) in zip(components,components.domain) {
+                if tempMap.contains(c) then tempMap[c].add(mapper[v]);
+                else {
+                  var s = new set(int);
+                  s.add(mapper[v]);
+                  tempMap[c] = s;
+                }
+              }
+              for c in tempMap.keys() {
+                newClusterId += 1;
+                var newIdString = "%i%i".format(loc.id+1,newClusterId);
+                var newId = newIdString:int;
+                if tempMap[c].size > preFilterMinSize {
+                  newClusters[loc.id][newId] = tempMap[c];
+                  newClusterIdToOriginalClusterId[loc.id][newId] = key;
+                }
+              }
+            } else {
+              if currCluster.size > preFilterMinSize {
+                newClusterId += 1;
+                var newIdString = "%i%i".format(loc.id+1,newClusterId);
+                var newId = newIdString:int;
+                newClusters[loc.id][newId] = currCluster;
+                newClusterIdToOriginalClusterId[loc.id][newId] = key;
+              }
+            }
+          }
+        }
+        newClustersSize += newClusterId;
+      }
+      outMsg = "Splitting up clusters yielded %i new clusters".format(newClustersSize);
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      outMsg = "Splitting up clusters took %r secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.restart();
+
+      // Check the well-connectedness of every cluster and/or connected component
+      var allResults = makeDistArray(numLocales, list((int,int), parSafe=true));
+      var allResultsSize:int = 0;
+      coforall loc in Locales with (+ reduce allResultsSize) do on loc {
+        forall key in newClusters[loc.id].keysToArray() {
+          ref clusterToAdd = newClusters[loc.id][key];
+          var (src, dst, mapper) = getEdgeList(clusterToAdd);
+          var result = wellconnectednessRecursiveChecker(clusterToAdd, src, dst, mapper, 
+                                                         newClusterIdToOriginalClusterId[loc.id][key], 
+                                                         0);
+          allResults[loc.id].pushBack(result);
+        }
+        allResultsSize += allResults[loc.id].size;
+      }
+      outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      timer.stop();
+      
+      // Convert final results lists to arrays
+      var finalVertices = makeDistArray(allResultsSize, int);
+      var finalClusters = makeDistArray(allResultsSize, int);
+      var finalArrayRanges = makeDistArray(numLocales, int);
+      finalArrayRanges[0] = allResults[0].size;
+      for i in 1..<numLocales do finalArrayRanges[i] = finalArrayRanges[i-1] + allResults[i].size;
+      coforall loc in Locales do on loc {
+        var localResult = allResults[loc.id];
+        var start = if loc.id == 0 then 0 else finalArrayRanges[loc.id-1]+1;
+        var end = finalArrayRanges[loc.id];
+        forall (tup,i) in zip(localResult, start..end) {
+          finalVertices[i] = tup[0];
+          finalClusters[i] = tup[1];
+        }
+      }
+      outMsg = "Converting final lists of tuples to arrays took %s secs".format(timer.elapsed());
+      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.restart();
       
-      var numClusters = newClusterId.read();
-      outMsg = "%s found %i clusters to be well-connected".format(analysisType,numClusters);
+      // Write clusters to file
+      writeClustersToFile(finalVertices, finalClusters);
+      outMsg = "Writing clusters to file took %s secs".format(timer.elapsed());
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      
-      return numClusters;
-    } // end of wellConnectednessSharedMemoryExecutor
+      timer.restart();
+    } // end of wellConnectednessDistributedMemoryExecutor
     
-    var numClusters = if ChplConfig.CHPL_COMM == "none" then wellConnectednessSharedMemoryExecutor()
-                      else wellConnectednessSharedMemoryExecutor();
+    if oneLocale then wellConnectednessSharedMemoryExecutor();
+    else wellConnectednessDistributedMemoryExecutor();
+
+    var numClusters = 0;
+    for n in newClusterId do numClusters += n.read();
+    var outMsg = "%s found %i clusters to be well-connected".format(analysisType,numClusters);
+    wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+
     return numClusters;
   }
 }
