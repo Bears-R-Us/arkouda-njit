@@ -72,6 +72,69 @@ module WellConnectedComponents {
       else return a(1)-b(1);
     }
   }
+///////////////////////////////////////////////////////////////////////////////////////
+
+/* Represents the community structure during Louvain algorithm execution */
+record LouvainCommunities {
+  /* Domain for vertex-based arrays */
+  var vertexDomain: domain(1);
+  
+  /* Map from vertex ID to community ID */
+  var communityMap: [vertexDomain] int;
+  
+  /* Edge weights between vertices and communities */
+  var nodeToCommunityWeights: map(int, map(int, real));
+  
+  /* Total weight of internal edges for each community */
+  var communityWeights: map(int, real);
+  
+  /* Weight of self-loops for each vertex */
+  var nodeSelfLoops: [vertexDomain] real;
+  
+  /* Sum of edge weights for each vertex */
+  var vertexWeights: [vertexDomain] real;
+  
+  /* Total weight of all edges in the graph */
+  var totalEdgeWeight: real;
+  
+  /* The number of communities */
+  var numCommunities: atomic int;
+  
+  /* Track improvements in modularity for convergence detection */
+  var lastModularity: real;
+  
+  /* Initialize a fresh community structure */
+  proc init(numVertices: int) {
+    this.vertexDomain = {0..<numVertices};
+    // Default initialize the arrays (they'll be properly populated later)
+    
+    this.nodeToCommunityWeights = new map(int, map(int, real));
+    this.communityWeights = new map(int, real);
+    
+    this.totalEdgeWeight = 0.0;
+    // Just default initialize atomic
+    // numCommunities will be default initialized
+    this.lastModularity = -1.0;
+    
+    // End phase 1 initialization
+    init this;
+    
+    // Phase 2: Now we can initialize arrays and set values
+    forall i in this.vertexDomain {
+      this.communityMap[i] = i;
+      this.nodeSelfLoops[i] = 0.0;
+      this.vertexWeights[i] = 0.0;
+    }
+    
+    // Set atomic value after initialization
+    this.numCommunities.write(numVertices);
+  }
+  
+  /* Get the number of distinct communities */
+  proc getNumCommunities(): int {
+    return this.numCommunities.read();
+  }
+}
 
   proc runWCC (g1: SegGraph, st: borrowed SymTab, 
                inputcluster_filePath: string, outputPath: string,
@@ -91,7 +154,121 @@ module WellConnectedComponents {
                             else log10Criterion;
 
     var newClusterId: atomic int = 0;
+////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
+  /*
+   * Main entry point for Louvain community detection
+   * 
+   * @param G - The input graph as a SegGraph
+   * @param outputPath - Path to write the communities to (empty for no output)
+   * @param maxPasses - Maximum number of passes through the algorithm
+   * @param minModularity - Minimum modularity improvement to continue
+   * @param resolution - Resolution parameter to control community size (default=1.0)
+   * @return - Array mapping vertices to their community IDs
+   */
+  proc runLouvain(maxPasses: int = 100, minModularity: real = 0.0001,
+                 resolution: real = 1.0): [] int throws {
+    var timer: stopwatch;
+    timer.start();
     
+    writeln("Starting Louvain community detection on graph with",g1.n_vertices," vertices and",g1.n_edges,"edges");
+    
+    // Run core algorithm
+    var communities = detectCommunities(maxPasses, minModularity, resolution);
+    
+    // Count final communities
+    var communityCounts = new map(int, int);
+    for comm in communities do
+      if communityCounts.contains(comm) then communityCounts[comm] += 1;
+      else communityCounts[comm] = 1;
+    
+    timer.stop();
+    writeln("Louvain community detection completed in", timer.elapsed(),"seconds, found", communityCounts.size, "communities");
+    
+    // Write output if requested
+    if outputPath != "" {
+      writeCommunities(communities, outputPath);
+    }
+    
+    return communities;
+  }
+
+ /*
+   * Core algorithm for detecting communities using Louvain method
+   * @return - Array mapping vertices to their community IDs
+   */
+  proc detectCommunities(maxPasses: int = 100, 
+                        minModularity: real = 0.0001,
+                        resolution: real = 1.0): [] int throws {
+   
+    // Create mapping from final to original vertices
+    var vertexMap = makeDistArray(g1.n_vertices, int);
+    forall i in vertexMap.domain do vertexMap[i] = i;
+    
+    // Create initial communities (each vertex in its own community)
+    var numVertices = g1.n_vertices;
+    var communities = new LouvainCommunities(numVertices);
+    
+    // Initialize edge weights
+    initializeWeights(communities);
+    
+    var pass = 0;
+    var improvement = true;
+    var timer: stopwatch;
+    
+    // Main Louvain algorithm
+    while (pass < maxPasses && improvement) {
+      timer.start();
+      
+      // Phase 1: Modularity optimization by moving vertices
+      var (modChange, newModularity) = localOptimization(
+          srcNodes, dstNodes, segGraph, communities, resolution);
+      
+      // Check if there's significant improvement
+      improvement = (modChange > minModularity);
+      
+      if improvement {
+        // Phase 2: Community aggregation (create a new network)
+        var (newSrc, newDst, newSeg, newMap, oldToNew) = 
+            aggregateCommunities(srcNodes, dstNodes, segGraph, communities);
+        
+        // Update vertex mapping (to track original vertices)
+        var tempMap = makeDistArray(newMap.size, int);
+        forall i in tempMap.domain do 
+          tempMap[i] = vertexMap[newMap[i]];
+        vertexMap = tempMap;
+        
+        // Set up for next iteration with the compressed graph
+        srcNodes = newSrc;
+        dstNodes = newDst;
+        segGraph = newSeg;
+        
+        // Reinitialize communities
+        communities = new LouvainCommunities(newMap.size);
+        initializeWeights(communities);
+      }
+      
+      timer.stop();
+      outMsg = "Pass %i completed in %r seconds with %i communities".format(
+                  pass, timer.elapsed(), communities.getNumCommunities());
+      louvainLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+      
+      pass += 1;
+    }
+    
+    // Map community assignments back to original vertices
+    var result = makeDistArray(G.n_vertices, int);
+    forall i in 0..<communities.communityMap.size {
+      var origVertex = vertexMap[i];
+      var finalComm = communities.communityMap[i];
+      result[origVertex] = finalComm;
+    }
+    
+    return result;
+  }
+
+//////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////
     /*
       Process file that lists clusterID with one vertex on each line to a map where each cluster
       ID is mapped to all of the vertices with that cluster ID. 
