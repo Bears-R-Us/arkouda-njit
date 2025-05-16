@@ -12,8 +12,6 @@ module WellConnectedness {
   use Search;
   use CTypes;
   use CommDiagnostics;
-  import CopyAggregation.SrcAggregator;
-  import CopyAggregation.DstAggregator;
   import ChplConfig;
 
   // Arachne modules.
@@ -89,6 +87,7 @@ module WellConnectedness {
     var newClusterId = makeDistArray(numLocales, chpl__processorAtomicType(int));
     forall id in newClusterId do id.write(0);
     var clustersMap = makeDistArray(numLocales, map(int, set(int), parSafe=true));
+    // var clustersMap = makeDistArray(numLocales, map(int, set(int)));
     
     // Turn on the clustering part of well-connectedness (CM)
     var runClustering = if analysisType == "CM" then true else false;
@@ -123,7 +122,7 @@ module WellConnectedness {
 
       var (uniqueClusters, clusterCounts) = uniqueFromSorted(keptClusters);
       var clusterCumulativeCounts = + scan clusterCounts;
-      var segments = makeDistArray(uniqueClusters.size+1, int);
+      var segments = makeDistArray(uniqueClusters.size + 1, int);
       segments[0] = 0;
       segments[1..] = clusterCumulativeCounts; // has comms in multilocale
 
@@ -136,6 +135,81 @@ module WellConnectedness {
           clustersMap[i%numLocales].add(c,s); // has comms in multilocale
         }
       }
+    }
+
+    // /*
+    //   Process file that lists clusterID with one vertex on each line to a map where each cluster
+    //   ID is mapped to all of the vertices with that cluster ID. 
+    // */
+    // proc readClustersFile(filename: string) throws {
+    //   var file = open(filename, ioMode.r);
+    //   var reader = file.reader(locking=false);
+
+    //   for line in reader.lines() {
+    //     var fields = line.split();
+    //     if fields.size >= 2 {
+    //       var originalNode = fields(0): int;
+    //       var clusterID = fields(1): int;
+    //       const (found, idx) = binarySearch(nodeMapGraphG, originalNode);
+
+    //       if found {
+    //         var mappedNode = idx;
+    //         if clustersMap[clusterID%numLocales].contains(clusterID) {
+    //           clustersMap[clusterID%numLocales][clusterID].add(mappedNode);
+    //         } else {
+    //           var s = new set(int);
+    //           s.add(mappedNode);
+    //           clustersMap[clusterID%numLocales][clusterID] = s;
+    //         }
+    //       }
+    //     }
+    //   }
+    //   reader.close();
+    //   file.close();
+    // }
+
+    /* Function to sort edge lists based on src and dst nodes */
+    proc sortEdgeList(ref src: [] int, ref dst: [] int) {
+      // Move elements of src and dst to an array of tuples.
+      var edges: [0..<src.size] (int, int);
+      for i in 0..<src.size do edges[i] = (src[i], dst[i]);
+
+      // Sort the array of tuples.
+      var TupleComp: TupleComparator;
+      sort(edges, comparator=TupleComp);
+      
+      // Split sorted edge list into two different arrays.
+      var sortedSrc: [0..<src.size] int;
+      var sortedDst: [0..<dst.size] int;
+      for i in 0..<src.size {
+        sortedSrc[i] = edges[i][0];
+        sortedDst[i] = edges[i][1];
+      }
+
+      return (sortedSrc, sortedDst);
+    }
+
+    /* Function to remove duplicate edges from sorted edge lists. */
+    proc removeMultipleEdges(ref src: [] int, ref dst: [] int) {
+      var uniqueSrc = new list(int);
+      var uniqueDst = new list(int);
+
+      if src.size == 0 then return (src, dst);
+
+      uniqueSrc.pushBack(src[0]);
+      uniqueDst.pushBack(dst[0]);
+
+      for i in 1..<src.size {
+        if src[i] != src[i-1] || dst[i] != dst[i-1] {
+          uniqueSrc.pushBack(src[i]);
+          uniqueDst.pushBack(dst[i]);
+        }
+      }
+
+      var noDupsSrc = uniqueSrc.toArray();
+      var noDupsDst = uniqueDst.toArray();
+
+      return (noDupsSrc, noDupsDst);
     }
 
     /* Returns the edge list of the induced subgraph given a set of vertices. */
@@ -199,50 +273,6 @@ module WellConnectedness {
       return (newSrc, newDst, idx2v);
     }
 
-    /* Function to sort edge lists based on src and dst nodes */
-    proc sortEdgeList(ref src: [] int, ref dst: [] int) {
-      // Move elements of src and dst to an array of tuples.
-      var edges: [0..<src.size] (int, int);
-      for i in 0..<src.size do edges[i] = (src[i], dst[i]);
-
-      // Sort the array of tuples.
-      var TupleComp: TupleComparator;
-      sort(edges, comparator=TupleComp);
-      
-      // Split sorted edge list into two different arrays.
-      var sortedSrc: [0..<src.size] int;
-      var sortedDst: [0..<dst.size] int;
-      for i in 0..<src.size {
-        sortedSrc[i] = edges[i][0];
-        sortedDst[i] = edges[i][1];
-      }
-
-      return (sortedSrc, sortedDst);
-    }
- 
-    /* Function to remove duplicate edges from sorted edge lists. */
-    proc removeMultipleEdges(ref src: [] int, ref dst: [] int) {
-      var uniqueSrc = new list(int);
-      var uniqueDst = new list(int);
-
-      if src.size == 0 then return (src, dst);
-
-      uniqueSrc.pushBack(src[0]);
-      uniqueDst.pushBack(dst[0]);
-
-      for i in 1..<src.size {
-        if src[i] != src[i-1] || dst[i] != dst[i-1] {
-          uniqueSrc.pushBack(src[i]);
-          uniqueDst.pushBack(dst[i]);
-        }
-      }
-
-      var noDupsSrc = uniqueSrc.toArray();
-      var noDupsDst = uniqueDst.toArray();
-
-      return (noDupsSrc, noDupsDst);
-    }
-
     /* Writes all clusters out to a file AFTER they are deemed well-connected. */
     proc writeClustersToFile(ref vertices, ref clusterIds) throws {
       if logLevel == LogLevel.DEBUG {
@@ -299,6 +329,88 @@ module WellConnectedness {
 
       writer.close();
       outfile.close();
+    }
+
+    /* Writes all clusters out to a file AFTER they are deemed well-connected. */
+    proc writeClustersToFile(ref allResults: [] list((int,int), parSafe=true)) throws {
+      coforall loc in Locales do on loc {
+        ref localResult = allResults[loc.id];
+        var vertices: [0..<localResult.size] int;
+        var clusterIds: [0..<localResult.size] int;
+        forall (v,c,tup) in zip(vertices,clusterIds,localResult) {
+          v = tup[0];
+          c = tup[1];
+        }
+        if logLevel == LogLevel.DEBUG {
+          var outMsg = "Performing final connected components check before writing to output file.";
+          wcLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          
+          // Group vertices by cluster ID
+          var clusterMap = new map(int, set(int));
+          for (v, c) in zip(vertices, clusterIds) {
+            if clusterMap.contains(c) {
+              clusterMap[c].add(v);
+            } else {
+              var s = new set(int);
+              s.add(v);
+              clusterMap[c] = s;
+            }
+          }
+
+          // Check each cluster for connectedness
+          var nonCCClusters = 0;
+          for c in clusterMap.keys() {
+            ref clusterVertices = clusterMap[c];
+            var (src, dst, mapper) = getEdgeList(clusterVertices);
+            
+            if src.size > 0 {
+              var components = connectedComponents(src, dst, mapper.size);
+              
+              // Check if there are multiple components
+              var hasMultipleComponents = false;
+              for comp in components do if comp != 0 { hasMultipleComponents = true; break; }
+              
+              if hasMultipleComponents {
+                var outMsg = "Cluster " + c:string + " with " + clusterVertices.size:string
+                          + " vertices is DISCONNECTED";
+                wcLogger.warn(getModuleName(),getRoutineName(),getLineNumber(),outMsg);   
+                nonCCClusters += 1;
+              }
+            }
+          }
+          if nonCCClusters > 0 {
+            var outMsg = "Found " + nonCCClusters:string + " disconnected clusters out of " 
+                      + clusterMap.size:string + " total clusters!";
+            wcLogger.warn(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          } else {
+            var outMsg = "All clusters are connected. Writing output.";
+            wcLogger.debug(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+          }
+        }
+        // Get current locale ID padded to 5 digits
+        var localeStr = "%05i".format(loc.id);
+
+        // Find the last period for file extension
+        var dotIdx = outputPath.rfind("."):int;
+        var newFilename: string;
+
+        if dotIdx >= 0 {
+          // Insert _LOCALE_XXXXX before the file extension
+          newFilename = outputPath[0..<dotIdx] + "_LOCALE_" + localeStr + outputPath[dotIdx..];
+        } else {
+          // If no extension, just append
+          newFilename = outputPath + "_LOCALE_" + localeStr;
+        }
+
+        // Open and write
+        var outfile = open(newFilename, ioMode.cw);
+        var writer = outfile.writer(locking=false);
+
+        for (v, c) in zip(vertices, clusterIds) do writer.writeln(nodeMapGraphG[v], " ", c);
+
+        writer.close();
+        outfile.close();
+      }
     }
 
     /* Given src array it returns the first vertex with degree one or -1 if not found. */
@@ -437,8 +549,7 @@ module WellConnectedness {
       var newClusters = new map(int, set(int));
       var newClusterIdToOriginalClusterId = new map(int,int);
       // Process original clusters and split into connected components
-      for key in originalClusters.keysToArray() {
-        var currCluster = originalClusters.getAndRemove(key);
+      for (key,currCluster) in zip(originalClusters.keys(),originalClusters.values()) {
         var (src, dst, mapper) = getEdgeList(currCluster);
         if src.size > 0 { 
           var components = connectedComponents(src, dst, mapper.size);
@@ -527,10 +638,9 @@ module WellConnectedness {
       var newClustersSize:int = 0;
       // Process original clusters and split into connected components
       coforall loc in Locales with (+ reduce newClustersSize) do on loc {
-        var originalClusters = clustersMap[loc.id];
+        ref originalClusters = clustersMap[loc.id];
         var newClusterId = 0;
-        for key in originalClusters.keysToArray() {
-          var currCluster = originalClusters.getAndRemove(key);
+        for (key,currCluster) in zip(originalClusters.keys(),originalClusters.values()) {
           var (src, dst, mapper) = getEdgeList(currCluster);
           if src.size > 0 { 
             var components = connectedComponents(src, dst, mapper.size);
@@ -593,27 +703,27 @@ module WellConnectedness {
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.stop();
       
-      // Convert final results lists to arrays
-      var finalVertices = makeDistArray(allResultsSize, int);
-      var finalClusters = makeDistArray(allResultsSize, int);
-      var finalArrayRanges = makeDistArray(numLocales, int);
-      finalArrayRanges[0] = allResults[0].size;
-      for i in 1..<numLocales do finalArrayRanges[i] = finalArrayRanges[i-1] + allResults[i].size;
-      coforall loc in Locales do on loc {
-        var localResult = allResults[loc.id];
-        var start = if loc.id == 0 then 0 else finalArrayRanges[loc.id-1]+1;
-        var end = finalArrayRanges[loc.id];
-        forall (tup,i) in zip(localResult, start..end) {
-          finalVertices[i] = tup[0];
-          finalClusters[i] = tup[1];
-        }
-      }
-      outMsg = "Converting final lists of tuples to arrays took %s secs".format(timer.elapsed());
-      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      timer.restart();
+      // // Convert final results lists to arrays
+      // var finalVertices = makeDistArray(allResultsSize, int);
+      // var finalClusters = makeDistArray(allResultsSize, int);
+      // var finalArrayRanges = makeDistArray(numLocales, int);
+      // finalArrayRanges[0] = allResults[0].size;
+      // for i in 1..<numLocales do finalArrayRanges[i] = finalArrayRanges[i-1] + allResults[i].size;
+      // coforall loc in Locales do on loc {
+      //   var localResult = allResults[loc.id];
+      //   var start = if loc.id == 0 then 0 else finalArrayRanges[loc.id-1]+1;
+      //   var end = finalArrayRanges[loc.id];
+      //   forall (tup,i) in zip(localResult, start..end) {
+      //     finalVertices[i] = tup[0];
+      //     finalClusters[i] = tup[1];
+      //   }
+      // }
+      // outMsg = "Converting final lists of tuples to arrays took %s secs".format(timer.elapsed());
+      // wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
+      // timer.restart();
       
       // Write clusters to file
-      writeClustersToFile(finalVertices, finalClusters);
+      writeClustersToFile(allResults);
       outMsg = "Writing clusters to file took %s secs".format(timer.elapsed());
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.restart();

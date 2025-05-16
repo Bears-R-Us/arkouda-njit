@@ -8,6 +8,8 @@ To install the prerequisites below, the following libraries must be installed on
 3. OpenMPI GNU 4.1.4 (needed by CMake)
 4. Anaconda 2023.09-0
 5. `jq` 1.6 [command-line JSON processor](https://jqlang.github.io/jq/).
+6. `intel` oneAPI compiler 2023b.
+7. `imkl` Intel oneAPI Math Kernel library 2023.2.0.
 
 ### Prerequisite Installation Steps
 We recommend following the installation instructions provided by the Arkouda development team. Most specifically, follow the [Prerequisites](https://github.com/Bears-R-Us/arkouda?tab=readme-ov-file#prerequisites-toc) section in its entirety, and only the [Dependency Configuration](https://github.com/Bears-R-Us/arkouda/blob/master/pydoc/setup/BUILD.md#building-the-server) section of the build instructions. The installation steps usually involve the following:

@@ -1,8 +1,5 @@
 #!/bin/bash
 
-module load intel
-module load imkl
-
 ROOT_DIR=$PWD
 export LD_LIBRARY_PATH=$ROOT_DIR/arachne/server/external_libs/install/lib64:$LD_LIBRARY_PATH
 export LIBRARY_PATH=$ROOT_DIR/arachne/server/external_libs/install/lib64:$LIBRARY_PATH
