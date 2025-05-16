@@ -10,6 +10,8 @@ In general, the prerequisite setup process should be straightforward for users f
 3. [OpenMPI](https://www.open-mpi.org) (GNU) 4.1.4  
 4. [Anaconda](https://www.anaconda.com) 2023.09-0  
 5. [jq](https://stedolan.github.io/jq) 1.6, a command-line JSON processor
+6. [intel](https://www.intel.com/content/www/us/en/developer/videos/intel-oneapi-2023-release-preview.html#gs.lroz2j) 2023b oneAPI compiler
+7. [imkl](https://www.intel.com/content/www/us/en/developer/tools/oneapi/onemkl.html) Intel oneAPI Math Kernel Library 2023.2.0
 
 These prerequisites are common for software built from source.  [GCC](https://gcc.gnu.org) provides compilers for C and C++ code.  [CMake](https://cmake.org) is a build system generator that facilitates the compilation process.  [OpenMPI](https://www.open-mpi.org) is used by CMake to enable parallel compilation tasks.  [Anaconda](https://www.anaconda.com) serves as the Python environment manager and also installs key dependencies for Arachne and Arkouda, including [ZeroMQ](https://zeromq.org).  Finally, [jq](https://stedolan.github.io/jq) is employed during the build process of the [VieCut](https://github.com/VieCut/VieCut) library to construct a logging component required by Arachne’s well-connectedness routines.
 

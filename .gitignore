@@ -9,6 +9,8 @@ arachne/server/external_libs/install/*
 # Outputs.
 arachne/output/*
 !arachne/output/README.md
+arachne/benchmarks/output/*
+arachne/benchmarks/scripts/output/*
 
 # C++ pbject files.
 *.o

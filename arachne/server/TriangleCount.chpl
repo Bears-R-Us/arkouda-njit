@@ -32,7 +32,7 @@ module TriangleCount {
                 var nextEnd = seg[s+1] - 1;
                 if (ds > 0) {
                     ref neighborhood = dst[nextStart..nextEnd];
-                    for w in neighborhood { // get every neighbor of s
+                    forall w in neighborhood with (+ reduce triCount) { // get every neighbor of s
                         var edge:int;
                         if (l != w && s != w) { // don't process l itself in neighbors of s
                             var dw = seg[w+1] - seg[w];
@@ -68,7 +68,7 @@ module TriangleCount {
                 var nextEnd = seg[s+1] - 1;
                 if (ds > 0) {
                     ref neighborhood = dst[nextStart..nextEnd];
-                    for w in neighborhood { // get every neighbor of s
+                    forall w in neighborhood with (+ reduce triCount) { // get every neighbor of s
                         var edge:int;
                         if (l != w && s != w) { // don't process l itself in neighbors of s
                             var dw = seg[w+1] - seg[w];
