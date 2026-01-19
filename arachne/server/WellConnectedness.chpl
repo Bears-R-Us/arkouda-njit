@@ -33,7 +33,7 @@ module WellConnectedness {
 
   // At compile-time pick distributed or shared-memory execution.
   private param oneLocale = if ChplConfig.CHPL_COMM == "none" then true else false;
-  
+  // private param oneLocale = true;
   // Header and object files required for external C procedure calls
   require "viecut_helpers/computeMinCut.h",
           "viecut_helpers/computeMinCut.o",
@@ -92,6 +92,7 @@ module WellConnectedness {
     // Turn on the clustering part of well-connectedness (CM)
     var runClustering = if analysisType == "CM" then true else false;
 
+
     /* Reads in a tab-delimited file denoting vertices and the clusters they belong to. Returns a
        map with original cluster identifier to a set of vertices that make up that cluster. */
     proc readClustersFile(filename: string) throws {
@@ -126,13 +127,17 @@ module WellConnectedness {
       segments[0] = 0;
       segments[1..] = clusterCumulativeCounts; // has comms in multilocale
 
+      
       forall i in segments.domain {
         if i != 0 {
           var c = uniqueClusters[i-1];
           var vInC = keptInternalVertices[segments[i-1]..<segments[i]]; // has comms in multilocale
           var s = new set(int);
           for v in vInC do s.add(v);
-          clustersMap[i%numLocales].add(c,s); // has comms in multilocale
+          on Locales[i%numLocales] {
+            clustersMap[i%numLocales].add(c, s);  // ✓ Now executing ON locale 1
+          }
+          // clustersMap[i%numLocales].add(c,s); // has comms in multilocale
         }
       }
     }
@@ -429,9 +434,9 @@ module WellConnectedness {
     }
 
     /* Recursive function that checks the well-connectedness of each passed cluster. Can execute
-       both WCC and CM steps. */
+      both WCC and CM steps using the UIUC approach. */
     proc wellconnectednessRecursiveChecker(ref vertices, ref src, ref dst, ref mapper, 
-                                           pId: int, depth: int): list((int,int)) throws {
+                                          pId: int, depth: int): list((int,int)) throws {
       var result = new list((int,int));
       if src.size < 1 then return result;
 
@@ -450,6 +455,8 @@ module WellConnectedness {
       } else cut = c_computeMinCut(partitionArr, src, dst, n, m);
 
       var criterionValue = criterionFunction(vertices.size, connectednessCriterionMultValue): int;
+      
+      // STEP 1: If well-connected, return cluster as-is
       if cut > criterionValue {
         var cid = newClusterId[here.id].fetchAdd(1);
         var sid = "%i%i".format(here.id+1,cid);
@@ -465,65 +472,237 @@ module WellConnectedness {
 
         return result;
       }
+      // writeln("from parent: ", pId," vertices:", vertices.size, "is not well connected");
 
-      // If running CM, run a clustering algorithm (Leiden) to check for community structure
-      if runClustering {
-        var communities: [0..<n] int;
-        var numCommunities: int(64) = 0;
-        c_computeLeiden(src, dst, m, n, 1, 0.5, communities, numCommunities);
-
-        var communityMap = new map(int, set(int));
-        for (vertex, community) in zip(communities.domain, communities) {
-          if !communityMap.contains(community) {
-            communityMap[community] = new set(int);
-          }
-          communityMap[community].add(mapper[vertex]);
-        }
-
-        // If Leiden finds multiple communities, recurse on each
-        if communityMap.size > 1 {
-          for community in communityMap.keys() {
-            ref communitySet = communityMap[community];
-            if communitySet.size > postFilterMinSize {
-              var (communitySrc, communityDst, communityMapper) = getEdgeList(communitySet, src, dst);
-              var communityResult = wellconnectednessRecursiveChecker(communitySet, communitySrc, 
-                                                                      communityDst, communityMapper, 
-                                                                      pId, depth+1);
-              result.pushBack(communityResult);
-            }
-          }
-          return result; // Do not run the default VieCut partitioning
-        }
-      }
-
-      // If WCC gets here or if CM finds only one Leiden community, then default to VieCut
-      // partitioning
+      // STEP 2: If NOT well-connected, ALWAYS do min-cut first to split into two parts
       var cluster1, cluster2 = new set(int);
       for (v, p) in zip(partitionArr.domain, partitionArr) {
         if p == 1 then cluster1.add(mapper[v]);
         else cluster2.add(mapper[v]);
       }
 
+      // Map src and dst back to original vertex IDs for getEdgeList calls
       for (u, v, i) in zip(src, dst, src.domain) {
         src[i] = mapper[u];
         dst[i] = mapper[v];
       }
 
+      // STEP 3: Process each part (cluster1 and cluster2)
+      
+      // Process cluster1
       if cluster1.size > postFilterMinSize {
         var (c1src, c1dst, c1mapper) = getEdgeList(cluster1, src, dst);
         if c1src.size > 0 {
-          var cluster1Result = wellconnectednessRecursiveChecker(cluster1, c1src, c1dst, c1mapper,
-                                                                 pId, depth+1);
-          result.pushBack(cluster1Result);
+          if runClustering {
+            // CM mode: Apply Leiden clustering to cluster1, then check connectivity of each community
+            var n1 = c1mapper.size;
+            var m1 = c1src.size;
+            var communities1: [0..<n1] int;
+            var numCommunities1: int(64) = 0;
+            c_computeLeiden(c1src, c1dst, m1, n1, 1, 0.5, communities1, numCommunities1);
+
+            var communityMap1 = new map(int, set(int));
+            for (vertex, community) in zip(communities1.domain, communities1) {
+              if !communityMap1.contains(community) {
+                communityMap1[community] = new set(int);
+              }
+              communityMap1[community].add(c1mapper[vertex]);
+            }
+
+            // Check each community for connectivity and split if needed
+            if communityMap1.size > 1 {
+              for community in communityMap1.keys() {
+                ref communitySet = communityMap1[community];
+                if communitySet.size > postFilterMinSize {
+                  var (communitySrc, communityDst, communityMapper) = getEdgeList(communitySet, c1src, c1dst);
+                  
+                  if communitySrc.size > 0 {
+                    // Check if this community is connected
+                    var components = connectedComponents(communitySrc, communityDst, communityMapper.size);
+                    var multipleComponents:bool = false;
+                    for c in components do if c != 0 { multipleComponents = true; break; }
+                    
+                    if multipleComponents {
+                      // Split disconnected community into connected components
+                      var tempMap = new map(int, set(int));
+                      for (c,v) in zip(components,components.domain) {
+                        if tempMap.contains(c) then tempMap[c].add(communityMapper[v]);
+                        else {
+                          var s = new set(int);
+                          s.add(communityMapper[v]);
+                          tempMap[c] = s;
+                        }
+                      }
+                      // Recurse on each connected component
+                      for c in tempMap.keys() {
+                        if tempMap[c].size > postFilterMinSize {
+                          var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], communitySrc, communityDst);
+                          var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
+                                                                                  compDst, compMapper, 
+                                                                                  pId, depth+1);
+                          result.pushBack(componentResult);
+                        }
+                      }
+                    } else {
+                      // Single connected component - recurse as normal
+                      var communityResult = wellconnectednessRecursiveChecker(communitySet, communitySrc, 
+                                                                              communityDst, communityMapper, 
+                                                                              pId, depth+1);
+                      result.pushBack(communityResult);
+                    }
+                  }
+                }
+              }
+            } else {
+              // If Leiden finds only 1 community, still check connectivity for maximum robustness
+              if c1src.size > 0 {
+                var components = connectedComponents(c1src, c1dst, c1mapper.size);
+                var multipleComponents:bool = false;
+                for c in components do if c != 0 { multipleComponents = true; break; }
+                
+                if multipleComponents {
+                  // Split into connected components
+                  var tempMap = new map(int, set(int));
+                  for (c,v) in zip(components,components.domain) {
+                    if tempMap.contains(c) then tempMap[c].add(c1mapper[v]);
+                    else {
+                      var s = new set(int);
+                      s.add(c1mapper[v]);
+                      tempMap[c] = s;
+                    }
+                  }
+                  for c in tempMap.keys() {
+                    if tempMap[c].size > postFilterMinSize {
+                      var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], c1src, c1dst);
+                      var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
+                                                                              compDst, compMapper, 
+                                                                              pId, depth+1);
+                      result.pushBack(componentResult);
+                    }
+                  }
+                } else {
+                  // Single connected component - recurse normally
+                  var cluster1Result = wellconnectednessRecursiveChecker(cluster1, c1src, c1dst, c1mapper,
+                                                                        pId, depth+1);
+                  result.pushBack(cluster1Result);
+                }
+              }
+            }
+          } else {
+            // WCC mode: Just recurse directly on cluster1
+            var cluster1Result = wellconnectednessRecursiveChecker(cluster1, c1src, c1dst, c1mapper,
+                                                                  pId, depth+1);
+            result.pushBack(cluster1Result);
+          }
         }
       }
 
+      // Process cluster2
       if cluster2.size > postFilterMinSize {
         var (c2src, c2dst, c2mapper) = getEdgeList(cluster2, src, dst);
         if c2src.size > 0 {
-          var cluster2Result = wellconnectednessRecursiveChecker(cluster2, c2src, c2dst, c2mapper,
-                                                                 pId,depth+1);
-          result.pushBack(cluster2Result);
+          if runClustering {
+            // CM mode: Apply Leiden clustering to cluster2, then check connectivity of each community
+            var n2 = c2mapper.size;
+            var m2 = c2src.size;
+            var communities2: [0..<n2] int;
+            var numCommunities2: int(64) = 0;
+            c_computeLeiden(c2src, c2dst, m2, n2, 1, 0.5, communities2, numCommunities2);
+
+            var communityMap2 = new map(int, set(int));
+            for (vertex, community) in zip(communities2.domain, communities2) {
+              if !communityMap2.contains(community) {
+                communityMap2[community] = new set(int);
+              }
+              communityMap2[community].add(c2mapper[vertex]);
+            }
+
+            // Check each community for connectivity and split if needed
+            if communityMap2.size > 1 {
+              for community in communityMap2.keys() {
+                ref communitySet = communityMap2[community];
+                if communitySet.size > postFilterMinSize {
+                  var (communitySrc, communityDst, communityMapper) = getEdgeList(communitySet, c2src, c2dst);
+                  
+                  if communitySrc.size > 0 {
+                    // Check if this community is connected
+                    var components = connectedComponents(communitySrc, communityDst, communityMapper.size);
+                    var multipleComponents:bool = false;
+                    for c in components do if c != 0 { multipleComponents = true; break; }
+                    
+                    if multipleComponents {
+                      // Split disconnected community into connected components
+                      var tempMap = new map(int, set(int));
+                      for (c,v) in zip(components,components.domain) {
+                        if tempMap.contains(c) then tempMap[c].add(communityMapper[v]);
+                        else {
+                          var s = new set(int);
+                          s.add(communityMapper[v]);
+                          tempMap[c] = s;
+                        }
+                      }
+                      // Recurse on each connected component
+                      for c in tempMap.keys() {
+                        if tempMap[c].size > postFilterMinSize {
+                          var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], communitySrc, communityDst);
+                          var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
+                                                                                  compDst, compMapper, 
+                                                                                  pId, depth+1);
+                          result.pushBack(componentResult);
+                        }
+                      }
+                    } else {
+                      // Single connected component - recurse as normal
+                      var communityResult = wellconnectednessRecursiveChecker(communitySet, communitySrc, 
+                                                                              communityDst, communityMapper, 
+                                                                              pId, depth+1);
+                      result.pushBack(communityResult);
+                    }
+                  }
+                }
+              }
+            } else {
+              // If Leiden finds only 1 community, check its connectivity and recurse
+              var (communitySrc, communityDst, communityMapper) = getEdgeList(cluster2, c2src, c2dst);
+              
+              if communitySrc.size > 0 {
+                var components = connectedComponents(communitySrc, communityDst, communityMapper.size);
+                var multipleComponents:bool = false;
+                for c in components do if c != 0 { multipleComponents = true; break; }
+                
+                if multipleComponents {
+                  // Split into connected components
+                  var tempMap = new map(int, set(int));
+                  for (c,v) in zip(components,components.domain) {
+                    if tempMap.contains(c) then tempMap[c].add(communityMapper[v]);
+                    else {
+                      var s = new set(int);
+                      s.add(communityMapper[v]);
+                      tempMap[c] = s;
+                    }
+                  }
+                  for c in tempMap.keys() {
+                    if tempMap[c].size > postFilterMinSize {
+                      var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], communitySrc, communityDst);
+                      var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
+                                                                              compDst, compMapper, 
+                                                                              pId, depth+1);
+                      result.pushBack(componentResult);
+                    }
+                  }
+                } else {
+                  var cluster2Result = wellconnectednessRecursiveChecker(cluster2, c2src, c2dst, c2mapper,
+                                                                        pId, depth+1);
+                  result.pushBack(cluster2Result);
+                }
+              }
+            }
+          } else {
+            // WCC mode: Just recurse directly on cluster2
+            var cluster2Result = wellconnectednessRecursiveChecker(cluster2, c2src, c2dst, c2mapper,
+                                                                  pId, depth+1);
+            result.pushBack(cluster2Result);
+          }
         }
       }
 
@@ -643,10 +822,10 @@ module WellConnectedness {
         for (key,currCluster) in zip(originalClusters.keys(),originalClusters.values()) {
           var (src, dst, mapper) = getEdgeList(currCluster);
           if src.size > 0 { 
-            var components = connectedComponents(src, dst, mapper.size);
+            var components = connectedComponentsLocal(src, dst, mapper.size);
             var multipleComponents:bool = false;
             for c in components do if c != 0 { multipleComponents = true; break; }
-            
+
             if multipleComponents {
               var tempMap = new map(int, set(int));
               for (c,v) in zip(components,components.domain) {
