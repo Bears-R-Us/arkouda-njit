@@ -38,6 +38,7 @@ module WellConnectednessMsg {
 		var preFilterMinSize = msgArgs.getValueOf("PreFilterMinSize"):int;
 		var postFilterMinSize = msgArgs.getValueOf("PostFilterMinSize"):int;
     var analysisType = msgArgs.getValueOf("AnalysisType");
+    var maxRecursionDepth = msgArgs.getValueOf("MaxRecursionDepth"):int;
 
 		// Pull out our graph from the symbol table.
 		var gEntry: borrowed GraphSymEntry = getGraphSymEntry(graphEntryName, st); 
@@ -48,7 +49,7 @@ module WellConnectednessMsg {
                                              connectednessCriterion, 
                                              connectednessCriterionMultValue, 
                                              preFilterMinSize, postFilterMinSize,
-                                             analysisType);
+                                             analysisType, maxRecursionDepth);
 			return new MsgTuple(numClusters:string, MsgType.NORMAL);
 		} else {
 			var errorMsg = notImplementedError(pn, "%s for directed graphs".format(analysisType));

@@ -613,13 +613,22 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
     
     return int(rep_msg)
 
+# @typechecked
+# def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,
+#                               output_filename: str = None,
+#                               connectedness_criterion: Literal["log10", "log2",
+#                                                                "sqrt", "mult"] = "log10",
+#                               connectedness_criterion_mult_value: float = None,
+#                               pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
 @typechecked
 def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,
                               output_filename: str = None,
                               connectedness_criterion: Literal["log10", "log2",
                                                                "sqrt", "mult"] = "log10",
                               connectedness_criterion_mult_value: float = None,
-                              pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
+                              pre_filter_min_size: int = 10, post_filter_min_size: int = 10,
+                              max_recursion_depth: int = 10000) -> int:
+
     """
     Executes parallel well-connected components on a given graph and its clustering. Each induced
     cluster subgraph is checked for multiple connected components. If it is composed of more
@@ -660,6 +669,9 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
         The minimum size of each cluster after the connectedness criterion is established to be
         unsatisfactory and the cluster is partitioned. The cluster sizes kept are strictly greater
         than `post_filter_min_size`. Defaults to 10.
+    max_recursion_depth : int
+        Maximum depth of recursion for well-connectedness checking. Prevents stack overflow.
+        Higher values allow more splitting but may crash. Defaults to 10000.
 
     Returns
     -------
@@ -706,14 +718,15 @@ def well_connected_components(graph: Graph, file_path: str, output_folder_path: 
     connectedness_criterion_mult_value = 0.0
 
     cmd = "wellConnectedness"
-    args = { "GraphName":graph.name,
+    args = { "GraphName": graph.name,
              "FilePath": file_path,
              "OutputPath": output_path,
              "ConnectednessCriterion": connectedness_criterion,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
              "PostFilterMinSize": post_filter_min_size,
-             "AnalysisType": "WCC"}
+             "AnalysisType": "WCC",
+             "MaxRecursionDepth": max_recursion_depth}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 
@@ -730,7 +743,8 @@ def connectivity_modifier(graph: Graph, file_path: str, output_folder_path: str,
                           connectedness_criterion: Literal["log10", "log2",
                                                            "sqrt", "mult"] = "log10",
                           connectedness_criterion_mult_value: float = None,
-                          pre_filter_min_size: int = 10, post_filter_min_size: int = 10) -> int:
+                          pre_filter_min_size: int = 10, post_filter_min_size: int = 10,
+                          max_recursion_depth: int = 10000) -> int:
     """
     Executes parallel connectivity modifier on a given graph and its clustering. Each induced
     cluster subgraph is checked for multiple connected components. If it is composed of more
@@ -771,6 +785,9 @@ def connectivity_modifier(graph: Graph, file_path: str, output_folder_path: str,
         The minimum size of each cluster after the connectedness criterion is established to be
         unsatisfactory and the cluster is partitioned. The cluster sizes kept are strictly greater
         than `post_filter_min_size`. Defaults to 10.
+    max_recursion_depth : int
+        Maximum depth of recursion for well-connectedness checking. Prevents stack overflow.
+        Higher values allow more splitting but may crash. Defaults to 10000.
 
     Returns
     -------
@@ -824,7 +841,8 @@ def connectivity_modifier(graph: Graph, file_path: str, output_folder_path: str,
              "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
              "PreFilterMinSize": pre_filter_min_size,
              "PostFilterMinSize": post_filter_min_size,
-             "AnalysisType": "CM"}
+             "AnalysisType": "CM",
+             "MaxRecursionDepth": max_recursion_depth}
     rep_msg = generic_msg(cmd=cmd, args=args)
     print("Cluster files written to: ", output_path)
 
