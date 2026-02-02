@@ -1,5 +1,7 @@
 module WellConnectedness {
   // Chapel modules.
+  use ReplicatedDist;
+  use CopyAggregation;
   use Reflection;
   use Map;
   use List;
@@ -33,7 +35,7 @@ module WellConnectedness {
 
   // At compile-time pick distributed or shared-memory execution.
   private param oneLocale = if ChplConfig.CHPL_COMM == "none" then true else false;
-  // private param oneLocale = true;
+
   // Header and object files required for external C procedure calls
   require "viecut_helpers/computeMinCut.h",
           "viecut_helpers/computeMinCut.o",
@@ -69,12 +71,61 @@ module WellConnectedness {
                             inputClustersFilePath: string, outputPath: string,
                             connectednessCriterion: string, connectednessCriterionMultValue: real,
                             preFilterMinSize: int, postFilterMinSize: int,
-                            analysisType: string): int throws {
-    // Extract graph structural data, can be distributed or not depending on the type of array a is
-    var srcNodesG = toSymEntry(G.getComp("SRC_SDI"), int).a;
-    var dstNodesG = toSymEntry(G.getComp("DST_SDI"), int).a;
-    var segGraphG = toSymEntry(G.getComp("SEGMENTS_SDI"), int).a;
-    var nodeMapGraphG = toSymEntry(G.getComp("VERTEX_MAP_SDI"), int).a;
+                            analysisType: string, maxDepth: int): int throws {
+    // Maximum allowed recursion depth to prevent unbounded recursion
+    const MAX_RECURSION_DEPTH = maxDepth;
+
+    // Extract graph structural data as distributed arrays
+    var srcNodesG_dist = toSymEntry(G.getComp("SRC_SDI"), int).a;
+    var dstNodesG_dist = toSymEntry(G.getComp("DST_SDI"), int).a;
+    var segGraphG_dist = toSymEntry(G.getComp("SEGMENTS_SDI"), int).a;
+    var nodeMapGraphG_dist = toSymEntry(G.getComp("VERTEX_MAP_SDI"), int).a;
+
+    // Gather global sizes of distributed graph components
+    const srcCount     = srcNodesG_dist.size;
+    const segCount     = segGraphG_dist.size;
+    const nodeMapCount = nodeMapGraphG_dist.size;
+
+    // Define replicated domains so each locale holds the full index space
+    const repSrcDom     = {0..<srcCount}     dmapped new replicatedDist();
+    const repSegDom     = {0..<segCount}     dmapped new replicatedDist();
+    const repNodeMapDom = {0..<nodeMapCount} dmapped new replicatedDist();
+
+    // Fully replicated graph arrays (local copy on every locale)
+    var srcNodesG     : [repSrcDom]     int;
+    var dstNodesG     : [repSrcDom]     int;
+    var segGraphG     : [repSegDom]     int;
+    var nodeMapGraphG : [repNodeMapDom] int;
+
+
+    // STEP 1: Build full arrays on Locale 0 ONLY
+    // Use SrcAggregator to batch remote GETs for indices not local to locale 0.
+    on Locales[0] {
+        forall i in repSrcDom
+            with (var srcAgg = new SrcAggregator(int),
+                  var dstAgg = new SrcAggregator(int)) {
+            srcAgg.copy(srcNodesG[i], srcNodesG_dist[i]);
+            dstAgg.copy(dstNodesG[i], dstNodesG_dist[i]);
+        }
+        forall i in repSegDom
+            with (var agg = new SrcAggregator(int)) {
+            agg.copy(segGraphG[i], segGraphG_dist[i]);
+        }
+        forall i in repNodeMapDom
+            with (var agg = new SrcAggregator(int)) {
+            agg.copy(nodeMapGraphG[i], nodeMapGraphG_dist[i]);
+        }
+    }
+
+    // STEP 2: Broadcast locale 0 replicand to ALL locales
+    coforall loc in Locales do on loc {
+      if here.id != 0 {
+        srcNodesG.replicand(here) = srcNodesG.replicand(Locales[0]);
+        dstNodesG.replicand(here) = dstNodesG.replicand(Locales[0]);
+        segGraphG.replicand(here) = segGraphG.replicand(Locales[0]);
+        nodeMapGraphG.replicand(here) = nodeMapGraphG.replicand(Locales[0]);
+      }
+    }
 
     // Variables needed for WCC or CM regardless if they are distributed or not
     var criterionFunction = if connectednessCriterion == "log10" then log10Criterion
@@ -86,92 +137,49 @@ module WellConnectedness {
     // Distributed block domain for manually controlling replicated variables
     var newClusterId = makeDistArray(numLocales, chpl__processorAtomicType(int));
     forall id in newClusterId do id.write(0);
-    var clustersMap = makeDistArray(numLocales, map(int, set(int), parSafe=true));
+    var clustersMap = makeDistArray(numLocales, map(int, set(int)));
     // var clustersMap = makeDistArray(numLocales, map(int, set(int)));
     
     // Turn on the clustering part of well-connectedness (CM)
     var runClustering = if analysisType == "CM" then true else false;
 
 
-    /* Reads in a tab-delimited file denoting vertices and the clusters they belong to. Returns a
-       map with original cluster identifier to a set of vertices that make up that cluster. */
+    /* Reads in a tab-delimited file denoting vertices and the clusters they belong to.
+       Each locale reads the file independently and only keeps clusters assigned to it
+       via round-robin (clusterID % numLocales == here.id). Uses the local replica of
+       nodeMapGraphG for binary search — no cross-locale communication needed. */
     proc readClustersFile(filename: string) throws {
-      var (vertices, clusters, _) = if oneLocale then readTSVFileLocal(filename,false)
-                                    else readTSVFileDistributed(filename,false);
-      var civ = argsortDefault(clusters);
-      var sortedClusters = clusters[civ]; // has comms in multilocale
-      var sortedVertices = vertices[civ]; // has comms in multilocale
+      coforall loc in Locales do on loc {
+        const myId = here.id;
+        var localNodeMap: [{0..<nodeMapGraphG.size}] int;
+        localNodeMap = nodeMapGraphG;
 
-      var existingVertices = makeDistArray(vertices.size, bool);
-      var internalVertices = makeDistArray(vertices.size, int);
-      forall (v,i) in zip(sortedVertices,sortedVertices.domain) 
-      with (ref existingVertices, ref internalVertices) {
-        const(found,idx) = binarySearch(nodeMapGraphG, v); // has comms in multilocale
-        if found {
-          existingVertices[i] = true;
-          internalVertices[i] = idx;
-        }
-      }
-      var eviv = + scan existingVertices;
-      var pop = eviv[eviv.size-1];
-      var iv = makeDistArray(pop, int);
-      forall i in existingVertices.domain with (ref iv) do
-        if existingVertices[i] then iv[eviv[i]-1] = i; // has comms in multilocale
+        var file = open(filename, ioMode.r);
+        var reader = file.reader(locking=false);
+        var originalNode, clusterID: int;
 
-      var keptClusters = sortedClusters[iv]; // has comms in multilocale
-      var keptInternalVertices = internalVertices[iv]; // has comms in multilocale
+        while reader.read(originalNode, clusterID) {
+          // Ownership check
+          if (clusterID % numLocales) != myId then continue;
+          
+          const (found, idx) = binarySearch(localNodeMap, originalNode);
+          if !found then
+            continue;
 
-      var (uniqueClusters, clusterCounts) = uniqueFromSorted(keptClusters);
-      var clusterCumulativeCounts = + scan clusterCounts;
-      var segments = makeDistArray(uniqueClusters.size + 1, int);
-      segments[0] = 0;
-      segments[1..] = clusterCumulativeCounts; // has comms in multilocale
-
-      
-      forall i in segments.domain {
-        if i != 0 {
-          var c = uniqueClusters[i-1];
-          var vInC = keptInternalVertices[segments[i-1]..<segments[i]]; // has comms in multilocale
-          var s = new set(int);
-          for v in vInC do s.add(v);
-          on Locales[i%numLocales] {
-            clustersMap[i%numLocales].add(c, s);  // ✓ Now executing ON locale 1
+          // Insert into local cluster map
+          if clustersMap[myId].contains(clusterID) {
+            ref s = clustersMap[myId][clusterID];
+            s.add(idx);
+          } else {
+            var s = new set(int);
+            s.add(idx);
+            clustersMap[myId].add(clusterID, s);
           }
-          // clustersMap[i%numLocales].add(c,s); // has comms in multilocale
         }
+        reader.close();
+        file.close();
       }
-    }
-
-    // /*
-    //   Process file that lists clusterID with one vertex on each line to a map where each cluster
-    //   ID is mapped to all of the vertices with that cluster ID. 
-    // */
-    // proc readClustersFile(filename: string) throws {
-    //   var file = open(filename, ioMode.r);
-    //   var reader = file.reader(locking=false);
-
-    //   for line in reader.lines() {
-    //     var fields = line.split();
-    //     if fields.size >= 2 {
-    //       var originalNode = fields(0): int;
-    //       var clusterID = fields(1): int;
-    //       const (found, idx) = binarySearch(nodeMapGraphG, originalNode);
-
-    //       if found {
-    //         var mappedNode = idx;
-    //         if clustersMap[clusterID%numLocales].contains(clusterID) {
-    //           clustersMap[clusterID%numLocales][clusterID].add(mappedNode);
-    //         } else {
-    //           var s = new set(int);
-    //           s.add(mappedNode);
-    //           clustersMap[clusterID%numLocales][clusterID] = s;
-    //         }
-    //       }
-    //     }
-    //   }
-    //   reader.close();
-    //   file.close();
-    // }
+    }       
 
     /* Function to sort edge lists based on src and dst nodes */
     proc sortEdgeList(ref src: [] int, ref dst: [] int) {
@@ -218,7 +226,8 @@ module WellConnectedness {
     }
 
     /* Returns the edge list of the induced subgraph given a set of vertices. */
-    proc getEdgeList(ref vertices: set(int)) throws {
+    proc getEdgeList(ref vertices: set(int), ref srcNodes: [] int, 
+                    ref dstNodes: [] int, ref segGraph: [] int) throws {
       var srcList = new list(int);
       var dstList = new list(int);
 
@@ -229,16 +238,19 @@ module WellConnectedness {
       for (v,idx) in zip(idx2v, idx2v.domain) do v2idx[v] = idx;
 
       // Gather the edges of the subgraph induced by the given vertices.
+      // OPTIMIZED: Use explicit indices instead of range slicing
       for u in vertices {
-        const ref neighbors = dstNodesG[segGraphG[u]..<segGraphG[u+1]];
-        for v in neighbors {
+        const startIdx = segGraph[u];
+        const endIdx = segGraph[u+1];
+        for i in startIdx..<endIdx {
+          const v = dstNodes[i];
           if v2idx.contains(v) {
             srcList.pushBack(v2idx[u]);
             dstList.pushBack(v2idx[v]);
           }
         }
-      }      
-
+      }
+    
       // Convert lists to arrays since we need arrays for our edge list processing methods.
       var src = srcList.toArray();
       var dst = dstList.toArray();
@@ -300,10 +312,10 @@ module WellConnectedness {
         var nonCCClusters = 0;
         for c in clusterMap.keys() {
           ref clusterVertices = clusterMap[c];
-          var (src, dst, mapper) = getEdgeList(clusterVertices);
+          var (src, dst, mapper) = getEdgeList(clusterVertices, srcNodesG, dstNodesG, segGraphG);
           
           if src.size > 0 {
-            var components = connectedComponents(src, dst, mapper.size);
+            var components = connectedComponentsLocal(src, dst, mapper.size);
             
             // Check if there are multiple components
             var hasMultipleComponents = false;
@@ -366,10 +378,10 @@ module WellConnectedness {
           var nonCCClusters = 0;
           for c in clusterMap.keys() {
             ref clusterVertices = clusterMap[c];
-            var (src, dst, mapper) = getEdgeList(clusterVertices);
+            var (src, dst, mapper) = getEdgeList(clusterVertices, srcNodesG, dstNodesG, segGraphG);
             
             if src.size > 0 {
-              var components = connectedComponents(src, dst, mapper.size);
+              var components = connectedComponentsLocal(src, dst, mapper.size);
               
               // Check if there are multiple components
               var hasMultipleComponents = false;
@@ -436,8 +448,19 @@ module WellConnectedness {
     /* Recursive function that checks the well-connectedness of each passed cluster. Can execute
       both WCC and CM steps using the UIUC approach. */
     proc wellconnectednessRecursiveChecker(ref vertices, ref src, ref dst, ref mapper, 
-                                          pId: int, depth: int): list((int,int)) throws {
+                                          pId: int, depth: int, ref srcNodes: [] int,
+                                          ref dstNodes: [] int, ref segGraph: [] int): list((int,int)) throws {
       var result = new list((int,int));
+
+      // Use the parameter instead of hardcoded value
+      if depth >= MAX_RECURSION_DEPTH {
+        writeln("[Locale ", here.id, "] Max recursion depth ", MAX_RECURSION_DEPTH, " reached.");
+        var cid = newClusterId[here.id].fetchAdd(1);
+        var sid = "%i%i".format(here.id+1,cid);
+        var id = sid:int;
+        for v in vertices do result.pushBack((v, id));
+        return result;
+      }
       if src.size < 1 then return result;
 
       var n = mapper.size;
@@ -472,7 +495,6 @@ module WellConnectedness {
 
         return result;
       }
-      // writeln("from parent: ", pId," vertices:", vertices.size, "is not well connected");
 
       // STEP 2: If NOT well-connected, ALWAYS do min-cut first to split into two parts
       var cluster1, cluster2 = new set(int);
@@ -491,7 +513,7 @@ module WellConnectedness {
       
       // Process cluster1
       if cluster1.size > postFilterMinSize {
-        var (c1src, c1dst, c1mapper) = getEdgeList(cluster1, src, dst);
+        var (c1src, c1dst, c1mapper) = getEdgeList(cluster1, srcNodes, dstNodes, segGraph);
         if c1src.size > 0 {
           if runClustering {
             // CM mode: Apply Leiden clustering to cluster1, then check connectivity of each community
@@ -518,7 +540,7 @@ module WellConnectedness {
                   
                   if communitySrc.size > 0 {
                     // Check if this community is connected
-                    var components = connectedComponents(communitySrc, communityDst, communityMapper.size);
+                    var components = connectedComponentsLocal(communitySrc, communityDst, communityMapper.size);
                     var multipleComponents:bool = false;
                     for c in components do if c != 0 { multipleComponents = true; break; }
                     
@@ -539,7 +561,8 @@ module WellConnectedness {
                           var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], communitySrc, communityDst);
                           var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
                                                                                   compDst, compMapper, 
-                                                                                  pId, depth+1);
+                                                                                  pId, depth+1,
+                                                                                  srcNodes, dstNodes, segGraph);
                           result.pushBack(componentResult);
                         }
                       }
@@ -547,7 +570,8 @@ module WellConnectedness {
                       // Single connected component - recurse as normal
                       var communityResult = wellconnectednessRecursiveChecker(communitySet, communitySrc, 
                                                                               communityDst, communityMapper, 
-                                                                              pId, depth+1);
+                                                                              pId, depth+1,
+                                                                              srcNodes, dstNodes, segGraph);
                       result.pushBack(communityResult);
                     }
                   }
@@ -556,7 +580,7 @@ module WellConnectedness {
             } else {
               // If Leiden finds only 1 community, still check connectivity for maximum robustness
               if c1src.size > 0 {
-                var components = connectedComponents(c1src, c1dst, c1mapper.size);
+                var components = connectedComponentsLocal(c1src, c1dst, c1mapper.size);
                 var multipleComponents:bool = false;
                 for c in components do if c != 0 { multipleComponents = true; break; }
                 
@@ -576,14 +600,16 @@ module WellConnectedness {
                       var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], c1src, c1dst);
                       var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
                                                                               compDst, compMapper, 
-                                                                              pId, depth+1);
+                                                                              pId, depth+1,
+                                                                              srcNodes, dstNodes, segGraph); 
                       result.pushBack(componentResult);
                     }
                   }
                 } else {
                   // Single connected component - recurse normally
                   var cluster1Result = wellconnectednessRecursiveChecker(cluster1, c1src, c1dst, c1mapper,
-                                                                        pId, depth+1);
+                                                                        pId, depth+1,
+                                                                        srcNodes, dstNodes, segGraph);
                   result.pushBack(cluster1Result);
                 }
               }
@@ -591,7 +617,8 @@ module WellConnectedness {
           } else {
             // WCC mode: Just recurse directly on cluster1
             var cluster1Result = wellconnectednessRecursiveChecker(cluster1, c1src, c1dst, c1mapper,
-                                                                  pId, depth+1);
+                                                                  pId, depth+1,
+                                                                  srcNodes, dstNodes, segGraph); 
             result.pushBack(cluster1Result);
           }
         }
@@ -599,7 +626,7 @@ module WellConnectedness {
 
       // Process cluster2
       if cluster2.size > postFilterMinSize {
-        var (c2src, c2dst, c2mapper) = getEdgeList(cluster2, src, dst);
+        var (c2src, c2dst, c2mapper) = getEdgeList(cluster2, srcNodes, dstNodes, segGraph);    
         if c2src.size > 0 {
           if runClustering {
             // CM mode: Apply Leiden clustering to cluster2, then check connectivity of each community
@@ -626,7 +653,7 @@ module WellConnectedness {
                   
                   if communitySrc.size > 0 {
                     // Check if this community is connected
-                    var components = connectedComponents(communitySrc, communityDst, communityMapper.size);
+                    var components = connectedComponentsLocal(communitySrc, communityDst, communityMapper.size);
                     var multipleComponents:bool = false;
                     for c in components do if c != 0 { multipleComponents = true; break; }
                     
@@ -647,7 +674,8 @@ module WellConnectedness {
                           var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], communitySrc, communityDst);
                           var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
                                                                                   compDst, compMapper, 
-                                                                                  pId, depth+1);
+                                                                                  pId, depth+1,
+                                                                                  srcNodes, dstNodes, segGraph);
                           result.pushBack(componentResult);
                         }
                       }
@@ -655,7 +683,8 @@ module WellConnectedness {
                       // Single connected component - recurse as normal
                       var communityResult = wellconnectednessRecursiveChecker(communitySet, communitySrc, 
                                                                               communityDst, communityMapper, 
-                                                                              pId, depth+1);
+                                                                              pId, depth+1,
+                                                                              srcNodes, dstNodes, segGraph);
                       result.pushBack(communityResult);
                     }
                   }
@@ -666,7 +695,7 @@ module WellConnectedness {
               var (communitySrc, communityDst, communityMapper) = getEdgeList(cluster2, c2src, c2dst);
               
               if communitySrc.size > 0 {
-                var components = connectedComponents(communitySrc, communityDst, communityMapper.size);
+                var components = connectedComponentsLocal(communitySrc, communityDst, communityMapper.size);
                 var multipleComponents:bool = false;
                 for c in components do if c != 0 { multipleComponents = true; break; }
                 
@@ -686,13 +715,15 @@ module WellConnectedness {
                       var (compSrc, compDst, compMapper) = getEdgeList(tempMap[c], communitySrc, communityDst);
                       var componentResult = wellconnectednessRecursiveChecker(tempMap[c], compSrc, 
                                                                               compDst, compMapper, 
-                                                                              pId, depth+1);
+                                                                              pId, depth+1,
+                                                                              srcNodes, dstNodes, segGraph);
                       result.pushBack(componentResult);
                     }
                   }
                 } else {
                   var cluster2Result = wellconnectednessRecursiveChecker(cluster2, c2src, c2dst, c2mapper,
-                                                                        pId, depth+1);
+                                                                        pId, depth+1,
+                                                                        srcNodes, dstNodes, segGraph);
                   result.pushBack(cluster2Result);
                 }
               }
@@ -700,7 +731,8 @@ module WellConnectedness {
           } else {
             // WCC mode: Just recurse directly on cluster2
             var cluster2Result = wellconnectednessRecursiveChecker(cluster2, c2src, c2dst, c2mapper,
-                                                                  pId, depth+1);
+                                                                  pId, depth+1,
+                                                                  srcNodes, dstNodes, segGraph);
             result.pushBack(cluster2Result);
           }
         }
@@ -729,9 +761,9 @@ module WellConnectedness {
       var newClusterIdToOriginalClusterId = new map(int,int);
       // Process original clusters and split into connected components
       for (key,currCluster) in zip(originalClusters.keys(),originalClusters.values()) {
-        var (src, dst, mapper) = getEdgeList(currCluster);
+        var (src, dst, mapper) = getEdgeList(currCluster, srcNodesG, dstNodesG, segGraphG);
         if src.size > 0 { 
-          var components = connectedComponents(src, dst, mapper.size);
+          var components = connectedComponentsLocal(src, dst, mapper.size);
           var multipleComponents:bool = false;
           for c in components do if c != 0 { multipleComponents = true; break; }
           
@@ -771,9 +803,10 @@ module WellConnectedness {
       var allResults = new list((int,int), parSafe=true);
       forall key in newClusters.keysToArray() with (ref newClusters, ref allResults) {
         ref clusterToAdd = newClusters[key];
-        var (src, dst, mapper) = getEdgeList(clusterToAdd);
+        var (src, dst, mapper) = getEdgeList(clusterToAdd, srcNodesG, dstNodesG, segGraphG);
         var result = wellconnectednessRecursiveChecker(clusterToAdd, src, dst, mapper, 
-                                                       newClusterIdToOriginalClusterId[key], 0);
+                                                 newClusterIdToOriginalClusterId[key], 0,
+                                                 srcNodesG, dstNodesG, segGraphG);
         allResults.pushBack(result);
       }
       outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
@@ -798,11 +831,12 @@ module WellConnectedness {
       timer.stop();
     } // end of wellConnectednessSharedMemoryExecutor
 
+
     /* Distributed-memory executor for well-connected components and connectivity modifier. */
     proc wellConnectednessDistributedMemoryExecutor() throws {
       var outMsg = "Processing graph with %i vertices and %i edges with %s".format(G.n_vertices,
-                                                                                   G.n_edges,
-                                                                                   analysisType);
+                                                                                  G.n_edges,
+                                                                                  analysisType);
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       var timer:stopwatch;
 
@@ -812,16 +846,23 @@ module WellConnectedness {
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.restart();
 
-      var newClusters = makeDistArray(numLocales, map(int, set(int)));
-      var newClusterIdToOriginalClusterId = makeDistArray(numLocales, map(int,int));
-      var newClustersSize:int = 0;
-      // Process original clusters and split into connected components
-      coforall loc in Locales with (+ reduce newClustersSize) do on loc {
+      var allResults = makeDistArray(numLocales, list((int,int), parSafe=true));
+
+      // Process clusters independently on each locale
+      coforall loc in Locales do on loc {
         ref originalClusters = clustersMap[loc.id];
-        var newClusterId = 0;
+        // Local references to graph data (replicated)
+        ref localSrcNodes = srcNodesG;
+        ref localDstNodes = dstNodesG;
+        ref localSegGraph = segGraphG;
+
+        var localNewId = 0;
+        var newClusters = new map(int, set(int));
+        var newClusterIdToOriginalClusterId = new map(int, int);
+        // Process original clusters and split into connected components
         for (key,currCluster) in zip(originalClusters.keys(),originalClusters.values()) {
-          var (src, dst, mapper) = getEdgeList(currCluster);
-          if src.size > 0 { 
+          var (src, dst, mapper) = getEdgeList(currCluster, localSrcNodes, localDstNodes, localSegGraph);
+          if src.size > 0 {
             var components = connectedComponentsLocal(src, dst, mapper.size);
             var multipleComponents:bool = false;
             for c in components do if c != 0 { multipleComponents = true; break; }
@@ -837,77 +878,45 @@ module WellConnectedness {
                 }
               }
               for c in tempMap.keys() {
-                newClusterId += 1;
-                var newIdString = "%i%i".format(loc.id+1,newClusterId);
-                var newId = newIdString:int;
+                localNewId += 1;
                 if tempMap[c].size > preFilterMinSize {
-                  newClusters[loc.id][newId] = tempMap[c];
-                  newClusterIdToOriginalClusterId[loc.id][newId] = key;
+                  newClusters[localNewId] = tempMap[c];
+                  newClusterIdToOriginalClusterId[localNewId] = key;
                 }
               }
             } else {
               if currCluster.size > preFilterMinSize {
-                newClusterId += 1;
-                var newIdString = "%i%i".format(loc.id+1,newClusterId);
-                var newId = newIdString:int;
-                newClusters[loc.id][newId] = currCluster;
-                newClusterIdToOriginalClusterId[loc.id][newId] = key;
+                localNewId += 1;
+                newClusters[localNewId] = currCluster;
+                newClusterIdToOriginalClusterId[localNewId] = key;
               }
             }
           }
         }
-        newClustersSize += newClusterId;
+        // Check the well-connectedness of every cluster and/or connected component
+        forall key in newClusters.keysToArray() with (ref newClusters, ref allResults) {
+          ref clusterToAdd = newClusters[key];
+          var (src, dst, mapper) = getEdgeList(clusterToAdd, localSrcNodes, localDstNodes, localSegGraph);
+          var result = wellconnectednessRecursiveChecker(clusterToAdd,
+                                                        src, dst, mapper,
+                                                        newClusterIdToOriginalClusterId[key], 0,
+                                                        localSrcNodes, localDstNodes, localSegGraph);
+          allResults[loc.id].pushBack(result);
+        }
+  
       }
-      outMsg = "Splitting up clusters yielded %i new clusters".format(newClustersSize);
-      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      outMsg = "Splitting up clusters took %r secs".format(timer.elapsed());
+      
+      outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
       timer.restart();
 
-      // Check the well-connectedness of every cluster and/or connected component
-      var allResults = makeDistArray(numLocales, list((int,int), parSafe=true));
-      var allResultsSize:int = 0;
-      coforall loc in Locales with (+ reduce allResultsSize) do on loc {
-        forall key in newClusters[loc.id].keysToArray() {
-          ref clusterToAdd = newClusters[loc.id][key];
-          var (src, dst, mapper) = getEdgeList(clusterToAdd);
-          var result = wellconnectednessRecursiveChecker(clusterToAdd, src, dst, mapper, 
-                                                         newClusterIdToOriginalClusterId[loc.id][key], 
-                                                         0);
-          allResults[loc.id].pushBack(result);
-        }
-        allResultsSize += allResults[loc.id].size;
-      }
-      outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
-      wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      timer.stop();
-      
-      // // Convert final results lists to arrays
-      // var finalVertices = makeDistArray(allResultsSize, int);
-      // var finalClusters = makeDistArray(allResultsSize, int);
-      // var finalArrayRanges = makeDistArray(numLocales, int);
-      // finalArrayRanges[0] = allResults[0].size;
-      // for i in 1..<numLocales do finalArrayRanges[i] = finalArrayRanges[i-1] + allResults[i].size;
-      // coforall loc in Locales do on loc {
-      //   var localResult = allResults[loc.id];
-      //   var start = if loc.id == 0 then 0 else finalArrayRanges[loc.id-1]+1;
-      //   var end = finalArrayRanges[loc.id];
-      //   forall (tup,i) in zip(localResult, start..end) {
-      //     finalVertices[i] = tup[0];
-      //     finalClusters[i] = tup[1];
-      //   }
-      // }
-      // outMsg = "Converting final lists of tuples to arrays took %s secs".format(timer.elapsed());
-      // wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      // timer.restart();
-      
       // Write clusters to file
       writeClustersToFile(allResults);
       outMsg = "Writing clusters to file took %s secs".format(timer.elapsed());
       wcLogger.info(getModuleName(),getRoutineName(),getLineNumber(),outMsg);
-      timer.restart();
+      timer.stop();
     } // end of wellConnectednessDistributedMemoryExecutor
-    
+
     if oneLocale then wellConnectednessSharedMemoryExecutor();
     else wellConnectednessDistributedMemoryExecutor();
 
