@@ -28,7 +28,10 @@ __all__ = [ "read_matrix_market_file",
             "connected_components",
             "diameter",
             "well_connected_components",
-            "connectivity_modifier"
+            "connectivity_modifier",
+            "extract_cluster_subgraphs",
+            "well_connected_components_from_files",
+            "connectivity_modifier_from_files"
            ]
 
 @typechecked
@@ -613,6 +616,58 @@ def subgraph_monomorphism(graph: PropGraph, subgraph: PropGraph,
     
     return int(rep_msg)
 
+
+@typechecked
+def extract_cluster_subgraphs(graph: Graph, file_path: str, output_folder_path: str) -> int:
+    """
+    Extracts each cluster from a clustering file as an individual subgraph edge list and writes
+    each one to a separate file in the specified output folder. Each output file is named
+    ``cluster_N.tsv`` where ``N`` is the cluster identifier, and contains the edge list (using
+    original global vertex IDs) for that cluster's induced subgraph.
+
+    Parameters
+    ----------
+    graph : Graph
+        The input graph from which cluster subgraphs are extracted.
+    file_path : str
+        The file containing the cluster each vertex belongs to. NOTE: Must be the absolute path
+        to the file.
+    output_folder_path : str
+        The absolute path to the folder where the individual cluster edge-list files will be
+        written.
+
+    Returns
+    -------
+    int
+        The number of cluster subgraph files written.
+
+    See Also
+    --------
+    well_connected_components_from_files, connectivity_modifier_from_files
+
+    Notes
+    -----
+    The output files produced by this function can be fed directly into
+    :func:`well_connected_components_from_files` or :func:`connectivity_modifier_from_files`.
+
+    Raises
+    ------
+    RuntimeError
+    """
+    # Ensure the output folder path ends with a separator.
+    if output_folder_path[-1] != "/":
+        output_folder_path = output_folder_path + "/"
+
+    cmd = "extractClusterSubgraphs"
+    args = { "GraphName":graph.name,
+             "FilePath": file_path,
+             "OutputFolder": output_folder_path}
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    print("Cluster files written to: ", output_folder_path)
+
+    return int(rep_msg)
+
+
 # @typechecked
 # def well_connected_components(graph: Graph, file_path: str, output_folder_path: str,
 #                               output_filename: str = None,
@@ -851,4 +906,169 @@ def connectivity_modifier(graph: Graph, file_path: str, output_folder_path: str,
     #       array to extract what vertices belong to one cluster. For example, indexing this array
     #       in Chapel, to get the vertices for cluster c would look like this:
     #            clusters[seg[c]..<seg[c+1]]
+    return int(rep_msg)
+
+
+@typechecked
+def well_connected_components_from_files(input_folder_path: str,
+                                         output_folder_path: str,
+                                         output_filename: str = "wcc_from_files_output.tsv",
+                                         connectedness_criterion: Literal["log10", "log2",
+                                                                          "sqrt", "mult"] = "log10",
+                                         connectedness_criterion_mult_value: float = None,
+                                         post_filter_min_size: int = 10,
+                                         max_recursion_depth: int = 10000) -> int:
+    """
+    Runs well-connected components directly on pre-extracted cluster subgraph files.
+ 
+    Each file in `input_folder_path` named ``cluster_N.tsv`` is treated as a
+    self-contained subgraph edge list (one ``src dst`` pair per line, original
+    global vertex IDs).  No full graph object or cluster-membership file is
+    required — the files are loaded in parallel and fed straight into the
+    recursive well-connectedness checker.
+ 
+    Parameters
+    ----------
+    input_folder_path : str
+        Absolute path to the folder containing ``cluster_1.tsv``,
+        ``cluster_2.tsv``, … files.
+    output_folder_path : str
+        Absolute path to the folder where output file(s) will be written.
+    output_filename : str
+        Name of the output file.  Defaults to ``wcc_from_files_output.tsv``.
+        In distributed runs each locale appends ``_LOCALE_XXXXX`` before the
+        file extension automatically.
+    connectedness_criterion : str
+        Criterion function: ``"log10"``, ``"log2"``, ``"sqrt"``, or ``"mult"``.
+        Defaults to ``"log10"``.
+    connectedness_criterion_mult_value : float
+        Required when ``connectedness_criterion="mult"``.
+    post_filter_min_size : int
+        Minimum cluster size after a split; smaller clusters are dropped.
+        Defaults to 10.
+    max_recursion_depth : int
+        Maximum recursion depth for the well-connectedness checker.
+        Defaults to 10000.
+ 
+    Returns
+    -------
+    int
+        Number of well-connected clusters found.
+ 
+    See Also
+    --------
+    well_connected_components, connectivity_modifier_from_files
+    """
+    # Validate that a multiplier value is provided when "mult" criterion is selected.
+    if connectedness_criterion == "mult" and connectedness_criterion_mult_value is None:
+        raise ValueError("Connectedness criterion is `mult` and requires a valid "
+                         "`connectedness_criterion_mult_value`.")
+ 
+    # Ensure the output folder path ends with a separator.
+    if output_folder_path[-1] != "/":
+        output_folder_path = output_folder_path + "/"
+ 
+    output_path = output_folder_path + output_filename
+ 
+    # Warn the user if the output file already exists and will be overwritten.
+    if os.path.exists(output_path):
+        warnings.warn(f"File {output_filename} already exists and will be overwritten.",
+                      UserWarning)
+ 
+    # Explicit value needed for Chapel first-class function dispatch.
+    if connectedness_criterion_mult_value is None:
+        connectedness_criterion_mult_value = 0.0
+ 
+    cmd = "wellConnectednessFromFiles"
+    args = { "InputFolderPath": input_folder_path,
+             "OutputPath": output_path,
+             "ConnectednessCriterion": connectedness_criterion,
+             "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
+             "PostFilterMinSize": post_filter_min_size,
+             "AnalysisType": "WCC",
+             "MaxRecursionDepth": max_recursion_depth }
+ 
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    print("Cluster files written to:", output_path)
+    return int(rep_msg)
+
+
+ 
+@typechecked
+def connectivity_modifier_from_files(input_folder_path: str,
+                                     output_folder_path: str,
+                                     output_filename: str = "cm_from_files_output.tsv",
+                                     connectedness_criterion: Literal["log10", "log2",
+                                                                      "sqrt", "mult"] = "log10",
+                                     connectedness_criterion_mult_value: float = None,
+                                     post_filter_min_size: int = 10,
+                                     max_recursion_depth: int = 10000) -> int:
+    """
+    Runs connectivity modifier (WCC + Leiden) directly on pre-extracted cluster
+    subgraph files.
+ 
+    Identical to :func:`well_connected_components_from_files` except that after
+    each min-cut split, Leiden community detection is applied before recursing.
+ 
+    Parameters
+    ----------
+    input_folder_path : str
+        Absolute path to the folder containing ``cluster_1.tsv``,
+        ``cluster_2.tsv``, … files.
+    output_folder_path : str
+        Absolute path to the folder where output file(s) will be written.
+    output_filename : str
+        Name of the output file.  Defaults to ``cm_from_files_output.tsv``.
+    connectedness_criterion : str
+        Criterion function: ``"log10"``, ``"log2"``, ``"sqrt"``, or ``"mult"``.
+        Defaults to ``"log10"``.
+    connectedness_criterion_mult_value : float
+        Required when ``connectedness_criterion="mult"``.
+    post_filter_min_size : int
+        Minimum cluster size after a split; smaller clusters are dropped.
+        Defaults to 10.
+    max_recursion_depth : int
+        Maximum recursion depth for the well-connectedness checker.
+        Defaults to 10000.
+ 
+    Returns
+    -------
+    int
+        Number of well-connected clusters found.
+ 
+    See Also
+    --------
+    connectivity_modifier, well_connected_components_from_files
+    """
+    # Validate that a multiplier value is provided when "mult" criterion is selected.
+    if connectedness_criterion == "mult" and connectedness_criterion_mult_value is None:
+        raise ValueError("Connectedness criterion is `mult` and requires a valid "
+                         "`connectedness_criterion_mult_value`.")
+ 
+    # Ensure the output folder path ends with a separator.
+    if output_folder_path[-1] != "/":
+        output_folder_path = output_folder_path + "/"
+ 
+    output_path = output_folder_path + output_filename
+ 
+    # Warn the user if the output file already exists and will be overwritten.
+    if os.path.exists(output_path):
+        warnings.warn(f"File {output_filename} already exists and will be overwritten.",
+                      UserWarning)
+ 
+    # Explicit value needed for Chapel first-class function dispatch.
+    if connectedness_criterion_mult_value is None:
+        connectedness_criterion_mult_value = 0.0
+ 
+    cmd = "wellConnectednessFromFiles"
+    args = { "InputFolderPath": input_folder_path,
+             "OutputPath": output_path,
+             "ConnectednessCriterion": connectedness_criterion,
+             "ConnectednessCriterionMultValue": connectedness_criterion_mult_value,
+             "PostFilterMinSize": post_filter_min_size,
+             "AnalysisType": "CM",
+             "MaxRecursionDepth": max_recursion_depth }
+ 
+    rep_msg = generic_msg(cmd=cmd, args=args)
+    print("Cluster files written to:", output_path)
     return int(rep_msg)

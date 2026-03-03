@@ -1,5 +1,5 @@
 #include "computeMinCut.h"
-#include <algorithms/global_mincut/noi_minimum_cut.h>
+#include <algorithms/global_mincut/cactus/cactus_mincut.h>
 
 int cpp_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int64_t n, int64_t m) { 
     int edge_cut_size = -1;
@@ -15,24 +15,15 @@ int cpp_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int
         NodeID current_node = G->new_node();
         G->setPartitionIndex(current_node, 0);
     }
-
+    
     for(int j = 0; j < m; j++) {
-        int from_node = src[j], to_node = dst[j];
-        int source_node, target_node;
-        if(from_node < target_node) {
-            source_node = from_node;
-            target_node = to_node;
-        } else {
-            source_node = to_node;
-            target_node = from_node;
-        }
-        G->new_edge(source_node, target_node, 1);
+        if(src[j] != dst[j]) G->new_edge(src[j], dst[j], 1);
     }
     G->finish_construction();
     G->computeDegrees();
     
-    noi_minimum_cut<std::shared_ptr<mutable_graph>> nmc;
-    edge_cut_size = nmc.perform_minimum_cut(G);
+    cactus_mincut<std::shared_ptr<mutable_graph>> cmc;
+    edge_cut_size = cmc.perform_minimum_cut(G);
     
     for(int node_id = 0; node_id < n; node_id++) {
         if(G->getNodeInCut(node_id)) {

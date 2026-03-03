@@ -7,6 +7,7 @@ module WellConnectednessMsg {
   // Arachne modules.
   use GraphArray;
   import WellConnectedness.runWellConnectedness;
+  import WellConnectedness.runWellConnectednessFromFiles;
   
   // Arkouda modules.
   use MultiTypeSymbolTable;
@@ -27,7 +28,6 @@ module WellConnectednessMsg {
                             msgArgs: borrowed MessageArgs, 
                             st: borrowed SymTab): MsgTuple throws {
 		param pn = Reflection.getRoutineName();
-		var repMsg, outMsg:string;
 
 		// Extract messages sent from Python.
 		var graphEntryName = msgArgs.getValueOf("GraphName");
@@ -58,6 +58,27 @@ module WellConnectednessMsg {
 		}
   } // end of wellConnectednessMsg
 
+  proc wellConnectednessFromFilesMsg(cmd: string,
+                                     msgArgs: borrowed MessageArgs,
+                                     st: borrowed SymTab): MsgTuple throws {
+    param pn = Reflection.getRoutineName();
+
+    var inputFolderPath = msgArgs.getValueOf("InputFolderPath");
+    var outputPath = msgArgs.getValueOf("OutputPath");
+    var connectednessCriterion = msgArgs.getValueOf("ConnectednessCriterion");
+    var connectednessCriterionMultValue = msgArgs.getValueOf("ConnectednessCriterionMultValue"):real;
+    var postFilterMinSize = msgArgs.getValueOf("PostFilterMinSize"):int;
+    var analysisType = msgArgs.getValueOf("AnalysisType");
+    var maxRecursionDepth = msgArgs.getValueOf("MaxRecursionDepth"):int;
+ 
+    var numClusters = runWellConnectednessFromFiles(
+                          inputFolderPath, outputPath,
+                          connectednessCriterion, connectednessCriterionMultValue,
+                          postFilterMinSize, analysisType, maxRecursionDepth);
+    return new MsgTuple(numClusters:string, MsgType.NORMAL);
+  } // end of wellConnectednessFromFilesMsg
+
   use CommandMap;
   registerFunction("wellConnectedness", wellConnectednessMsg, getModuleName());
+  registerFunction("wellConnectednessFromFiles", wellConnectednessFromFilesMsg, getModuleName());
 } // end of WellConnectedComponentsMsg module
