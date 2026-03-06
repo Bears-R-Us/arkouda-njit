@@ -1,5 +1,5 @@
 #include "computeMinCut.h"
-#include <algorithms/global_mincut/cactus/cactus_mincut.h>
+#include <algorithms/global_mincut/noi_minimum_cut.h>
 
 int cpp_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int64_t n, int64_t m) { 
     int edge_cut_size = -1;
@@ -22,8 +22,8 @@ int cpp_computeMinCut(int64_t partition_arr[], int64_t src[], int64_t dst[], int
     G->finish_construction();
     G->computeDegrees();
     
-    cactus_mincut<std::shared_ptr<mutable_graph>> cmc;
-    edge_cut_size = cmc.perform_minimum_cut(G);
+    noi_minimum_cut<std::shared_ptr<mutable_graph>> nmc;
+    edge_cut_size = nmc.perform_minimum_cut(G);
     
     for(int node_id = 0; node_id < n; node_id++) {
         if(G->getNodeInCut(node_id)) {

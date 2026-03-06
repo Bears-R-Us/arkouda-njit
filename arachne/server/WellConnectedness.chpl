@@ -873,31 +873,41 @@ module WellConnectedness {
     // -----------------------------------------------------------------------
 
     proc sortEdgeListF(ref src: [] int, ref dst: [] int) {
+      // Move elements of src and dst to an array of tuples
       var edges: [0..<src.size] (int, int);
       for i in 0..<src.size do edges[i] = (src[i], dst[i]);
+
+      // Sort the array of tuples.
       var TupleComp: TupleComparator;
       sort(edges, comparator=TupleComp);
+
+      // Split sorted edge list into two different arrays.
       var sortedSrc: [0..<src.size] int;
       var sortedDst: [0..<dst.size] int;
       for i in 0..<src.size {
         sortedSrc[i] = edges[i][0];
         sortedDst[i] = edges[i][1];
       }
+      
       return (sortedSrc, sortedDst);
     }
 
     proc removeMultipleEdgesF(ref src: [] int, ref dst: [] int) {
       var uniqueSrc = new list(int);
       var uniqueDst = new list(int);
+
       if src.size == 0 then return (src, dst);
+
       uniqueSrc.pushBack(src[0]);
       uniqueDst.pushBack(dst[0]);
+
       for i in 1..<src.size {
         if src[i] != src[i-1] || dst[i] != dst[i-1] {
           uniqueSrc.pushBack(src[i]);
           uniqueDst.pushBack(dst[i]);
         }
       }
+      
       return (uniqueSrc.toArray(), uniqueDst.toArray());
     }
 
@@ -1015,6 +1025,8 @@ module WellConnectedness {
 
       var n = mapper.size;
       var m = src.size;
+
+      if m < 1 then return result;
 
       // Compute criterion first so we can short-circuit before the expensive C++ call.
       var criterionValue = criterionFunction(vertices.size,
