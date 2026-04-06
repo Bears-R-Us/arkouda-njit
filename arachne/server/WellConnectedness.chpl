@@ -559,7 +559,7 @@ module WellConnectedness {
         if runClustering {
           var communities1: [0..<cnt1] int;
           var numComm1: int(64) = 0;
-          c_computeLeiden(src1, dst1, ec1, cnt1, 1, 0.5, communities1, numComm1);
+          numComm1 = c_computeLeiden(src1, dst1, ec1, cnt1, 1, 0.5, communities1, numComm1);
           var commCount1: [0..<numComm1] int;
           for v in 0..<cnt1 do commCount1[communities1[v]] += 1;
           var commStart1: [0..<numComm1+1] int;
@@ -599,7 +599,7 @@ module WellConnectedness {
         if runClustering {
           var communities2: [0..<cnt2] int;
           var numComm2: int(64) = 0;
-          c_computeLeiden(src2, dst2, ec2, cnt2, 1, 0.5, communities2, numComm2);
+          numComm2 = c_computeLeiden(src2, dst2, ec2, cnt2, 1, 0.5, communities2, numComm2);
           var commCount2: [0..<numComm2] int;
           for v in 0..<cnt2 do commCount2[communities2[v]] += 1;
           var commStart2: [0..<numComm2+1] int;
@@ -1118,7 +1118,7 @@ module WellConnectedness {
         if runClustering {
           var communities1: [0..<cnt1] int;
           var numComm1: int(64) = 0;
-          c_computeLeiden(src1, dst1, ec1, cnt1, 1, 0.5, communities1, numComm1);
+          numComm1 = c_computeLeiden(src1, dst1, ec1, cnt1, 1, 0.5, communities1, numComm1);
           var commCount1: [0..<numComm1] int;
           for v in 0..<cnt1 do commCount1[communities1[v]] += 1;
           var commStart1: [0..<numComm1+1] int;
@@ -1160,7 +1160,7 @@ module WellConnectedness {
         if runClustering {
           var communities2: [0..<cnt2] int;
           var numComm2: int(64) = 0;
-          c_computeLeiden(src2, dst2, ec2, cnt2, 1, 0.5, communities2, numComm2);
+          numComm2 = c_computeLeiden(src2, dst2, ec2, cnt2, 1, 0.5, communities2, numComm2);
           var commCount2: [0..<numComm2] int;
           for v in 0..<cnt2 do commCount2[communities2[v]] += 1;
           var commStart2: [0..<numComm2+1] int;

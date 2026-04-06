@@ -19,7 +19,7 @@ void compute_leiden(
     int64_t modularity_option, 
     float64_t resolution, 
     int64_t communities[], 
-    int64_t numCommunities
+    int64_t *numCommunities
 ) {
     igraph_t g;
     igraph_vector_int_t edges;
@@ -70,14 +70,14 @@ void compute_leiden(
     }
 
 
-    numCommunities = 0;
+    *numCommunities = 0;
     for (int64_t i = 0; i < NumNodes; i++) {
         communities[i] = partition->membership(i);
-        if (communities[i] > numCommunities) {
-            numCommunities = communities[i];
+        if (communities[i] > *numCommunities) {
+            *numCommunities = communities[i];
         }
     }
-    numCommunities += 1;
+    *numCommunities += 1;
 
     delete partition;
     igraph_destroy(&g);
@@ -95,6 +95,6 @@ int64_t c_computeLeiden(
     int64_t numCommunities
 ) {
     //std::cout << "Calling run_leiden from Chapel..." << std::endl;
-    compute_leiden(src, dst, NumEdges, NumNodes, modularity_option, resolution, communities, numCommunities);
+    compute_leiden(src, dst, NumEdges, NumNodes, modularity_option, resolution, communities, &numCommunities);
     return numCommunities;
 }

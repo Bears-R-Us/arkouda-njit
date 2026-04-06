@@ -19,14 +19,14 @@ extern "C" {
 #endif
 
 void compute_leiden(
-    const int64_t src[], 
-    const int64_t dst[], 
-    int64_t NumEdges, 
-    int64_t NumNodes, 
-    int64_t modularity_option, 
-    float64_t resolution, 
-    int64_t communities[], 
-    int64_t numCommunities
+    const int64_t src[],
+    const int64_t dst[],
+    int64_t NumEdges,
+    int64_t NumNodes,
+    int64_t modularity_option,
+    float64_t resolution,
+    int64_t communities[],
+    int64_t *numCommunities
 );
 
 // C wrapper for Chapel
