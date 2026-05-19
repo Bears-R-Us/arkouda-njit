@@ -1742,7 +1742,7 @@ module SubgraphSearch {
       }
       if countOnly then solutions.pushBack(counts.read());
       var subIsoArrToReturn: [0..#solutions.size](int);
-      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions.getValue(i);
 
       return subIsoArrToReturn;
     } // end of edgeCentricStateInjection
@@ -1787,7 +1787,7 @@ module SubgraphSearch {
       }
       if countOnly then solutions.pushBack(counts.read());
       var subIsoArrToReturn: [0..#solutions.size](int);
-      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions.getValue(i);
 
       return subIsoArrToReturn;
     } // end of vertexCentricStateInjection
@@ -1811,7 +1811,7 @@ module SubgraphSearch {
       if countOnly then solutions.pushBack(counts.read());
       
       var subIsoArrToReturn: [0..#solutions.size](int);
-      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
+      for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions.getValue(i);
 
       return subIsoArrToReturn;
     } // end of VF2PS

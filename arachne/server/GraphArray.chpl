@@ -5,7 +5,7 @@ module GraphArray {
     use Reflection;
     use Utils;
     use ReplicatedDist;
-    
+
     // Arkouda modules.
     use Logging;
     use AryUtil;
@@ -18,7 +18,7 @@ module GraphArray {
     const graphLogger = new Logger(logLevel);
 
     // Component key names to be stored stored in the components map for future retrieval
-    enum Component {        
+    enum Component {
         // Symmetrical Double-Index (SDI) Components (and Property Graph Components)
         SRC_SDI,            // int array with source vertices for each edge
         DST_SDI,            // int array with destination vertices for each edge
@@ -31,7 +31,7 @@ module GraphArray {
         VERTEX_MAP_SDI,     // int array where VERTEX_MAP_SDI[u] gives the original value of u
         RANGES_SDI,         // int array with tuple of low values per locale of SRC_SDI
         RANGES_R_SDI,       // int array with tuple of low values per locale of SRC_R_SDI
-        
+
         // The key is the attribute (column) name and the value is a tuple of symbol table
         // identifier and data type.
         VERTEX_LABELS,      // map of type (string, (string,string))
@@ -103,12 +103,12 @@ module GraphArray {
             var attributes = new map(string, (string, string));
             var emptyMap = new map(string, (string, string));
 
-            ref labels = if this.hasComp("VERTEX_LABELS") then 
+            ref labels = if this.hasComp("VERTEX_LABELS") then
                             (this.getComp("VERTEX_LABELS"):(borrowed MapSymEntry(
                                 string, (string, string)
                             ))).stored_map else emptyMap;
 
-            ref properties = if this.hasComp("VERTEX_PROPERTIES") then 
+            ref properties = if this.hasComp("VERTEX_PROPERTIES") then
                                 (this.getComp("VERTEX_PROPERTIES"):(borrowed MapSymEntry(
                                     string, (string, string)
                                 ))).stored_map else emptyMap;
@@ -123,12 +123,12 @@ module GraphArray {
             var attributes = new map(string, (string, string));
             var emptyMap = new map(string, (string, string));
 
-            ref relationships = if this.hasComp("EDGE_RELATIONSHIPS") then 
+            ref relationships = if this.hasComp("EDGE_RELATIONSHIPS") then
                                     (this.getComp("EDGE_RELATIONSHIPS"):(borrowed MapSymEntry(
                                         string, (string, string)
                                     ))).stored_map else emptyMap;
 
-            ref properties = if this.hasComp("EDGE_PROPERTIES") then 
+            ref properties = if this.hasComp("EDGE_PROPERTIES") then
                                 (this.getComp("EDGE_PROPERTIES"):(borrowed MapSymEntry(
                                     string, (string, string)
                                 ))).stored_map else emptyMap;
@@ -156,7 +156,7 @@ module GraphArray {
     }
 
     /**
-    * GraphSymEntry is the wrapper class around SegGraph so it may be stored in 
+    * GraphSymEntry is the wrapper class around SegGraph so it may be stored in
     * the Symbol Table (SymTab).
     */
     class GraphSymEntry : CompositeSymEntry {
@@ -179,7 +179,7 @@ module GraphArray {
     class AssociativeSymEntry : GenSymEntry {
         var aD: domain(int);
         var a: [aD] int;
-        
+
         proc init(associative_array: [?associative_domain] int) {
             super.init(int);
             this.aD = associative_domain;
@@ -192,9 +192,9 @@ module GraphArray {
         var a;
         proc etype type do return a.eltType;
 
-        proc init(in a: []) where a.isSparse() { 
+        proc init(in a: []) where a.isSparse() {
             super.init(a.eltType);
-            this.a = a; 
+            this.a = a;
         }
     }
 
@@ -204,7 +204,7 @@ module GraphArray {
 
         proc init(in a: []) where isReplicatedArr(a) {
             super.init(a.eltType);
-            this.a = a; 
+            this.a = a;
         }
     }
 
@@ -212,7 +212,7 @@ module GraphArray {
         type left;
         type right;
         var stored_map: map(left, right);
-        
+
         proc init(ref map_to_store: map(?left, ?right)) {
             super.init(string);
             this.left = left;
@@ -242,7 +242,7 @@ module GraphArray {
     * Performs conversion from AbstractySymEntry to GraphSymEntry.
     */
     proc getGraphSymEntry(name:string, st: borrowed SymTab): borrowed GraphSymEntry throws {
-        var abstractEntry:borrowed AbstractSymEntry = st.lookup(name);
+        var abstractEntry:borrowed AbstractSymEntry = st[name];
         if !abstractEntry.isAssignableTo(SymbolEntryType.CompositeSymEntry) {
             var errorMsg = "Error: SymbolEntryType %s is not assignable to CompositeSymEntry".format(abstractEntry.entryType);
             graphLogger.error(getModuleName(),getRoutineName(),getLineNumber(),errorMsg);

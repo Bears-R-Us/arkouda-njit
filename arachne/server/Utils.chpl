@@ -20,7 +20,7 @@ module Utils {
   use MultiTypeSymbolTable;
 
   /* A fast variant of localSubdomain() assumes 'blockArray' is a block-distributed array.*/
-  proc fastLocalSubdomain(const ref blockArray) const ref 
+  proc fastLocalSubdomain(const ref blockArray) const ref
   where isSubtype(blockArray._value.type, BlockArr) {
     assert(blockArray.targetLocales()[here.id] == here);
     return blockArray._value.dom.locDoms[here.id].myBlock;
@@ -28,20 +28,20 @@ module Utils {
 
   /* Overloads above `fastLocalSubdomain` procedure to not throw compile-time errors for when
     the array is a regular array. */
-  proc fastLocalSubdomain(drArray: []) where drArray._value.isDefaultRectangular() { 
-    return drArray.localSubdomain(); 
+  proc fastLocalSubdomain(drArray: []) where drArray._value.isDefaultRectangular() {
+    return drArray.localSubdomain();
   }
 
-  /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the 
+  /* Extract the integer identifier for an edge `<u,v>`. TODO: any function that queries into the
   graph data structure should probably be a class method of SegGraph.
-  
+
   :arg u: source vertex to index for.
   :type u: int
   :arg v: destination vertex v to binary search for
   :type v: int
   :arg graph: Graph to search within.
   :type graph: borrowed SegGraph
-  
+
   :returns: int */
   proc getEdgeId(u:int, v:int, const ref dst:[?D1] int, const ref seg:[?D2] int): int throws {
       var start = seg[u];
@@ -67,7 +67,7 @@ module Utils {
       const targetLocIds = targetLocs.id;
 
       // Create a domain in the range of locales that the array was distributed to. In general,
-      // this will be the whole locale space, and we deal with gaps in the array through the 
+      // this will be the whole locale space, and we deal with gaps in the array through the
       // isEmpty() method for subdomains.
       var D = {min reduce targetLocIds .. max reduce targetLocIds} dmapped new replicatedDist();
       var ranges : [D] (int,locale,int);
@@ -82,7 +82,7 @@ module Utils {
                   low_vertex = array[localSubdomain.low];
                   high_vertex = array[localSubdomain.high];
               } else { low_vertex = -1; high_vertex = -1; }
-              
+
               coforall rloc in targetLocs with (ref ranges) do on rloc {
                   ranges[loc.id] = (low_vertex,loc,high_vertex);
               }
@@ -92,11 +92,11 @@ module Utils {
   }
 
   /* Helper procedure to parse ranges and return the locale(s) we must write to.
-  
+
   :arg val: value whose locale range we are looking for.
   :type val: int
   :arg ranges: replicated ranges array to use for the search.
-  :type ranges: const ref [ReplicatedDist] (int,locale,int) 
+  :type ranges: const ref [ReplicatedDist] (int,locale,int)
 
   :returns: list(locale) */
   proc find_locs(val:int, const ref ranges) {
@@ -134,9 +134,9 @@ module Utils {
       if (ary[h] == key) {
           return h;
       }
-      
+
       var m = (l + h) / 2: int;
-      
+
       if ((m == l) ) {
           return -1;
       }
@@ -152,9 +152,9 @@ module Utils {
       }
   }// end bin_search_v
 
-  /* Non-recursive, distributed-memory binary search for a given key. NOTE: experimental! Not 
+  /* Non-recursive, distributed-memory binary search for a given key. NOTE: experimental! Not
   fully tested.
-  
+
   :arg arr: integer array to search into
   :type arr: ref [?D] int
   :arg lo: low index value
@@ -163,11 +163,8 @@ module Utils {
   :type hi: int
   :arg key: value to search for in array
   :type key: int
-  :arg comparator: comparer of array values, defaults to integer comparator
-  :type comparator: defaultComparator
-  
   :returns: int */
-  proc bin_search(arr: [?D] int, key: int, lo: int, hi: int, comparator:?rec=defaultComparator): int throws {
+  proc bin_search(arr: [?D] int, key: int, lo: int, hi: int): int throws {
       var found:int = -1; // index of found key, -1 if not found.
       coforall loc in Locales with (ref found) do on loc {
           var start_loc:bool, end_loc:bool, mid_loc:bool, skip_loc:bool;
@@ -187,24 +184,24 @@ module Utils {
                   l = if arr.localSubdomain().lowBound < lo then lo
                       else arr.localSubdomain().lowBound;
               } else l = arr.localSubdomain().lowBound;
-              
+
               // End the search from the actual hi index stored on end_loc.
               if end_loc {
                   h = if arr.localSubdomain().highBound > hi then hi
                       else arr.localSubdomain().highBound;
               } else h = arr.localSubdomain().highBound;
 
-              // Actual binary search steps. 
+              // Actual binary search steps.
               while(l <= h) {
                   if arr[l] == key {found = l; break;}
                   if arr[h] == key {found = h; break;}
-                  
+
                   const m = (l + h) / 2 : int;
 
                   if m == l then break;
                   if arr[m] == key {found = m; break;}
-                  
-                  if chpl_compare(key, arr[m], comparator=comparator) > 0 then l = m + 1;
+
+                  if key > arr[m] then l = m + 1;
                   else h = m - 1;
               }
           }
@@ -214,30 +211,30 @@ module Utils {
 
   /* Pulled from Arkouda. Used as the comparator for arrays made of tuples. */
   record contrivedComparator {
-    const dc = new DefaultComparator();
     proc keyPart(a, i: int) {
-      if canResolveMethod(dc, "keyPart", a, 0) {
-        return dc.keyPart(a, i);
-      } else if isTuple(a) {
+      if isTuple(a) {
         return tupleKeyPart(a, i);
       } else {
-        compilerError("No keyPart method for eltType ", a.type:string);
+        // scalar integer: single-digit radix key
+        if i == 0 then return (0:int, intSortKey(a));
+        else return (-1:int, 0:uint(64));
+      }
+    }
+    // Returns a uint(64) sort key for a scalar integer preserving order.
+    // Unsigned types are zero-extended; signed types have their sign bit
+    // flipped at native width before zero-extension, so negatives sort first.
+    inline proc intSortKey(y): uint(64) {
+      if isUint(y) {
+        return y:uint(64);
+      } else {
+        param w = numBits(y.type);
+        type UW = uint(w);
+        return ((y:UW) ^ ((1:UW) << (w-1))):uint(64);
       }
     }
     proc tupleKeyPart(x: _tuple, i:int) {
       proc makePart(y): uint(64) {
-        var part: uint(64);
-        // get the part, ignore the section
-        const p = dc.keyPart(y, 0)(1);
-        // assuming result of keyPart is int or uint <= 64 bits
-        part = p:uint(64); 
-        // If the number is signed, invert the top bit, so that
-        // the negative numbers sort below the positive numbers
-        if isInt(p) {
-          const one:uint(64) = 1;
-          part = part ^ (one << 63);
-        }
-        return part;
+        return intSortKey(y);
       }
       var part: uint(64);
       if isTuple(x[0]) && (x.size == 2) {
@@ -278,8 +275,8 @@ module Utils {
   private param numBuckets = 1 << bitsPerDigit;
   private param maskDigit = numBuckets-1;
 
-  /* 
-    Pulled from Arkouda, gets the maximum bit width of the array and if there 
+  /*
+    Pulled from Arkouda, gets the maximum bit width of the array and if there
     are any negative numbers.
   */
   inline proc getBitWidth(a: [?aD] int): (int, bool) {
@@ -294,8 +291,8 @@ module Utils {
     return (bitWidth, negs);
   }
 
-  /* 
-    Pulled from Arkouda, for two arrays returns array with bit width and 
+  /*
+    Pulled from Arkouda, for two arrays returns array with bit width and
     negative information.
   */
   proc getNumDigitsNumericArrays(arr1, arr2) {
@@ -312,9 +309,9 @@ module Utils {
     return (totalDigits, bitWidths, negs);
   }
 
-  /* 
-    Pulled from Arkouda, get the digits for the current rshift. Signbit needs 
-    to be inverted for negative values 
+  /*
+    Pulled from Arkouda, get the digits for the current rshift. Signbit needs
+    to be inverted for negative values
   */
   inline proc getDigit(key: int, rshift: int, last: bool, negs: bool): int {
     const invertSignBit = last && negs;
@@ -324,7 +321,7 @@ module Utils {
     return (((keyu >> rshift) & (maskDigit:uint)) ^ xor):int;
   }
 
-  /* 
+  /*
     Pulled from Arkouda, return an array of all values from array a whose index
     corresponds to a true value in array `truth`.
   */
@@ -334,9 +331,9 @@ module Utils {
     // var ret = blockDist.createArray({0..<pop}, t);
     var ret = makeDistArray(pop, t);
 
-    forall (i, eai) in zip(a.domain, a) with (var agg = new DstAggregator(t)) do 
+    forall (i, eai) in zip(a.domain, a) with (var agg = new DstAggregator(t)) do
       if (truth[i]) then agg.copy(ret[iv[i]-1], eai);
-    
+
     return ret;
   }
 
@@ -358,7 +355,7 @@ module Utils {
     return (symmSrc, symmDst);
   }
 
-  /* 
+  /*
     Pulled from Arkouda. Given an array, `sorted`, generates the unique values
     of the array and the counts of each value, if `needCounts` is set to `true`.
   */
@@ -393,12 +390,12 @@ module Utils {
 
     forall i in truth.domain with (var agg = new DstAggregator(int)){
       if truth[i] == true {
-        var idx = i; 
+        var idx = i;
         agg.copy(segs[iv[i]-1], idx);
       }
     }
 
-    forall (_,uk,seg) in zip(segs.domain, ukeys, segs) 
+    forall (_,uk,seg) in zip(segs.domain, ukeys, segs)
       with (var agg = new SrcAggregator(t)) do agg.copy(uk, sorted[seg]);
 
     if needCounts {
@@ -415,7 +412,7 @@ module Utils {
   }
 
   /*
-    Mostly pulled from Arkouda. It creates a merged array from considering 
+    Mostly pulled from Arkouda. It creates a merged array from considering
     `src` as the initial digits and appending `dst` to the end. It sorts the
     newly merged array and then returns new versions `src` and `dst` based off
     the sort.
@@ -458,10 +455,10 @@ module Utils {
     /* Pulled from Arkouda, runs merge and then sort */
     proc mergedArgsort(param numDigits) throws {
       var merged = mergeNumericArrays(
-        numDigits, 
-        m, 
-        totalDigits, 
-        bitWidths, 
+        numDigits,
+        m,
+        totalDigits,
+        bitWidths,
         negs
       );
 
@@ -503,7 +500,7 @@ module Utils {
   }
 
   /*
-    Given two arrays, assumed to have been previously sorted by `sortEdgeList`, 
+    Given two arrays, assumed to have been previously sorted by `sortEdgeList`,
     removes duplicated edges.
   */
   proc removeMultipleEdges(src: [?sD] int, dst) throws {
@@ -555,7 +552,7 @@ module Utils {
     var srcPerm = makeDistArray(sD.size, int);
     forall (s,i) in zip(srcPerm, srcPerm.domain) do s=i;
     var (srcUnique, srcCounts) = uniqueFromSorted(src);
-    
+
     var dstPerm = argsort(dst);
     var sortedDst = dst[dstPerm];
     var (dstUnique, dstCounts) = uniqueFromSorted(sortedDst);
@@ -573,16 +570,16 @@ module Utils {
     return (newSrc, newDst, srcUnique);
   }
 
-  /* 
-    Pulled from Arkouda. 
-    Broadcast a value per segment of a segmented array to the original ordering 
-    of the precursor array. For example, if the original array was sorted and 
-    grouped, resulting in groups defined by <segs>, and if <vals> contains group 
-    labels, then return the array of group labels corresponding to the original 
+  /*
+    Pulled from Arkouda.
+    Broadcast a value per segment of a segmented array to the original ordering
+    of the precursor array. For example, if the original array was sorted and
+    grouped, resulting in groups defined by <segs>, and if <vals> contains group
+    labels, then return the array of group labels corresponding to the original
     array. Intended to be used with arkouda.GroupBy.
 
     For our intents and purposes, arkouda.GroupBy can be mimicked by running
-    `uniqueFromSorted` to get counts that can be used to build `segs`. Further, 
+    `uniqueFromSorted` to get counts that can be used to build `segs`. Further,
     the `perm` can be computed by `argort`. Lastly, `vals` is whatever values
     need to be broadcasted and is typically of the same size as the number of
     unique elements in the array.
@@ -682,7 +679,7 @@ module Utils {
       if line[0] == commentHeader then continue;
       else {
         var temp = line.split();
-        a = temp[0]; 
+        a = temp[0];
         b = temp[1];
         c = temp[2];
         break;
@@ -701,7 +698,7 @@ module Utils {
     r.readLine(line);
     var temp = line.split();
     var weighted = false;
-    var ind = 0; 
+    var ind = 0;
     if temp.size != 3 {
       src[ind] = temp[0]:int;
       dst[ind] = temp[1]:int;
@@ -741,7 +738,7 @@ module Utils {
   }
 
   /*
-  Hacky way to output a `.csv` file from the source of 
+  Hacky way to output a `.csv` file from the source of
   `printCommDiagnosticsTable` within the `CommDiagnostics` module.
   */
   proc commDiagnosticsToCsv(comms, identifier:string, kernel:string, printEmptyColumns=false) throws {
