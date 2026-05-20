@@ -5,8 +5,8 @@ import random
 import arachne as ar
 import numpy as np
 import arkouda as ak
-from arkouda.client import generic_msg
-from arkouda.pdarrayclass import create_pdarray
+from arkouda.core.client import generic_msg
+from arkouda.numpy.pdarrayclass import create_pdarray
 
 __all__ = [
     "complete_graph",

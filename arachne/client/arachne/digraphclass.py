@@ -4,8 +4,8 @@ from __future__ import annotations
 from typing import Union
 import arachne as ar
 import arkouda as ak
-from arkouda.client import generic_msg
-from arkouda.pdarrayclass import pdarray
+from arkouda.core.client import generic_msg
+from arkouda.numpy.pdarrayclass import pdarray
 
 __all__ = ["DiGraph"]
 
