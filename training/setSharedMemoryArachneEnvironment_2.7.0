@@ -9,6 +9,7 @@ export CHPL_GMP=bundled
 export CHPL_HWLOC=bundled
 export CHPL_RE2=bundled
 export CHPL_LLVM=bundled
+export CHPL_COMM=none
 export CHPL_TARGET_CPU=native
 export CHPL_TARGET_MEM=jemalloc
 export CHPL_HOST_MEM=mimalloc

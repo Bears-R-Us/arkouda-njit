@@ -159,6 +159,7 @@ if [ "$SKIP_CONDA" = false ]; then
     conda activate "$CONDA_ENV"
     # Pin setuptools to version known to work with this arkouda build
     pip install --no-cache-dir "setuptools==69.5.1"
+    make -C "$CHPL_DIR" chapel-py-venv
     info "Conda env ready."
 else
     info "Skipping conda env creation."

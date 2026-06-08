@@ -124,6 +124,8 @@ Also install [Miniforge](https://github.com/conda-forge/miniforge) or Anaconda f
    conda env create -f ~/arkouda/arkouda-env-dev.yml
    conda activate arkouda-dev
    pip install --no-cache-dir "setuptools==69.5.1"
+   cd ~/chapel-2.7.0
+   make chapel-py-venv
    ```
 
 4. **Configure Arkouda dependency paths**
