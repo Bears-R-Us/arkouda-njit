@@ -4,3 +4,6 @@
 [submodule "arachne/server/external_libs/igraph"]
 	path = arachne/server/external_libs/igraph
 	url = https://github.com/igraph/igraph.git
+[submodule "arachne/server/external_libs/Clustering_Algorithms"]
+	path = arachne/server/external_libs/Clustering_Algorithms
+	url = https://github.com/mdindoost/Clustering_Algorithms

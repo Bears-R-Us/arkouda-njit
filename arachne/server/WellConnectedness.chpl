@@ -638,7 +638,16 @@ module WellConnectedness {
       return result;
     } // end wellconnectednessRecursiveChecker
 
-    /* Shared-memory executor for well-connected components and connectivity modifier. */
+    /* Shared-memory (single-locale) executor for WCC/CM.
+
+       Execution flow (extra step vs fromFiles executors):
+         1. readClustersFile   — read inputClustersFilePath; assign each vertex to its cluster
+                                 (round-robin ownership: clusterID % 1 == 0, so locale 0 owns all)
+         2. getEdgeList        — build induced subgraph edges from the full SegGraph for each cluster
+                                 (this is the "extra step": fromFiles executors get pre-extracted files)
+         3. connectedComponentsLocal — split disconnected clusters into connected sub-clusters
+         4. wellconnectednessRecursiveChecker — recursively check/split until well-connected
+         5. writeClustersToFile — write vertex→clusterID output */
     proc wellConnectednessSharedMemoryExecutor() throws {
       var outMsg = "Processing graph with %i vertices and %i edges with %s".format(G.n_vertices,
                                                                                    G.n_edges,
@@ -727,7 +736,17 @@ module WellConnectedness {
       timer.stop();
     } // end of wellConnectednessSharedMemoryExecutor
 
-    /* Distributed-memory executor for well-connected components and connectivity modifier. */
+    /* Distributed-memory (multi-locale) executor for WCC/CM.
+
+       Execution flow (extra step vs fromFiles executors):
+         1. readClustersFile   — every locale reads inputClustersFilePath independently and keeps
+                                 only clusters assigned to it (clusterID % numLocales == here.id)
+         2. getEdgeList        — each locale builds induced subgraph edges from its local replica of
+                                 the SegGraph for every owned cluster
+                                 (this is the "extra step": fromFiles executors get pre-extracted files)
+         3. connectedComponentsLocal — split disconnected clusters per locale
+         4. wellconnectednessRecursiveChecker — recursively check/split (locale-local, no comms)
+         5. writeClustersToFile — each locale writes its own output file */
     proc wellConnectednessDistributedMemoryExecutor() throws {
       var outMsg = "Processing graph with %i vertices and %i edges with %s".format(G.n_vertices,
                                                                                   G.n_edges,
@@ -1201,7 +1220,22 @@ module WellConnectedness {
       return result;
     } // end wellconnectednessRecursiveCheckerF
 
-    // Shared-memory executor: load files on locale 0, process with forall.
+    /* Shared-memory (single-locale) executor for pre-extracted cluster files.
+
+       Input layout (flat directory only — no locale subfolders for shared memory):
+         inputFolderPath/
+           cluster_0.tsv
+           cluster_1.tsv
+           ...
+           cluster_N.tsv
+
+       Each file is a tab-separated edge list of the induced subgraph for one cluster.
+       CC pre-check is omitted because files are assumed to be pre-extracted connected
+       subgraphs (unlike the SegGraph path which must split disconnected clusters first).
+
+       Uses forall (not coforall) so all work runs on the single locale.
+       Each forall task loads one cluster file, runs wellconnectednessRecursiveCheckerF,
+       and appends results to the shared allResults list (parSafe=true). */
     proc fromFilesSharedMemoryExecutor() throws {
       var timer: stopwatch;
       timer.start();
@@ -1219,7 +1253,13 @@ module WellConnectedness {
 
       var allResults = new list((int,int), parSafe=true);
       forall filepath in clusterFiles with (ref allResults) {
-        var clusterNum = filepath.find("cluster_"):int;
+        // Extract numeric cluster ID from filename (e.g. "cluster_42.tsv" → 42).
+        var startIdx = filepath.find("cluster_");
+        if startIdx < 0 then continue;
+        startIdx += "cluster_".size;
+        var dotIdx = filepath.rfind(".tsv");
+        if dotIdx < 0 then continue;
+        const clusterNum = filepath[startIdx..<dotIdx]:int;
         var (src, dst, mapper) = loadClusterFile(filepath);
         if src.size < 1 || mapper.size <= postFilterMinSize then continue;
         var result = wellconnectednessRecursiveCheckerF(src, dst, mapper, clusterNum, 0);
@@ -1235,49 +1275,161 @@ module WellConnectedness {
       timer.stop();
     } // end fromFilesSharedMemoryExecutor
 
-    // Distributed executor: each locale owns a round-robin slice of files.
+    /* Distributed-memory (multi-locale) executor for pre-extracted cluster files.
+
+       Supports two input layouts, auto-detected from inputFolderPath:
+
+       -- Mode 1: Flat directory (round-robin assignment) --
+         inputFolderPath/
+           cluster_0.tsv
+           cluster_1.tsv
+           ...
+
+         Files are sorted as strings then distributed round-robin:
+           locale L gets files at positions L, L+numLocales, L+2*numLocales, ...
+         Simple to set up, but load balance depends on cluster size distribution.
+         Build with: python extract_subgraphs_with_distribution.py split ...
+
+       -- Mode 2: Pre-distributed locale subfolders (load-balanced) --
+         inputFolderPath/
+           locale_0/
+             seq_0000000_cluster_42.tsv
+             seq_0000001_cluster_7.tsv
+             ...
+           locale_1/
+             ...
+         Detected automatically when locale_0/ subfolder is present.
+
+         WHY FASTER: Files are pre-assigned by LPT (Longest Processing Time) which
+         minimises makespan (slowest locale). Within each locale the seq_ prefix
+         recreates the LPT-interleaved order, so Chapel's static forall blocking
+         gives each core a balanced mix of heavy and light clusters. Result: less
+         load imbalance → better wall-clock time.
+         Build with: python precise_distribute.py ...
+
+         IMPORTANT — number of locale subfolders must match numLocales exactly.
+         If you prepared 4 subfolders (locale_0..locale_3) but run with 6 locales,
+         locales 4 and 5 find no locale_4/ or locale_5/ directory, receive 0 files,
+         and sit idle for the entire run. The wall time does not improve and 2 of
+         6 nodes are wasted. Always re-distribute when changing the locale count. */
     proc fromFilesDistributedMemoryExecutor() throws {
       var timer: stopwatch;
       timer.start();
 
-      var fileList = new list(string);
+      // Detect layout on locale 0 (shared filesystem is visible everywhere).
+      var useSubdirs = false;
       on Locales[0] {
-        for f in glob(inputFolderPath + "/cluster_*.tsv") do fileList.pushBack(f);
+        try { useSubdirs = isDir(inputFolderPath + "/locale_0"); } catch { }
       }
-      var clusterFiles = fileList.toArray();
-      sort(clusterFiles);
 
-      var outMsg = "Found %i cluster files in %s".format(clusterFiles.size, inputFolderPath);
-      wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
-      outMsg = "Listing files took %r secs".format(timer.elapsed());
-      wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
-      timer.restart();
-
-      coforall loc in Locales do on loc {
-        const myId = here.id;
-        var myFileList = new list(string);
-        for fileIdx in myId..<clusterFiles.size by numLocales {
-          myFileList.pushBack(clusterFiles[fileIdx]);
+      if !useSubdirs {
+        // -- Round-robin on flat directory (original approach) -- 
+        var fileList = new list(string);
+        on Locales[0] {
+          for f in glob(inputFolderPath + "/cluster_*.tsv") do fileList.pushBack(f);
         }
-        var localFiles = myFileList.toArray();
+        var clusterFiles = fileList.toArray();
+        sort(clusterFiles);
 
-        var localResults = new list((int,int), parSafe=true);
-        forall i in 0..<localFiles.size with (ref localResults) {
-          var filepath = localFiles[i];
-          var startIdx = filepath.find("cluster_");
-          if startIdx < 0 then continue;
-          startIdx += "cluster_".size;
-          var dotIdx = filepath.rfind(".tsv");
-          if dotIdx < 0 then continue;
-          const clusterNum = filepath[startIdx..<dotIdx]:int;
-          var (src, dst, mapper) = loadClusterFile(filepath);
-          if src.size < 1 || mapper.size <= postFilterMinSize then continue;
-          var result = wellconnectednessRecursiveCheckerF(src, dst, mapper, clusterNum, 0);
-          localResults.pushBack(result);
+        var outMsg = "Found %i cluster files in %s".format(clusterFiles.size, inputFolderPath);
+        wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+        outMsg = "Listing files took %r secs".format(timer.elapsed());
+        wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+        timer.restart();
+
+        coforall loc in Locales do on loc {
+
+          var locTimer: stopwatch;
+          locTimer.start();
+
+          const myId = here.id;
+          var myFileList = new list(string);
+          for fileIdx in myId..<clusterFiles.size by numLocales {
+            myFileList.pushBack(clusterFiles[fileIdx]);
+          }
+          var localFiles = myFileList.toArray();
+
+          var locMsg = "[Locale %i] assigned %i subgraph files.".format(myId, localFiles.size);
+          wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), locMsg);
+
+          var localResults = new list((int,int), parSafe=true);
+          forall i in 0..<localFiles.size with (ref localResults) {
+            var filepath = localFiles[i];
+            var startIdx = filepath.find("cluster_");
+            if startIdx < 0 then continue;
+            startIdx += "cluster_".size;
+            var dotIdx = filepath.rfind(".tsv");
+            if dotIdx < 0 then continue;
+            const clusterNum = filepath[startIdx..<dotIdx]:int;
+            var (src, dst, mapper) = loadClusterFile(filepath);
+            if src.size < 1 || mapper.size <= postFilterMinSize then continue;
+            var result = wellconnectednessRecursiveCheckerF(src, dst, mapper, clusterNum, 0);
+            localResults.pushBack(result);
+          }
+
+          locMsg = "[Locale %i] %s on %i subgraphs took %r secs"
+                   .format(myId, analysisType, localFiles.size, locTimer.elapsed());
+          wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), locMsg);
+          locTimer.restart();
+
+          writeClustersToFileF(localResults, myId);
+
+          locTimer.stop();
         }
-        writeClustersToFileF(localResults, myId);
+
+      } else {
+        // -- Pre-distributed locale subfolders (load-balanced) --
+        // Files: seq_NNNNNNN_cluster_ORIGID.tsv inside locale_0/, locale_1/, ...
+        // String sort of seq_ prefix = LPT interleaved processing order.
+        // find("cluster_") still locates the original cluster ID correctly.
+        var outMsg = "Using pre-distributed subfolders in %s".format(inputFolderPath);
+        wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+        outMsg = "Detecting subfolders took %r secs".format(timer.elapsed());
+        wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
+        timer.restart();
+
+        coforall loc in Locales do on loc {
+
+          var locTimer: stopwatch;
+          locTimer.start();
+
+          const myId = here.id;
+          var myFileList = new list(string);
+          for f in glob(inputFolderPath + "/locale_" + myId:string + "/seq_*.tsv") do
+            myFileList.pushBack(f);
+          var localFiles = myFileList.toArray();
+          sort(localFiles); // seq_ prefix makes filename sort = LPT interleaved order
+
+          var locMsg = "[Locale %i] assigned %i subgraph files.".format(myId, localFiles.size);
+          wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), locMsg);
+
+          var localResults = new list((int,int), parSafe=true);
+          forall i in 0..<localFiles.size with (ref localResults) {
+            var filepath = localFiles[i];
+            var startIdx = filepath.find("cluster_");
+            if startIdx < 0 then continue;
+            startIdx += "cluster_".size;
+            var dotIdx = filepath.rfind(".tsv");
+            if dotIdx < 0 then continue;
+            const clusterNum = filepath[startIdx..<dotIdx]:int;
+            var (src, dst, mapper) = loadClusterFile(filepath);
+            if src.size < 1 || mapper.size <= postFilterMinSize then continue;
+            var result = wellconnectednessRecursiveCheckerF(src, dst, mapper, clusterNum, 0);
+            localResults.pushBack(result);
+          }
+
+          locMsg = "[Locale %i] %s on %i subgraphs took %r secs"
+                   .format(myId, analysisType, localFiles.size, locTimer.elapsed());
+          wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), locMsg);
+          locTimer.restart();
+
+          writeClustersToFileF(localResults, myId);
+
+          locTimer.stop();
+        }
       }
-      outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
+
+      var outMsg = "%s took %r secs".format(analysisType, timer.elapsed());
       wcLogger.info(getModuleName(), getRoutineName(), getLineNumber(), outMsg);
       timer.restart();
 

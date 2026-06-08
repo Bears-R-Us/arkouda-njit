@@ -5,6 +5,7 @@ arachne/server/external_libs/install/*
 !arachne/server/external_libs/install/
 !arachne/server/external_libs/igraph/
 !arachne/server/external_libs/libleidenalg/
+!arachne/server/external_libs/Clustering_Algorithms/
 
 # Outputs.
 arachne/output/*
@@ -157,4 +158,4 @@ GraphServerModules.cfg.*
 .idea
 
 arachne/server/nauty-wrapper/
-!arachne/server/external_libs/Clustering_Algorithms/
+arachne/server/Clustering_Algorithms/
