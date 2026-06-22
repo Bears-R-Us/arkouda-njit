@@ -1,0 +1,32 @@
+module load foss
+module load CMake
+module load Miniforge3
+module load GLPK
+
+source /home/$USER/chpl_wulver_executor.sh
+
+export CHPL_HOME=/home/$USER/chapel-2.7.0/
+source $CHPL_HOME/util/setchplenv.bash
+export CHPL_GMP=bundled
+export CHPL_HWLOC=bundled
+export CHPL_RE2=bundled
+export CHPL_LLVM=bundled
+export CHPL_COMM=gasnet
+export CHPL_LAUNCHER=slurm-gasnetrun_ibv
+export CHPL_COMM_SUBSTRATE=ibv
+export CHPL_GASNET_SEGMENT=fast
+export GASNET_MAX_SEGSIZE=64G
+export CHPL_TARGET_CPU=native
+export GASNET_PHYSMEM_MAX=0.9
+export CHPL_TARGET_MEM=jemalloc
+export CHPL_LAUNCHER_ACCOUNT=bader
+export CHPL_LAUNCHER_PARTITION=general
+export CHPL_HOST_MEM=mimalloc
+
+export CHPL_RT_CALL_STACK_SIZE=64M
+
+conda activate arkouda-dev
+export CPATH=$CPATH:/home/$USER/.conda/envs/arkouda-dev/include
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/$USER/.conda/envs/arkouda-dev/lib
+
+ldd ~/arkouda-njit/arachne/server/external_libs/install/lib64/libigraph.so | grep glpk

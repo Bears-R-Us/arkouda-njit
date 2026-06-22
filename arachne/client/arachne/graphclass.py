@@ -3,8 +3,8 @@
 from __future__ import annotations
 from typing import cast, Tuple, Union
 import arkouda as ak
-from arkouda.client import generic_msg
-from arkouda.pdarrayclass import pdarray, create_pdarray
+from arkouda.core.client import generic_msg
+from arkouda.numpy.pdarrayclass import pdarray, create_pdarray
 
 __all__ = ["Graph"]
 

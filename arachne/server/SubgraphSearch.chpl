@@ -1530,9 +1530,9 @@ module SubgraphSearch {
     } // end of printProgress
 
     /* Perform the recursive steps as defined in the VF2-PS paper to return all found matches.*/
-    proc recursiveMatchSaverFast(state: owned State, depth: int): list(int,parSafe=true) throws {
-      var allmappings: list(int, parSafe=true);
-      
+    proc recursiveMatchSaverFast(state: owned State, depth: int): list(int,parSafe=false) throws {
+      var allmappings: list(int, parSafe=false);
+
       // Base case: the depth is equivalent to the number of vertices in the subgraph.
       if depth == g2.n_vertices {
         allmappings.pushBack(state.core);
@@ -1541,38 +1541,34 @@ module SubgraphSearch {
 
       // Generate candidate pairs (n1, n2) for mapping
       var candidatePairs = getCandidatePairsOpti(state);
+      var candidatePairsArr = candidatePairs.toArray();
+      var perPair: [0..<candidatePairsArr.size] list(int, parSafe=false);
 
-      // Iterate in parallel over candidate pairs
-      forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+      // Each parallel iteration writes only to its own slot — no shared list, no lock needed.
+      forall pIdx in 0..<candidatePairsArr.size with (ref perPair, ref state) {
+        
+        const (n1, n2) = candidatePairsArr[pIdx];
 
         if (findingIsos && isFeasible_ISO(n1,n2,state))||(findingMonos && isFeasible_MONO(n1,n2,state)) {
-            
-          // Work on a clone, not the original state
           var newState = state.clone();
-
-          // Update state with the new mapping
           addToTinTout(n1, n2, newState);
-
-          // Recursive call with updated state and increased depth
-          var newMappings: list(int, parSafe=true);
-          newMappings = recursiveMatchSaverFast(newState, depth + 1);
-
-          // Use a loop to add elements from newMappings to allmappings
-          for mapping in newMappings do allmappings.pushBack(mapping);
+          perPair[pIdx] = recursiveMatchSaverFast(newState, depth + 1);
         }
       }
+      // Sequential concat preserves per-match block contiguity.
+      for pIdx in 0..<candidatePairsArr.size do for m in perPair[pIdx] do allmappings.pushBack(m);
       return allmappings;
     }
 
     /* Perform the recursive steps as defined in the VF2-PS paper to return all found matches.
        To be used when the number of matches are to be printed in intervals or returned incomplete.
     */
-    proc recursiveMatchSaverVerbose(state: owned State, depth: int): list(int,parSafe=true) throws {
-      var allmappings: list(int, parSafe=true);
+    proc recursiveMatchSaverVerbose(state: owned State, depth: int): list(int,parSafe=false) throws {
+      var allmappings: list(int, parSafe=false);
 
       // Prints the progress every X number of minutes.
       if printProgressCheck then printProgress(timer, printProgressInterval, lastPrintedMinute);
-      
+
       // Base case: the depth is equivalent to the number of vertices in the subgraph.
       if depth == g2.n_vertices {
         allmappings.pushBack(state.core);
@@ -1595,27 +1591,21 @@ module SubgraphSearch {
 
       // Generate candidate pairs (n1, n2) for mapping
       var candidatePairs = getCandidatePairsOpti(state);
+      var candidatePairsArr = candidatePairs.toArray();
+      var perPair: [0..<candidatePairsArr.size] list(int, parSafe=false);
 
-      // Iterate in parallel over candidate pairs
-      forall (n1, n2) in candidatePairs with (ref state, ref allmappings) {
+      // Each parallel iteration writes only to its own slot — no shared list, no lock needed.
+      forall pIdx in 0..<candidatePairsArr.size with (ref perPair, ref state) {
         if stopper.read() then continue;
-
+        const (n1, n2) = candidatePairsArr[pIdx];
         if (findingIsos && isFeasible_ISO(n1,n2,state))||(findingMonos && isFeasible_MONO(n1,n2,state)) {
-            
-          // Work on a clone, not the original state
           var newState = state.clone();
-
-          // Update state with the new mapping
           addToTinTout(n1, n2, newState);
-
-          // Recursive call with updated state and increased depth
-          var newMappings: list(int, parSafe=true);
-          newMappings = recursiveMatchSaverVerbose(newState, depth + 1);
-
-          // Use a loop to add elements from newMappings to allmappings
-          for mapping in newMappings do allmappings.pushBack(mapping);
+          perPair[pIdx] = recursiveMatchSaverVerbose(newState, depth + 1);
         }
       }
+      // Sequential concat preserves per-match block contiguity.
+      for pIdx in 0..<candidatePairsArr.size do for m in perPair[pIdx] do allmappings.pushBack(m);
       return allmappings;
     }
 
@@ -1707,22 +1697,22 @@ module SubgraphSearch {
 
     /* Executes edge-centric state injection. */
     proc edgeCentricStateInjection(g1: SegGraph, g2: SegGraph) throws {
-      var solutions: list(int, parSafe=true);
       var counts: chpl__processorAtomicType(int) = 0;
-      forall edgeIndex in 0..<mG1 with(ref solutions) {
+      // One private result slot per edge — each task writes only its own slot, no lock needed.
+      var perEdge: [0..<mG1] list(int, parSafe=false);
+      forall edgeIndex in 0..<mG1 with (ref perEdge, ref counts) {
         if limitTime || limitSize then if stopper.read() then continue;
 
         if vertexFlagger[srcNodesG1[edgeIndex]] && srcNodesG1[edgeIndex] != dstNodesG1[edgeIndex] {
           var initialState = new State(g1.n_vertices, g2.n_vertices);
 
           var edgeChecked:bool;
-          if findingIsos then 
+          if findingIsos then
             edgeChecked = addToTinToutMVE_ISO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
-          else 
+          else
             edgeChecked = addToTinToutMVE_MONO(srcNodesG1[edgeIndex], dstNodesG1[edgeIndex], initialState);
 
           if edgeChecked {
-            var newMappings: list(int, parSafe=true);
             var newCounts: int;
             if countOnly && (limitSize || limitTime || printProgressCheck) {
               newCounts = recursiveMatchCounterVerbose(initialState, 2);
@@ -1731,16 +1721,17 @@ module SubgraphSearch {
               newCounts = recursiveMatchCounterFast(initialState, 2);
               counts.add(newCounts);
             } else if !countOnly && (limitSize || limitTime) {
-              newMappings = recursiveMatchSaverVerbose(initialState, 2);
-              for mapping in newMappings do solutions.pushBack(mapping);
+              perEdge[edgeIndex] = recursiveMatchSaverVerbose(initialState, 2);
             } else {
-              newMappings = recursiveMatchSaverFast(initialState, 2);
-              for mapping in newMappings do solutions.pushBack(mapping);
+              perEdge[edgeIndex] = recursiveMatchSaverFast(initialState, 2);
             }
           }
         }
       }
+      // Sequential concat after the forall — O(total output), blocks stay contiguous.
+      var solutions: list(int);
       if countOnly then solutions.pushBack(counts.read());
+      else for e in 0..<mG1 do for m in perEdge[e] do solutions.pushBack(m);
       var subIsoArrToReturn: [0..#solutions.size](int);
       for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
 
@@ -1749,9 +1740,13 @@ module SubgraphSearch {
 
     /* Executes vertex-centric state injection. */
     proc vertexCentricStateInjection(g1: SegGraph, g2: SegGraph) throws {
-      var solutions: list(int, parSafe=true);
       var counts: chpl__processorAtomicType(int) = 0;
-      forall u in validatedVertices with(ref solutions) {
+      // Materialize to array so we can index per-vertex slots.
+      var validatedVerticesArr = validatedVertices.toArray();
+      // One private result slot per validated vertex — the inner for-v loop appends serially into it.
+      var perVertex: [0..<validatedVerticesArr.size] list(int, parSafe=false);
+      forall uIdx in 0..<validatedVerticesArr.size with (ref perVertex, ref counts) {
+        const u = validatedVerticesArr[uIdx];
         if limitTime || limitSize then if stopper.read() then continue;
 
         const ref outNeighbors = dstNodesG1[segGraphG1[u]..<segGraphG1[u+1]];
@@ -1760,13 +1755,12 @@ module SubgraphSearch {
             var initialState = new State(g1.n_vertices, g2.n_vertices);
 
             var edgeChecked:bool;
-            if findingIsos then 
+            if findingIsos then
               edgeChecked = addToTinToutMVE_ISO(u, v, initialState);
-            else 
+            else
               edgeChecked = addToTinToutMVE_MONO(u, v, initialState);
 
             if edgeChecked {
-              var newMappings: list(int, parSafe=true);
               var newCounts: int;
               if countOnly && (limitSize || limitTime || printProgressCheck) {
                 newCounts = recursiveMatchCounterVerbose(initialState, 2);
@@ -1775,17 +1769,20 @@ module SubgraphSearch {
                 newCounts = recursiveMatchCounterFast(initialState, 2);
                 counts.add(newCounts);
               } else if !countOnly && (limitSize || limitTime) {
-                newMappings = recursiveMatchSaverVerbose(initialState, 2);
-                for mapping in newMappings do solutions.pushBack(mapping);
+                var newMappings = recursiveMatchSaverVerbose(initialState, 2);
+                for m in newMappings do perVertex[uIdx].pushBack(m);
               } else {
-                newMappings = recursiveMatchSaverFast(initialState, 2);
-                for mapping in newMappings do solutions.pushBack(mapping);
+                var newMappings = recursiveMatchSaverFast(initialState, 2);
+                for m in newMappings do perVertex[uIdx].pushBack(m);
               }
             }
           }
         }
       }
+      // Sequential concat after the forall — O(total output), blocks stay contiguous.
+      var solutions: list(int);
       if countOnly then solutions.pushBack(counts.read());
+      else for uIdx in 0..<validatedVerticesArr.size do for m in perVertex[uIdx] do solutions.pushBack(m);
       var subIsoArrToReturn: [0..#solutions.size](int);
       for i in 0..#solutions.size do subIsoArrToReturn[i] = solutions(i);
 
@@ -1795,7 +1792,7 @@ module SubgraphSearch {
     /* Executes VF2PS. */
     proc VF2PS(g1: SegGraph, g2: SegGraph) throws {
       var initialState = new State(g1.n_vertices, g2.n_vertices);
-      var solutions: list(int, parSafe=true);
+      var solutions: list(int, parSafe=false);
       var counts: chpl__processorAtomicType(int) = 0;
 
       if countOnly && (limitSize || limitTime || printProgressCheck) {

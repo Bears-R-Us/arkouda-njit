@@ -1,0 +1,23 @@
+module load foss
+module load CMake
+module load Miniforge3
+module load GLPK
+
+export CHPL_HOME=/home/$USER/chapel-2.7.0/
+source $CHPL_HOME/util/setchplenv.bash
+export CHPL_GMP=bundled
+export CHPL_HWLOC=bundled
+export CHPL_RE2=bundled
+export CHPL_LLVM=bundled
+export CHPL_COMM=none
+export CHPL_TARGET_CPU=native
+export CHPL_TARGET_MEM=jemalloc
+export CHPL_HOST_MEM=mimalloc
+
+export CHPL_RT_CALL_STACK_SIZE=64M
+
+conda activate arkouda-dev
+export CPATH=$CPATH:/home/$USER/.conda/envs/arkouda-dev/include
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/home/$USER/.conda/envs/arkouda-dev/lib
+
+ldd ~/arkouda-njit/arachne/server/external_libs/install/lib64/libigraph.so | grep glpk

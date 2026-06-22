@@ -1,6 +1,7 @@
 """Contains the graph class defintion for `PropGraph`."""
 
 from __future__ import annotations
+from arkouda.core.client import generic_msg
 from typing import List, Dict, Tuple, Union
 import random
 import string
@@ -185,7 +186,7 @@ class PropGraph(ar.DiGraph):
                  "LabelArrayNames" : "+".join(vertex_labels_symbol_table_ids),
                  "LabelArrayTypes" : "+".join(vertex_labels_object_types)
         }
-        ak.generic_msg(cmd=cmd, args=args)
+        generic_msg(cmd=cmd, args=args)
 
     def load_node_attributes(self,
                              node_attributes:ak.DataFrame,
@@ -285,7 +286,7 @@ class PropGraph(ar.DiGraph):
                  "PropertyArrayNames" : "+".join(column_ids),
                  "PropertyArrayTypes" : "+".join(vertex_property_object_types)
                }
-        ak.generic_msg(cmd=cmd, args=args)
+        generic_msg(cmd=cmd, args=args)
 
     def add_edge_relationships(self,
                                relationships:ak.DataFrame,
@@ -380,7 +381,7 @@ class PropGraph(ar.DiGraph):
                   "RelationshipArrayNames" : "+".join(edge_relationships_symbol_table_ids),
                   "RelationshipArrayTypes" : "+".join(edge_relationships_object_types)
         }
-        ak.generic_msg(cmd=cmd, args=args)
+        generic_msg(cmd=cmd, args=args)
 
     def load_edge_attributes(self,
                              edge_attributes:ak.DataFrame,
@@ -495,7 +496,7 @@ class PropGraph(ar.DiGraph):
                  "PropertyArrayNames" : "+".join(column_ids),
                  "PropertyArrayTypes" : "+".join(edge_property_object_types)
                }
-        ak.generic_msg(cmd=cmd, args=args)
+        generic_msg(cmd=cmd, args=args)
 
     def get_node_labels(self) -> ak.DataFrame:
         """Returns a a dataframe with the nodes and their labels.

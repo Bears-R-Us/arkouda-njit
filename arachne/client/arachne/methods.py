@@ -10,8 +10,8 @@ from arachne.graphclass import Graph
 from arachne.digraphclass import DiGraph
 from arachne.propgraphclass import PropGraph
 import arkouda as ak
-from arkouda.client import generic_msg
-from arkouda.pdarrayclass import pdarray, create_pdarray
+from arkouda.core.client import generic_msg
+from arkouda.numpy.pdarrayclass import pdarray, create_pdarray
 
 __all__ = [ "read_matrix_market_file",
             "read_tsv_file",
